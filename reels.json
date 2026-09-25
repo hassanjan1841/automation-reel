@@ -78,6 +78,47 @@
     "media_id": "18021218396706661"
   },
   {
+    "id": 30,
+    "style": "light",
+    "kicker": "Price war",
+    "hook": "Anthropic and OpenAI just slashed *API prices* again",
+    "points": [
+      {
+        "title": "Opus 5.5 got cheaper",
+        "body": "Input tokens dropped to $4 per million, output to $20, a 20% cut."
+      },
+      {
+        "title": "GPT-6 Luna is dirt cheap",
+        "body": "Luna costs $0.10 per million input tokens, half the price of GPT-5.6 Luna."
+      },
+      {
+        "title": "Cache pricing dropped hard",
+        "body": "Cached input on Opus 5.5 fell 60%, making repeated calls much cheaper."
+      }
+    ],
+    "cta": "Which price cut changes your *stack*?",
+    "caption": "Anthropic and OpenAI both cut prices this week.\nBuilding AI features just got cheaper.\nWhich one are you picking? 👇",
+    "hashtags": [
+      "#ai",
+      "#openai",
+      "#anthropic",
+      "#claudeopus",
+      "#gpt6",
+      "#llm",
+      "#webdev",
+      "#indiehackers",
+      "#buildinpublic",
+      "#saas"
+    ],
+    "pillar": "timely",
+    "sources": [
+      "https://www.anthropic.com/claude-opus-5-5",
+      "https://simonwillison.net/2026/Sep/22/opus-and-sol-and-luna/"
+    ],
+    "posted_at": "2026-09-25T18:16:34+00:00",
+    "media_id": "17968643595177481"
+  },
+  {
     "id": 2,
     "pillar": "saas",
     "style": "dark",
