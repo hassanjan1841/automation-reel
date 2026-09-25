@@ -1,0 +1,67 @@
+name: Daily reel
+
+on:
+  schedule:
+    - cron: '0 14 * * *' # 7 PM Pakistan time
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Render only, do not post
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reels-queue
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Download fonts
+        run: python render.py --fonts
+
+      - name: Render and publish
+        id: publish
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python publish.py
+
+      - name: Upload video
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reel-${{ github.run_number }}
+          path: out/*.mp4
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Commit queue
+        if: steps.publish.outputs.posted == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reels.json
+          git commit -m "Posted reel ${{ steps.publish.outputs.reel_id }}"
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

@@ -1,0 +1,516 @@
+[
+  {
+    "id": 1,
+    "pillar": "concept",
+    "style": "light",
+    "kicker": "Explained simply",
+    "hook": "What an *API* actually is, explained without the jargon",
+    "points": [
+      {
+        "title": "A menu for software",
+        "body": "An API lists what a program can do for you, and how to ask."
+      },
+      {
+        "title": "You send a request",
+        "body": "Your app asks for something specific, like a user's profile or today's orders."
+      },
+      {
+        "title": "You get a response",
+        "body": "The other system replies with data, usually as JSON, or an error explaining why."
+      }
+    ],
+    "cta": "Which concept should I *explain* next?",
+    "caption": "APIs sound complicated until you picture them as a menu.\nRequest in, response out. That is the whole idea.\nWhat should I break down next? 👇",
+    "hashtags": [
+      "#api",
+      "#webdevelopment",
+      "#programming",
+      "#coding",
+      "#softwareengineering",
+      "#learntocode",
+      "#developer",
+      "#techexplained",
+      "#backend",
+      "#javascript"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 2,
+    "pillar": "saas",
+    "style": "dark",
+    "kicker": "SaaS building",
+    "hook": "Validate your SaaS idea *before* you write any code",
+    "points": [
+      {
+        "title": "Talk to ten real users",
+        "body": "Ask about their current workflow and pain, not whether they like your idea."
+      },
+      {
+        "title": "Look for money already spent",
+        "body": "If people pay for clunky workarounds today, the problem is real enough."
+      },
+      {
+        "title": "Sell it before building it",
+        "body": "A landing page with a waitlist or preorder tests demand in days, not months."
+      }
+    ],
+    "cta": "How did you *validate* your last idea?",
+    "caption": "Code is the most expensive way to test an idea.\nConversations and a landing page are much cheaper.\nHow do you validate before building? 👇",
+    "hashtags": [
+      "#saas",
+      "#startup",
+      "#indiehacker",
+      "#buildinpublic",
+      "#productvalidation",
+      "#mvp",
+      "#entrepreneur",
+      "#softwaredeveloper",
+      "#solofounder",
+      "#microsaas"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 3,
+    "pillar": "productivity",
+    "style": "light",
+    "kicker": "Productivity",
+    "hook": "A simple *two-list* system for focused dev days",
+    "points": [
+      {
+        "title": "List one: today's three tasks",
+        "body": "Pick only three outcomes you will finish today. Everything else waits."
+      },
+      {
+        "title": "List two: the parking lot",
+        "body": "New ideas and requests go here instead of breaking your current focus."
+      },
+      {
+        "title": "Review both every evening",
+        "body": "Five minutes moving items between lists keeps tomorrow ready to start."
+      }
+    ],
+    "cta": "What keeps *you* focused during deep work?",
+    "caption": "Most focus problems are really list problems.\nThree tasks for today, everything else parked.\nWhat keeps you focused? 👇",
+    "hashtags": [
+      "#productivity",
+      "#developerlife",
+      "#deepwork",
+      "#focus",
+      "#programmer",
+      "#timemanagement",
+      "#codinglife",
+      "#remotework",
+      "#softwaredeveloper"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 4,
+    "pillar": "ai",
+    "style": "dark",
+    "kicker": "AI tools",
+    "hook": "Use AI coding assistants like a *senior reviewer*, not autocomplete",
+    "points": [
+      {
+        "title": "Ask for a review first",
+        "body": "Paste your diff and ask what could break. It catches missed edge cases."
+      },
+      {
+        "title": "Give it real context",
+        "body": "Share types, error messages and constraints. Vague prompts produce confident, wrong code."
+      },
+      {
+        "title": "Verify everything it writes",
+        "body": "Run the tests and read each line. You still own what ships."
+      }
+    ],
+    "cta": "How do you *use* AI in your workflow?",
+    "caption": "AI is most useful when it questions your code, not just writes it.\nContext in, careful review out.\nHow do you use AI while coding? 👇",
+    "hashtags": [
+      "#ai",
+      "#aitools",
+      "#aicoding",
+      "#developer",
+      "#programming",
+      "#codereview",
+      "#softwareengineering",
+      "#webdev",
+      "#productivity",
+      "#coding"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 5,
+    "pillar": "devtip",
+    "style": "light",
+    "kicker": "Dev tip",
+    "hook": "Stop trusting *TypeScript types* for data from outside your app",
+    "points": [
+      {
+        "title": "Types vanish at runtime",
+        "body": "TypeScript checks your code at build time. It cannot check API responses."
+      },
+      {
+        "title": "Validate at the boundary",
+        "body": "Parse external data with a schema library like Zod before using it."
+      },
+      {
+        "title": "Infer types from the schema",
+        "body": "One schema gives you runtime checks and static types that never drift apart."
+      }
+    ],
+    "cta": "Do you *validate* your API responses?",
+    "caption": "Types describe what you expect, not what you receive.\nValidate at the edges and trust the types inside.\nDo you validate external data? 👇",
+    "hashtags": [
+      "#typescript",
+      "#javascript",
+      "#zod",
+      "#webdevelopment",
+      "#nextjs",
+      "#react",
+      "#frontend",
+      "#programming",
+      "#devtips",
+      "#coding"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 6,
+    "pillar": "take",
+    "style": "dark",
+    "kicker": "Honest take",
+    "hook": "Clean code matters less than *shipping* something people actually use",
+    "points": [
+      {
+        "title": "Users never see your code",
+        "body": "They see speed, bugs and whether it solves their problem."
+      },
+      {
+        "title": "Perfect code can wait",
+        "body": "Refactoring a product with users beats polishing one nobody has tried."
+      },
+      {
+        "title": "But do not skip basics",
+        "body": "Tests for critical paths and readable names save you when it grows."
+      }
+    ],
+    "cta": "Do you *agree* or disagree with this?",
+    "caption": "Clean code is a tool, not the goal.\nShip first, then improve what real users touch.\nAgree or disagree? 👇",
+    "hashtags": [
+      "#developerlife",
+      "#programming",
+      "#cleancode",
+      "#softwaredevelopment",
+      "#coding",
+      "#shipit",
+      "#buildinpublic",
+      "#techcareer",
+      "#programmer"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 7,
+    "pillar": "freelance",
+    "style": "light",
+    "kicker": "Freelance lesson",
+    "hook": "Write *fixed-scope* proposals so projects do not quietly grow forever",
+    "points": [
+      {
+        "title": "List every deliverable",
+        "body": "Spell out exactly what is included, page by page or feature by feature."
+      },
+      {
+        "title": "Name what is excluded",
+        "body": "Saying what is out of scope prevents most arguments later."
+      },
+      {
+        "title": "Price changes separately",
+        "body": "New requests become a small change order, not free extra work."
+      }
+    ],
+    "cta": "How do you *handle* scope creep?",
+    "caption": "Scope creep usually starts with a vague proposal.\nClear deliverables and exclusions protect both sides.\nHow do you handle it? 👇",
+    "hashtags": [
+      "#freelancing",
+      "#freelancer",
+      "#upwork",
+      "#freelancetips",
+      "#webdeveloper",
+      "#clientwork",
+      "#scopecreep",
+      "#freelancedeveloper",
+      "#remotework",
+      "#business"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 8,
+    "pillar": "concept",
+    "style": "dark",
+    "kicker": "Explained simply",
+    "hook": "What *caching* really means, in under thirty seconds",
+    "points": [
+      {
+        "title": "Keep a nearby copy",
+        "body": "A cache stores results you already fetched so you can reuse them quickly."
+      },
+      {
+        "title": "Faster and cheaper",
+        "body": "Fewer database or API calls means quicker pages and lower server costs."
+      },
+      {
+        "title": "The hard part: staleness",
+        "body": "Cached data can be outdated, so you decide when to refresh or invalidate it."
+      }
+    ],
+    "cta": "What *concept* confuses you most right now?",
+    "caption": "Caching is just keeping a copy close by.\nThe tricky part is knowing when that copy is too old.\nWhat should I explain next? 👇",
+    "hashtags": [
+      "#caching",
+      "#webperformance",
+      "#backend",
+      "#programming",
+      "#softwareengineering",
+      "#techexplained",
+      "#webdevelopment",
+      "#learntocode",
+      "#developer"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 9,
+    "pillar": "saas",
+    "style": "light",
+    "kicker": "SaaS building",
+    "hook": "Your first SaaS version needs *fewer features* than you think",
+    "points": [
+      {
+        "title": "Solve one painful problem",
+        "body": "Pick the single job users would pay for and do it well."
+      },
+      {
+        "title": "Skip the admin dashboard",
+        "body": "Early on, manual work behind the scenes is fine. Automate once it hurts."
+      },
+      {
+        "title": "Charge from day one",
+        "body": "Payment is the clearest signal that you built something people want."
+      }
+    ],
+    "cta": "What would you *cut* from your MVP?",
+    "caption": "Every extra feature delays the moment you learn something.\nOne painful problem, solved well, is enough to start.\nWhat would you cut? 👇",
+    "hashtags": [
+      "#saas",
+      "#mvp",
+      "#startup",
+      "#indiehacker",
+      "#buildinpublic",
+      "#productdevelopment",
+      "#solofounder",
+      "#microsaas",
+      "#entrepreneur",
+      "#stripe"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 10,
+    "pillar": "productivity",
+    "style": "dark",
+    "kicker": "Productivity",
+    "hook": "Write the *next step* down before you close your laptop",
+    "points": [
+      {
+        "title": "Stopping mid-task costs focus",
+        "body": "Tomorrow you spend time remembering where you were and what came next."
+      },
+      {
+        "title": "Leave a clear note",
+        "body": "One line: the next file, function or command you were about to run."
+      },
+      {
+        "title": "Start fast the next day",
+        "body": "Reading one line gets you back into flow in minutes, not an hour."
+      }
+    ],
+    "cta": "How do you *restart* after a break?",
+    "caption": "The hardest part of coding is often getting started again.\nA one-line note fixes that.\nHow do you get back into flow? 👇",
+    "hashtags": [
+      "#productivity",
+      "#developerlife",
+      "#programmer",
+      "#codinglife",
+      "#deepwork",
+      "#workflow",
+      "#softwaredeveloper",
+      "#focus",
+      "#remotework"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 11,
+    "pillar": "ai",
+    "style": "light",
+    "kicker": "AI tools",
+    "hook": "Three ways to get *better answers* from AI coding tools",
+    "points": [
+      {
+        "title": "Show the exact error",
+        "body": "Paste the full error message and stack trace, not a paraphrase of it."
+      },
+      {
+        "title": "Share the relevant code",
+        "body": "Include the function, its types and how it is called. Context beats cleverness."
+      },
+      {
+        "title": "Ask for options, not answers",
+        "body": "Request two approaches with tradeoffs, then choose the one that fits your project."
+      }
+    ],
+    "cta": "Which AI coding tool do you *use* daily?",
+    "caption": "Better input gets better code from any AI tool.\nErrors, context and tradeoffs make the difference.\nWhich tool do you use? 👇",
+    "hashtags": [
+      "#ai",
+      "#aitools",
+      "#aicoding",
+      "#promptengineering",
+      "#developer",
+      "#programming",
+      "#coding",
+      "#webdev",
+      "#productivity",
+      "#softwareengineering"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 12,
+    "pillar": "devtip",
+    "style": "dark",
+    "kicker": "Dev tip",
+    "hook": "Add *indexes* for the columns your queries filter on most",
+    "points": [
+      {
+        "title": "Slow queries often scan everything",
+        "body": "Without an index, Postgres may read every row to find a few matches."
+      },
+      {
+        "title": "Index what you filter on",
+        "body": "Columns used in WHERE, JOIN and ORDER BY are the usual candidates."
+      },
+      {
+        "title": "Check with EXPLAIN ANALYZE",
+        "body": "It shows whether Postgres used your index and where time actually went."
+      }
+    ],
+    "cta": "Have you ever *checked* your query plans?",
+    "caption": "A slow page is often one missing index.\nEXPLAIN ANALYZE shows you exactly where the time goes.\nHave you tried it? 👇",
+    "hashtags": [
+      "#postgresql",
+      "#postgres",
+      "#supabase",
+      "#sql",
+      "#database",
+      "#backend",
+      "#webdevelopment",
+      "#performance",
+      "#devtips",
+      "#programming"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 13,
+    "pillar": "take",
+    "style": "light",
+    "kicker": "Honest take",
+    "hook": "Learning a new framework every month is *slowing* you down",
+    "points": [
+      {
+        "title": "Depth beats breadth",
+        "body": "Knowing one stack well lets you ship faster and debug with confidence."
+      },
+      {
+        "title": "Fundamentals transfer",
+        "body": "HTTP, databases and JavaScript itself outlast any framework you learn this year."
+      },
+      {
+        "title": "Learn new tools on purpose",
+        "body": "Pick one up when a real project needs it, not because it trends."
+      }
+    ],
+    "cta": "Are you learning a new *framework* right now?",
+    "caption": "Chasing every new framework feels productive but rarely is.\nGo deep on one stack and the fundamentals.\nWhat are you learning now? 👇",
+    "hashtags": [
+      "#webdevelopment",
+      "#javascript",
+      "#learntocode",
+      "#developerlife",
+      "#programming",
+      "#frameworks",
+      "#react",
+      "#nextjs",
+      "#techcareer",
+      "#coding"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 14,
+    "pillar": "freelance",
+    "style": "dark",
+    "kicker": "Freelance lesson",
+    "hook": "Reply to clients *fast*, even when you do not have the answer",
+    "points": [
+      {
+        "title": "Speed builds trust",
+        "body": "A quick reply tells clients their project is in safe hands."
+      },
+      {
+        "title": "Acknowledge, then give a time",
+        "body": "Say you received it and when they will hear back with details."
+      },
+      {
+        "title": "Keep that promise",
+        "body": "Replying when you said you would matters more than replying instantly."
+      }
+    ],
+    "cta": "How fast do you *reply* to clients?",
+    "caption": "Silence makes clients nervous, even when work is on track.\nA quick acknowledgement with a time fixes that.\nHow fast do you reply? 👇",
+    "hashtags": [
+      "#freelancing",
+      "#freelancer",
+      "#upwork",
+      "#clientcommunication",
+      "#freelancetips",
+      "#webdeveloper",
+      "#remotework",
+      "#freelancedeveloper",
+      "#business",
+      "#clientwork"
+    ],
+    "posted_at": null,
+    "media_id": null
+  }
+]
