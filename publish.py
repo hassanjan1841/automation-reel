@@ -5,6 +5,7 @@ Env:
   SUPABASE_URL          https://<ref>.supabase.co
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
+  VOICE                 Kokoro voice for the voiceover (default am_michael), or 'none' for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
 """
 
@@ -17,6 +18,7 @@ from datetime import datetime, timezone
 import requests
 
 import render
+import voice
 
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
 BUCKET = 'reels'
@@ -142,7 +144,9 @@ def main():
         raise SystemExit('ERROR: no unposted reels left in reels.json. Run generate.py or add reels by hand.')
 
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
-    path, slides = render.render_reel(reel)
+    voice_name = os.environ.get('VOICE', '').strip() or voice.DEFAULT_VOICE
+    clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
+    path, slides = render.render_reel(reel, voice=clips)
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
     caption = f"{reel['caption'].strip()}\n\n{' '.join(reel['hashtags'])}"
 

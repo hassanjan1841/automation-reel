@@ -2,7 +2,7 @@
 
 Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 
-- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4, uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
+- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4 with a spoken voiceover (voice `am_michael`), uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
 - **Weekly** (`weekly-content.yml`, Sundays 10:00 UTC): if fewer than 7 reels are unposted, asks Claude (through the Claude Code CLI, billed to your Max plan) for 14 new ones, validates them and appends them. The same workflow refreshes the Instagram token so it never expires.
 
 ## Files
@@ -13,6 +13,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `render.py` | Draws the slides and sound effects, encodes with ffmpeg. `python render.py 3` writes `out/reel-3.mp4`. |
 | `publish.py` | Render, upload, publish, update the queue. `DRY_RUN=true` renders only. |
 | `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue. |
+| `voice.py` | Voiceover with Kokoro (free, runs in Actions). `PRONOUNCE` fixes tech terms like SaaS, CLI, Next.js; add a line there if a word sounds wrong. `python voice.py 3` previews reel 3 with voice. |
 | `refresh_token.py` | Refreshes `IG_TOKEN` and saves it back as a repo secret. |
 
 ## Add a reel by hand
@@ -44,6 +45,10 @@ Then run `python generate.py --check` and `python render.py 15` to preview it. T
 ## Pause it
 
 GitHub → Actions → **Daily reel** → `...` → **Disable workflow**. Enable it again to resume. Disable **Weekly content** too if you do not want new reels generated, but keep in mind it also refreshes the Instagram token: if it stays off for more than 60 days the token expires and has to be generated again.
+
+## Voice
+
+Set a repo variable or env `VOICE` to another Kokoro voice (e.g. `am_fenrir`), or `none` for sound effects only. The spoken script is the slide text; add a `voiceover` array (one line per slide, 5 lines) to a reel to override it.
 
 ## Run it by hand
 

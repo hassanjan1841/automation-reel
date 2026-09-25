@@ -37,6 +37,7 @@ TEXT_W = W - 2 * MARGIN
 WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
+VOICE_LEAD = 0.25
 MIN_SLIDE, MAX_SLIDE = 3.0, 6.0
 MIN_TOTAL, MAX_TOTAL = 15.0, 25.0
 
@@ -229,7 +230,7 @@ def words_in(text):
     return len(text.replace('*', '').split())
 
 
-def build_slides(reel):
+def build_slides(reel, voice=None):
     theme = THEMES[reel['style']]
     slides = []
 
@@ -292,6 +293,9 @@ def build_slides(reel):
         room = sum(MAX_SLIDE - d for d in durs)
         k = (MIN_TOTAL - total) / room
         durs = [d + (MAX_SLIDE - d) * k for d in durs]
+    if voice:
+        # Speech sets the pace: each slide stays up until its line is finished.
+        durs = [max(d, VOICE_LEAD + len(clip) / SR + 0.45 + EXIT) for d, clip in zip(durs, voice)]
 
     t = 0.0
     for s, d in zip(slides, durs):
@@ -432,7 +436,7 @@ def whoosh_sound(rng, length=0.55):
     return s / np.sqrt(np.mean(s ** 2))
 
 
-def build_audio(slides, path):
+def build_audio(slides, path, voice=None):
     total = slides[-1].end
     track = np.zeros(int(SR * (total + 0.5)))
     rng = np.random.default_rng(42)
@@ -443,11 +447,15 @@ def build_audio(slides, path):
         if i < j:
             track[i:j] += sound[:j - i] * gain
 
+    click_gain, whoosh_gain = (0.03, 0.08) if voice else (0.09, 0.16)
     for s in slides:
         for c in s.clicks:
-            place(click_sound(rng), c, 0.09)
+            place(click_sound(rng), c, click_gain)
     for s in slides[1:]:
-        place(whoosh_sound(rng), s.start - 0.3, 0.16)
+        place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
+    if voice:
+        for s, clip in zip(slides, voice):
+            place(clip / (np.max(np.abs(clip)) or 1.0), s.start + VOICE_LEAD, 0.9)
 
     peak = np.max(np.abs(track)) or 1.0
     track = track / peak * 0.7  # -3 dBFS peak
@@ -477,14 +485,14 @@ def hook_end_ms(reel):
     return int((slides[0].end - EXIT - 0.05) * 1000)
 
 
-def render_reel(reel, out_path=None):
+def render_reel(reel, out_path=None, voice=None):
     ensure_fonts()
     OUT_DIR.mkdir(exist_ok=True)
     out_path = Path(out_path or OUT_DIR / f"reel-{reel['id']}.mp4")
-    slides, theme = build_slides(reel)
+    slides, theme = build_slides(reel, voice)
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / 'sfx.wav'
-        build_audio(slides, wav)
+        build_audio(slides, wav, voice)
         cmd = [
             'ffmpeg', '-y', '-loglevel', 'error',
             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
