@@ -46,6 +46,15 @@ PRONOUNCE = [
     (r'\b([A-Z]{2,5})s\b', lambda m: spell(m.group(1)[:-1]) + ' ' + PLURAL_LETTER[m.group(1)[-1]]),
     (r'\b(CLI|UX|IDE|ROI|SEO)\b', lambda m: spell(m.group(1))),
     (r'&', ' and '),
+    (r'\b(\d+)\.(\d+)\.(\d+)\b', r'\1 point \2 point \3'),
+    (r'\band/or\b', 'and or'),
+    (r'\bog\b', 'O G'),
+    (r'(?<=\w)@(?=\w)', ' at '),
+    (r'(?<=\w)/(?=\w)', ' slash '),
+    (r'\$(\d+(?:\.\d+)?)([KMB]?)\b', lambda m: m.group(1) + {'K': ' thousand', 'M': ' million', 'B': ' billion', '': ''}[m.group(2)] + ' dollars'),
+    (r'\b(\d+(?:\.\d+)?)K\b', r'\1 thousand'),
+    (r'\b(\d+(?:\.\d+)?)M\b', r'\1 million'),
+    (r'\b(\d+(?:\.\d+)?)B\b', r'\1 billion'),
 ]
 
 

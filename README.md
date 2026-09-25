@@ -2,7 +2,7 @@
 
 Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 
-- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4 with a spoken voiceover (voice `am_michael`), uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
+- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): first scans what is trending (Hacker News, GitHub Trending, dev.to, Lobsters, AI and dev blog feeds). Claude, with web search, ranks up to 3 stories by expected reach, verifies each against its sources and writes them as reels; the best one that passes validation is posted, with its `sources` saved in `reels.json`. If nothing scores 7/10 or passes, it takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4 with a spoken voiceover (voice `am_michael`), uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
 - **Weekly** (`weekly-content.yml`, Sundays 10:00 UTC): if fewer than 7 reels are unposted, asks Claude (through the Claude Code CLI, billed to your Max plan) for 14 new ones, validates them and appends them. The same workflow refreshes the Instagram token so it never expires.
 
 ## Files
@@ -14,6 +14,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `publish.py` | Render, upload, publish, update the queue. `DRY_RUN=true` renders only. |
 | `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue. |
 | `voice.py` | Voiceover with Kokoro (free, runs in Actions). `PRONOUNCE` fixes tech terms like SaaS, CLI, Next.js; add a line there if a word sounds wrong. `python voice.py 3` previews reel 3 with voice. |
+| `trends.py` | The trend scan and editor. `python trends.py` lists what it scraped, `--pick` shows what Claude would post. Set repo variable `TRENDING=off` to post only from the queue. |
 | `refresh_token.py` | Refreshes `IG_TOKEN` and saves it back as a repo secret. |
 
 ## Add a reel by hand

@@ -5,6 +5,7 @@ Env:
   SUPABASE_URL          https://<ref>.supabase.co
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
+  TRENDING=off          skip the trend scan and post from the evergreen queue only
   VOICE                 Kokoro voice for the voiceover (default am_michael), or 'none' for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
 """
@@ -18,6 +19,7 @@ from datetime import datetime, timezone
 import requests
 
 import render
+import trends
 import voice
 
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
@@ -139,7 +141,20 @@ def main():
     dry = os.environ.get('DRY_RUN', '').strip().lower() in ('1', 'true', 'yes')
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
-    reel = next((r for r in reels if not r.get('posted_at')), None)
+    reel = None
+    if os.environ.get('TRENDING', 'on').strip().lower() != 'off':
+        try:
+            reel = trends.timely_reel(reels)
+        except Exception as e:  # trend scan is best effort; the evergreen queue is the safety net
+            print(f'Trend scan failed ({type(e).__name__}: {redact(str(e))[:300]}), using the evergreen queue')
+        if reel:
+            posted = [r for r in reels if r.get('posted_at')]
+            reel = {'id': max(int(r['id']) for r in reels) + 1,
+                    'style': 'dark' if posted and posted[-1]['style'] == 'light' else 'light',
+                    **reel, 'posted_at': None, 'media_id': None}
+            # Goes in front of the unposted queue so the evergreen order is untouched.
+            reels.insert(len(posted), reel)
+    reel = reel or next((r for r in reels if not r.get('posted_at')), None)
     if reel is None:
         raise SystemExit('ERROR: no unposted reels left in reels.json. Run generate.py or add reels by hand.')
 
