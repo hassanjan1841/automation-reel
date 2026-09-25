@@ -164,7 +164,7 @@ def performance():
     except requests.RequestException:
         return []
     return [f"{m.get('timestamp', '')[:10]}  likes {m.get('like_count', 0)}, comments {m.get('comments_count', 0)}: "
-            f"{(m.get('caption') or '').splitlines()[0][:90]}" for m in data]
+            f"{((m.get('caption') or '').strip().splitlines() or ['(no caption)'])[0][:90]}" for m in data]
 
 
 OPTION = {
