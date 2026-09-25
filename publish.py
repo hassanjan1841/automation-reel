@@ -3,7 +3,7 @@
 Env:
   IG_TOKEN              Instagram User access token (Instagram API with Instagram Login)
   SUPABASE_URL          https://<ref>.supabase.co
-  SUPABASE_SERVICE_KEY  service role / secret key, used for Storage uploads
+  SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
   GRAPH_VERSION         optional, defaults to v25.0
 """
@@ -65,11 +65,8 @@ def env(name):
 # ---------- Supabase Storage ----------
 
 def storage_headers(key):
-    headers = {'apikey': key}
-    # New-format sb_secret_ keys are not JWTs; legacy service_role JWTs also go in Authorization.
-    if not key.startswith('sb_'):
-        headers['Authorization'] = f'Bearer {key}'
-    return headers
+    # Storage requires a JWT in Authorization; new sb_secret_ keys are rejected there, so use the service_role key.
+    return {'apikey': key, 'Authorization': f'Bearer {key}'}
 
 
 def upload(path, name):
