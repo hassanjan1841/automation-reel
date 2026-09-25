@@ -512,5 +512,513 @@
     ],
     "posted_at": null,
     "media_id": null
+  },
+  {
+    "id": 15,
+    "pillar": "concept",
+    "style": "light",
+    "kicker": "Tech explained",
+    "hook": "A *webhook* is just an app calling you back",
+    "points": [
+      {
+        "title": "Polling asks again and again",
+        "body": "Without webhooks, your app keeps asking another service whether anything has changed yet."
+      },
+      {
+        "title": "A webhook pushes the news to you",
+        "body": "The other service sends a request to your URL the moment something happens."
+      },
+      {
+        "title": "Verify it, then answer quickly",
+        "body": "Check the signature so you know it is real, reply fast, and expect repeat deliveries."
+      }
+    ],
+    "cta": "Which *service* sends you webhooks most?",
+    "caption": "Webhooks sound scary but the idea is simple.\nThey are the internet's way of saying: don't call us, we'll call you.\nHave you ever debugged a webhook that never arrived? 👇",
+    "hashtags": [
+      "#webhooks",
+      "#webdev",
+      "#backend",
+      "#api",
+      "#programming",
+      "#softwareengineering",
+      "#learntocode",
+      "#developer",
+      "#techexplained"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 16,
+    "pillar": "saas",
+    "style": "dark",
+    "kicker": "SaaS building",
+    "hook": "Ask what people do *today* about the problem",
+    "points": [
+      {
+        "title": "Skip asking if they would use it",
+        "body": "People say yes to be polite. Ask what they already do about the problem."
+      },
+      {
+        "title": "Look for a messy workaround",
+        "body": "Spreadsheets, copy and paste, and manual reminders all show the problem is real."
+      },
+      {
+        "title": "Ask what the last time cost them",
+        "body": "Time lost or money spent tells you how much the problem actually hurts."
+      }
+    ],
+    "cta": "What *workaround* have you seen lately?",
+    "caption": "Good ideas often hide inside ugly workarounds.\nFind the spreadsheet before you build the app.\nWhat is the messiest workflow you have seen? 👇",
+    "hashtags": [
+      "#saas",
+      "#buildinpublic",
+      "#startup",
+      "#indiehacker",
+      "#productvalidation",
+      "#microsaas",
+      "#softwaredevelopment",
+      "#entrepreneur",
+      "#founder"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 17,
+    "pillar": "productivity",
+    "style": "light",
+    "kicker": "Productivity",
+    "hook": "Put a *timer* on every bug you get stuck on",
+    "points": [
+      {
+        "title": "Pick a limit before you start",
+        "body": "Decide how long you will struggle alone, like thirty minutes, and set a timer."
+      },
+      {
+        "title": "Write down what you already tried",
+        "body": "Notes stop you repeating failed fixes and make asking for help much easier."
+      },
+      {
+        "title": "When time is up, change approach",
+        "body": "Ask someone, search differently, or take a walk. Do not keep looping the same idea."
+      }
+    ],
+    "cta": "How long do you *struggle* before asking?",
+    "caption": "Being stuck is normal. Being stuck for hours with no plan is optional.\nA timer turns frustration into a decision.\nHow long is your limit? 👇",
+    "hashtags": [
+      "#productivity",
+      "#developerlife",
+      "#debugging",
+      "#coding",
+      "#programmerlife",
+      "#softwareengineer",
+      "#workflow",
+      "#devtips",
+      "#focus"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 18,
+    "pillar": "ai",
+    "style": "dark",
+    "kicker": "AI tools",
+    "hook": "Ask AI to *explain* code before it changes anything",
+    "points": [
+      {
+        "title": "Paste the code and ask for a summary",
+        "body": "Have the assistant describe what the code does in plain words first."
+      },
+      {
+        "title": "Compare it to your own understanding",
+        "body": "If its summary is wrong, it will likely write a wrong change too."
+      },
+      {
+        "title": "Only then ask for the edit",
+        "body": "Request a small, specific change and read the result before you accept it."
+      }
+    ],
+    "cta": "Do you *review* AI code line by line?",
+    "caption": "Explaining first catches misunderstandings before they become bugs.\nIt also helps you learn unfamiliar code faster.\nDo you ask AI to explain before it edits? 👇",
+    "hashtags": [
+      "#ai",
+      "#aitools",
+      "#chatgpt",
+      "#claude",
+      "#codingwithai",
+      "#developer",
+      "#programming",
+      "#softwaredevelopment",
+      "#devtools",
+      "#webdev"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 19,
+    "pillar": "devtip",
+    "style": "light",
+    "kicker": "Next.js tip",
+    "hook": "Keep your Next.js components on the *server* by default",
+    "points": [
+      {
+        "title": "Server components send less JavaScript",
+        "body": "They render on the server, so the browser has less code to download and run."
+      },
+      {
+        "title": "Add use client only when needed",
+        "body": "Reach for it when you need state, effects, or browser events like clicks."
+      },
+      {
+        "title": "Push client code to small leaves",
+        "body": "Make just the interactive button a client component, not the whole page."
+      }
+    ],
+    "cta": "Which *component* did you make client-side?",
+    "caption": "A whole page marked as client code is a common habit.\nKeep the interactive parts small and the rest on the server.\nDo you default to server components yet? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#react",
+      "#reactjs",
+      "#webdev",
+      "#javascript",
+      "#typescript",
+      "#frontend",
+      "#servercomponents",
+      "#devtips",
+      "#programming"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 20,
+    "pillar": "take",
+    "style": "dark",
+    "kicker": "Honest take",
+    "hook": "Freelancing includes *sales*, whether you like it or not",
+    "points": [
+      {
+        "title": "Finding clients is part of the work",
+        "body": "Nobody hands you projects just because your code is good."
+      },
+      {
+        "title": "Good code does not market itself",
+        "body": "People must know you exist and understand what problem you solve for them."
+      },
+      {
+        "title": "Small habits beat occasional bursts",
+        "body": "A little outreach each week is easier than panicking when work dries up."
+      }
+    ],
+    "cta": "What part of *selling* do you dislike?",
+    "caption": "Most of us became developers to build, not to pitch.\nBut selling is what keeps the building going.\nWhat part of finding clients is hardest for you? 👇",
+    "hashtags": [
+      "#freelancing",
+      "#freelancedeveloper",
+      "#developerlife",
+      "#upwork",
+      "#remotework",
+      "#softwaredeveloper",
+      "#freelancelife",
+      "#selfemployed",
+      "#webdev"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 21,
+    "pillar": "freelance",
+    "style": "light",
+    "kicker": "Upwork lesson",
+    "hook": "Open your proposal with *their* problem, not your bio",
+    "points": [
+      {
+        "title": "Read the job post twice",
+        "body": "The second read shows details and goals you missed the first time."
+      },
+      {
+        "title": "Restate the goal in your own words",
+        "body": "It proves you understood what they need before you talk about yourself."
+      },
+      {
+        "title": "End with one specific question",
+        "body": "A sharp question about their project shows real thought and invites a reply."
+      }
+    ],
+    "cta": "What *opening* line works for you?",
+    "caption": "Clients skim dozens of proposals. Make yours about them.\nLead with their problem, then explain how you would help.\nHow do you start your proposals? 👇",
+    "hashtags": [
+      "#upwork",
+      "#freelancing",
+      "#freelancetips",
+      "#proposal",
+      "#freelancedeveloper",
+      "#remotework",
+      "#clientwork",
+      "#webdev",
+      "#developerlife"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 22,
+    "pillar": "concept",
+    "style": "dark",
+    "kicker": "Tech explained",
+    "hook": "A database *transaction* means all steps succeed or none do",
+    "points": [
+      {
+        "title": "Some changes must happen together",
+        "body": "Moving money means taking from one account and adding to another. Both, or neither."
+      },
+      {
+        "title": "Roll back if anything fails",
+        "body": "If one step errors, the database undoes the earlier steps as if nothing happened."
+      },
+      {
+        "title": "Commit only when everything worked",
+        "body": "Only then are the changes saved and visible to everyone else."
+      }
+    ],
+    "cta": "Where would a *transaction* protect you?",
+    "caption": "Without transactions, half-finished changes can leave data broken.\nAll or nothing keeps your data trustworthy.\nHave you used transactions in your projects? 👇",
+    "hashtags": [
+      "#database",
+      "#postgres",
+      "#sql",
+      "#backend",
+      "#webdev",
+      "#programming",
+      "#softwareengineering",
+      "#learntocode",
+      "#techexplained"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 23,
+    "pillar": "saas",
+    "style": "light",
+    "kicker": "SaaS building",
+    "hook": "Someone *paying* is stronger proof than someone praising",
+    "points": [
+      {
+        "title": "Compliments cost people nothing",
+        "body": "Saying your idea is great is easy. Handing over money is not."
+      },
+      {
+        "title": "A pre-order shows real need",
+        "body": "Even a small early payment tells you the problem matters enough to solve."
+      },
+      {
+        "title": "Deliver it by hand first",
+        "body": "You can do the work manually for early customers before you build anything automatic."
+      }
+    ],
+    "cta": "Would you *charge* before building?",
+    "caption": "Likes and kind words feel good but prove very little.\nPayment, even a small one, is the clearest signal.\nHave you ever asked for money before building? 👇",
+    "hashtags": [
+      "#saas",
+      "#buildinpublic",
+      "#startup",
+      "#indiehacker",
+      "#validation",
+      "#microsaas",
+      "#entrepreneur",
+      "#founder",
+      "#softwarebusiness"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 24,
+    "pillar": "productivity",
+    "style": "dark",
+    "kicker": "Behind the scenes",
+    "hook": "Keep a *setup checklist* for every new project you start",
+    "points": [
+      {
+        "title": "List the steps you always repeat",
+        "body": "Repo, environment variables, linting, database, and deployment are usually the same each time."
+      },
+      {
+        "title": "Fewer decisions means faster starts",
+        "body": "You skip the small choices and get straight to building the real thing."
+      },
+      {
+        "title": "Update it after every project",
+        "body": "Add what you forgot and remove what you never used. It improves over time."
+      }
+    ],
+    "cta": "What is on your *checklist* first?",
+    "caption": "Starting projects from memory wastes energy.\nA simple checklist makes day one calm and repeatable.\nWhat is the first item on yours? 👇",
+    "hashtags": [
+      "#productivity",
+      "#developerworkflow",
+      "#webdev",
+      "#coding",
+      "#programming",
+      "#devtips",
+      "#softwareengineer",
+      "#freelancedeveloper",
+      "#workflow"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 25,
+    "pillar": "ai",
+    "style": "light",
+    "kicker": "AI tools",
+    "hook": "Keep *secrets* out of every AI prompt you write",
+    "points": [
+      {
+        "title": "Never paste keys or passwords",
+        "body": "API keys and .env values do not belong in a chat with any AI tool."
+      },
+      {
+        "title": "Swap in placeholders instead",
+        "body": "Replace real values with fake ones like YOUR_API_KEY. The AI still understands the code."
+      },
+      {
+        "title": "If one leaks, rotate it",
+        "body": "Treat a pasted secret as exposed. Create a new key and disable the old one."
+      }
+    ],
+    "cta": "Do you *check* before you paste?",
+    "caption": "It is easy to paste a whole file without thinking.\nA quick scan for secrets can save you a lot of trouble.\nDo you scan before you paste? 👇",
+    "hashtags": [
+      "#ai",
+      "#aitools",
+      "#security",
+      "#codingwithai",
+      "#developer",
+      "#programming",
+      "#webdev",
+      "#devtools",
+      "#cybersecurity",
+      "#softwaredevelopment"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 26,
+    "pillar": "devtip",
+    "style": "dark",
+    "kicker": "Supabase tip",
+    "hook": "Turn on *RLS* before your Supabase table goes live",
+    "points": [
+      {
+        "title": "Without RLS, tables can be too open",
+        "body": "Tables exposed through the API can be read by anyone holding your public key."
+      },
+      {
+        "title": "Policies decide who sees which rows",
+        "body": "Write rules like users can only read rows that belong to them."
+      },
+      {
+        "title": "Test as a real user and as anon",
+        "body": "Try both. Confirm the right people get data and everyone else gets nothing."
+      }
+    ],
+    "cta": "Which *table* needs a policy first?",
+    "caption": "Row level security is your safety net in Supabase.\nTurn it on early, then write policies as you build.\nDo you test your policies as an anonymous user? 👇",
+    "hashtags": [
+      "#supabase",
+      "#postgres",
+      "#rls",
+      "#security",
+      "#webdev",
+      "#backend",
+      "#nextjs",
+      "#database",
+      "#devtips",
+      "#programming"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 27,
+    "pillar": "take",
+    "style": "light",
+    "kicker": "Honest take",
+    "hook": "Saying *no* to the wrong project protects your time",
+    "points": [
+      {
+        "title": "Unclear goals cause endless rework",
+        "body": "If the client cannot explain what success looks like, the project rarely ends cleanly."
+      },
+      {
+        "title": "Every yes costs you something",
+        "body": "Taking a poor-fit job means less time for better work and less energy overall."
+      },
+      {
+        "title": "A polite no keeps doors open",
+        "body": "Explain briefly, suggest another option if you can, and stay friendly."
+      }
+    ],
+    "cta": "When did you last say *no*?",
+    "caption": "Turning down work feels risky, especially early on.\nBut the wrong project can cost more than it pays.\nWhat red flag makes you say no? 👇",
+    "hashtags": [
+      "#freelancing",
+      "#freelancedeveloper",
+      "#developerlife",
+      "#clientwork",
+      "#boundaries",
+      "#remotework",
+      "#freelancelife",
+      "#softwaredeveloper",
+      "#upwork"
+    ],
+    "posted_at": null,
+    "media_id": null
+  },
+  {
+    "id": 28,
+    "pillar": "freelance",
+    "style": "dark",
+    "kicker": "Upwork lesson",
+    "hook": "Split work into *milestones* so both sides stay covered",
+    "points": [
+      {
+        "title": "Smaller deliverables are easier to agree on",
+        "body": "Each milestone has a clear description of what done looks like."
+      },
+      {
+        "title": "Payment follows real progress",
+        "body": "Both sides know what is finished and what is paid at every stage."
+      },
+      {
+        "title": "Problems show up early",
+        "body": "Misunderstandings appear after one milestone, not at the very end of the project."
+      }
+    ],
+    "cta": "How do you *split* your projects?",
+    "caption": "Big projects with one final payment create stress for everyone.\nMilestones keep expectations clear and progress visible.\nHow many milestones do you usually set? 👇",
+    "hashtags": [
+      "#upwork",
+      "#freelancing",
+      "#freelancetips",
+      "#milestones",
+      "#freelancedeveloper",
+      "#clientwork",
+      "#remotework",
+      "#webdev",
+      "#developerlife"
+    ],
+    "posted_at": null,
+    "media_id": null
   }
 ]

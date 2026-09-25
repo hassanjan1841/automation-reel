@@ -3,7 +3,7 @@
 Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 
 - **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4, uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
-- **Weekly** (`weekly-content.yml`, Sundays 10:00 UTC): if fewer than 7 reels are unposted, asks Claude for 14 new ones, validates them and appends them. The same workflow refreshes the Instagram token so it never expires.
+- **Weekly** (`weekly-content.yml`, Sundays 10:00 UTC): if fewer than 7 reels are unposted, asks Claude (through the Claude Code CLI, billed to your Max plan) for 14 new ones, validates them and appends them. The same workflow refreshes the Instagram token so it never expires.
 
 ## Files
 
@@ -12,7 +12,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `reels.json` | The queue. Posted in order, top to bottom. |
 | `render.py` | Draws the slides and sound effects, encodes with ffmpeg. `python render.py 3` writes `out/reel-3.mp4`. |
 | `publish.py` | Render, upload, publish, update the queue. `DRY_RUN=true` renders only. |
-| `generate.py` | Tops up the queue with Claude. `--force` always adds 14, `--check` validates the queue. |
+| `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue. |
 | `refresh_token.py` | Refreshes `IG_TOKEN` and saves it back as a repo secret. |
 
 ## Add a reel by hand
@@ -51,7 +51,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 ## Secrets
 
-`IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ANTHROPIC_API_KEY`, `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
+`IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
 ## Local setup
 

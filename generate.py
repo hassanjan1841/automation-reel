@@ -2,16 +2,17 @@
 
 Usage:
   python generate.py            add 14 reels if fewer than 7 are unposted
+
+Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
   python generate.py --force    add 14 reels regardless
   python generate.py --check    validate reels.json and exit
 """
 
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
-
-import anthropic
 
 import render
 
@@ -165,7 +166,7 @@ Content rules:
 - Every hook must be clearly different from the existing hooks provided."""
 
 
-def ask_claude(client, plan, existing_hooks, feedback=None):
+def ask_claude(plan, existing_hooks, feedback=None):
     lines = [f'{i + 1}. {date:%A}: {label}' for i, (date, (_, label)) in enumerate(plan)]
     prompt = (
         f'Write {len(plan)} reels, one per line below, in this order and matching each pillar:\n'
@@ -176,23 +177,22 @@ def ask_claude(client, plan, existing_hooks, feedback=None):
     if feedback:
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
 
-    with client.messages.stream(
-        model=MODEL,
-        max_tokens=32000,
-        system=SYSTEM,
-        messages=[{'role': 'user', 'content': prompt}],
-        output_config={'format': {'type': 'json_schema', 'schema': SCHEMA}},
-    ) as stream:
-        message = stream.get_final_message()
-
-    if message.stop_reason in ('max_tokens', 'refusal'):
-        raise ValueError(f'response stopped with {message.stop_reason}')
-    text = next(b.text for b in message.content if b.type == 'text')
-    return json.loads(text)['reels']
+    # Claude Code CLI in print mode bills the Claude subscription (CLAUDE_CODE_OAUTH_TOKEN), not the API.
+    proc = subprocess.run(
+        ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+         '--json-schema', json.dumps(SCHEMA)],
+        capture_output=True, text=True, timeout=900,
+    )
+    if proc.returncode != 0:
+        raise ValueError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-500:]}')
+    result = json.loads(proc.stdout)
+    if result.get('is_error') or not result.get('structured_output'):
+        raise ValueError(f"claude returned no structured output: {str(result.get('result'))[:300]}")
+    return result['structured_output']['reels']
 
 
 def generate(reels, count):
-    client = anthropic.Anthropic()
     plan = [(d, PILLARS[d.weekday()]) for d in next_post_dates(reels, count)]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
@@ -201,7 +201,7 @@ def generate(reels, count):
         if not todo:
             break
         try:
-            candidates = ask_claude(client, todo, [r['hook'] for r in reels] + [r['hook'] for _, r in accepted],
+            candidates = ask_claude(todo, [r['hook'] for r in reels] + [r['hook'] for _, r in accepted],
                                     feedback)
         except (json.JSONDecodeError, KeyError, StopIteration, ValueError) as e:
             print(f'Attempt {attempt + 1}: invalid JSON from Claude ({e})')
