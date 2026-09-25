@@ -37,6 +37,47 @@
     "media_id": "17908972212509830"
   },
   {
+    "id": 29,
+    "style": "dark",
+    "kicker": "Security alert",
+    "hook": "Next.js just shipped a *critical* remote code fix",
+    "points": [
+      {
+        "title": "RCE in next/og ImageResponse",
+        "body": "Versions 16.2.0 to 16.3.5 have a remote code execution flaw in Satori's SVG output."
+      },
+      {
+        "title": "Edge runtime and 15.x untouched",
+        "body": "Only the Node.js ImageResponse implementation in next/og is vulnerable to this issue."
+      },
+      {
+        "title": "Fix now",
+        "body": "Upgrade to 16.3.6 now; 15.5.26 adds related hardening, both are already live."
+      }
+    ],
+    "cta": "Have you *patched* yet?",
+    "caption": "Critical RCE patched in Next.js next/og.\nUpdate before shipping anything new.\nHave you updated your Next.js version yet? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#webdev",
+      "#javascript",
+      "#typescript",
+      "#security",
+      "#vercel",
+      "#fullstack",
+      "#reactjs",
+      "#buildinpublic",
+      "#webdevelopment"
+    ],
+    "pillar": "timely",
+    "sources": [
+      "https://nextjs.org/blog/nextjs-security-update-september-22-2026",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j"
+    ],
+    "posted_at": "2026-09-25T13:15:01+00:00",
+    "media_id": "18021218396706661"
+  },
+  {
     "id": 2,
     "pillar": "saas",
     "style": "dark",
