@@ -108,6 +108,41 @@ def lobsters():
     return out
 
 
+YOUTUBE_QUERIES = ['AI coding', 'Claude Code', 'ChatGPT developers', 'Next.js', 'web development',
+                   'new AI model', 'SaaS', 'freelance developer']
+
+
+def youtube():
+    key = os.environ.get('YOUTUBE_API_KEY')
+    if not key:
+        return []
+    after = (datetime.now(timezone.utc) - MAX_AGE).strftime('%Y-%m-%dT%H:%M:%SZ')
+    ids, when = [], {}
+    for q in YOUTUBE_QUERIES:
+        # search costs 100 quota units; 8 queries a day stays far under the free 10,000
+        res = get('https://www.googleapis.com/youtube/v3/search', params={
+            'part': 'snippet', 'q': q, 'type': 'video', 'order': 'viewCount', 'publishedAfter': after,
+            'relevanceLanguage': 'en', 'maxResults': 8, 'key': key}).json()
+        if 'error' in res:
+            raise RuntimeError(res['error'].get('message', 'YouTube error'))
+        for item in res.get('items', []):
+            vid = item['id']['videoId']
+            if vid not in when:
+                ids.append(vid)
+                when[vid] = datetime.fromisoformat(item['snippet']['publishedAt'].replace('Z', '+00:00'))
+    out = []
+    for i in range(0, len(ids), 50):
+        stats = get('https://www.googleapis.com/youtube/v3/videos', params={
+            'part': 'snippet,statistics', 'id': ','.join(ids[i:i + 50]), 'key': key}).json()
+        for v in stats.get('items', []):
+            st = v['statistics']
+            out.append({'source': 'YouTube', 'title': f"{v['snippet']['title']} ({v['snippet']['channelTitle']})",
+                        'url': f"https://www.youtube.com/watch?v={v['id']}",
+                        'signal': f"{int(st.get('viewCount', 0)):,} views, {int(st.get('likeCount', 0)):,} likes",
+                        'when': when[v['id']], 'views': int(st.get('viewCount', 0))})
+    return sorted(out, key=lambda o: -o['views'])[:30]
+
+
 def parse_date(text):
     if not text:
         return None
@@ -142,7 +177,7 @@ def feed(name, url):
 def collect():
     items, failed = [], []
     jobs = [('Hacker News', hacker_news), ('GitHub Trending', github_trending), ('dev.to', devto),
-            ('Lobsters', lobsters)] + [(n, lambda n=n, u=u: feed(n, u)) for n, u in FEEDS.items()]
+            ('Lobsters', lobsters), ('YouTube', youtube)] + [(n, lambda n=n, u=u: feed(n, u)) for n, u in FEEDS.items()]
     for name, job in jobs:
         try:
             items += job()
@@ -153,18 +188,33 @@ def collect():
 
 
 def performance():
-    """How recent posts did, so Claude can learn which topics land with this audience."""
+    """How recent reels did, so Claude learns which topics land with this audience."""
     token = os.environ.get('IG_TOKEN')
     if not token:
         return []
+    base = 'https://graph.instagram.com/v25.0'
     try:
-        data = get('https://graph.instagram.com/v25.0/me/media',
-                   params={'fields': 'caption,like_count,comments_count,timestamp', 'limit': 15,
-                           'access_token': token}).json().get('data', [])
+        media = get(f'{base}/me/media', params={'fields': 'id,caption,media_type,timestamp', 'limit': 20,
+                                                 'access_token': token}).json().get('data', [])
     except requests.RequestException:
         return []
-    return [f"{m.get('timestamp', '')[:10]}  likes {m.get('like_count', 0)}, comments {m.get('comments_count', 0)}: "
-            f"{((m.get('caption') or '').strip().splitlines() or ['(no caption)'])[0][:90]}" for m in data]
+    lines = []
+    for m in media:
+        caption = ((m.get('caption') or '').strip().splitlines() or ['(no caption)'])[0][:80]
+        stats = ''
+        try:
+            res = get(f"{base}/{m['id']}/insights", params={
+                'metric': 'views,reach,saved,shares,total_interactions' + (
+                    ',ig_reels_avg_watch_time' if m.get('media_type') == 'VIDEO' else ''),
+                'access_token': token}).json()
+            vals = {d['name']: d['values'][0]['value'] for d in res.get('data', [])}
+            if vals:
+                watch = vals.pop('ig_reels_avg_watch_time', None)
+                stats = ', '.join(f'{k} {v}' for k, v in vals.items()) + (f', avg watch {watch / 1000:.1f}s' if watch else '')
+        except (requests.RequestException, KeyError, ValueError):
+            pass
+        lines.append(f"{m.get('timestamp', '')[:10]}  {stats or 'no insights'}: {caption}")
+    return lines
 
 
 OPTION = {
@@ -210,6 +260,22 @@ Verification is mandatory:
 - Count words carefully: hook 6 to 12, point titles max 8, point bodies max 16. Over-long reels are thrown away."""
 
 
+def claude(prompt, system, schema, model=None):
+    proc = subprocess.run(
+        ['claude', '-p', prompt, '--model', model or os.environ.get('CLAUDE_MODEL', generate.MODEL),
+         '--system-prompt', system, '--tools', 'WebSearch', 'WebFetch', '--allowedTools', 'WebSearch', 'WebFetch',
+         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+         '--json-schema', json.dumps(schema)],
+        capture_output=True, text=True, timeout=1200, stdin=subprocess.DEVNULL,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-400:]}')
+    result = json.loads(proc.stdout)
+    if result.get('is_error') or not result.get('structured_output'):
+        raise RuntimeError(f"claude returned no structured output: {str(result.get('result'))[:300]}")
+    return result['structured_output']
+
+
 def pick(reels, candidates, perf, model=None):
     recent = [r['hook'] for r in reels if r.get('posted_at')][-30:]
     lines = [f"- [{c['source']}] {c['title']} | {c['url']} | {c['signal']} {age_label(c['when'])}".strip()
@@ -221,19 +287,34 @@ def pick(reels, candidates, perf, model=None):
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
         + '\n\nSearch further if the list misses something big today, verify the best stories, and write up to 3 ranked reels.'
     )
-    proc = subprocess.run(
-        ['claude', '-p', prompt, '--model', model or os.environ.get('CLAUDE_MODEL', generate.MODEL),
-         '--system-prompt', SYSTEM, '--tools', 'WebSearch', 'WebFetch', '--allowedTools', 'WebSearch', 'WebFetch',
-         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-         '--json-schema', json.dumps(SCHEMA)],
-        capture_output=True, text=True, timeout=1200, stdin=subprocess.DEVNULL,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-400:]}')
-    result = json.loads(proc.stdout)
-    if result.get('is_error') or not result.get('structured_output'):
-        raise RuntimeError(f"claude returned no structured output: {str(result.get('result'))[:300]}")
-    return result['structured_output']
+    return claude(prompt, SYSTEM, SCHEMA, model)
+
+
+CHECK_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'verdict': {'type': 'string', 'enum': ['pass', 'fix', 'reject']},
+        'problems': {'type': 'array', 'items': {'type': 'string'}},
+        'reel': generate.SCHEMA['properties']['reels']['items'],
+    },
+    'required': ['verdict', 'problems', 'reel'],
+    'additionalProperties': False,
+}
+
+CHECK_SYSTEM = """You are a strict fact-checker for short Instagram reels about software and AI.
+Open every source URL with WebFetch and search for confirmation where needed. Check every claim on the
+slides and in the caption: names, versions, numbers, dates, prices, commands and what a product does.
+- pass: every claim is supported by a page you read. Return the reel unchanged.
+- fix: small wording or number errors you can correct from the sources. Return the corrected reel,
+  keeping the same format and word limits (hook 6 to 12 words, titles max 8, bodies max 16).
+- reject: the main claim is wrong, unsupported, or already outdated.
+List each problem you found, even when fixed."""
+
+
+def fact_check(reel, sources):
+    prompt = ('Fact-check this reel against its sources.\n\nSources:\n' + '\n'.join(sources)
+              + '\n\nReel:\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+    return claude(prompt, CHECK_SYSTEM, CHECK_SCHEMA)
 
 
 def timely_reel(reels):
@@ -260,6 +341,15 @@ def timely_reel(reels):
             errors.append('duplicate hook')
         if errors:
             print('  rejected: ' + '; '.join(errors))
+            continue
+        check = fact_check(reel, sources)
+        print(f"  fact-check: {check['verdict']}" + (f" ({'; '.join(check['problems'])[:300]})" if check['problems'] else ''))
+        if check['verdict'] == 'reject':
+            continue
+        reel = check['reel']
+        errors = generate.validate(reel)
+        if errors:
+            print('  rejected after fact-check: ' + '; '.join(errors))
             continue
         return {**reel, 'pillar': 'timely', 'sources': sources}
     print('No timely option passed, using the evergreen queue')

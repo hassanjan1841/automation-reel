@@ -2,7 +2,7 @@
 
 Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 
-- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): first scans what is trending (Hacker News, GitHub Trending, dev.to, Lobsters, AI and dev blog feeds). Claude, with web search, ranks up to 3 stories by expected reach, verifies each against its sources and writes them as reels; the best one that passes validation is posted, with its `sources` saved in `reels.json`. If nothing scores 7/10 or passes, it takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4 with a spoken voiceover (voice `am_michael`), uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
+- **Daily** (`daily-reel.yml`, 14:00 UTC = 7 PM Pakistan): first scans what is trending (Hacker News, GitHub Trending, dev.to, Lobsters, YouTube via the Data API, AI and dev blog feeds) and reads your recent reels' insights (views, reach, saves, shares, watch time). Claude, with web search, ranks up to 3 stories by expected reach, verifies each against its sources and writes them as reels; a second, independent Claude pass re-opens every source and fact-checks the winner (pass, fix or reject); the best one that passes validation is posted, with its `sources` saved in `reels.json`. If nothing scores 7/10 or passes, it takes the first reel in `reels.json` with `posted_at: null`, renders it to a 1080x1920 MP4 with a spoken voiceover (voice `am_michael`), uploads it to the public Supabase bucket `reels`, publishes it through the Instagram API, deletes the upload, and commits `reels.json` with `posted_at` and `media_id` filled in.
 - **Weekly** (`weekly-content.yml`, Sundays 10:00 UTC): if fewer than 7 reels are unposted, asks Claude (through the Claude Code CLI, billed to your Max plan) for 14 new ones, validates them and appends them. The same workflow refreshes the Instagram token so it never expires.
 
 ## Files
@@ -57,7 +57,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 ## Secrets
 
-`IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
+`IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY` (Google Cloud, restricted to YouTube Data API v3), `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
 ## Local setup
 
