@@ -54,7 +54,7 @@ def main():
               f"{s['shares']:>6}  {m.get('permalink', '')}  {caption}")
         thumb = m.get('thumbnail_url') or m.get('media_url')
         if thumb and m.get('media_product_type') == 'REELS':
-            THUMBS.mkdir(exist_ok=True)
+            THUMBS.mkdir(parents=True, exist_ok=True)
             skip = s['reels_skip_rate'] if s['reels_skip_rate'] != '-' else 0
             (THUMBS / f"{skip:05.1f}-{m['timestamp'][:10]}-{m['id']}.jpg").write_bytes(requests.get(thumb, timeout=60).content)
 
