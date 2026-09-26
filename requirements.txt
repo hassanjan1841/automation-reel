@@ -5,3 +5,6 @@ kokoro-onnx==0.6.1
 soundfile==0.14.0
 faster-whisper==1.2.1
 jellyfish==1.2.1
+Pygments==2.21.0
+playwright==1.63.0
+wordfreq==3.1.1

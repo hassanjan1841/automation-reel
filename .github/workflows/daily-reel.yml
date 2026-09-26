@@ -38,6 +38,15 @@ jobs:
       - name: Download fonts
         run: python render.py --fonts
 
+      - name: Cache screenshot browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install screenshot browser
+        run: python -m playwright install --with-deps chromium
+
       - name: Cache voice and speech-to-text models
         uses: actions/cache@v6
         with:

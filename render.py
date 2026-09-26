@@ -32,6 +32,7 @@ HANDLE = '@hassanjan.k'
 SAFE_TOP, SAFE_BOTTOM, MARGIN = 140, 1450, 90
 CONTENT_TOP, CONTENT_BOTTOM = 300, 1430
 POINT_BOTTOM = 1060
+CAPTION_TOP, CAPTION_BOTTOM = 1330, 1470
 TEXT_W = W - 2 * MARGIN
 
 WORD_STEP = 0.11
@@ -158,6 +159,7 @@ class Slide:
     end: float = 0.0
     elements: list = field(default_factory=list)
     clicks: list = field(default_factory=list)
+    visual: object = None
 
 
 def ease_out(p):
@@ -183,7 +185,7 @@ def circle_number_mask(num, d=104, stroke=4, ss=4):
     return np.asarray(img.resize((d, d), Image.LANCZOS), dtype=np.float32) / 255.0
 
 
-def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='ink'):
+def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='ink', step=WORD_STEP, anim=WORD_ANIM):
     """Word-by-word reveal, highlighted words in accent with a soft underline behind them."""
     ink, accent = rgb(theme[color_key]), rgb(theme['accent'])
     t = t_start
@@ -193,7 +195,7 @@ def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='i
         run = None
         for word, hl, x, w in line:
             mask, pad, ascent = text_mask(word, fnt)
-            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t))
+            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t, dur=anim))
             slide.clicks.append(t)
             if hl:
                 ul_end = x + fnt.getlength(word.rstrip(',.;:!?'))
@@ -204,7 +206,7 @@ def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='i
             elif run:
                 underlines.append((run, baseline))
                 run = None
-            t += WORD_STEP
+            t += step
         if run:
             underlines.append((run, baseline))
     for (x0, x1, t0), baseline in underlines:
@@ -234,13 +236,17 @@ def words_in(text):
 def build_slides(reel, voice=None):
     theme = THEMES[reel['style']]
     slides = []
+    # With spoken captions the bottom band belongs to them, text reveals fast and nothing waits on a blank frame.
+    captions = bool(getattr(voice, 'words', None))
+    bottom = CAPTION_TOP - 40 if captions else CONTENT_BOTTOM
+    start, step, anim = (0.0, 0.03, 0.22) if captions else (0.3, WORD_STEP, WORD_ANIM)
 
     # Hook
     s = Slide('hook')
-    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 124, 60, TEXT_W, 820, leading=1.1)
+    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 124, 60, TEXT_W, bottom - CONTENT_TOP, leading=1.1)
     block_h = len(lines) * line_h
-    top = CONTENT_TOP + (CONTENT_BOTTOM - CONTENT_TOP - block_h) // 2 - 60
-    end = add_words(s, lines, fnt, size, line_h, top, 0.3, theme)
+    top = CONTENT_TOP + (bottom - CONTENT_TOP - block_h) // 2 - (0 if captions else 60)
+    end = add_words(s, lines, fnt, size, line_h, top, start, theme, step=step, anim=anim)
     s.need = end + WORD_ANIM + 1.2 + 0.18 * words_in(reel['hook'])
     slides.append(s)
 
@@ -248,23 +254,39 @@ def build_slides(reel, voice=None):
     for i, point in enumerate(reel['points'], 1):
         s = Slide('point')
         num = f'{i:02d}'
-        big, big_pad, big_asc = text_mask(num, font('Bold', 520))
-        s.elements.append(El(big, rgb(theme['ink']), W - 50 - big.shape[1] + big_pad, SAFE_BOTTOM - 10 - big_asc,
-                             0.05, dur=0.7, rise=40, alpha=0.06))
+        visual = point.get('visual') if captions else None
+        if not captions:
+            big, big_pad, big_asc = text_mask(num, font('Bold', 520))
+            s.elements.append(El(big, rgb(theme['ink']), W - 50 - big.shape[1] + big_pad, SAFE_BOTTOM - 10 - big_asc,
+                                 0.05, dur=0.7, rise=40, alpha=0.06))
 
-        t_fnt, t_size, t_lines, t_lh = fit(parse_highlights(point['title']), 'Bold', 88, 48, TEXT_W, 400, leading=1.12)
+        t_fnt, t_size, t_lines, t_lh = fit(parse_highlights(point['title']), 'Bold', 88 if not visual else 72, 44,
+                                           TEXT_W, 400 if not visual else 200, leading=1.12)
         b_fnt, b_size, b_lines, b_lh = fit(parse_highlights(point['body']), 'Regular', 48, 30, TEXT_W, 330, leading=1.38)
-        circle_d, gap1, gap2 = 104, 44, 40
-        group_h = circle_d + gap1 + len(t_lines) * t_lh + gap2 + len(b_lines) * b_lh
-        # Centre above the big number; long text may still reach into it, which stays readable at 6% opacity.
-        top = CONTENT_TOP + max(0, (POINT_BOTTOM - CONTENT_TOP - group_h) // 2)
+        circle_d, gap1, gap2 = (104, 44, 40) if not visual else (84, 28, 36)
+        title_h = circle_d + gap1 + len(t_lines) * t_lh
+        group_h = title_h + (gap2 + len(b_lines) * b_lh if not visual else 0)
+        if visual:
+            top = CONTENT_TOP
+        else:
+            # Centre above the big number; long text may still reach into it, which stays readable at 6% opacity.
+            top = CONTENT_TOP + max(0, ((POINT_BOTTOM if not captions else bottom) - CONTENT_TOP - group_h) // 2)
 
-        s.elements.append(El(circle_number_mask(num, circle_d), rgb(theme['accent']), MARGIN, top, 0.12, dur=0.45))
+        s.elements.append(El(circle_number_mask(num, circle_d), rgb(theme['accent']), MARGIN, top, start + 0.02, dur=0.3))
         title_top = top + circle_d + gap1
-        end = add_words(s, t_lines, t_fnt, t_size, t_lh, title_top, 0.3, theme)
+        end = add_words(s, t_lines, t_fnt, t_size, t_lh, title_top, start + 0.05, theme, step=step, anim=anim)
         body_t = end + 0.2
         body_top = title_top + len(t_lines) * t_lh + gap2
-        add_block(s, point['body'], 'Regular', b_size, 'muted', body_top, body_t, theme, max_h=330)
+        if visual:
+            import visuals
+            # A point may list several visuals, best first; the first one that can be made is used.
+            for choice in (visual if isinstance(visual, list) else [visual]):
+                s.visual = visuals.build(choice, theme, (MARGIN, body_top, TEXT_W, bottom - body_top))
+                if s.visual:
+                    s.visual.spec = choice
+                    break
+        if not s.visual:
+            add_block(s, point['body'], 'Regular', b_size, 'muted', body_top, body_t, theme, max_h=330)
         s.need = body_t + 0.5 + 0.2 * words_in(point['body']) + 0.6
         slides.append(s)
 
@@ -275,8 +297,8 @@ def build_slides(reel, voice=None):
     follow = f'Follow {HANDLE} for daily dev + AI tips'
     fl_lines = len(wrap(parse_highlights(follow), font('Regular', fl_size), TEXT_W))
     group_h = len(q_lines) * q_lh + 56 + round(cb_size * 1.3) + 22 + fl_lines * round(fl_size * 1.35)
-    top = CONTENT_TOP + (CONTENT_BOTTOM - CONTENT_TOP - group_h) // 2 - 40
-    end = add_words(s, q_lines, q_fnt, q_size, q_lh, top, 0.3, theme)
+    top = CONTENT_TOP + (bottom - CONTENT_TOP - group_h) // 2 - (0 if captions else 40)
+    end = add_words(s, q_lines, q_fnt, q_size, q_lh, top, start, theme, step=step, anim=anim)
     y = top + len(q_lines) * q_lh + 56
     y += add_block(s, 'Comment below', 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
     add_block(s, follow, 'Regular', fl_size, 'muted', y, end + 0.5, theme, max_h=160)
@@ -364,6 +386,82 @@ def draw_element(frame, el, t):
     composite(frame, el, a, el.x, round(el.y + dy), mask)
 
 
+def blend(frame, img, mask, a, x, y):
+    """Composite an RGB image with its own alpha mask."""
+    h, w = mask.shape
+    x0, y0 = max(x, 0), max(y, 0)
+    x1, y1 = min(x + w, W), min(y + h, H)
+    if x0 >= x1 or y0 >= y1:
+        return
+    m = mask[y0 - y:y1 - y, x0 - x:x1 - x][..., None] * a
+    region = frame[y0:y1, x0:x1]
+    region += (img[y0 - y:y1 - y, x0 - x:x1 - x] - region) * m
+
+
+class Captions:
+    """Spoken words shown 2 or 3 at a time on a dark pill near the bottom, the word being said on an accent
+    highlight."""
+    SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 66, 3, 0.35, 34, 18
+    TEXT, BOX, BOX_ALPHA = rgb('#FFFFFF'), rgb('#101421'), 0.82
+
+    def __init__(self, voice, slides, theme):
+        self.accent = rgb(theme['accent'])
+        words, at = [], VOICE_LEAD
+        for i, (s, ws) in enumerate(zip(slides, voice.words)):
+            off = at if voice.continuous else s.start + VOICE_LEAD
+            words += [(w, a + off, b + off) for w, a, b in ws]
+            at += len(voice[i]) / SR
+        chunks, cur = [], []
+        for w in words:
+            if cur and (len(cur) == self.MAX_WORDS or cur[-1][0][-1] in '.,?!;:' or w[1] - cur[-1][2] > self.GAP):
+                chunks.append(cur)
+                cur = []
+            cur.append(w)
+        if cur:
+            chunks.append(cur)
+        self.chunks = []
+        for k, chunk in enumerate(chunks):
+            start = chunk[0][1]
+            end = chunks[k + 1][0][1] if k + 1 < len(chunks) else chunk[-1][2] + 0.5
+            self.chunks.append((start, end, *self.layout(chunk)))
+
+    def layout(self, chunk):
+        shown = [w.rstrip('.,;:') for w, *_ in chunk]
+        size = self.SIZE
+        while True:
+            fnt = font('Bold', size)
+            space = fnt.getlength(' ')
+            width = sum(fnt.getlength(w) for w in shown) + space * (len(shown) - 1)
+            if width <= TEXT_W - 2 * self.PAD_X or size <= 40:
+                break
+            size -= 4
+        ascent, descent = fnt.getmetrics()
+        box_w, box_h = round(width + 2 * self.PAD_X), ascent + descent + 2 * self.PAD_Y
+        box = (rounded_rect_mask(box_w, box_h, 22), round((W - box_w) / 2), CAPTION_BOTTOM - box_h)
+        x, baseline = (W - width) / 2, CAPTION_BOTTOM - self.PAD_Y - descent
+        placed = []
+        for (w, a, b), text in zip(chunk, shown):
+            mask, pad, asc = text_mask(text, fnt)
+            tw = round(fnt.getlength(text))
+            hl = (rounded_rect_mask(tw + 20, ascent + descent + 4, 12), round(x) - 10, baseline - ascent - 2)
+            placed.append((mask, round(x - pad), baseline - asc, a, b, hl))
+            x += fnt.getlength(text) + space
+        return box, placed
+
+    def draw(self, frame, t):
+        for start, end, (box_mask, bx, by), placed in self.chunks:
+            if start <= t < end:
+                p = ease_out(min(1.0, (t - start) / 0.12))
+                dy = round((1 - p) * 14)
+                composite(frame, El(box_mask, self.BOX, 0, 0, 0), self.BOX_ALPHA * p, bx, by + dy)
+                for i, (mask, x, y, a, b, (hl_mask, hx, hy)) in enumerate(placed):
+                    nxt = placed[i + 1][3] if i + 1 < len(placed) else end
+                    if a <= t < nxt:
+                        composite(frame, El(hl_mask, self.accent, 0, 0, 0), p, hx, hy + dy)
+                    composite(frame, El(mask, self.TEXT, 0, 0, 0), p, x, y + dy)
+                return
+
+
 def build_chrome(reel, theme, n_slides):
     """Progress bar geometry plus the static kicker and handle."""
     gap, bar_h, bar_y = 10, 6, 150
@@ -386,7 +484,7 @@ def build_chrome(reel, theme, n_slides):
     return bars, bar_mask, statics
 
 
-def render_frames(reel, slides, theme, pipe):
+def render_frames(reel, slides, theme, pipe, captions=None):
     bg = make_background(theme)
     bars, bar_mask, statics = build_chrome(reel, theme, len(slides))
     ink = rgb(theme['ink'])
@@ -407,8 +505,14 @@ def render_frames(reel, slides, theme, pipe):
             draw_element(frame, el, t)
         for s in slides:
             if s.start <= t < s.end:
+                if s.visual:
+                    p = ease_out(min(1.0, max(0.0, (t - s.start - 0.05) / 0.3)))
+                    q = ease_in(min(1.0, max(0.0, (t - (s.end - EXIT)) / EXIT)))
+                    s.visual.draw(frame, t - s.start, p * (1 - q), round((1 - p) * 30 - q * 70))
                 for el in s.elements:
                     draw_element(frame, el, t)
+        if captions:
+            captions.draw(frame, t)
         pipe.write(np.clip(frame, 0, 255).astype(np.uint8).tobytes())
 
 
@@ -453,7 +557,8 @@ def build_audio(slides, path, voice=None):
         if i < j:
             track[i:j] += sound[:j - i] * gain
 
-    click_gain, whoosh_gain = (0.03, 0.08) if voice else (0.09, 0.16)
+    # With a voice the fast text reveal would turn clicks into a rattle; keep only the transitions.
+    click_gain, whoosh_gain = (0.0, 0.08) if voice else (0.09, 0.16)
     for s in slides:
         for c in s.clicks:
             place(click_sound(rng), c, click_gain)
@@ -510,7 +615,8 @@ def render_reel(reel, out_path=None, voice=None):
         ]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         try:
-            render_frames(reel, slides, theme, proc.stdin)
+            captions = Captions(voice, slides, theme) if getattr(voice, 'words', None) else None
+            render_frames(reel, slides, theme, proc.stdin, captions)
         finally:
             proc.stdin.close()
         if proc.wait() != 0:

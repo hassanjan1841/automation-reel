@@ -18,7 +18,10 @@ daily-reel.yml (14:00 UTC)  ->  publish.py
   3. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
                              (one clip per line); takes are transcribed with Whisper, misheard words get
                              Claude respellings or phonemes, fixes saved to pronounce.json per engine
-  4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps, 15-25s)
+  4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps), captions from
+                             the voiceover word times, point visuals from visuals.build()
+  4b. publish.check_visuals()  qa.review(): Claude reads one frame per slide; a rejected visual is replaced by
+                             the point's next choice or its body text and the reel is rendered again
   5. upload to Supabase bucket "reels" (public) -> Instagram REELS container -> poll -> media_publish
   6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
   7. test_voice.py          pronunciation regression test (text rules only in CI)
@@ -42,7 +45,9 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `reels.json` | Queue, posted top to bottom | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `upload`, `publish_to_instagram` |
 | `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
-| `generate.py` | Evergreen top-up, voiceover backfill, the validator | `validate`, `generate`, `append`, `add_voiceovers`, `SYSTEM`, `SCHEMA`, `PILLARS` |
+| `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
+| `visuals.py` | Code window, terminal, targeted screenshot (scroll to `find`, outline, spotlight) | `build`, `code_panel`, `terminal_panel`, `capture`, `Screenshot`, `Panel` |
+| `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, animation, SFX, ffmpeg | `build_slides`, `render_frames`, `build_audio`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
 | `test_voice.py` | Pronunciation regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN` |
@@ -82,8 +87,9 @@ First run downloads Poppins into `fonts/`, the Kokoro model into `models/` and W
   "kicker": "Dev tip",              // 1-3 words, <= 24 chars
   "hook": "Six to twelve words with the *key word* highlighted",
   "points": [                       // exactly 3
-    { "title": "Max eight words", "body": "Max sixteen words, no asterisks." }
-  ],
+    { "title": "Max eight words", "body": "Max sixteen words, no asterisks.",
+      "visual": [ { "type": "code", "language": "ts", "title": "user.ts", "code": "...", "highlight": [2] } ] }
+  ],                                // visual: optional, 1-3 choices best first (code, terminal, screenshot + find)
   "cta": "A short question with one *highlighted* word?",
   "caption": "Line one.\nLine two.\nA question to end on? 👇",
   "hashtags": ["#nextjs", "..."],   // 8-12, unique, ^#[A-Za-z0-9_]+$

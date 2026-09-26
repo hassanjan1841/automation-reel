@@ -96,6 +96,16 @@ sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eigh
 billion point percent dollars dollar cents x'''.split())
 
 
+def everyday(word):
+    """A common lowercase English word, as opposed to a name or tech term the voice may really get wrong."""
+    if word.lower() in EVERYDAY:
+        return True
+    if not (word.isalpha() and word.islower()):
+        return False
+    from wordfreq import zipf_frequency
+    return zipf_frequency(word, 'en') >= 4.0
+
+
 def lexicon():
     """Respellings learned by the listen-back check, per engine: {"fish": {"Supabase": "Soopa base"}}."""
     data = json.loads(LEXICON.read_text()) if LEXICON.exists() else {}
@@ -302,8 +312,8 @@ def ask_respellings(words, line, phonemes=False):
 
 def learn(engine, line, bad):
     """Find a respelling or phoneme spelling for each misheard word and save it to pronounce.json."""
-    # Everyday words ("in", "the") only look misheard when the recognizer slips; never learn a fix for them.
-    bad = [w for w in bad if w.lower() not in EVERYDAY]
+    # Everyday English ("in", "through") only looks misheard when the recognizer slips; never learn a fix for it.
+    bad = [w for w in bad if not everyday(w)]
     if not bad:
         return
     everything = lexicon()
@@ -320,8 +330,11 @@ def learn(engine, line, bad):
             if best_score is None or score > best_score:
                 best, best_score = option, score
         else:
-            print(f'  warning: no respelling of {word!r} was understood' + (f', using the closest: {best!r}' if best else ''))
-            if best:
+            # Keep an earlier fix rather than swapping in a new guess that also failed.
+            keep = word in learned
+            print(f'  warning: no respelling of {word!r} was understood' +
+                  (f', keeping {learned[word]!r}' if keep else f', using the closest: {best!r}' if best else ''))
+            if best and not keep:
                 learned[word] = best
     everything[engine.key] = dict(sorted(learned.items()))
     LEXICON.write_text(json.dumps(everything, indent=2, ensure_ascii=False) + '\n')
@@ -345,9 +358,48 @@ def say_checked(engine, line):
     return best
 
 
-class Take(list):
-    """Per-slide clips cut from one continuous recording; render plays them back to back."""
-    continuous = True
+class Voiceover(list):
+    """Per-slide clips plus caption timing: words[i] is [(word as written, start, end)] in seconds from the
+    start of clip i. continuous means the clips were cut from one recording and play back to back."""
+
+    def __init__(self, clips, words, continuous):
+        super().__init__(clips)
+        self.words, self.continuous = words, continuous
+
+
+def align(line, heard):
+    """Time every written word of a line from the transcript, so captions show the script's spelling
+    ("Supabase", not what the recognizer wrote). Unmatched words get times between their neighbours."""
+    shown = strip_cues(plain(line)).split()
+    written = [(t, i) for i, w in enumerate(shown) for t in tokens(w)]
+    heard_toks = [(t, start, end) for w, start, end in heard for t in tokens(w)]
+    matcher = difflib.SequenceMatcher(None, [t for t, _ in written], [t for t, *_ in heard_toks], autojunk=False)
+    times = {}
+    for a, b, n in matcher.get_matching_blocks():
+        for k in range(n):
+            i = written[a + k][1]
+            _, start, end = heard_toks[b + k]
+            s0, e0 = times.get(i, (start, end))
+            times[i] = (min(s0, start), max(e0, end))
+    if not times:
+        return []
+    first, last = heard_toks[0][1], heard_toks[-1][2]
+    out, i = [], 0
+    while i < len(shown):
+        if i in times:
+            out.append((shown[i], *times[i]))
+            i += 1
+            continue
+        j = i
+        while j < len(shown) and j not in times:
+            j += 1
+        # Spread the unmatched run evenly over the gap between its matched neighbours.
+        lo = times[i - 1][1] if i > 0 else min(first, times[j][0] if j < len(shown) else last)
+        hi = times[j][0] if j < len(shown) else max(last, lo + 0.3 * (j - i))
+        step = max(hi - lo, 0.05 * (j - i)) / (j - i)
+        out += [(shown[k], lo + step * (k - i), lo + step * (k - i + 1)) for k in range(i, j)]
+        i = j
+    return out
 
 
 def split(audio, words, lines):
@@ -371,7 +423,14 @@ def split(audio, words, lines):
     if cuts != sorted(cuts):
         return None
     edges = [0] + [int(c * render.SR) for c in cuts] + [len(audio)]
-    return Take(audio[a:b] for a, b in zip(edges, edges[1:]))
+    clips = [audio[a:b] for a, b in zip(edges, edges[1:])]
+    offsets = [e / render.SR for e in edges[:-1]]
+    ends = offsets[1:] + [len(audio) / render.SR]
+    per_clip = []
+    for line, off, end in zip(lines, offsets, ends):
+        mine = [(w, a - off, b - off) for w, a, b in words if off - 0.05 <= (a + b) / 2 < end]
+        per_clip.append(align(line, mine))
+    return Voiceover(clips, per_clip, continuous=True)
 
 
 def say_whole(engine, lines, check=True):
@@ -396,17 +455,22 @@ def say_whole(engine, lines, check=True):
                 learn(engine, line, [w for w in bad if set(tokens(w)) <= set(tokens(line))])
     if best is None:
         print('  warning: no take lined up with the script, recording line by line instead')
-        return [say_checked(engine, line) if check else engine.say(speakable(line, engine=engine.key)) for line in lines]
+        return by_line(engine, lines, check)
     if best_bad:
         print(f'  warning: still misheard {best_bad} after {FINAL_TAKES} takes')
     return best
+
+
+def by_line(engine, lines, check=True):
+    clips = [say_checked(engine, line) if check else engine.say(speakable(line, engine=engine.key)) for line in lines]
+    return Voiceover(clips, [align(line, transcribe(c, words=True)) for line, c in zip(lines, clips)], continuous=False)
 
 
 def synthesize(lines, voice=None, check=True):
     eng = engine(voice)
     if eng.key == 'fish':
         return say_whole(eng, lines, check)
-    return [say_checked(eng, line) if check else eng.say(speakable(line, engine=eng.key)) for line in lines]
+    return by_line(eng, lines, check)
 
 
 def main():

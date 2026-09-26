@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 import requests
 
+import qa
 import render
 import trends
 import voice
@@ -136,6 +137,45 @@ def publish_to_instagram(video_url, caption, thumb_ms):
     return ig_post(f'{ig_id}/media_publish', token, creation_id=cid)['id']
 
 
+# ---------- visual review ----------
+
+def check_visuals(reel, clips, path, slides, rounds=3):
+    """Have Claude look at the rendered frames. A visual that fails is replaced by the point's next choice,
+    or by its text, and the reel is rendered again."""
+    shown = reel
+    for _ in range(rounds):
+        if not any(s.visual for s in slides):
+            break
+        try:
+            results = qa.review(path, shown, slides)
+        except Exception as e:  # without a review, keep only visuals we draw ourselves; a page could be anything
+            print(f'Visual review unavailable ({type(e).__name__}: {redact(str(e))[:200]}); dropping screenshots')
+            results = [{'slide': i, 'ok': True, 'visual_ok': False, 'problem': 'not reviewed'}
+                       for i, s in enumerate(slides) if s.visual and s.visual.spec.get('type') == 'screenshot']
+        rejected = {}
+        for r in results:
+            i = r['slide']
+            if 1 <= i <= len(shown['points']) and slides[i].visual and not r['visual_ok']:
+                rejected[i - 1] = slides[i].visual.spec
+                print(f"Visual on slide {i} rejected: {r['problem']}")
+            elif not r['ok']:
+                print(f"Warning, slide {i}: {r['problem']}")
+        if not rejected:
+            print(f'Visual review: {sum(bool(s.visual) for s in slides)} visuals passed')
+            break
+        # Rendered without the rejected choices; the queue keeps them so they can be fixed by hand.
+        points = []
+        for i, point in enumerate(shown['points']):
+            choices = point.get('visual')
+            choices = choices if isinstance(choices, list) else [choices] if choices else []
+            if i in rejected:
+                choices = [c for c in choices if c != rejected[i]]
+            points.append({**{k: v for k, v in point.items() if k != 'visual'}, **({'visual': choices} if choices else {})})
+        shown = {**shown, 'points': points}
+        path, slides = render.render_reel(shown, voice=clips)
+    return path, slides
+
+
 # ---------- main ----------
 
 def main():
@@ -163,6 +203,7 @@ def main():
     voice_name = os.environ.get('VOICE', '').strip() or None
     clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     path, slides = render.render_reel(reel, voice=clips)
+    path, slides = check_visuals(reel, clips, path, slides)
     # Cover is the last fully visible frame of the hook slide.
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
     caption = f"{reel['caption'].strip()}\n\n{' '.join(reel['hashtags'])}"

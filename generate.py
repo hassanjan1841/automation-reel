@@ -6,6 +6,7 @@ Usage:
   python generate.py --check    validate reels.json and exit
   python generate.py --voiceover  write the spoken script for unposted reels that have none
   python generate.py --cues     add delivery cues to queued spoken scripts, keeping every word
+  python generate.py --visuals  pick code, terminal or screenshot visuals for queued reels that have none
 
 Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
 """
@@ -83,6 +84,7 @@ def validate(reel):
             errors.append(f'point {i} title has unbalanced asterisks')
         if '*' in body:
             errors.append(f'point {i} body must not use highlights')
+        errors += visual_errors(i, p.get('visual'))
 
     cta = reel.get('cta', '').strip()
     spans = highlights(cta)
@@ -175,6 +177,51 @@ def next_post_dates(reels, count):
     return [first + timedelta(days=queued + i) for i in range(count)]
 
 
+VISUAL_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['type'],
+    'properties': {
+        'type': {'type': 'string', 'enum': ['code', 'terminal', 'screenshot']},
+        'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
+        'highlight': {'type': 'array', 'items': {'type': 'integer'}},
+        'commands': {'type': 'array', 'items': {'type': 'string'}},
+        'url': {'type': 'string'}, 'find': {'type': 'string'},
+    },
+}
+
+
+def visual_errors(i, visual):
+    """A point's visuals: a list of up to 3 choices, best first, each small enough to read on a phone."""
+    if visual is None:
+        return []
+    choices = visual if isinstance(visual, list) else [visual]
+    if not 1 <= len(choices) <= 3:
+        return [f'point {i} visual needs 1 to 3 choices']
+    errors = []
+    for v in choices:
+        kind = v.get('type')
+        if kind == 'code':
+            lines = v.get('code', '').rstrip('\n').split('\n')
+            if not v.get('code', '').strip() or not v.get('language'):
+                errors.append(f'point {i} code visual needs code and a language')
+            elif len(lines) > 12 or max(len(l) for l in lines) > 40:
+                errors.append(f'point {i} code is {len(lines)} lines, longest {max(len(l) for l in lines)} '
+                              'characters; max 12 lines of 40 characters')
+            elif any(not 1 <= n <= len(lines) for n in v.get('highlight', [])):
+                errors.append(f'point {i} code highlight must be line numbers inside the code')
+        elif kind == 'terminal':
+            cmds = v.get('commands', [])
+            if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
+                errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
+        elif kind == 'screenshot':
+            if not v.get('url', '').startswith('https://'):
+                errors.append(f'point {i} screenshot needs an https url')
+            if not 3 <= len(v.get('find', '')) <= 80:
+                errors.append(f'point {i} screenshot needs "find": short exact text on that page to outline')
+        else:
+            errors.append(f'point {i} visual type must be code, terminal or screenshot')
+    return errors
+
+
 SCHEMA = {
     'type': 'object',
     'properties': {
@@ -189,7 +236,8 @@ SCHEMA = {
                         'type': 'array',
                         'items': {
                             'type': 'object',
-                            'properties': {'title': {'type': 'string'}, 'body': {'type': 'string'}},
+                            'properties': {'title': {'type': 'string'}, 'body': {'type': 'string'},
+                                           'visual': {'type': 'array', 'items': VISUAL_SCHEMA}},
                             'required': ['title', 'body'],
                             'additionalProperties': False,
                         },
@@ -227,6 +275,21 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
 - 35 to 70 words in total, so the reel stays under about 25 seconds.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
+
+Visuals (show the real thing instead of a text card; a reviewer looks at every frame and swaps out anything
+that does not clearly show what is being said):
+- Give each point a "visual": a list of 1 to 3 choices, best first. Each one must show exactly what that
+  point's voiceover line says, on its own, to someone watching on a phone.
+- code: a real, correct, minimal snippet; max 12 lines, max 40 characters per line; "language" (ts, tsx, js,
+  sql, py, bash...), a short file name as "title", and "highlight" with the 1-based line numbers that carry
+  the point. Show the mistake or the fix itself, not boilerplate.
+- terminal: 1 to 6 real commands, max 40 characters each.
+- screenshot: a public page that shows the point itself (a product screen, a pricing table, a setting, a docs
+  heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
+  label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
+  code or terminal choice after a screenshot when one fits.
+- Only when nothing real can be shown (a pure opinion or habit), leave "visual" out; the slide then shows
+  its body text.
 
 Delivery cues (the voice follows them; without fresh cues it starts strong and fades within two seconds):
 - Direct the narrator like an energetic creator talking to camera. Cues go in square brackets before the words they shape; "(break)" is a short beat. Cues and "(break)" are not spoken and do not count as words.
@@ -402,8 +465,65 @@ def add_cues(reels):
     return todo
 
 
+VISUALS_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['reels'],
+    'properties': {'reels': {'type': 'array', 'items': {
+        'type': 'object', 'additionalProperties': False, 'required': ['id', 'visuals'],
+        'properties': {'id': {'type': 'integer'},
+                       'visuals': {'type': 'array', 'items': {'type': 'array', 'items': VISUAL_SCHEMA}}}}}},
+}
+
+
+def add_visuals(reels):
+    """Pick code, terminal or screenshot visuals for queued reels written before visuals existed.
+    Returns the reels that still have none; a point may legitimately stay without one."""
+    todo = [r for r in reels if not r.get('posted_at') and not any('visual' in p for p in r['points'])]
+    feedback, done = {}, set()
+    for attempt in range(3):
+        if not todo:
+            break
+        items = [{'id': r['id'], 'kicker': r['kicker'], 'hook': r['hook'], 'points': r['points'],
+                  'voiceover': [strip_cues(l) for l in r['voiceover']],
+                  **({'previous_attempt_problems': feedback[r['id']]} if r['id'] in feedback else {})} for r in todo]
+        prompt = ('Pick visuals for each reel, following the visual rules. For each reel return "visuals": exactly '
+                  '3 lists, one per point in order (voiceover lines 2 to 4 are spoken over points 1 to 3). Use an '
+                  'empty list for a point with nothing real to show.\n\n' + json.dumps(items, indent=2, ensure_ascii=False))
+        proc = subprocess.run(
+            ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+             '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+             '--json-schema', json.dumps(VISUALS_SCHEMA)],
+            capture_output=True, text=True, timeout=1200,
+        )
+        out = (json.loads(proc.stdout).get('structured_output') or {}) if proc.returncode == 0 else {}
+        by_id = {r['id']: r['visuals'] for r in out.get('reels', [])}
+        for r in todo:
+            vis = by_id.get(r['id'])
+            if vis is None:
+                continue
+            errs = [] if len(vis) == 3 else ['return exactly 3 lists, one per point']
+            errs += [e for i, v in enumerate(vis[:3], 1) if v for e in visual_errors(i, v)]
+            if errs:
+                print(f"Reel {r['id']}: " + '; '.join(errs))
+                feedback[r['id']] = errs
+                continue
+            for point, v in zip(r['points'], vis):
+                if v:
+                    point['visual'] = v
+            done.add(r['id'])
+        todo = [r for r in todo if r['id'] not in done]
+        print(f'Attempt {attempt + 1}: {len(todo)} reels still without visuals')
+    return todo
+
+
 def main():
     reels = json.loads(render.QUEUE.read_text())
+
+    if '--visuals' in sys.argv:
+        missing = add_visuals(reels)
+        render.QUEUE.write_text(json.dumps(reels, indent=2, ensure_ascii=False) + '\n')
+        if missing:
+            raise SystemExit(f'{len(missing)} reels still have no visuals')
+        return
 
     if '--cues' in sys.argv:
         missing = add_cues(reels)

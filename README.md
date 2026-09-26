@@ -12,9 +12,11 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | File | What it does |
 | --- | --- |
 | `reels.json` | The queue. Posted in order, top to bottom. |
-| `render.py` | Draws the slides and sound effects, encodes with ffmpeg. `python render.py 3` writes `out/reel-3.mp4`. |
+| `render.py` | Draws the slides and sound effects, encodes with ffmpeg. With a voiceover it adds captions synced to the speech (a dark pill near the bottom, the spoken word highlighted) and shows each point's visual. `python render.py 3` writes `out/reel-3.mp4` without voice. |
+| `visuals.py` | The real visuals on point slides: a syntax-highlighted code window, a terminal, or a live screenshot (Playwright, phone width) scrolled to the text in `find`, outlined and spotlit. A visual that cannot be made falls back to the slide's body text. |
+| `qa.py` | Visual review after rendering: Claude looks at one frame per slide and rejects visuals that are irrelevant, unreadable or broken (cookie banner, error page). `publish.py` then renders the point's next visual choice, or its text. `python qa.py 3` renders reel 3 and prints the review. |
 | `publish.py` | Render, upload, publish, update the queue. `DRY_RUN=true` renders only. |
-| `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue, `--voiceover` writes voiceovers for unposted reels that have none. |
+| `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue, `--voiceover` writes voiceovers for unposted reels that have none, `--cues` adds delivery cues to them, `--visuals` picks visuals for queued reels that have none. |
 | `voice.py` | Voiceover with Fish Audio (voice ThatMob, recorded in one continuous take and cut per slide) or, without `FISH_API_KEY`, Kokoro (free, local). Every take is transcribed with Whisper; a misheard word gets respellings or exact phonemes from Claude until one comes back right, and that fix is saved to `pronounce.json`. `COMMON_RULES` and `KOKORO_RULES` hold the hand-written rules (numbers, prices, SaaS, Next.js). `python voice.py 3` previews reel 3 with voice. |
 | `pronounce.json` | Respellings the listen-back check learned, e.g. `"Supabase": "Soo pa base"`. Edit or delete an entry if it sounds wrong. |
 | `test_voice.py` | Pronunciation regression test. `python test_voice.py` checks the text rules, `--audio` also speaks every test sentence and listens back. |
@@ -37,7 +39,11 @@ Append an object to `reels.json` with the next `id`, `posted_at: null` and `medi
   "kicker": "Dev tip",
   "hook": "Six to twelve words with the *key word* highlighted",
   "points": [
-    { "title": "Max eight words", "body": "Max sixteen words, no asterisks." },
+    { "title": "Max eight words", "body": "Max sixteen words, no asterisks.",
+      "visual": [
+        { "type": "screenshot", "url": "https://example.com/pricing", "find": "Exact text on the page" },
+        { "type": "code", "language": "ts", "title": "user.ts", "code": "max 12 lines of 40 characters", "highlight": [1] }
+      ] },
     { "title": "...", "body": "..." },
     { "title": "...", "body": "..." }
   ],
