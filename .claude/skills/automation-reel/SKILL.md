@@ -24,7 +24,7 @@ daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  -
   4b. publish.check_visuals()  qa.review(): Claude reads one frame per slide; a rejected visual is replaced by
                              the point's next choice or its body text and the reel is rendered again
   4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
-  5. upload to Supabase bucket "reels" (public) -> Instagram REELS container -> poll -> media_publish
+  5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
   6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
@@ -47,9 +47,9 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `publish.py` | Orchestrates one daily post | `main`, `upload`, `publish_to_instagram` |
 | `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
 | `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
-| `visuals.py` | Code window, terminal, targeted screenshot (scroll to `find`, outline, spotlight) | `build`, `code_panel`, `terminal_panel`, `capture`, `Screenshot`, `Panel` |
+| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, chat, targeted screenshot with cursor click | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Chat`, `Screenshot`, `capture`, `sketch_ellipse`, `stroke` |
 | `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
-| `render.py` | Slides, animation, SFX, ffmpeg | `build_slides`, `render_frames`, `build_audio`, `render_reel` |
+| `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
 | `test_voice.py` | Pronunciation regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN` |
 | `pronounce.json` | Learned respellings, word to spoken form | data, written by `say_checked` |
@@ -137,6 +137,7 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 
 ## Gotchas
 
+- No music, ever: the creator does not use music in his videos. Sound is the voiceover plus non-tonal sound effects (shaped noise: whooshes, clicks, key taps, scribbles, thuds). Never add a music bed, beat, melodic riser or pitched drone.
 - Supabase Storage needs the legacy `service_role` JWT. New `sb_secret_` keys are rejected there.
 - The `reels` bucket must be public; `upload` HEADs the public URL and fails loudly if not.
 - The upload is deleted in `finally`, even on success, since Instagram has already fetched it.

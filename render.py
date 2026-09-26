@@ -41,6 +41,7 @@ WORD_ANIM = 0.38
 EXIT = 0.3
 VOICE_LEAD = 0.25
 VOICE_TAIL = 1.2
+LOOP = 0.4
 MIN_SLIDE, MAX_SLIDE = 3.0, 6.0
 MIN_TOTAL, MAX_TOTAL = 15.0, 25.0
 
@@ -215,6 +216,19 @@ def shadow_layers(mask, key=(2, 5, 0.32), ambient=(10, 26, 0.2)):
     return out
 
 
+def marker_mask(w, thick, seed=0):
+    """A slightly wobbly, bowed marker stroke w pixels long, as a mask."""
+    rng = np.random.default_rng(seed)
+    ss, h = 3, thick * 3
+    tilt, bow = rng.uniform(-0.25, 0.25) * thick, rng.uniform(0.3, 0.6) * thick
+    pts = [(ss * (thick / 2 + (w - thick) * i / 59),
+            ss * (h / 2 + tilt * (i / 59 - 0.5) + bow * math.sin(math.pi * i / 59) - bow / 2 + 0.6 * math.sin(i * 0.8)))
+           for i in range(60)]
+    img = Image.new('L', (w * ss, h * ss), 0)
+    ImageDraw.Draw(img).line(pts, fill=255, width=thick * ss, joint='curve')
+    return np.asarray(img.resize((w, h), Image.LANCZOS), dtype=np.float32) / 255.0
+
+
 def rounded_rect_mask(w, h, r, ss=4):
     img = Image.new('L', (w * ss, h * ss), 0)
     ImageDraw.Draw(img).rounded_rectangle((0, 0, w * ss - 1, h * ss - 1), radius=r * ss, fill=255)
@@ -256,10 +270,11 @@ def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='i
         if run:
             underlines.append((run, baseline))
     for (x0, x1, t0), baseline in underlines:
-        uh = max(8, round(size * 0.2))
-        mask = rounded_rect_mask(round(x1 - x0) + 12, uh, uh // 2)
-        slide.elements.append(El(mask, accent, round(MARGIN + x0 - 6), baseline - round(uh * 0.35), t0 + 0.15,
-                                 dur=0.45, rise=0, alpha=0.28, grow=True))
+        # A marker stroke drawn by hand under the highlighted words, revealed left to right.
+        uh = max(10, round(size * 0.16))
+        mask = marker_mask(round(x1 - x0) + 16, uh, seed=len(slide.elements))
+        slide.elements.append(El(mask, accent, round(MARGIN + x0 - 8), baseline + round(uh * 0.1), t0 + 0.2,
+                                 dur=0.5, rise=0, alpha=0.9, grow=True))
     slide.elements.extend(words)
     return t
 
@@ -438,6 +453,38 @@ def draw_element(frame, el, t):
     composite(frame, el, a, el.x, round(el.y + dy), mask)
 
 
+def border_mask(mask, width=2):
+    """The rim of a rounded shape, for a thin light edge."""
+    from PIL import ImageFilter
+    img = Image.fromarray((mask * 255).astype(np.uint8))
+    inner = img.filter(ImageFilter.MinFilter(width * 2 + 1))
+    return np.clip(mask - np.asarray(inner, dtype=np.float32) / 255.0, 0, 1)
+
+
+def glow_mask(mask, blur):
+    """A soft bloom around a shape: (mask, x offset, y offset)."""
+    from PIL import ImageFilter
+    pad = blur * 2
+    h, w = mask.shape
+    img = Image.new('L', (w + 2 * pad, h + 2 * pad), 0)
+    img.paste(Image.fromarray((mask * 255).astype(np.uint8)), (pad, pad))
+    img = img.filter(ImageFilter.GaussianBlur(blur))
+    return np.asarray(img, dtype=np.float32) / 255.0, -pad, -pad
+
+
+def frost(frame, mask, x, y, a, blur=14):
+    """Frosted glass: blur what is behind a shape before it is tinted."""
+    from PIL import ImageFilter
+    h, w = mask.shape
+    x0, y0, x1, y1 = max(x, 0), max(y, 0), min(x + w, W), min(y + h, H)
+    if x0 >= x1 or y0 >= y1 or a <= 0:
+        return
+    region = frame[y0:y1, x0:x1]
+    img = Image.fromarray(np.clip(region, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(blur))
+    m = mask[y0 - y:y1 - y, x0 - x:x1 - x][..., None] * a
+    region += (np.asarray(img, dtype=np.float32) - region) * m
+
+
 def blend(frame, img, mask, a, x, y):
     """Composite an RGB image with its own alpha mask."""
     h, w = mask.shape
@@ -454,7 +501,7 @@ class Captions:
     """Spoken words shown 2 or 3 at a time on a dark pill near the bottom, the word being said on an accent
     highlight."""
     SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 66, 3, 0.35, 34, 18
-    TEXT, BOX, BOX_ALPHA = rgb('#FFFFFF'), rgb('#101421'), 0.82
+    TEXT, BOX, BOX_ALPHA = rgb('#FFFFFF'), rgb('#101421'), 0.62
 
     def __init__(self, voice, slides, theme):
         self.accent = rgb(theme['accent'])
@@ -496,14 +543,15 @@ class Captions:
         for k in range(1, len(shown) + 1):
             part = sum(fnt.getlength(w) for w in shown[:k]) + space * (k - 1)
             m = rounded_rect_mask(round(part + 2 * self.PAD_X), box_h, 22)
-            boxes.append((m, round(x0 - self.PAD_X), CAPTION_BOTTOM - box_h, shadow_layers(m)))
+            boxes.append((m, round(x0 - self.PAD_X), CAPTION_BOTTOM - box_h, shadow_layers(m), border_mask(m)))
         box = boxes
         x, baseline = x0, CAPTION_BOTTOM - self.PAD_Y - descent
         placed = []
         for (w, a, b), text in zip(chunk, shown):
             mask, pad, asc = text_mask(text, fnt)
             tw = round(fnt.getlength(text))
-            hl = (rounded_rect_mask(tw + 20, ascent + descent + 4, 12), round(x) - 10, baseline - ascent - 2)
+            hl_mask = rounded_rect_mask(tw + 20, ascent + descent + 4, 12)
+            hl = (hl_mask, round(x) - 10, baseline - ascent - 2, glow_mask(hl_mask, 16))
             placed.append((mask, round(x - pad), baseline - asc, a, b, hl))
             x += fnt.getlength(text) + space
         return box, placed
@@ -534,15 +582,20 @@ class Captions:
             if start <= t < end:
                 p = ease_out(min(1.0, (t - start) / 0.12))
                 dy = round((1 - back_out(min(1.0, (t - start) / 0.2))) * 14)
-                box_mask, bx, by, shadows = boxes[max(0, sum(1 for w in placed if w[3] <= t) - 1)]
+                box_mask, bx, by, shadows, border = boxes[max(0, sum(1 for w in placed if w[3] <= t) - 1)]
                 for m, ox, oy, a in shadows:
                     composite(frame, El(m, rgb('#000000'), 0, 0, 0), a * p, bx + ox, by + dy + oy)
+                frost(frame, box_mask, bx, by + dy, p)
                 composite(frame, El(box_mask, self.BOX, 0, 0, 0), self.BOX_ALPHA * p, bx, by + dy)
-                for i, (mask, x, y, a, b, (hl_mask, hx, hy)) in enumerate(placed):
+                composite(frame, El(border, self.TEXT, 0, 0, 0), 0.22 * p, bx, by + dy)
+                for i, (mask, x, y, a, b, (hl_mask, hx, hy, glow)) in enumerate(placed):
                     if t < a:
                         break  # words appear as they are spoken
                     nxt = placed[i + 1][3] if i + 1 < len(placed) else end
                     if t < nxt:
+                        g, gx, gy = glow
+                        pulse = 0.35 + 0.15 * math.sin((t - a) * 9)
+                        composite(frame, El(g, self.accent, 0, 0, 0), pulse * p, hx + gx, hy + dy + gy)
                         self.pop(frame, (c, i, 'hl'), hl_mask, self.accent, hx, hy + dy, a, t, p)
                     self.pop(frame, (c, i, 'word'), mask, self.TEXT, x, y + dy, a, t, p)
                 return
@@ -687,6 +740,12 @@ def render_frames(reel, slides, theme, pipe, captions=None):
             draw_element(frame, el, t)
         if captions:
             captions.draw(frame, t)
+        # Loop ending: the last moment eases into the opening frame, so a replay continues seamlessly.
+        if f == 0:
+            first = frame.copy()
+        elif t > total - LOOP:
+            w = ease_in(min(1.0, (t - (total - LOOP)) / LOOP))
+            frame = frame * (1 - w) + first * w
         frame += grain[f % len(grain)]
         pipe.write(np.clip(frame, 0, 255).astype(np.uint8).tobytes())
 
@@ -741,10 +800,34 @@ def sound_kit(rng):
         'click': lambda: np.concatenate([noise_hit(rng, 0.012, 2, 500), np.zeros(int(SR * 0.03)),
                                          noise_hit(rng, 0.012, 1, 500)]),
         'swish': lambda: whoosh_sound(rng, 0.32),
+        'air': lambda: whoosh_sound(rng, 0.2),
+        'thud': lambda: lowpass(noise_hit(rng, 0.14, 0, 30), 0.02),
+        'scribble': lambda: scribble_sound(rng),
     }
 
 
-SOUND_GAIN = {'key': 0.035, 'tick': 0.03, 'pop': 0.06, 'click': 0.07, 'swish': 0.05}
+SOUND_GAIN = {'key': 0.035, 'tick': 0.03, 'pop': 0.06, 'click': 0.07, 'swish': 0.05, 'air': 0.022, 'thud': 0.11,
+              'scribble': 0.03}
+
+
+def lowpass(x, alpha):
+    """One-pole low-pass filter; small alpha keeps only the low rumble."""
+    out, y = np.empty_like(x), 0.0
+    for i, v in enumerate(x):
+        y += alpha * (v - y)
+        out[i] = y
+    return out / (np.sqrt(np.mean(out ** 2)) or 1.0)
+
+
+def scribble_sound(rng, length=0.5):
+    """A marker on paper: bright noise in quick uneven strokes."""
+    n = int(SR * length)
+    t = np.arange(n) / SR
+    noise = np.diff(rng.standard_normal(n), prepend=0)
+    strokes = np.clip(np.sin(2 * np.pi * (7 + 3 * np.sin(t * 5)) * t), 0, 1) ** 0.6
+    env = np.sin(np.pi * t / length) ** 0.5
+    s = noise * strokes * env
+    return s / (np.sqrt(np.mean(s ** 2)) or 1.0)
 
 
 def build_audio(slides, path, voice=None):
@@ -769,6 +852,14 @@ def build_audio(slides, path, voice=None):
     for s in slides[1:]:
         place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
     kit = sound_kit(rng)
+    # The camera's own moves: a breath of air on mid-slide punches (slide changes already whoosh), a thud on shakes.
+    camera = Camera(slides)
+    starts = {round(s.start, 3) for s in slides}
+    for at, _ in camera.punches:
+        if round(at, 3) not in starts:
+            place(kit['air'](), at - 0.05, SOUND_GAIN['air'])
+    for at, _ in camera.shakes:
+        place(kit['thud'](), at, SOUND_GAIN['thud'])
     for s in slides:
         for at, kind in getattr(s.visual, 'sounds', []):
             if s.start + at < s.end - EXIT:
@@ -795,6 +886,32 @@ def build_audio(slides, path, voice=None):
 
 
 # ---------- entry points ----------
+
+def make_cover(reel, path):
+    """The grid cover: kicker, the hook large with its highlight and a marker stroke, and the handle, all inside
+    the centre 1080x1080 square so the profile grid's crop never cuts them."""
+    theme = THEMES[reel['style']]
+    img = Image.fromarray(np.clip(make_background(theme), 0, 255).astype(np.uint8))
+    d = ImageDraw.Draw(img)
+    top, side = (H - W) // 2 + 60, W - 2 * MARGIN
+    kick = font('SemiBold', 40)
+    d.rounded_rectangle((MARGIN, top + 18, MARGIN + 40, top + 26), radius=4, fill=theme['accent'])
+    d.text((MARGIN + 58, top + 22), reel['kicker'].upper(), font=kick, fill=theme['accent'], anchor='lm')
+    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 118, 60, side, 700, leading=1.08)
+    y = top + 90 + (700 - len(lines) * line_h) // 2
+    for li, line in enumerate(lines):
+        baseline = y + li * line_h + round(size * 0.92)
+        for word, hl, x, wdt in line:
+            if hl:
+                stroke_w = round(fnt.getlength(word.rstrip(',.;:!?')))
+                m = marker_mask(stroke_w + 16, max(10, round(size * 0.16)), seed=li)
+                layer = Image.fromarray((m * 230).astype(np.uint8))
+                img.paste(theme['accent'], (MARGIN + round(x) - 8, baseline + 2), layer)
+            d.text((MARGIN + x, baseline), word, font=fnt, fill=theme['accent'] if hl else theme['ink'], anchor='ls')
+    d.text((MARGIN, top + W - 150), HANDLE, font=font('Regular', 38), fill=theme['muted'], anchor='lm')
+    img.save(path, 'JPEG', quality=92)
+    return path
+
 
 def load_reel(reel_id):
     reels = json.loads(QUEUE.read_text())
@@ -830,7 +947,8 @@ def render_reel(reel, out_path=None, voice=None):
             proc.stdin.close()
         if proc.wait() != 0:
             raise SystemExit('ffmpeg failed')
-    print(f'Rendered {out_path} ({slides[-1].end:.1f}s, {out_path.stat().st_size / 1e6:.1f} MB)')
+    make_cover(reel, out_path.with_name(out_path.stem + '-cover.jpg'))
+    print(f'Rendered {out_path} ({slides[-1].end:.1f}s, {out_path.stat().st_size / 1e6:.1f} MB) and its cover')
     return out_path, slides
 
 
