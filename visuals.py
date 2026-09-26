@@ -26,6 +26,7 @@ MAX_CODE_LINES, MAX_CODE_COLS = 12, 40
 STAGE_MARGIN = 50
 EDITOR = {'bg': '#1E2230', 'bar': '#161A25', 'text': '#E6E9F2', 'dim': '#7F8699', 'prompt': '#5AD17E'}
 DOTS = ('#FF5F57', '#FEBC2E', '#28C840')
+SHADOW = np.zeros(3, dtype=np.float32)
 
 # One Dark-ish colors keyed by Pygments token type name prefix.
 SYNTAX = [
@@ -83,12 +84,15 @@ class Panel:
         self.x, self.y = box[0], box[1]
         self.img = np.asarray(img, dtype=np.float32)
         self.mask = rounded_mask(img.width, img.height, 28)
+        self.shadows = render.shadow_layers(self.mask, (4, 8, 0.35), (18, 44, 0.22))
         self.rows, self.step, self.start = rows, step, start
         self.highlights = highlights
 
     def draw(self, frame, t, alpha, dy):
         if alpha <= 0.003:
             return
+        for m, ox, oy, a in self.shadows:
+            render.composite(frame, render.El(m, SHADOW, 0, 0, 0), alpha * a, self.x + ox, self.y + dy + oy)
         mask = self.mask.copy()
         # Hide rows not typed yet (everything below the current row band stays hidden, the chrome stays).
         shown = int((t - self.start) / self.step) + 1
@@ -242,6 +246,7 @@ class Screenshot:
         d.text((166, bar / 2), host, font=render.font('Regular', 26), fill='#5B6170', anchor='lm')
         self.chrome = np.asarray(frame, dtype=np.float32)
         self.mask = rounded_mask(w, h, 26)
+        self.shadows = render.shadow_layers(self.mask, (4, 8, 0.35), (18, 44, 0.22))
         scale = w / shot.width
         page = shot.resize((w, round(shot.height * scale)), Image.LANCZOS)
         fx0, fy0, fx1, fy1 = (v * scale for v in focus)
@@ -276,6 +281,8 @@ class Screenshot:
         view += (self.accent - view) * ring * s
         img = self.chrome.copy()
         img[self.bar:self.bar + len(view), :] = view
+        for m, ox, oy, a in self.shadows:
+            render.composite(frame, render.El(m, SHADOW, 0, 0, 0), alpha * a, self.x + ox, self.y + dy + oy)
         render.blend(frame, img, self.mask, alpha, self.x, self.y + dy)
 
 
