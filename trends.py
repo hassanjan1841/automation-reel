@@ -333,9 +333,13 @@ def timely_reel(reels, perf=None):
     used = {u for r in reels for u in r.get('sources', [])}
     hooks = {generate.norm(r['hook']) for r in reels}
     for i, option in enumerate(options, 1):
-        reel, sources = option['reel'], [s for s in option['sources'] if s.startswith('http')]
+        reel, sources = generate.tidy(option['reel']), [s for s in option['sources'] if s.startswith('http')]
         print(f"Option {i}: reach {option['reach_score']}/10, {reel['hook']!r}. {option['reason']}")
         errors = generate.validate(reel)
+        if errors and option['reach_score'] >= MIN_REACH and sources:
+            fixed = generate.repair(reel, errors)
+            if fixed:
+                reel, errors = fixed, []
         if option['reach_score'] < MIN_REACH:
             errors.append(f'reach below {MIN_REACH}')
         if not sources:
@@ -351,8 +355,12 @@ def timely_reel(reels, perf=None):
         print(f"  fact-check: {check['verdict']}" + (f" ({'; '.join(check['problems'])[:300]})" if check['problems'] else ''))
         if check['verdict'] == 'reject':
             continue
-        reel = check['reel']
+        reel = generate.tidy(check['reel'])
         errors = generate.validate(reel)
+        if errors:
+            fixed = generate.repair(reel, errors)
+            if fixed:
+                reel, errors = fixed, []
         if errors:
             print('  rejected after fact-check: ' + '; '.join(errors))
             continue

@@ -113,7 +113,9 @@ def validate(reel):
                 errors.append(f'voiceover line {i} is empty')
             elif SYMBOLS.search(line) or '*' in line or EMOJI.search(line):
                 errors.append(f'voiceover line {i} has symbols; write it the way it is said')
-            elif similar(line, slide) > 0.6:
+            # The hook and the closing question may be said as shown (hearing the hook helps it land);
+            # the points must add something the slide does not say.
+            elif similar(line, slide) > (0.6 if 2 <= i <= 4 else 0.9):
                 errors.append(f'voiceover line {i} repeats the slide text; say it in different words')
         n = sum(words(l) for l in said)
         if not 35 <= n <= VO_MAX_WORDS:
@@ -338,6 +340,43 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
     return result['structured_output']['reels']
 
 
+def tidy(reel):
+    """Mechanical fixes that need no rewrite: the caption's closing emoji."""
+    lines = [l for l in reel.get('caption', '').split('\n') if l.strip()]
+    if lines and '?' in lines[-1] and not lines[-1].rstrip().endswith('👇'):
+        lines[-1] = lines[-1].rstrip() + ' 👇'
+        reel = {**reel, 'caption': '\n'.join(lines)}
+    return reel
+
+
+def repair(reel, errors, rounds=2):
+    """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None."""
+    reel = tidy(reel)
+    errors = validate(reel)
+    for _ in range(rounds):
+        if not errors:
+            return reel
+        prompt = ('This reel breaks some rules. Fix only these problems and keep everything else as it is, '
+                  'including the topic, facts and sources:\n' + '\n'.join(f'- {e}' for e in errors)
+                  + '\n\nReturn it as the single item of "reels".\n\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+        proc = subprocess.run(
+            ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+             '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+             '--json-schema', json.dumps(SCHEMA)],
+            capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
+        )
+        try:
+            fixed = (json.loads(proc.stdout).get('structured_output') or {}).get('reels', [])
+        except ValueError:
+            fixed = []
+        if not fixed:
+            continue
+        reel = tidy({**reel, **fixed[0]})
+        errors = validate(reel)
+        print(f"  repair: {'fixed' if not errors else '; '.join(errors)}")
+    return None if errors else reel
+
+
 def generate(reels, count, dates=None, context=None):
     plan = [(d, PILLARS[d.weekday()]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
@@ -357,7 +396,13 @@ def generate(reels, count, dates=None, context=None):
         problems, missed = [], todo[len(candidates):]
         for slot, cand in zip(todo, candidates):
             date, (pillar, _) = slot
+            cand = tidy(cand)
             errs = validate(cand)
+            if errs and norm(cand.get('hook', '')) not in seen:
+                print(f"Repairing {cand.get('hook', '?')!r}: {'; '.join(errs)}")
+                fixed = repair(cand, errs)
+                if fixed:
+                    cand, errs = fixed, []
             if norm(cand.get('hook', '')) in seen:
                 errs.append('duplicate hook')
             if errs:

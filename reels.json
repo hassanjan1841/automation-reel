@@ -117,5 +117,90 @@
     ],
     "posted_at": "2026-09-25T18:16:34+00:00",
     "media_id": "17968643595177481"
+  },
+  {
+    "id": 31,
+    "style": "dark",
+    "kicker": "Security alert",
+    "hook": "Over 16,000 *Supabase* databases have publicly readable tables",
+    "points": [
+      {
+        "title": "AI tools create tables with RLS off",
+        "body": "The dashboard turns RLS on by default. Raw SQL migrations, common in AI tools, don't.",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "migration.sql",
+            "code": "-- written by an AI tool\ncreate table public.orders (\n  id uuid primary key,\n  user_id uuid,\n  email text\n);\n-- RLS is off unless you enable it",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Turn RLS on for every table",
+        "body": "One line per table. With RLS on and no policy, nobody gets rows.",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "enable_rls.sql",
+            "code": "alter table public.orders\n  enable row level security;",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add a policy matching rows to users",
+        "body": "Each user should read only their own rows. Never use true for anon.",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "policy.sql",
+            "code": "create policy \"Own rows only\"\non public.orders for select\nto authenticated\nusing ( (select auth.uid()) = user_id );",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Is *RLS* on for every table you ship?",
+    "caption": "UpGuard found 16,326 Supabase databases with publicly readable tables.\nMany come down to missing row level security, one line of SQL per table.\nDid your last AI-built app ship with RLS on? 👇",
+    "hashtags": [
+      "#supabase",
+      "#postgres",
+      "#rowlevelsecurity",
+      "#vibecoding",
+      "#webdev",
+      "#indiehackers",
+      "#saas",
+      "#security",
+      "#aicoding",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[urgent] Sixteen thousand Supabase databases are exposing data. (break) [deadpan] Many from one missing line.",
+      "[knowing] The dashboard switches security on for you. [exasperated] AI writing raw SQL? Security's off.",
+      "[confident and fast] One line fixes it per table. [excited] Turn on row level security, and nobody reads anything.",
+      "[serious, fast] Add a policy: users see only their own rows. [emphasis] Never write one that just says true.",
+      "[warm, curious] Be honest, (break) [teasing] is row level security on for all your tables?"
+    ],
+    "pillar": "timely",
+    "sources": [
+      "https://techcrunch.com/2026/09/25/some-supabase-customers-are-publicly-exposing-reams-of-peoples-data-to-the-web/",
+      "https://www.unite.ai/upguard-study-finds-16-326-supabase-databases-exposing-readable-tables/",
+      "https://supabase.com/docs/guides/database/postgres/row-level-security",
+      "https://supabase.com/docs/guides/database/secure-data"
+    ],
+    "posted_at": null,
+    "media_id": null
   }
 ]
