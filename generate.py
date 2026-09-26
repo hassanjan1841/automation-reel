@@ -24,7 +24,7 @@ from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
 BATCH = 14
-POST_HOUR_UTC = 14
+POST_HOUR_UTC = 12
 
 PILLARS = {
     0: ('ai', 'AI tools for developers'),

@@ -10,7 +10,7 @@ Python 3.12 + ffmpeg pipeline, run by GitHub Actions. No server, no database: `r
 ## Pipeline at a glance
 
 ```
-daily-reel.yml (starts 13:07 UTC, posts at POST_AT_UTC 14:00)  ->  publish.py
+daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  ->  publish.py
   0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
   1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
   2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search) -> validate -> Claude fact-check
@@ -123,7 +123,7 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 
 **Change the voice**: repo variable `VOICE` (a Fish voice id, a Kokoro voice, or `none` for SFX only); `VOICE_ENGINE` forces `fish` or `kokoro`. Fish needs the secret `FISH_API_KEY` and falls back to Kokoro without it. `FISH_MODEL` defaults to `s2.1-pro-free` (free until 2026-11-30). `VOICE_PITCH` exists but shifted voices sound robotic; pick a different voice instead.
 
-**Skip the news, always evergreen**: repo variable `TRENDING=off`. **Post time**: `POST_AT_UTC` (HH:MM, default 14:00); move the cron in `daily-reel.yml` with it so the job still starts about an hour early.
+**Skip the news, always evergreen**: repo variable `TRENDING=off`. **Post time**: `POST_AT_UTC` (HH:MM, default 12:00); move the cron in `daily-reel.yml` with it so the job still starts about an hour early.
 
 **Pause**: disable the Daily reel workflow. Keep Token refresh on, or the IG token expires after 60 days.
 

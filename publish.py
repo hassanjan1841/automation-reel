@@ -6,7 +6,7 @@ Env:
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
-  POST_AT_UTC           when to post, HH:MM UTC (default 14:00); the job starts early to prepare the reel
+  POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
   FORCE_POST=true       post even if a reel already went out today (UTC)
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
@@ -202,8 +202,8 @@ def todays_reel(reels):
 
 
 def wait_for_post_time():
-    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 14:00)."""
-    hh, mm = (int(x) for x in (os.environ.get('POST_AT_UTC', '').strip() or '14:00').split(':'))
+    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 12:00)."""
+    hh, mm = (int(x) for x in (os.environ.get('POST_AT_UTC', '').strip() or '12:00').split(':'))
     now = datetime.now(timezone.utc)
     target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
     wait = (target - now).total_seconds()
