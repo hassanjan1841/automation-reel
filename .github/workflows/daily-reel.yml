@@ -2,7 +2,9 @@ name: Daily reel
 
 on:
   schedule:
-    - cron: '0 14 * * *' # 7 PM Pakistan time
+    # Starts an hour early (6 PM Pakistan) to research, write, voice, render and review today's reel, then posts
+    # at POST_AT_UTC (14:00, 7 PM Pakistan). Off the hour because GitHub delays jobs queued exactly on the hour.
+    - cron: '7 13 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -20,7 +22,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 110
     steps:
       - uses: actions/checkout@v7
 

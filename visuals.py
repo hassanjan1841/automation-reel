@@ -215,6 +215,9 @@ def capture(url, find):
     if np.asarray(img.convert('L'), dtype=np.float32).std() < 12:
         path.unlink()
         raise RuntimeError('screenshot is almost blank')
+    if focus[2] - focus[0] < 20 or focus[3] - focus[1] < 10:
+        path.unlink()
+        raise RuntimeError(f'"{find}" is outside the captured page')
     meta.write_text(' '.join(f'{v:.1f}' for v in focus))
     return img, focus
 

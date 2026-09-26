@@ -5,16 +5,17 @@ description: Everything needed to work on the automation-reel project, the pipel
 
 # automation-reel
 
-Python 3.12 + ffmpeg pipeline, run by GitHub Actions. No server, no database: `reels.json` is the queue and the record of what was posted.
+Python 3.12 + ffmpeg pipeline, run by GitHub Actions. No server, no database: `reels.json` is the record of what was posted; nothing is written ahead of time.
 
 ## Pipeline at a glance
 
 ```
-daily-reel.yml (14:00 UTC)  ->  publish.py
-  1. trends.timely_reel()    scrape -> Claude picks up to 3 (web search) -> validate -> Claude fact-check
-                             pass/fix -> inserted in front of the unposted queue, pillar "timely"
-                             any failure or reach < 7 -> fall back
-  2. else first reel with posted_at: null
+daily-reel.yml (starts 13:07 UTC, posts at POST_AT_UTC 14:00)  ->  publish.py
+  0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
+  1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
+  2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search) -> validate -> Claude fact-check
+                             pass/fix -> today's reel, pillar "timely"; any failure or reach < 7 -> fall back
+  3. else generate.today()   a fresh evergreen reel for today's pillar
   3. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
                              (one clip per line); takes are transcribed with Whisper, misheard words get
                              Claude respellings or phonemes, fixes saved to pronounce.json per engine
@@ -22,12 +23,12 @@ daily-reel.yml (14:00 UTC)  ->  publish.py
                              the voiceover word times, point visuals from visuals.build()
   4b. publish.check_visuals()  qa.review(): Claude reads one frame per slide; a rejected visual is replaced by
                              the point's next choice or its body text and the reel is rendered again
+  4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
   5. upload to Supabase bucket "reels" (public) -> Instagram REELS container -> poll -> media_publish
   6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
-weekly-content.yml (Sun 10:00 UTC)
-  generate.py        if < 7 unposted, Claude writes 14 evergreen reels with voiceovers (pillar by weekday)
+token-refresh.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
 
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
@@ -42,7 +43,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 
 | File | Role | Key entry points |
 | --- | --- | --- |
-| `reels.json` | Queue, posted top to bottom | list of reel objects |
+| `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `upload`, `publish_to_instagram` |
 | `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
 | `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
@@ -122,16 +123,16 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 
 **Change the voice**: repo variable `VOICE` (a Fish voice id, a Kokoro voice, or `none` for SFX only); `VOICE_ENGINE` forces `fish` or `kokoro`. Fish needs the secret `FISH_API_KEY` and falls back to Kokoro without it. `FISH_MODEL` defaults to `s2.1-pro-free` (free until 2026-11-30). `VOICE_PITCH` exists but shifted voices sound robotic; pick a different voice instead.
 
-**Post only from the queue**: repo variable `TRENDING=off`.
+**Skip the news, always evergreen**: repo variable `TRENDING=off`. **Post time**: `POST_AT_UTC` (HH:MM, default 14:00); move the cron in `daily-reel.yml` with it so the job still starts about an hour early.
 
-**Pause**: disable the Daily reel workflow. Keep Weekly content on, or the IG token expires after 60 days.
+**Pause**: disable the Daily reel workflow. Keep Token refresh on, or the IG token expires after 60 days.
 
 **Run in CI by hand**: Actions > Daily reel > Run workflow. `dry_run` defaults to true; the MP4 is uploaded as an artifact either way.
 
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_API_KEY`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_API_KEY`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -139,8 +140,8 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Supabase Storage needs the legacy `service_role` JWT. New `sb_secret_` keys are rejected there.
 - The `reels` bucket must be public; `upload` HEADs the public URL and fails loudly if not.
 - The upload is deleted in `finally`, even on success, since Instagram has already fetched it.
-- Daily and weekly workflows share the `reels-queue` concurrency group and `git pull --rebase` before pushing so queue commits do not collide. Keep that when adding workflows that write `reels.json`.
-- The trend scan is best effort: fewer than 10 fresh items, any exception, reach below 7, no sources, a reused primary source, a duplicate hook or a fact-check reject all fall back to the queue. Do not let a trends change raise past `publish.main`'s try/except.
+- The daily workflow uses the `reels-queue` concurrency group and `git pull --rebase` before pushing so `reels.json` commits do not collide. Keep that when adding workflows that write it.
+- The trend scan is best effort: fewer than 10 fresh items, any exception, reach below 7, no sources, a reused primary source, a duplicate hook or a fact-check reject all fall back to `generate.today`. Do not let a trends change raise past `publish.main`'s try/except.
 - Instagram insights: request one metric per call (`insights.metric`); one unsupported metric fails the whole request.
 - YouTube search costs 100 quota units per query; 8 queries a day is under the free 10,000.
 - `thumb_offset` (the cover) is the last fully visible frame of the hook slide.

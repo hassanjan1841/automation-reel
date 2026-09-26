@@ -208,12 +208,14 @@ def performance():
         try:
             res = get(f"{base}/{m['id']}/insights", params={
                 'metric': 'views,reach,saved,shares,total_interactions' + (
-                    ',ig_reels_avg_watch_time' if m.get('media_type') == 'VIDEO' else ''),
+                    ',ig_reels_avg_watch_time,reels_skip_rate' if m.get('media_type') == 'VIDEO' else ''),
                 'access_token': token}).json()
             vals = {d['name']: d['values'][0]['value'] for d in res.get('data', [])}
             if vals:
                 watch = vals.pop('ig_reels_avg_watch_time', None)
-                stats = ', '.join(f'{k} {v}' for k, v in vals.items()) + (f', avg watch {watch / 1000:.1f}s' if watch else '')
+                skip = vals.pop('reels_skip_rate', None)
+                stats = ', '.join(f'{k} {v}' for k, v in vals.items()) + (f', avg watch {watch / 1000:.1f}s' if watch else '') + (
+                    f', {skip}% skipped in the first 3s' if skip is not None else '')
         except (requests.RequestException, KeyError, ValueError):
             pass
         lines.append(f"{m.get('timestamp', '')[:10]}  {stats or 'no insights'}: {caption}")
@@ -320,14 +322,14 @@ def fact_check(reel, sources):
     return claude(prompt, CHECK_SYSTEM, CHECK_SCHEMA)
 
 
-def timely_reel(reels):
-    """A verified timely reel dict, or None to fall back to the evergreen queue."""
+def timely_reel(reels, perf=None):
+    """A verified timely reel dict, or None to fall back to an evergreen reel."""
     candidates, failed = collect()
     print(f'Trend scan: {len(candidates)} fresh items' + (f', unavailable: {", ".join(failed)}' if failed else ''))
     if len(candidates) < 10:
-        print('Too few sources answered, using the evergreen queue')
+        print('Too few sources answered, writing an evergreen reel')
         return None
-    options = sorted(pick(reels, candidates, performance())['options'], key=lambda o: -o['reach_score'])
+    options = sorted(pick(reels, candidates, performance() if perf is None else perf)['options'], key=lambda o: -o['reach_score'])
     used = {u for r in reels for u in r.get('sources', [])}
     hooks = {generate.norm(r['hook']) for r in reels}
     for i, option in enumerate(options, 1):
@@ -355,7 +357,7 @@ def timely_reel(reels):
             print('  rejected after fact-check: ' + '; '.join(errors))
             continue
         return {**reel, 'pillar': 'timely', 'sources': sources}
-    print('No timely option passed, using the evergreen queue')
+    print('No timely option passed, writing an evergreen reel')
     return None
 
 

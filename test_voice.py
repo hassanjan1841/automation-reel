@@ -72,7 +72,7 @@ def main():
         engine = voice.engine()
         print(f'Engine: {engine.key}')
         for line in SENTENCES:
-            heard = voice.transcribe(engine.say(voice.speakable(line, engine=engine.key)))
+            heard = voice.transcribe(engine.say(voice.speakable(line, engine=engine.key)), context=line)
             bad = set(voice.misheard(line, heard)) - KNOWN
             if bad:
                 failures.append(f'{sorted(bad)} misheard in {line!r} -> {heard.strip()!r}')

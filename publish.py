@@ -5,7 +5,8 @@ Env:
   SUPABASE_URL          https://<ref>.supabase.co
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
-  TRENDING=off          skip the trend scan and post from the evergreen queue only
+  TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
+  POST_AT_UTC           when to post, HH:MM UTC (default 14:00); the job starts early to prepare the reel
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
@@ -19,6 +20,7 @@ from datetime import datetime, timezone
 
 import requests
 
+import generate
 import qa
 import render
 import trends
@@ -176,28 +178,56 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     return path, slides
 
 
+# ---------- today's reel ----------
+
+def todays_reel(reels):
+    """Research today: a verified timely story if one is strong enough, else a fresh tip for today's pillar."""
+    perf = []
+    try:
+        perf = trends.performance()
+    except Exception as e:
+        print(f'Could not read recent insights ({type(e).__name__})')
+    if os.environ.get('TRENDING', 'on').strip().lower() != 'off':
+        try:
+            reel = trends.timely_reel(reels, perf)
+            if reel:
+                return reel
+        except Exception as e:  # the trend scan is best effort; an evergreen tip is the safety net
+            print(f'Trend scan failed ({type(e).__name__}: {redact(str(e))[:300]}), writing an evergreen reel')
+    reel = generate.today(reels, perf)
+    if not reel:
+        raise SystemExit('ERROR: could not write a valid reel today.')
+    return reel
+
+
+def wait_for_post_time():
+    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 14:00)."""
+    hh, mm = (int(x) for x in (os.environ.get('POST_AT_UTC', '').strip() or '14:00').split(':'))
+    now = datetime.now(timezone.utc)
+    target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    wait = (target - now).total_seconds()
+    if 0 < wait < 2 * 3600:
+        print(f'Ready early; waiting {wait / 60:.0f} minutes to post at {hh:02d}:{mm:02d} UTC')
+        time.sleep(wait)
+
+
 # ---------- main ----------
 
 def main():
     dry = os.environ.get('DRY_RUN', '').strip().lower() in ('1', 'true', 'yes')
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
-    reel = None
-    if os.environ.get('TRENDING', 'on').strip().lower() != 'off':
-        try:
-            reel = trends.timely_reel(reels)
-        except Exception as e:  # trend scan is best effort; the evergreen queue is the safety net
-            print(f'Trend scan failed ({type(e).__name__}: {redact(str(e))[:300]}), using the evergreen queue')
-        if reel:
-            posted = [r for r in reels if r.get('posted_at')]
-            reel = {'id': max(int(r['id']) for r in reels) + 1,
-                    'style': 'dark' if posted and posted[-1]['style'] == 'light' else 'light',
-                    **reel, 'posted_at': None, 'media_id': None}
-            # Goes in front of the unposted queue so the evergreen order is untouched.
-            reels.insert(len(posted), reel)
-    reel = reel or next((r for r in reels if not r.get('posted_at')), None)
-    if reel is None:
-        raise SystemExit('ERROR: no unposted reels left in reels.json. Run generate.py or add reels by hand.')
+    # A reel added by hand goes first; otherwise today's reel is researched and written now, not ahead of time.
+    reel = next((r for r in reels if not r.get('posted_at')), None)
+    if reel:
+        print('Using the reel added by hand')
+    else:
+        reel = todays_reel(reels)
+        posted = [r for r in reels if r.get('posted_at')]
+        reel = {'id': max((int(r['id']) for r in reels), default=0) + 1,
+                'style': 'dark' if posted and posted[-1]['style'] == 'light' else 'light',
+                **reel, 'posted_at': None, 'media_id': None}
+        reels.append(reel)
 
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
     voice_name = os.environ.get('VOICE', '').strip() or None
@@ -212,6 +242,7 @@ def main():
         print(f'DRY_RUN: rendered {path}, thumb_offset={thumb_ms}ms. Nothing posted.')
         print(f'Caption preview:\n{caption}')
         return
+    wait_for_post_time()
 
     name = f"reel-{reel['id']}-{int(time.time())}.mp4"
     try:

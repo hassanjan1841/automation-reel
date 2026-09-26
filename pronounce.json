@@ -4,17 +4,5 @@
     "Postgres": "Postgress",
     "Supabase": "Soo pa base"
   },
-  "fish": {
-    ".env": "dot E N V",
-    "Nginx": "<|phoneme_start|>EH1 N JH AH0 N EH1 K S<|phoneme_end|>",
-    "OAuth": "Oh auth",
-    "ORMs": "O R M s",
-    "SQL": "S Q L",
-    "Supabase": "Sue pa base",
-    "TypeScript": "Type Script",
-    "Vercel": "Ver sell",
-    "httpOnly": "H T T P only",
-    "npm": "N P M",
-    "npx": "N P X"
-  }
+  "fish": {}
 }

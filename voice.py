@@ -223,15 +223,18 @@ _whisper = None
 _written_lower = set()
 
 
-def transcribe(clip, words=False):
-    """The transcript, or with words=True a list of (word, start, end) in seconds."""
+def transcribe(clip, words=False, context=None):
+    """The transcript, or with words=True a list of (word, start, end) in seconds. With context (the script),
+    the recognizer spells names the way a viewer who reads the slides would hear them ("sass" as SaaS), so
+    only real mispronunciations are left as mismatches."""
     global _whisper
     if _whisper is None:
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(WHISPER_MODEL, device='cpu', compute_type='int8',
                                 download_root=str(MODEL_DIR / 'whisper'))
     audio = np.interp(np.arange(0, len(clip), render.SR / 16000), np.arange(len(clip)), clip).astype(np.float32)
-    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words)
+    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words,
+                                      initial_prompt=strip_cues(plain(context)) if context else None)
     if words:
         return [(w.word, w.start, w.end) for s in segments for w in s.words]
     return ' '.join(s.text for s in segments)
@@ -321,7 +324,7 @@ def learn(engine, line, bad):
     for word, options in ask_respellings(bad, strip_cues(line), phonemes=engine.key == 'fish').items():
         best, best_score = None, None
         for option in [o for o in options if o.strip().lower() != word.lower()]:
-            heard = transcribe(engine.say(speakable(line, {word: option}, engine.key)))
+            heard = transcribe(engine.say(speakable(line, {word: option}, engine.key)), context=line)
             if word not in misheard(line, heard):
                 print(f'  fixed {word!r} -> {option!r}')
                 learned[word] = option
@@ -345,7 +348,7 @@ def say_checked(engine, line):
     best, best_bad = None, None
     for take in range(FINAL_TAKES):
         clip = engine.say(speakable(line, engine=engine.key))
-        bad = misheard(line, transcribe(clip))
+        bad = misheard(line, transcribe(clip, context=line))
         if best is None or len(bad) < len(best_bad):
             best, best_bad = clip, bad
         if not bad:
@@ -439,7 +442,7 @@ def say_whole(engine, lines, check=True):
     best, best_bad = None, None
     for take in range(FINAL_TAKES):
         audio = engine.say(speakable(text, engine=engine.key))
-        words = transcribe(audio, words=True)
+        words = transcribe(audio, words=True, context=text)
         bad = misheard(text, ' '.join(w for w, *_ in words)) if check else []
         clips = split(audio, words, lines)
         if clips is None:
@@ -463,7 +466,8 @@ def say_whole(engine, lines, check=True):
 
 def by_line(engine, lines, check=True):
     clips = [say_checked(engine, line) if check else engine.say(speakable(line, engine=engine.key)) for line in lines]
-    return Voiceover(clips, [align(line, transcribe(c, words=True)) for line, c in zip(lines, clips)], continuous=False)
+    return Voiceover(clips, [align(line, transcribe(c, words=True, context=line)) for line, c in zip(lines, clips)],
+                     continuous=False)
 
 
 def synthesize(lines, voice=None, check=True):

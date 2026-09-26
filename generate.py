@@ -1,8 +1,9 @@
-"""Top up reels.json with new reels written by Claude when the queue runs low.
+"""Write reels with Claude and validate reels.json.
+
+Reels are normally written on the day by publish.py (generate.today). This script is for manual work.
 
 Usage:
-  python generate.py            add 14 reels if fewer than 7 are unposted
-  python generate.py --force    add 14 reels regardless
+  python generate.py --force    queue 14 reels by hand (they are posted before any freshly written reel)
   python generate.py --check    validate reels.json and exit
   python generate.py --voiceover  write the spoken script for unposted reels that have none
   python generate.py --cues     add delivery cues to queued spoken scripts, keeping every word
@@ -23,7 +24,6 @@ from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
 BATCH = 14
-LOW_WATER = 7
 POST_HOUR_UTC = 14
 
 PILLARS = {
@@ -308,7 +308,7 @@ Content rules:
 - Every hook must be clearly different from the existing hooks provided."""
 
 
-def ask_claude(plan, existing_hooks, feedback=None):
+def ask_claude(plan, existing_hooks, feedback=None, context=None):
     lines = [f'{i + 1}. {date:%A}: {label}' for i, (date, (_, label)) in enumerate(plan)]
     prompt = (
         f'Write {len(plan)} reels, one per line below, in this order and matching each pillar:\n'
@@ -316,6 +316,8 @@ def ask_claude(plan, existing_hooks, feedback=None):
         + '\n\nExisting hooks you must not repeat or closely paraphrase:\n'
         + '\n'.join(f'- {h}' for h in existing_hooks)
     )
+    if context:
+        prompt += '\n\n' + context
     if feedback:
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
 
@@ -334,8 +336,8 @@ def ask_claude(plan, existing_hooks, feedback=None):
     return result['structured_output']['reels']
 
 
-def generate(reels, count):
-    plan = [(d, PILLARS[d.weekday()]) for d in next_post_dates(reels, count)]
+def generate(reels, count, dates=None, context=None):
+    plan = [(d, PILLARS[d.weekday()]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
 
@@ -344,7 +346,7 @@ def generate(reels, count):
             break
         try:
             candidates = ask_claude(todo, [r['hook'] for r in reels] + [r['hook'] for _, r in accepted],
-                                    feedback)
+                                    feedback, context)
         except (json.JSONDecodeError, KeyError, StopIteration, ValueError) as e:
             print(f'Attempt {attempt + 1}: invalid JSON from Claude ({e})')
             feedback = 'The response was not valid JSON matching the schema.'
@@ -369,6 +371,17 @@ def generate(reels, count):
             print('Rejected:\n' + '\n'.join(problems))
 
     return [reel for _, reel in sorted(accepted, key=lambda a: a[0])]
+
+
+def today(reels, performance=()):
+    """One fresh evergreen reel for today's pillar, written with how recent reels actually did."""
+    context = None
+    if performance:
+        context = ('How the account\'s recent posts did (views, reach, skip rate, watch time, saves, shares). '
+                   'Lean into the topics, angles and formats that held people; avoid what they skipped:\n'
+                   + '\n'.join(performance))
+    new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
+    return new[0] if new else None
 
 
 def append(reels, new):
@@ -551,11 +564,10 @@ def main():
               f'{len(bad)} invalid')
         sys.exit(1 if bad or dupes else 0)
 
+    # Reels are written on the day by publish.py; queuing a batch is a deliberate, manual act.
+    if '--force' not in sys.argv:
+        raise SystemExit(__doc__)
     unposted = sum(1 for r in reels if not r.get('posted_at'))
-    if unposted >= LOW_WATER and '--force' not in sys.argv:
-        print(f'{unposted} unposted reels in the queue, no top-up needed')
-        return
-
     new = generate(reels, BATCH)
     if not new:
         raise SystemExit('ERROR: Claude returned no valid reels')
