@@ -1,12 +1,15 @@
 """Find what is trending in dev and AI right now and turn the best story into a reel.
 
-Scrapes Hacker News, GitHub Trending, dev.to, Lobsters and AI/dev blog feeds, adds how
+Scrapes Hacker News, GitHub Trending, dev.to, Lobsters, YouTube and AI/dev blog feeds, adds how
 recent posts performed, then has Claude (web search + fetch enabled) pick the story with
 the most reach for this audience, verify it against its sources and write the reel.
 
 Usage:
   python trends.py            print the scraped candidates
   python trends.py --pick     also let Claude choose and write a reel (prints it, saves nothing)
+
+Env: YOUTUBE_API_KEY (optional, skips YouTube without it), IG_TOKEN (optional, for performance),
+     CLAUDE_MODEL (optional, defaults to generate.MODEL)
 """
 
 import html
@@ -257,7 +260,7 @@ Verification is mandatory:
 - Return up to 3 options: the strongest distinct stories you could verify, best first, each a complete reel.
 - Return an empty list if nothing today beats a good evergreen tip.
 - reach_score is your honest estimate from 1 to 10 of how well the reel will spread compared with a typical evergreen tip.
-- Count words carefully: hook 6 to 12, point titles max 8, point bodies max 16. Over-long reels are thrown away."""
+- Count words carefully: hook 6 to 12, point titles max 8, point bodies max 16, voiceover 35 to 70 in total. Over-long reels are thrown away."""
 
 
 def claude(prompt, system, schema, model=None):
@@ -303,7 +306,7 @@ CHECK_SCHEMA = {
 
 CHECK_SYSTEM = """You are a strict fact-checker for short Instagram reels about software and AI.
 Open every source URL with WebFetch and search for confirmation where needed. Check every claim on the
-slides and in the caption: names, versions, numbers, dates, prices, commands and what a product does.
+slides, in the voiceover and in the caption: names, versions, numbers, dates, prices, commands and what a product does.
 - pass: every claim is supported by a page you read. Return the reel unchanged.
 - fix: small wording or number errors you can correct from the sources. Return the corrected reel,
   keeping the same format and word limits (hook 6 to 12 words, titles max 8, bodies max 16).

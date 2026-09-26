@@ -153,7 +153,14 @@
       "#microsaas"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Most SaaS ideas don't fail on code. They fail on demand.",
+      "Ask people how they cope today. Compliments on your idea tell you nothing.",
+      "Better proof is someone already paying for a messy workaround.",
+      "Then put up a simple page and see who signs up before you build.",
+      "What's the idea you almost built before checking demand?"
+    ]
   },
   {
     "id": 3,
@@ -189,7 +196,14 @@
       "#softwaredeveloper"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your to-do list is probably why you never finish anything.",
+      "Try two lists. One holds just three things you'll actually finish today.",
+      "The other is a parking lot, so a new idea or a random request doesn't hijack your focus.",
+      "Sort both before bed, and tomorrow you open your laptop already knowing what's first.",
+      "What's the one thing that always pulls you out of deep work?"
+    ]
   },
   {
     "id": 4,
@@ -226,7 +240,14 @@
       "#coding"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Stop using AI to finish your sentences. Make it review your work.",
+      "Hand it your changes and ask what could break. It spots edge cases you missed.",
+      "Give it real details, though, or it'll guess with total confidence.",
+      "And your name's on the commit, so run the tests.",
+      "Where does AI help you most, and where has it burned you?"
+    ]
   },
   {
     "id": 5,
@@ -263,7 +284,14 @@
       "#coding"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "TypeScript can't protect you from someone else's API.",
+      "Types only exist while you build. Once the app runs, they're gone, and the server can send anything.",
+      "So check outside data the moment it arrives, with a schema library like Zod.",
+      "Then generate your types from that same schema so they never drift.",
+      "Has an API ever quietly sent you something unexpected?"
+    ]
   },
   {
     "id": 6,
@@ -299,7 +327,14 @@
       "#programmer"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your users don't care how clean your code is.",
+      "They notice speed and bugs, nothing else. Perfect code in an unreleased app helps nobody.",
+      "You can always refactor once people actually use the thing.",
+      "Just don't skip the basics. Test the risky parts and name things so future you can read them.",
+      "Where do you draw the line between good enough and too messy?"
+    ]
   },
   {
     "id": 7,
@@ -336,7 +371,14 @@
       "#business"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Scope creep usually starts in the proposal, not the project.",
+      "Write down every single thing you're delivering, page by page or feature by feature.",
+      "Then write what's not included. That short list heads off most awkward arguments.",
+      "When they ask for something new, quote it as a small extra instead of doing it free.",
+      "How do you handle a client who keeps asking for just one more thing?"
+    ]
   },
   {
     "id": 8,
@@ -372,7 +414,14 @@
       "#developer"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Caching is just remembering an answer so you don't ask twice.",
+      "Like keeping a copy close by instead of walking to the store every time.",
+      "Pages load quicker, and your database gets fewer calls.",
+      "The catch is that copy can go stale, so you decide when to throw it out.",
+      "Which concept in dev still feels like magic to you?"
+    ]
   },
   {
     "id": 9,
@@ -409,7 +458,14 @@
       "#stripe"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your first version should feel almost embarrassingly small.",
+      "Pick the one painful problem people would pay for, and do only that.",
+      "Skip the admin dashboard. Do that stuff by hand behind the scenes until the pain gets real.",
+      "And charge from the start, because money is the clearest sign somebody wants it.",
+      "What's the first feature you'd cut from your own MVP?"
+    ]
   },
   {
     "id": 10,
@@ -445,7 +501,14 @@
       "#remotework"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Tomorrow morning, you'll forget exactly where you stopped.",
+      "Rebuilding that context eats a surprising chunk of your morning before you write anything.",
+      "So before you close the laptop, write one line: the file or command you were about to touch.",
+      "That single line drops you back into flow in minutes instead of an hour of wandering.",
+      "What's your trick for getting going again after a break?"
+    ]
   },
   {
     "id": 11,
@@ -482,7 +545,14 @@
       "#softwareengineering"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Bad AI answers usually start with a bad question.",
+      "Paste the whole error. A summary throws away the one clue that matters.",
+      "Add the function and how it's called, because the model can't guess your setup.",
+      "Then ask for two options with tradeoffs, so you stay the one deciding.",
+      "What's the dumbest thing your assistant has ever told you with total confidence?"
+    ]
   },
   {
     "id": 12,
@@ -519,7 +589,14 @@
       "#programming"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your database might be reading every single row to find one.",
+      "Without an index, Postgres just scans the whole table, and that gets slow as it grows.",
+      "Index the columns you filter, join and sort on, because those are what your queries lean on.",
+      "Then run explain analyze to see if it's really using the index.",
+      "Be honest, have you ever looked at a query plan?"
+    ]
   },
   {
     "id": 13,
@@ -556,7 +633,14 @@
       "#coding"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Another new framework won't make you a better developer.",
+      "Knowing one stack deeply means you ship faster and debug without panicking.",
+      "And the stuff underneath, like HTTP, databases and plain JavaScript, outlives every framework.",
+      "So learn new tools when a real project asks for one, not because they're trending.",
+      "What are you learning right now, and why that one?"
+    ]
   },
   {
     "id": 14,
@@ -593,7 +677,14 @@
       "#clientwork"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "A slow reply can lose you a client before you've done anything wrong.",
+      "Even a quick message saying you got it tells them their project is in good hands.",
+      "You don't need the answer yet. Just say when they'll hear back.",
+      "Then actually hit that time, because being reliable beats being instant.",
+      "How long do your clients usually wait for a reply?"
+    ]
   },
   {
     "id": 15,
@@ -629,7 +720,14 @@
       "#techexplained"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Stop asking other services if anything changed yet. Let them call you.",
+      "That constant checking is called polling, and most of the time it wastes requests.",
+      "With a webhook, they send a request to your address the second something happens, like a payment going through.",
+      "Just make sure it's really them, answer quickly, and expect the same message twice.",
+      "Which service pings your app the most?"
+    ]
   },
   {
     "id": 16,
@@ -665,7 +763,14 @@
       "#founder"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Never ask people if they'd use your idea. They'll say yes to be nice.",
+      "Ask what they do about the problem right now, and listen for the ugly workaround.",
+      "Spreadsheets, copy and paste, sticky note reminders. That mess means the problem is real.",
+      "Then ask what it cost them last time, in hours or in money.",
+      "What's the messiest workaround you've seen someone use?"
+    ]
   },
   {
     "id": 17,
@@ -701,7 +806,14 @@
       "#focus"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Ever lost a whole afternoon to one stupid bug?",
+      "Set a limit before you start, like thirty minutes, because otherwise the bug decides for you.",
+      "Jot down each fix you try, so you don't repeat yourself and asking for help gets easy.",
+      "When the timer rings, stop pushing the same idea. Fresh eyes often spot it fast.",
+      "What's the longest you've ever fought one bug before giving in?"
+    ]
   },
   {
     "id": 18,
@@ -738,7 +850,14 @@
       "#webdev"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Before AI edits your code, make it prove it understands it.",
+      "Paste it in and ask what it does. Plain words, no changes yet.",
+      "If the explanation is off, the edit will be too. Better to catch that early.",
+      "Keep the request tiny. A huge rewrite is where sneaky bugs hide.",
+      "Be honest, how often do you just hit accept and hope?"
+    ]
   },
   {
     "id": 19,
@@ -775,7 +894,14 @@
       "#programming"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your Next.js app is probably shipping more JavaScript than it needs.",
+      "Server components do their work on the server, so the browser downloads less and runs less.",
+      "You only need a client component for state, effects, or clicks.",
+      "And even then, keep it tiny. Make the button a client component, not the entire page.",
+      "What's the biggest component you've made client-side by mistake?"
+    ]
   },
   {
     "id": 20,
@@ -811,7 +937,14 @@
       "#webdev"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Nobody hires you for good code they can't find.",
+      "Freelancing means you also sell. Clients have to know you exist and what problem you fix.",
+      "Great work doesn't market itself, however much we wish it did.",
+      "Do a little outreach every week, so a quiet month doesn't turn into panic.",
+      "Which part of selling makes you want to close the laptop?"
+    ]
   },
   {
     "id": 21,
@@ -847,7 +980,14 @@
       "#developerlife"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your proposal probably loses the client in the first sentence.",
+      "Read the job post twice. The second time, you'll catch the goal hiding between the lines.",
+      "Then say it back in your own words. Now they know someone actually listened.",
+      "Finish with one pointed question about their project. It's hard to ignore and easy to answer.",
+      "What's the first line you've sent that actually got a reply?"
+    ]
   },
   {
     "id": 22,
@@ -883,7 +1023,14 @@
       "#techexplained"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Send money to a friend, and only half of it goes through. Scary, right?",
+      "A transaction prevents that: take from one account, add to another, both or neither.",
+      "If any step fails, the database undoes the earlier ones like they never ran.",
+      "Only when it all works do you commit, and everyone sees the result.",
+      "Where in your app would half-finished changes cause real damage?"
+    ]
   },
   {
     "id": 23,
@@ -919,7 +1066,14 @@
       "#softwarebusiness"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Everyone loves your idea. That tells you almost nothing.",
+      "Compliments are free. Pulling out a card isn't, so a payment says way more.",
+      "Even a small preorder shows the problem matters enough for someone to act.",
+      "And you don't need software yet. Do the work by hand for your first customers.",
+      "Would you charge for something before you built it?"
+    ]
   },
   {
     "id": 24,
@@ -955,7 +1109,14 @@
       "#workflow"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Every new project, you're probably rebuilding the same setup from memory.",
+      "Write down the boring setup you could do half asleep.",
+      "Every small choice you skip saves energy for the part the client actually cares about.",
+      "Treat it like code: tweak it whenever you hit a snag, and it keeps getting sharper.",
+      "Which step do you always forget until it bites you?"
+    ]
   },
   {
     "id": 25,
@@ -992,7 +1153,14 @@
       "#softwaredevelopment"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "An API key pasted into a chat is an exposed key.",
+      "AI tools don't need your real passwords or keys to understand your code.",
+      "Swap them for fake placeholders, and the answer stays just as useful.",
+      "If a real one slips through, make a new key and kill the old one.",
+      "Be honest: do you check your prompt before you hit send?"
+    ]
   },
   {
     "id": 26,
@@ -1029,7 +1197,14 @@
       "#programming"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Your Supabase database might be readable by anyone on the internet.",
+      "Without row level security, your public key can read a table that's exposed through the API.",
+      "Turn it on, then write policies, like users only see their own rows.",
+      "Then test as a signed in user and as a stranger. Only the right person should get data.",
+      "Which table would hurt most if it leaked?"
+    ]
   },
   {
     "id": 27,
@@ -1065,7 +1240,14 @@
       "#upwork"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "Every yes to the wrong project is a no to a better one.",
+      "If a client can't say what success looks like, expect endless rework.",
+      "That kind of job eats your time and energy, and the good work waits.",
+      "You can decline nicely. Give a short reason, point them elsewhere if you can, stay friendly.",
+      "When did you last turn down a project, and was it the right call?"
+    ]
   },
   {
     "id": 28,
@@ -1101,6 +1283,13 @@
       "#developerlife"
     ],
     "posted_at": null,
-    "media_id": null
+    "media_id": null,
+    "voiceover": [
+      "One big deadline is how projects go wrong.",
+      "Cut the work into chunks, and each one gets a clear finish line you both agree on.",
+      "Money moves when work does, so nobody's guessing what's done or what's owed.",
+      "And if you misread each other, you find out after the first chunk, not when it's expensive to fix.",
+      "How do you decide where one chunk ends and the next begins?"
+    ]
   }
 ]

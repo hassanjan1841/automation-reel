@@ -2,12 +2,14 @@
 
 Usage:
   python generate.py            add 14 reels if fewer than 7 are unposted
-
-Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
   python generate.py --force    add 14 reels regardless
   python generate.py --check    validate reels.json and exit
+  python generate.py --voiceover  write the spoken script for unposted reels that have none
+
+Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
 """
 
+import difflib
 import json
 import re
 import subprocess
@@ -33,6 +35,8 @@ PILLARS = {
 
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
 HASHTAG = re.compile(r'^#[A-Za-z0-9_]+$')
+SYMBOLS = re.compile(r'[/&%$#;()\[\]{}<>=_|\\]')
+VO_MAX_WORDS = 70
 
 
 def words(text):
@@ -94,12 +98,35 @@ def validate(reel):
     elif not (lines[-1].rstrip().endswith('👇') and '?' in lines[-1]):
         errors.append('caption must end with a question followed by 👇')
 
+    vo = reel.get('voiceover')
+    if not isinstance(vo, list) or len(vo) != 5:
+        errors.append('voiceover needs exactly 5 lines (hook, 3 points, cta)')
+    else:
+        spoken_slides = [reel.get('hook', '')] + [f"{p.get('title', '')} {p.get('body', '')}" for p in points] + [cta]
+        for i, (line, slide) in enumerate(zip(vo, spoken_slides), 1):
+            if not line.strip():
+                errors.append(f'voiceover line {i} is empty')
+            elif SYMBOLS.search(line) or '*' in line or EMOJI.search(line):
+                errors.append(f'voiceover line {i} has symbols; write it the way it is said')
+            elif similar(line, slide) > 0.6:
+                errors.append(f'voiceover line {i} repeats the slide text; say it in different words')
+        n = sum(words(l) for l in vo)
+        if not 35 <= n <= VO_MAX_WORDS:
+            errors.append(f'voiceover has {n} words, needs 35 to {VO_MAX_WORDS}')
+        if words(vo[0]) > 14:
+            errors.append(f'voiceover line 1 has {words(vo[0])} words, max 14')
+
     tags = reel.get('hashtags', [])
     if not 8 <= len(tags) <= 12:
         errors.append(f'needs 8 to 12 hashtags, got {len(tags)}')
     if any(not HASHTAG.match(t) for t in tags) or len({t.lower() for t in tags}) != len(tags):
         errors.append('hashtags must be unique #words with no spaces')
     return errors
+
+
+def similar(a, b):
+    a, b = (re.sub(r'[^a-z0-9 ]', '', t.lower().replace('*', '')).split() for t in (a, b))
+    return difflib.SequenceMatcher(None, a, b).ratio()
 
 
 def norm(hook):
@@ -137,8 +164,9 @@ SCHEMA = {
                     'cta': {'type': 'string'},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
+                    'voiceover': {'type': 'array', 'items': {'type': 'string'}},
                 },
-                'required': ['kicker', 'hook', 'points', 'cta', 'caption', 'hashtags'],
+                'required': ['kicker', 'hook', 'points', 'cta', 'caption', 'hashtags', 'voiceover'],
                 'additionalProperties': False,
             },
         },
@@ -156,6 +184,16 @@ Field rules:
 - cta: a short question for the comments with exactly one *highlighted* word.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
 - hashtags: 8 to 12 relevant tags, each like #nextjs, no spaces.
+- voiceover: exactly 5 lines, what a narrator says out loud over the slides: one for the hook, one per point, one for the cta.
+
+Voiceover rules (it is heard, not read, while the viewer reads the slides):
+- Never read the slide out. Say the same idea in different words and add what the slide leaves out: the why, a quick example, or what goes wrong if you ignore it.
+- Talk like a developer telling a friend something useful: contractions, "you", short sentences, a bit of personality. No announcer voice, no filler like "in this video" or "let's dive in".
+- Line 1 is the spoken hook and must grab in the first two seconds: a surprising claim, a sharp question or a tension. Max 14 words.
+- Lines 2 to 4 flow into each other, like one short explanation, not three separate reads.
+- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
+- 35 to 70 words in total, so the reel stays under about 25 seconds.
+- Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
 
 Content rules:
 - Evergreen only. No news, release dates, version numbers, prices or anything that goes stale.
@@ -237,16 +275,64 @@ def append(reels, new):
         reels.append({
             'id': next_id, 'pillar': reel['pillar'], 'style': last_style, 'kicker': reel['kicker'].strip(),
             'hook': reel['hook'].strip(), 'points': reel['points'], 'cta': reel['cta'].strip(),
-            'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'], 'posted_at': None, 'media_id': None,
+            'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'],
+            'voiceover': [l.strip() for l in reel['voiceover']], 'posted_at': None, 'media_id': None,
         })
         next_id += 1
+
+
+VO_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['reels'],
+    'properties': {'reels': {'type': 'array', 'items': {
+        'type': 'object', 'additionalProperties': False, 'required': ['id', 'voiceover'],
+        'properties': {'id': {'type': 'integer'}, 'voiceover': {'type': 'array', 'items': {'type': 'string'}}}}}},
+}
+
+
+def add_voiceovers(reels):
+    """Write the spoken script for unposted reels that were queued before voiceovers existed."""
+    todo = [r for r in reels if not r.get('posted_at') and not r.get('voiceover')]
+    feedback = {}
+    for attempt in range(3):
+        if not todo:
+            break
+        slides = [{**{k: r[k] for k in ('id', 'kicker', 'hook', 'points', 'cta')},
+                   **({'previous_attempt_problems': feedback[r['id']]} if r['id'] in feedback else {})} for r in todo]
+        prompt = ('Write the voiceover for each of these existing reels. Keep the slides exactly as they are; '
+                  'return only each reel id with its 5 voiceover lines.\n\n' + json.dumps(slides, indent=2))
+        proc = subprocess.run(
+            ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+             '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+             '--json-schema', json.dumps(VO_SCHEMA)],
+            capture_output=True, text=True, timeout=900,
+        )
+        out = (json.loads(proc.stdout).get('structured_output') or {}) if proc.returncode == 0 else {}
+        by_id = {r['id']: r['voiceover'] for r in out.get('reels', [])}
+        for r in todo:
+            if r['id'] in by_id:
+                errs = validate({**r, 'voiceover': by_id[r['id']]})
+                if errs:
+                    print(f"Reel {r['id']}: " + '; '.join(errs))
+                    feedback[r['id']] = errs
+                else:
+                    r['voiceover'] = [l.strip() for l in by_id[r['id']]]
+        todo = [r for r in todo if not r.get('voiceover')]
+        print(f'Attempt {attempt + 1}: {len(todo)} reels still without a voiceover')
+    return todo
 
 
 def main():
     reels = json.loads(render.QUEUE.read_text())
 
+    if '--voiceover' in sys.argv:
+        missing = add_voiceovers(reels)
+        render.QUEUE.write_text(json.dumps(reels, indent=2, ensure_ascii=False) + '\n')
+        if missing:
+            raise SystemExit(f'{len(missing)} reels still have no voiceover')
+        return
+
     if '--check' in sys.argv:
-        bad = [(r['id'], validate(r)) for r in reels]
+        bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and 'voiceover' in e)]) for r in reels]
         bad = [(i, e) for i, e in bad if e]
         dupes = len(reels) - len({norm(r['hook']) for r in reels})
         for i, errs in bad:
