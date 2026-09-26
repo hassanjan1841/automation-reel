@@ -1,0 +1,66 @@
+name: Docs sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+      - '.github/workflows/**'
+      - requirements.txt
+  schedule:
+    - cron: '0 9 * * 6' # Saturdays 09:00 UTC, catches anything the push trigger missed
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Ask Claude to review the docs even if nothing changed
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Update docs
+        id: sync
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python docs_sync.py ${{ inputs.force && '--force' || '' }}
+
+      # Always a pull request, never a direct push, so every doc change gets a human review.
+      - name: Open or update pull request
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -C docs-sync
+          git add README.md CLAUDE.md .claude/skills/automation-reel/SKILL.md
+          git commit -m 'Update docs to match the code'
+          git push --force origin docs-sync
+          if [ "$(gh pr view docs-sync --json state -q .state 2>/dev/null)" != 'OPEN' ]; then
+            gh pr create --base main --head docs-sync --title 'Update docs to match the code' \
+              --body 'Docs sync found docs that no longer match the code and updated them. docs_check.py passes on this branch.'
+          fi
