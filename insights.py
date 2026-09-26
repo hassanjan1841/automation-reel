@@ -7,7 +7,11 @@ Usage: python insights.py [limit]
 import os
 import sys
 
+from pathlib import Path
+
 import requests
+
+THUMBS = Path('out/thumbs')
 
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
 REEL_METRICS = ['views', 'reach', 'reels_skip_rate', 'ig_reels_avg_watch_time', 'likes', 'comments', 'saved',
@@ -38,7 +42,7 @@ def main():
     print(f"@{me.get('username')}: {me.get('followers_count')} followers, {me.get('follows_count')} following, "
           f"{me.get('media_count')} posts\n")
 
-    media = get('me/media', token, fields='id,caption,media_product_type,timestamp,permalink', limit=min(limit, 100))['data']
+    media = get('me/media', token, fields='id,caption,media_product_type,timestamp,permalink,thumbnail_url,media_url', limit=min(limit, 100))['data']
     print('date        type    views reach skip%  watch  likes cmts saves shares  permalink  caption')
     for m in media:
         s = {name: metric(m['id'], name, token) for name in REEL_METRICS}
@@ -48,6 +52,11 @@ def main():
         print(f"{m['timestamp'][:10]}  {(m.get('media_product_type') or '')[:6]:6} {s['views']:>6} {s['reach']:>5} "
               f"{s['reels_skip_rate']:>5} {watch:>6} {s['likes']:>6} {s['comments']:>4} {s['saved']:>5} "
               f"{s['shares']:>6}  {m.get('permalink', '')}  {caption}")
+        thumb = m.get('thumbnail_url') or m.get('media_url')
+        if thumb and m.get('media_product_type') == 'REELS':
+            THUMBS.mkdir(exist_ok=True)
+            skip = s['reels_skip_rate'] if s['reels_skip_rate'] != '-' else 0
+            (THUMBS / f"{skip:05.1f}-{m['timestamp'][:10]}-{m['id']}.jpg").write_bytes(requests.get(thumb, timeout=60).content)
 
 
 if __name__ == '__main__':

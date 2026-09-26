@@ -23,3 +23,9 @@ jobs:
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
         run: python insights.py 60
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: thumbs
+          path: out/thumbs
+          retention-days: 7
