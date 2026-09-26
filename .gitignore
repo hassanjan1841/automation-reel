@@ -4,3 +4,5 @@ out/
 fonts/
 .env
 models/
+voice_ref/
+.venv-cb/

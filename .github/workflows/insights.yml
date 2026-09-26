@@ -1,0 +1,25 @@
+name: Insights
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests
+
+      - name: Reel insights
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+        run: python insights.py 20
