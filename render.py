@@ -8,6 +8,7 @@ Usage:
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -150,6 +151,29 @@ class El:
     alpha: float = 1.0
     grow: bool = False
     slide: tuple = (0.0, 1e9)
+    frames: list = None       # masks that replace `mask` over COUNT seconds (a number counting up)
+
+
+COUNT = 1.1
+NUMBER = re.compile(r'^([$]?)(\d{1,3}(?:,\d{3})+|\d+)(%|[KkMmBb]|\+)?([.,!?:;]?)$')
+
+
+def count_frames(word, fnt, steps=22):
+    """Masks for a number counting up from zero to its value, formatted like the original word."""
+    m = NUMBER.match(word)
+    if not m:
+        return None
+    prefix, digits, suffix, punct = m.group(1), m.group(2), m.group(3) or '', m.group(4)
+    value = int(digits.replace(',', ''))
+    if value < 10:
+        return None
+    comma = ',' in digits
+    frames = []
+    for k in range(steps + 1):
+        v = round(value * ease_out(k / steps))
+        text = f'{prefix}{v:,}{suffix}{punct}' if comma else f'{prefix}{v}{suffix}{punct}'
+        frames.append(text_mask(text, fnt)[0])
+    return frames
 
 
 @dataclass
@@ -216,7 +240,8 @@ def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='i
         run = None
         for word, hl, x, w in line:
             mask, pad, ascent = text_mask(word, fnt)
-            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t, dur=anim))
+            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t, dur=anim,
+                            frames=count_frames(word, fnt)))
             slide.clicks.append(t)
             if hl:
                 ul_end = x + fnt.getlength(word.rstrip(',.;:!?'))
@@ -349,6 +374,8 @@ def build_slides(reel, voice=None):
     t = 0.0
     for s, d in zip(slides, durs):
         s.start, s.end = t, t + d
+        if s.visual:
+            s.visual.duration = d
         for el in s.elements:
             el.t0 += t
             el.slide = (s.start, s.end)
@@ -402,6 +429,9 @@ def draw_element(frame, el, t):
     if a <= 0.003:
         return
     mask = el.mask
+    if el.frames:
+        k = min(len(el.frames) - 1, int(max(0.0, t - el.t0) / COUNT * (len(el.frames) - 1)))
+        mask = el.frames[k]
     if el.grow:
         cols = max(1, round(mask.shape[1] * p))
         mask = mask[:, :cols]
@@ -691,6 +721,32 @@ def whoosh_sound(rng, length=0.55):
     return s / np.sqrt(np.mean(s ** 2))
 
 
+def noise_hit(rng, length, bright, decay):
+    """A short burst of shaped noise: no pitch, so it reads as a sound effect and never as music."""
+    n = int(SR * length)
+    t = np.arange(n) / SR
+    noise = rng.standard_normal(n)
+    for _ in range(bright):
+        noise = np.diff(noise, prepend=0)
+    s = noise * np.exp(-t * decay)
+    return s / (np.sqrt(np.mean(s ** 2)) or 1.0)
+
+
+def sound_kit(rng):
+    """Every sound effect by name, all noise based. Levels are set where they are placed."""
+    return {
+        'key': lambda: noise_hit(rng, 0.018, 2, 420),
+        'tick': lambda: noise_hit(rng, 0.025, 1, 260),
+        'pop': lambda: noise_hit(rng, 0.05, 0, 90) * 0.7 + noise_hit(rng, 0.05, 2, 200) * 0.3,
+        'click': lambda: np.concatenate([noise_hit(rng, 0.012, 2, 500), np.zeros(int(SR * 0.03)),
+                                         noise_hit(rng, 0.012, 1, 500)]),
+        'swish': lambda: whoosh_sound(rng, 0.32),
+    }
+
+
+SOUND_GAIN = {'key': 0.035, 'tick': 0.03, 'pop': 0.06, 'click': 0.07, 'swish': 0.05}
+
+
 def build_audio(slides, path, voice=None):
     total = slides[-1].end
     track = np.zeros(int(SR * (total + 0.5)))
@@ -712,6 +768,11 @@ def build_audio(slides, path, voice=None):
             place(click_sound(rng), c, click_gain)
     for s in slides[1:]:
         place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
+    kit = sound_kit(rng)
+    for s in slides:
+        for at, kind in getattr(s.visual, 'sounds', []):
+            if s.start + at < s.end - EXIT:
+                place(kit[kind](), s.start + at, SOUND_GAIN[kind])
     if getattr(voice, 'continuous', False):
         peak = max(np.max(np.abs(clip)) for clip in voice) or 1.0
         at = VOICE_LEAD

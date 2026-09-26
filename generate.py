@@ -182,10 +182,15 @@ def next_post_dates(reels, count):
 VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
-        'type': {'type': 'string', 'enum': ['code', 'terminal', 'screenshot']},
+        'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot']},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
+        'before': {'type': 'string'}, 'after': {'type': 'string'},
         'commands': {'type': 'array', 'items': {'type': 'string'}},
+        'text': {'type': 'string'},
+        'messages': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'text'],
+            'properties': {'from': {'type': 'string', 'enum': ['client', 'me']}, 'text': {'type': 'string'}}}},
         'url': {'type': 'string'}, 'find': {'type': 'string'},
     },
 }
@@ -210,6 +215,23 @@ def visual_errors(i, visual):
                               'characters; max 12 lines of 40 characters')
             elif any(not 1 <= n <= len(lines) for n in v.get('highlight', [])):
                 errors.append(f'point {i} code highlight must be line numbers inside the code')
+        elif kind == 'diff':
+            for part in ('before', 'after'):
+                lines = v.get(part, '').rstrip('\n').split('\n')
+                if not v.get(part, '').strip() or len(lines) > 12 or max(len(l) for l in lines) > 40:
+                    errors.append(f'point {i} diff needs "before" and "after", each max 12 lines of 40 characters')
+                    break
+            else:
+                if v['before'].strip() == v['after'].strip():
+                    errors.append(f'point {i} diff "before" and "after" are the same')
+        elif kind == 'tweet':
+            text = v.get('text', '').strip()
+            if not 10 <= len(text) <= 200 or text.count('\n') > 5:
+                errors.append(f'point {i} tweet text needs 10 to 200 characters and at most 6 lines')
+        elif kind == 'chat':
+            msgs = v.get('messages', [])
+            if not 2 <= len(msgs) <= 5 or any(not 1 <= len(m.get('text', '')) <= 60 for m in msgs):
+                errors.append(f'point {i} chat needs 2 to 5 messages of max 60 characters')
         elif kind == 'terminal':
             cmds = v.get('commands', [])
             if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
@@ -220,7 +242,7 @@ def visual_errors(i, visual):
             if not 3 <= len(v.get('find', '')) <= 80:
                 errors.append(f'point {i} screenshot needs "find": short exact text on that page to outline')
         else:
-            errors.append(f'point {i} visual type must be code, terminal or screenshot')
+            errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat or screenshot')
     return errors
 
 
@@ -287,7 +309,15 @@ that does not clearly show what is being said):
 - code: a real, correct, minimal snippet; max 12 lines, max 40 characters per line; "language" (ts, tsx, js,
   sql, py, bash...), a short file name as "title", and "highlight" with the 1-based line numbers that carry
   the point. Show the mistake or the fix itself, not boilerplate.
-- terminal: 1 to 6 real commands, max 40 characters each.
+- diff: "before" and "after" code (each max 12 lines of 40 characters) plus "language" and "title": the
+  mistake turns red and struck through, then the fix arrives in green. The best choice for any "stop doing X,
+  do Y" point about code.
+- terminal: 1 to 6 real commands, max 40 characters each; they are typed out live.
+- tweet: a short post in the creator's own voice (10 to 200 characters, up to 6 lines), shown as a post card
+  with his name. Use it for a relatable one-liner, a hot take or a dev-life joke. No like or view counts.
+- chat: a "Client / Me" exchange of 2 to 5 short messages (max 60 characters each, "from": client or me),
+  shown as a chat with typing dots. Use it for freelance and client situations; it should be recognisable and
+  a little funny. No real names.
 - screenshot: a public page that shows the point itself (a product screen, a pricing table, a setting, a docs
   heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
   label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
