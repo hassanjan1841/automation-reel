@@ -7,6 +7,7 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
   POST_AT_UTC           when to post, HH:MM UTC (default 14:00); the job starts early to prepare the reel
+  FORCE_POST=true       post even if a reel already went out today (UTC)
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
@@ -217,6 +218,11 @@ def main():
     dry = os.environ.get('DRY_RUN', '').strip().lower() in ('1', 'true', 'yes')
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
+    today = datetime.now(timezone.utc).date().isoformat()
+    if not dry and any((r.get('posted_at') or '').startswith(today) for r in reels) \
+            and os.environ.get('FORCE_POST', '').strip().lower() not in ('1', 'true', 'yes'):
+        print(f'Already posted today ({today} UTC); nothing to do. Set FORCE_POST=true to post again.')
+        return
     # A reel added by hand goes first; otherwise today's reel is researched and written now, not ahead of time.
     reel = next((r for r in reels if not r.get('posted_at')), None)
     if reel:
@@ -238,6 +244,9 @@ def main():
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
     caption = f"{reel['caption'].strip()}\n\n{' '.join(reel['hashtags'])}"
 
+    # The exact reel beside the video, so a dry run can be reviewed and then posted as is (add it to reels.json).
+    path.with_suffix('.json').write_text(json.dumps({k: v for k, v in reel.items() if k not in ('posted_at', 'media_id')},
+                                                    indent=2, ensure_ascii=False) + '\n')
     if dry:
         print(f'DRY_RUN: rendered {path}, thumb_offset={thumb_ms}ms. Nothing posted.')
         print(f'Caption preview:\n{caption}')

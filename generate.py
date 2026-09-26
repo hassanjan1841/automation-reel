@@ -271,7 +271,9 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Never read the slide out. Say the same idea in different words and add what the slide leaves out: the why, a quick example, or what goes wrong if you ignore it.
 - Talk like a developer telling a friend something useful: contractions, "you", short sentences, a bit of personality. No announcer voice, no filler like "in this video" or "let's dive in".
 - Line 1 is the spoken hook and must grab in the first two seconds: a surprising claim, a sharp question or a tension. Max 14 words.
-- Lines 2 to 4 flow into each other, like one short explanation, not three separate reads.
+- Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
+  over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
+  must talk about its own point; never jump ahead to a later point.
 - Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
 - 35 to 70 words in total, so the reel stays under about 25 seconds.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.

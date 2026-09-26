@@ -71,6 +71,7 @@ jobs:
           VOICE_ENGINE: ${{ vars.VOICE_ENGINE }}
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
+          FORCE_POST: ${{ vars.FORCE_POST }}
           TRENDING: ${{ vars.TRENDING }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
@@ -84,7 +85,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: reel-${{ github.run_number }}
-          path: out/*.mp4
+          path: |
+            out/*.mp4
+            out/reel-*.json
           if-no-files-found: warn
           retention-days: 14
 
