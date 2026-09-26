@@ -22,4 +22,4 @@ jobs:
       - name: Reel insights
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
-        run: python insights.py 20
+        run: python insights.py 60
