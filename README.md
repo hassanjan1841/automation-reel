@@ -15,7 +15,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `render.py` | Draws the slides and sound effects, encodes with ffmpeg. `python render.py 3` writes `out/reel-3.mp4`. |
 | `publish.py` | Render, upload, publish, update the queue. `DRY_RUN=true` renders only. |
 | `generate.py` | Tops up the queue with Claude via `claude -p`. `--force` always adds 14, `--check` validates the queue, `--voiceover` writes voiceovers for unposted reels that have none. |
-| `voice.py` | Voiceover with Kokoro (free, runs in Actions). Each line is transcribed with Whisper; a misheard word gets respellings from Claude until one comes back right, and that fix is saved to `pronounce.json`. `PRONOUNCE` holds the hand-written rules (SaaS, CLI, Next.js, numbers). `python voice.py 3` previews reel 3 with voice. |
+| `voice.py` | Voiceover with Fish Audio (voice ThatMob, recorded in one continuous take and cut per slide) or, without `FISH_API_KEY`, Kokoro (free, local). Every take is transcribed with Whisper; a misheard word gets respellings or exact phonemes from Claude until one comes back right, and that fix is saved to `pronounce.json`. `COMMON_RULES` and `KOKORO_RULES` hold the hand-written rules (numbers, prices, SaaS, Next.js). `python voice.py 3` previews reel 3 with voice. |
 | `pronounce.json` | Respellings the listen-back check learned, e.g. `"Supabase": "Soo pa base"`. Edit or delete an entry if it sounds wrong. |
 | `test_voice.py` | Pronunciation regression test. `python test_voice.py` checks the text rules, `--audio` also speaks every test sentence and listens back. |
 | `trends.py` | The trend scan and editor. `python trends.py` lists what it scraped, `--pick` shows what Claude would post. Set repo variable `TRENDING=off` to post only from the queue. |
@@ -56,7 +56,7 @@ Append an object to `reels.json` with the next `id`, `posted_at: null` and `medi
 }
 ```
 
-The voiceover is heard while the slides are read, so it must not repeat the slide text: 35 to 70 words, no symbols, numbers written as spoken. Leave it out and run `python generate.py --voiceover` to have Claude write it. Then run `python generate.py --check` and `python voice.py 15` to preview it. To post something sooner, move it up the list.
+The voiceover is heard while the slides are read, so it must not repeat the slide text: 35 to 70 words, no symbols, numbers written as spoken. Every line starts with a delivery cue like `[grinning, punchy]`, with a fresh cue at least every 10 spoken words so the voice does not fade; `(break)` is a short beat. Cues are not spoken. `python generate.py --cues` adds cues to voiceovers that have none. Leave it out and run `python generate.py --voiceover` to have Claude write it. Then run `python generate.py --check` and `python voice.py 15` to preview it. To post something sooner, move it up the list.
 
 ## Pause it
 
@@ -64,7 +64,7 @@ GitHub → Actions → **Daily reel** → `...` → **Disable workflow**. Enable
 
 ## Voice
 
-Set a repo variable or env `VOICE` to another Kokoro voice (e.g. `am_fenrir`), or `none` for sound effects only. Every reel carries its own `voiceover` (5 lines, one per slide) that adds to the slides instead of reading them; reels without one fall back to reading the slide text. `python voice.py 3 am_fenrir` writes `out/reel-3-am_fenrir.mp4` to compare voices.
+The voice is Fish Audio's ThatMob (`s2.1-pro-free`, free until 2026-11-30; set `FISH_MODEL=s2.1-pro` after that). It needs the secret `FISH_API_KEY`; without it the voiceover falls back to Kokoro. `VOICE_ENGINE` forces `fish` or `kokoro`, `VOICE` picks another Fish voice id or Kokoro voice (or `none` for sound effects only), and `VOICE_PITCH` shifts it in semitones (avoid it: shifted voices sound robotic). Every reel carries its own `voiceover` (5 lines, one per slide) that adds to the slides instead of reading them; reels without one fall back to reading the slide text. `python voice.py 3 am_fenrir` writes `out/reel-3-am_fenrir.mp4` to compare voices.
 
 ## Run it by hand
 
@@ -74,7 +74,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY` (Google Cloud, restricted to YouTube Data API v3), `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
-Optional repo variables or env: `VOICE`, `TRENDING` (see above), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
+Optional repo variables or env: `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_MODEL`, `TRENDING` (see above), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
 
 ## Local setup
 

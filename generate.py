@@ -5,6 +5,7 @@ Usage:
   python generate.py --force    add 14 reels regardless
   python generate.py --check    validate reels.json and exit
   python generate.py --voiceover  write the spoken script for unposted reels that have none
+  python generate.py --cues     add delivery cues to queued spoken scripts, keeping every word
 
 Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
 """
@@ -17,6 +18,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import render
+from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
 BATCH = 14
@@ -103,24 +105,55 @@ def validate(reel):
         errors.append('voiceover needs exactly 5 lines (hook, 3 points, cta)')
     else:
         spoken_slides = [reel.get('hook', '')] + [f"{p.get('title', '')} {p.get('body', '')}" for p in points] + [cta]
-        for i, (line, slide) in enumerate(zip(vo, spoken_slides), 1):
+        said = [strip_cues(l) for l in vo]
+        for i, (line, slide) in enumerate(zip(said, spoken_slides), 1):
             if not line.strip():
                 errors.append(f'voiceover line {i} is empty')
             elif SYMBOLS.search(line) or '*' in line or EMOJI.search(line):
                 errors.append(f'voiceover line {i} has symbols; write it the way it is said')
             elif similar(line, slide) > 0.6:
                 errors.append(f'voiceover line {i} repeats the slide text; say it in different words')
-        n = sum(words(l) for l in vo)
+        n = sum(words(l) for l in said)
         if not 35 <= n <= VO_MAX_WORDS:
             errors.append(f'voiceover has {n} words, needs 35 to {VO_MAX_WORDS}')
-        if words(vo[0]) > 14:
-            errors.append(f'voiceover line 1 has {words(vo[0])} words, max 14')
+        if words(said[0]) > 14:
+            errors.append(f'voiceover line 1 has {words(said[0])} words, max 14')
+        errors += cue_errors(vo)
 
     tags = reel.get('hashtags', [])
     if not 8 <= len(tags) <= 12:
         errors.append(f'needs 8 to 12 hashtags, got {len(tags)}')
     if any(not HASHTAG.match(t) for t in tags) or len({t.lower() for t in tags}) != len(tags):
         errors.append('hashtags must be unique #words with no spaces')
+    return errors
+
+
+CUE_GAP = 10
+FLAT = re.compile(r'\b(deadpan|knowing|curious|matter.of.fact|dry|serious|neutral|friendly|warm)\b', re.I)
+LOW_ENERGY = re.compile(r'\b(calm|soft|quiet|gentle|sleepy|tired|bored|whisper\w*|slow|satisfied|relaxed)\b', re.I)
+
+
+def cue_errors(vo):
+    """Cues must keep the delivery from fading: fresh every few words, varied, and mostly high energy."""
+    errors = []
+    cues = [c for line in vo for c in re.findall(r'\[([^\]]*)\]', line)]
+    if not all(l.lstrip().startswith('[') for l in vo):
+        errors.append('every voiceover line must start with a [delivery cue]')
+    for i, line in enumerate(vo, 1):
+        # Spoken words between cues; "(break)" does not renew the energy.
+        for stretch in re.split(r'\[[^\]]*\]', line):
+            n = len(strip_cues(stretch).split())
+            if n > CUE_GAP:
+                errors.append(f'voiceover line {i} runs {n} words without a fresh cue, max {CUE_GAP}')
+                break
+    first = re.match(r'\s*\[([^\]]*)\]', vo[0]) if vo else None
+    if first and (LOW_ENERGY.search(first.group(1)) or FLAT.search(first.group(1))):
+        errors.append('line 1 must open with a high-energy cue like [fired up] or [grinning, punchy]; '
+                      'save [deadpan] or [knowing] for the twist after a (break)')
+    if sum(bool(LOW_ENERGY.search(c)) for c in cues) > 1:
+        errors.append('at most one low-energy cue in the whole voiceover')
+    if len({c.strip().lower() for c in cues if c.strip().lower() != 'emphasis'}) < 5:
+        errors.append('use at least 5 different cues, not the same one repeated')
     return errors
 
 
@@ -194,6 +227,14 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
 - 35 to 70 words in total, so the reel stays under about 25 seconds.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
+
+Delivery cues (the voice follows them; without fresh cues it starts strong and fades within two seconds):
+- Direct the narrator like an energetic creator talking to camera. Cues go in square brackets before the words they shape; "(break)" is a short beat. Cues and "(break)" are not spoken and do not count as words.
+- Never more than 10 spoken words without a fresh cue. Put a new cue at the start of every sentence and at the turn inside a long one, so the energy is renewed before it can fade.
+- Line 1 opens high: [fired up], [grinning, punchy], [urgent], [mock outraged]. If the hook has a twist, put "(break)" before it and flip the cue for contrast, e.g. "[grinning, punchy] Most SaaS ideas don't die because of bad code. (break) [deadpan] They die because nobody wanted them."
+- Match each cue to what the words do: a punchline gets [deadpan] or [amused]; a warning gets [serious, fast]; a payoff or tip gets [excited] or [confident and fast]; a relatable pain gets [exasperated] or [knowing]; the closing question gets [warm, curious] or [teasing].
+- Before the one word that carries a point, you may add [emphasis], e.g. "Nobody [emphasis] wanted it."
+- Keep the energy up. At most one low-energy cue ([calm], [soft], [quiet]) in the whole reel, and only as a contrast. Vary the cues; never repeat the same pattern on every line.
 
 Content rules:
 - Evergreen only. No news, release dates, version numbers, prices or anything that goes stale.
@@ -321,8 +362,55 @@ def add_voiceovers(reels):
     return todo
 
 
+def add_cues(reels):
+    """Add delivery cues to queued voiceovers written before cues existed, keeping every spoken word."""
+    todo = [r for r in reels if not r.get('posted_at') and r.get('voiceover')
+            and ('--redo' in sys.argv or cue_errors(r['voiceover']))]
+    feedback, done = {}, set()
+    for attempt in range(3):
+        if not todo:
+            break
+        items = [{'id': r['id'], 'hook': r['hook'], 'voiceover': r['voiceover'],
+                  **({'previous_attempt_problems': feedback[r['id']]} if r['id'] in feedback else {})} for r in todo]
+        prompt = ('Add delivery cues to each voiceover, following the cue rules. Do not change, add or remove any '
+                  'spoken word; only insert [cues] and (break). Return each reel id with its 5 cued lines.\n\n'
+                  + json.dumps(items, indent=2, ensure_ascii=False))
+        proc = subprocess.run(
+            ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+             '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+             '--json-schema', json.dumps(VO_SCHEMA)],
+            capture_output=True, text=True, timeout=900,
+        )
+        out = (json.loads(proc.stdout).get('structured_output') or {}) if proc.returncode == 0 else {}
+        by_id = {r['id']: r['voiceover'] for r in out.get('reels', [])}
+        for r in todo:
+            new = by_id.get(r['id'])
+            if not new:
+                continue
+            errs = validate({**r, 'voiceover': new})
+            if [re.sub(r'\W', '', strip_cues(l)).lower() for l in new] != \
+               [re.sub(r'\W', '', strip_cues(l)).lower() for l in r['voiceover']]:
+                errs.append('the spoken words changed; keep every word exactly and only add cues')
+            if errs:
+                print(f"Reel {r['id']}: " + '; '.join(errs))
+                feedback[r['id']] = errs
+            else:
+                r['voiceover'] = [l.strip() for l in new]
+                done.add(r['id'])
+        todo = [r for r in todo if r['id'] not in done]
+        print(f'Attempt {attempt + 1}: {len(todo)} reels still without good cues')
+    return todo
+
+
 def main():
     reels = json.loads(render.QUEUE.read_text())
+
+    if '--cues' in sys.argv:
+        missing = add_cues(reels)
+        render.QUEUE.write_text(json.dumps(reels, indent=2, ensure_ascii=False) + '\n')
+        if missing:
+            raise SystemExit(f'{len(missing)} reels still have no cues')
+        return
 
     if '--voiceover' in sys.argv:
         missing = add_voiceovers(reels)

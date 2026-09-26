@@ -155,11 +155,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Most SaaS ideas don't fail on code. They fail on demand.",
-      "Ask people how they cope today. Compliments on your idea tell you nothing.",
-      "Better proof is someone already paying for a messy workaround.",
-      "Then put up a simple page and see who signs up before you build.",
-      "What's the idea you almost built before checking demand?"
+      "[grinning, punchy] Most SaaS ideas don't fail on code. (break) [deadpan] They fail on demand.",
+      "[knowing] Ask people how they cope today. [amused] Compliments on your idea tell you nothing.",
+      "[confident and fast] Better proof is someone already paying [emphasis] for a messy workaround.",
+      "[excited] Then put up a simple page, [confident] and see who signs up before you build.",
+      "[warm, curious] What's the idea you almost built before checking demand?"
     ]
   },
   {
@@ -198,11 +198,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your to-do list is probably why you never finish anything.",
-      "Try two lists. One holds just three things you'll actually finish today.",
-      "The other is a parking lot, so a new idea or a random request doesn't hijack your focus.",
-      "Sort both before bed, and tomorrow you open your laptop already knowing what's first.",
-      "What's the one thing that always pulls you out of deep work?"
+      "[mock outraged] Your to-do list is probably why (break) [deadpan] you never finish anything.",
+      "[confident and fast] Try two lists. [excited] One holds just three things you'll actually finish today.",
+      "[amused] The other is a parking lot, [teasing] so a new idea or a random request [serious, fast] doesn't hijack your focus.",
+      "[relieved, upbeat] Sort both before bed, and tomorrow you open your laptop [excited] already knowing what's first.",
+      "[warm, curious] What's the one thing that always [teasing] pulls you out of deep work?"
     ]
   },
   {
@@ -242,11 +242,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Stop using AI to finish your sentences. Make it review your work.",
-      "Hand it your changes and ask what could break. It spots edge cases you missed.",
-      "Give it real details, though, or it'll guess with total confidence.",
-      "And your name's on the commit, so run the tests.",
-      "Where does AI help you most, and where has it burned you?"
+      "[punchy] Stop using AI to finish your sentences. (break) [confident] Make it review your work.",
+      "[leaning in] Hand it your changes and ask what could break. [excited] It spots edge cases you missed.",
+      "[mock-serious] Give it real details, though, [serious, fast] or it'll guess with total confidence.",
+      "[deadpan] And your name's on the commit, (break) [teasing] so run the tests.",
+      "[curious] Where does AI help you most, [teasing] and where has it burned you?"
     ]
   },
   {
@@ -286,11 +286,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "TypeScript can't protect you from someone else's API.",
-      "Types only exist while you build. Once the app runs, they're gone, and the server can send anything.",
-      "So check outside data the moment it arrives, with a schema library like Zod.",
-      "Then generate your types from that same schema so they never drift.",
-      "Has an API ever quietly sent you something unexpected?"
+      "[urgent] TypeScript can't protect you from someone else's API.",
+      "[knowing] Types only exist while you build. [mock-serious] Once the app runs, they're gone, [serious, fast] and the server can send anything.",
+      "[confident and fast] So check outside data the moment it arrives, [confident] with a schema library like Zod.",
+      "[excited] Then generate your types from that same schema [satisfied] so they never drift.",
+      "[warm, curious] Has an API ever quietly sent you something unexpected?"
     ]
   },
   {
@@ -329,11 +329,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your users don't care how clean your code is.",
-      "They notice speed and bugs, nothing else. Perfect code in an unreleased app helps nobody.",
-      "You can always refactor once people actually use the thing.",
-      "Just don't skip the basics. Test the risky parts and name things so future you can read them.",
-      "Where do you draw the line between good enough and too messy?"
+      "[mock outraged] Your users don't care how clean your code is.",
+      "[knowing] They notice speed and bugs, nothing else. [amused] Perfect code in an unreleased app helps nobody.",
+      "[confident and fast] You can [emphasis] always refactor once people actually use the thing.",
+      "[serious, fast] Just don't skip the basics. [leaning in] Test the risky parts [confident] and name things so future you can read them.",
+      "[warm, curious] Where do you draw the line [teasing] between good enough and too messy?"
     ]
   },
   {
@@ -373,11 +373,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Scope creep usually starts in the proposal, not the project.",
-      "Write down every single thing you're delivering, page by page or feature by feature.",
-      "Then write what's not included. That short list heads off most awkward arguments.",
-      "When they ask for something new, quote it as a small extra instead of doing it free.",
-      "How do you handle a client who keeps asking for just one more thing?"
+      "[grinning, punchy] Scope creep usually starts in the proposal, (break) [deadpan] not the project.",
+      "[confident and fast] Write down every single thing you're delivering, [excited] page by page or feature by feature.",
+      "[leaning in] Then write what's not included. [amused] That short list heads off most awkward arguments.",
+      "[teasing] When they ask for something new, [confident and fast] quote it as a small extra [deadpan] instead of doing it free.",
+      "[warm, curious] How do you handle a client [amused] who keeps asking for just one more thing?"
     ]
   },
   {
@@ -416,11 +416,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Caching is just remembering an answer so you don't ask twice.",
-      "Like keeping a copy close by instead of walking to the store every time.",
-      "Pages load quicker, and your database gets fewer calls.",
-      "The catch is that copy can go stale, so you decide when to throw it out.",
-      "Which concept in dev still feels like magic to you?"
+      "[confident and fast] Caching is just remembering an answer [teasing] so you don't ask twice.",
+      "[amused] Like keeping a copy close by [teasing] instead of walking to the store every time.",
+      "[excited] Pages load quicker, and your database gets fewer calls.",
+      "[mock-serious] The catch is that copy can go stale, [leaning in] so you decide when to throw it out.",
+      "[curious] Which concept in dev still feels like magic to you?"
     ]
   },
   {
@@ -460,11 +460,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your first version should feel almost embarrassingly small.",
-      "Pick the one painful problem people would pay for, and do only that.",
-      "Skip the admin dashboard. Do that stuff by hand behind the scenes until the pain gets real.",
-      "And charge from the start, because money is the clearest sign somebody wants it.",
-      "What's the first feature you'd cut from your own MVP?"
+      "[amused] Your first version should feel almost embarrassingly small.",
+      "[confident and fast] Pick the one painful problem people would pay for, [deadpan] and do only that.",
+      "[teasing] Skip the admin dashboard. [leaning in] Do that stuff by hand behind the scenes [knowing] until the pain gets real.",
+      "[deadpan] And charge from the start, (break) [confident] because money is the clearest sign somebody wants it.",
+      "[curious] What's the first feature you'd cut from your own MVP?"
     ]
   },
   {
@@ -503,11 +503,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Tomorrow morning, you'll forget exactly where you stopped.",
-      "Rebuilding that context eats a surprising chunk of your morning before you write anything.",
-      "So before you close the laptop, write one line: the file or command you were about to touch.",
-      "That single line drops you back into flow in minutes instead of an hour of wandering.",
-      "What's your trick for getting going again after a break?"
+      "[urgent] Tomorrow morning, you'll forget exactly where you stopped.",
+      "[knowing] Rebuilding that context eats a surprising chunk of your morning [exasperated] before you write anything.",
+      "[confident and fast] So before you close the laptop, write one line: [excited] the file or command you were about to touch.",
+      "[satisfied] That single line drops you back into flow in minutes [amused] instead of an hour of wandering.",
+      "[warm, curious] What's your trick for getting going again [teasing] after a break?"
     ]
   },
   {
@@ -547,11 +547,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Bad AI answers usually start with a bad question.",
-      "Paste the whole error. A summary throws away the one clue that matters.",
-      "Add the function and how it's called, because the model can't guess your setup.",
-      "Then ask for two options with tradeoffs, so you stay the one deciding.",
-      "What's the dumbest thing your assistant has ever told you with total confidence?"
+      "[grinning, punchy] Bad AI answers usually start with a bad question.",
+      "[confident and fast] Paste the whole error. [leaning in] A summary throws away the one clue that matters.",
+      "[teasing] Add the function and how it's called, [deadpan] because the model can't guess your setup.",
+      "[confident] Then ask for two options with tradeoffs, [excited] so you stay the one deciding.",
+      "[amused] What's the dumbest thing [teasing] your assistant has ever told you with total confidence?"
     ]
   },
   {
@@ -591,11 +591,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your database might be reading every single row to find one.",
-      "Without an index, Postgres just scans the whole table, and that gets slow as it grows.",
-      "Index the columns you filter, join and sort on, because those are what your queries lean on.",
-      "Then run explain analyze to see if it's really using the index.",
-      "Be honest, have you ever looked at a query plan?"
+      "[mock outraged] Your database might be reading every single row [deadpan] to find one.",
+      "[knowing] Without an index, Postgres just scans the whole table, [deadpan] and that gets slow as it grows.",
+      "[confident and fast] Index the columns you filter, join and sort on, [leaning in] because those are what your queries lean on.",
+      "[excited] Then run explain analyze [confident] to see if it's really using the index.",
+      "[teasing] Be honest, (break) [curious] have you ever looked at a query plan?"
     ]
   },
   {
@@ -635,11 +635,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Another new framework won't make you a better developer.",
-      "Knowing one stack deeply means you ship faster and debug without panicking.",
-      "And the stuff underneath, like HTTP, databases and plain JavaScript, outlives every framework.",
-      "So learn new tools when a real project asks for one, not because they're trending.",
-      "What are you learning right now, and why that one?"
+      "[fired up] Another new framework won't make you a better developer.",
+      "[confident and fast] Knowing one stack deeply means [excited] you ship faster and debug without panicking.",
+      "[leaning in] And the stuff underneath, like HTTP, databases and plain JavaScript, [confident] outlives every framework.",
+      "[teasing] So learn new tools [confident] when a real project asks for one, [deadpan] not because they're trending.",
+      "[warm, curious] What are you learning right now, [teasing] and why that one?"
     ]
   },
   {
@@ -679,11 +679,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "A slow reply can lose you a client before you've done anything wrong.",
-      "Even a quick message saying you got it tells them their project is in good hands.",
-      "You don't need the answer yet. Just say when they'll hear back.",
-      "Then actually hit that time, because being reliable beats being instant.",
-      "How long do your clients usually wait for a reply?"
+      "[urgent] A slow reply can lose you a client [deadpan] before you've done anything wrong.",
+      "[leaning in] Even a quick message saying you got it [confident] tells them their project is in good hands.",
+      "[confident and fast] You don't need the answer yet. [excited] Just say when they'll hear back.",
+      "[serious, fast] Then actually hit that time, (break) [confident] because being reliable beats being instant.",
+      "[curious] How long do your clients [teasing] usually wait for a reply?"
     ]
   },
   {
@@ -722,11 +722,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Stop asking other services if anything changed yet. Let them call you.",
-      "That constant checking is called polling, and most of the time it wastes requests.",
-      "With a webhook, they send a request to your address the second something happens, like a payment going through.",
-      "Just make sure it's really them, answer quickly, and expect the same message twice.",
-      "Which service pings your app the most?"
+      "[punchy] Stop asking other services if anything changed yet. (break) [teasing] Let them call you.",
+      "[leaning in] That constant checking is called polling, [deadpan] and most of the time it wastes requests.",
+      "[excited] With a webhook, they send a request to your address [confident and fast] the second something happens, [amused] like a payment going through.",
+      "[confident and fast] Just make sure it's really them, answer quickly, [mock-serious] and expect the same message twice.",
+      "[curious] Which service pings your app the most?"
     ]
   },
   {
@@ -765,11 +765,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Never ask people if they'd use your idea. They'll say yes to be nice.",
-      "Ask what they do about the problem right now, and listen for the ugly workaround.",
-      "Spreadsheets, copy and paste, sticky note reminders. That mess means the problem is real.",
-      "Then ask what it cost them last time, in hours or in money.",
-      "What's the messiest workaround you've seen someone use?"
+      "[mock outraged] Never ask people if they'd use your idea. [amused] They'll say yes to be nice.",
+      "[leaning in] Ask what they do about the problem right now, [knowing] and listen for the ugly workaround.",
+      "[confident and fast] Spreadsheets, copy and paste, sticky note reminders. [deadpan] That mess means the problem is real.",
+      "[excited] Then ask what it cost them last time, [confident] in hours or in money.",
+      "[warm, curious] What's the messiest workaround you've seen someone use?"
     ]
   },
   {
@@ -808,11 +808,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Ever lost a whole afternoon to one stupid bug?",
-      "Set a limit before you start, like thirty minutes, because otherwise the bug decides for you.",
-      "Jot down each fix you try, so you don't repeat yourself and asking for help gets easy.",
-      "When the timer rings, stop pushing the same idea. Fresh eyes often spot it fast.",
-      "What's the longest you've ever fought one bug before giving in?"
+      "[amused] Ever lost a whole afternoon to one stupid bug?",
+      "[confident and fast] Set a limit before you start, like thirty minutes, [deadpan] because otherwise the bug decides for you.",
+      "[leaning in] Jot down each fix you try, [confident] so you don't repeat yourself [excited] and asking for help gets easy.",
+      "[teasing] When the timer rings, stop pushing the same idea. [excited] Fresh eyes often spot it fast.",
+      "[curious] What's the longest you've ever fought one bug [teasing] before giving in?"
     ]
   },
   {
@@ -852,11 +852,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Before AI edits your code, make it prove it understands it.",
-      "Paste it in and ask what it does. Plain words, no changes yet.",
-      "If the explanation is off, the edit will be too. Better to catch that early.",
-      "Keep the request tiny. A huge rewrite is where sneaky bugs hide.",
-      "Be honest, how often do you just hit accept and hope?"
+      "[confident] Before AI edits your code, [punchy] make it prove it understands it.",
+      "[leaning in] Paste it in and ask what it does. [deadpan] Plain words, no changes yet.",
+      "[mock-serious] If the explanation is off, the edit will be too. [confident and fast] Better to catch that early.",
+      "[teasing] Keep the request tiny. [deadpan] A huge rewrite is where sneaky bugs hide.",
+      "[teasing] Be honest, (break) [amused] how often do you just hit accept and hope?"
     ]
   },
   {
@@ -896,11 +896,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your Next.js app is probably shipping more JavaScript than it needs.",
-      "Server components do their work on the server, so the browser downloads less and runs less.",
-      "You only need a client component for state, effects, or clicks.",
-      "And even then, keep it tiny. Make the button a client component, not the entire page.",
-      "What's the biggest component you've made client-side by mistake?"
+      "[fired up] Your Next.js app is probably shipping [deadpan] more JavaScript than it needs.",
+      "[confident and fast] Server components do their work on the server, [excited] so the browser downloads less and runs less.",
+      "[leaning in] You only need a client component [confident] for state, effects, or clicks.",
+      "[teasing] And even then, keep it tiny. [amused] Make the button a client component, not the entire page.",
+      "[curious] What's the biggest component you've made client-side by mistake?"
     ]
   },
   {
@@ -939,11 +939,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Nobody hires you for good code they can't find.",
-      "Freelancing means you also sell. Clients have to know you exist and what problem you fix.",
-      "Great work doesn't market itself, however much we wish it did.",
-      "Do a little outreach every week, so a quiet month doesn't turn into panic.",
-      "Which part of selling makes you want to close the laptop?"
+      "[urgent] Nobody hires you for good code they can't find.",
+      "[leaning in] Freelancing means you also sell. [confident and fast] Clients have to know you exist [excited] and what problem you fix.",
+      "[amused] Great work doesn't market itself, [teasing] however much we wish it did.",
+      "[confident] Do a little outreach every week, [serious, fast] so a quiet month doesn't turn into panic.",
+      "[teasing] Which part of selling [amused] makes you want to close the laptop?"
     ]
   },
   {
@@ -982,11 +982,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your proposal probably loses the client in the first sentence.",
-      "Read the job post twice. The second time, you'll catch the goal hiding between the lines.",
-      "Then say it back in your own words. Now they know someone actually listened.",
-      "Finish with one pointed question about their project. It's hard to ignore and easy to answer.",
-      "What's the first line you've sent that actually got a reply?"
+      "[grinning, punchy] Your proposal probably loses the client in the first sentence.",
+      "[leaning in] Read the job post twice. [excited] The second time, you'll catch the goal [knowing] hiding between the lines.",
+      "[confident and fast] Then say it back in your own words. [satisfied] Now they know someone actually listened.",
+      "[leaning in] Finish with one pointed question about their project. [amused] It's hard to ignore and easy to answer.",
+      "[curious] What's the first line you've sent [teasing] that actually got a reply?"
     ]
   },
   {
@@ -1025,11 +1025,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Send money to a friend, and only half of it goes through. Scary, right?",
-      "A transaction prevents that: take from one account, add to another, both or neither.",
-      "If any step fails, the database undoes the earlier ones like they never ran.",
-      "Only when it all works do you commit, and everyone sees the result.",
-      "Where in your app would half-finished changes cause real damage?"
+      "[grinning, punchy] Send money to a friend, [urgent] and only half of it goes through. (break) [amused] Scary, right?",
+      "[confident and fast] A transaction prevents that: [excited] take from one account, add to another, [deadpan] both or neither.",
+      "[leaning in] If any step fails, the database undoes the earlier ones [amused] like they never ran.",
+      "[satisfied] Only when it all works do you commit, [confident] and everyone sees the result.",
+      "[curious] Where in your app would half-finished changes [mock-serious] cause real damage?"
     ]
   },
   {
@@ -1068,11 +1068,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Everyone loves your idea. That tells you almost nothing.",
-      "Compliments are free. Pulling out a card isn't, so a payment says way more.",
-      "Even a small preorder shows the problem matters enough for someone to act.",
-      "And you don't need software yet. Do the work by hand for your first customers.",
-      "Would you charge for something before you built it?"
+      "[amused] Everyone loves your idea. (break) [deadpan] That tells you almost nothing.",
+      "[teasing] Compliments are free. [amused] Pulling out a card isn't, [confident] so a payment says way more.",
+      "[leaning in] Even a small preorder shows the problem [confident] matters enough for someone to act.",
+      "[confident and fast] And you don't need software yet. [excited] Do the work by hand for your first customers.",
+      "[curious] Would you charge for something before you built it?"
     ]
   },
   {
@@ -1111,11 +1111,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Every new project, you're probably rebuilding the same setup from memory.",
-      "Write down the boring setup you could do half asleep.",
-      "Every small choice you skip saves energy for the part the client actually cares about.",
-      "Treat it like code: tweak it whenever you hit a snag, and it keeps getting sharper.",
-      "Which step do you always forget until it bites you?"
+      "[teasing] Every new project, you're probably [knowing] rebuilding the same setup from memory.",
+      "[confident and fast] Write down the boring setup [amused] you could do half asleep.",
+      "[leaning in] Every small choice you skip saves energy [confident] for the part the client actually cares about.",
+      "[excited] Treat it like code: [confident and fast] tweak it whenever you hit a snag, [satisfied] and it keeps getting sharper.",
+      "[curious] Which step do you always forget [teasing] until it bites you?"
     ]
   },
   {
@@ -1155,11 +1155,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "An API key pasted into a chat is an exposed key.",
-      "AI tools don't need your real passwords or keys to understand your code.",
-      "Swap them for fake placeholders, and the answer stays just as useful.",
-      "If a real one slips through, make a new key and kill the old one.",
-      "Be honest: do you check your prompt before you hit send?"
+      "[urgent] An API key pasted into a chat (break) [deadpan] is an exposed key.",
+      "[knowing] AI tools don't need your real passwords or keys [excited] to understand your code.",
+      "[confident and fast] Swap them for fake placeholders, [excited] and the answer stays just as useful.",
+      "[serious, fast] If a real one slips through, [urgent] make a new key and kill the old one.",
+      "[teasing] Be honest: (break) [warm, curious] do you check your prompt before you hit send?"
     ]
   },
   {
@@ -1199,11 +1199,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Your Supabase database might be readable by anyone on the internet.",
-      "Without row level security, your public key can read a table that's exposed through the API.",
-      "Turn it on, then write policies, like users only see their own rows.",
-      "Then test as a signed in user and as a stranger. Only the right person should get data.",
-      "Which table would hurt most if it leaked?"
+      "[mock outraged] Your Supabase database might be readable [deadpan] by anyone on the internet.",
+      "[leaning in] Without row level security, your public key can read [serious, fast] a table that's exposed through the API.",
+      "[confident and fast] Turn it on, then write policies, [excited] like users only see their own rows.",
+      "[excited] Then test as a signed in user [confident] and as a stranger. [deadpan] Only the right person should get data.",
+      "[curious] Which table would hurt most if it leaked?"
     ]
   },
   {
@@ -1242,11 +1242,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "Every yes to the wrong project is a no to a better one.",
-      "If a client can't say what success looks like, expect endless rework.",
-      "That kind of job eats your time and energy, and the good work waits.",
-      "You can decline nicely. Give a short reason, point them elsewhere if you can, stay friendly.",
-      "When did you last turn down a project, and was it the right call?"
+      "[fired up] Every yes to the wrong project [confident] is a no to a better one.",
+      "[leaning in] If a client can't say what success looks like, [mock-serious] expect endless rework.",
+      "[knowing] That kind of job eats your time and energy, [exasperated] and the good work waits.",
+      "[warm, confident] You can decline nicely. [confident and fast] Give a short reason, [leaning in] point them elsewhere if you can, [warm] stay friendly.",
+      "[curious] When did you last turn down a project, [teasing] and was it the right call?"
     ]
   },
   {
@@ -1285,11 +1285,11 @@
     "posted_at": null,
     "media_id": null,
     "voiceover": [
-      "One big deadline is how projects go wrong.",
-      "Cut the work into chunks, and each one gets a clear finish line you both agree on.",
-      "Money moves when work does, so nobody's guessing what's done or what's owed.",
-      "And if you misread each other, you find out after the first chunk, not when it's expensive to fix.",
-      "How do you decide where one chunk ends and the next begins?"
+      "[urgent] One big deadline is how projects go wrong.",
+      "[confident and fast] Cut the work into chunks, [excited] and each one gets a clear finish line [knowing] you both agree on.",
+      "[excited] Money moves when work does, [confident and fast] so nobody's guessing what's done or what's owed.",
+      "[serious, fast] And if you misread each other, [knowing] you find out after the first chunk, [amused] not when it's expensive to fix.",
+      "[warm, curious] How do you decide where one chunk ends [teasing] and the next begins?"
     ]
   }
 ]

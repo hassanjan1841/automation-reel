@@ -1,16 +1,27 @@
-"""Spoken voiceover for a reel, synthesized locally with Kokoro (free, CPU).
+"""Spoken voiceover for a reel: Fish Audio (API) or Kokoro (free, local CPU), checked by listening back.
 
 Usage: python voice.py <id> [voice]   renders out/reel-<id>-<voice>.mp4
+
+Env:
+  VOICE_ENGINE   fish or kokoro (default fish when FISH_API_KEY is set, else kokoro)
+  VOICE          Fish voice reference id or Kokoro voice name (default ThatMob / am_michael)
+  VOICE_PITCH    semitones to shift the voice (default 0; shifting sounds robotic, pick a deeper voice instead)
+  FISH_API_KEY   Fish Audio API key
+  FISH_MODEL     default s2.1-pro-free
 """
 
 import difflib
+import io
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
+import requests
 
 import render
 
@@ -18,6 +29,7 @@ MODEL_DIR = render.ROOT / 'models'
 MODEL_URL = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/{}'
 MODEL_FILES = ('kokoro-v1.0.onnx', 'voices-v1.0.bin')
 DEFAULT_VOICE = 'am_michael'
+FISH_THATMOB = 'edaef7f06cf44fa58292b4c267bd61a9'
 
 
 def spell(letters):
@@ -30,8 +42,8 @@ PLURAL_LETTER = dict(zip('ABCDEFGHIJKLMNOPQRSTUVWXYZ', (
     'Ays Bees Sees Dees Ees Effs Gees Aitches Eyes Jays Kays Els Ems Ens Ohs Pees Cues Ars Esses Tees '
     'Yous Vees Doubleyous Exes Whys Zees').split()))
 
-# Respellings for terms the voice gets wrong; checked against its phonemes. Order matters.
-PRONOUNCE = [
+# Kokoro reads these wrong from its own dictionary; checked against its phonemes. Order matters.
+KOKORO_RULES = [
     (r'\bPostgreSQL\b', 'post gress Q L'),
     (r'\bPostgres\b', 'post gress'),
     (r'\bSaaS\b', 'sass'),
@@ -39,21 +51,25 @@ PRONOUNCE = [
     (r'\b([A-Z][A-Za-z]*)\.js\b', r'\1 J S'),
     (r'\bCI/CD\b', 'C I C D'),
     (r'\.env\b', 'dot env'),
-    (r'\be\.g\.', 'for example'),
-    (r'\bi\.e\.', 'that is'),
-    (r'\bvs\.?(?=\s)', 'versus'),
     (r'\bVercel\b', 'ver sell'),
     (r'\bRedis\b', 'red iss'),
     (r'\bVite\b', 'veet'),
     (r'\bLinkedIn\b', 'Linked In'),
     (r'\b([A-Z]{2,5})s\b', lambda m: spell(m.group(1)[:-1]) + ' ' + PLURAL_LETTER[m.group(1)[-1]]),
     (r'\b(CLI|UX|IDE|ROI|SEO)\b', lambda m: spell(m.group(1))),
+    (r'\bog\b', 'O G'),
+]
+
+# Written forms every voice reads badly: numbers, prices and symbols.
+COMMON_RULES = [
+    (r'\be\.g\.', 'for example'),
+    (r'\bi\.e\.', 'that is'),
+    (r'\bvs\.?(?=\s)', 'versus'),
     (r'&', ' and '),
     (r'\b(\d+)\.(\d+)\.(\d+)\b', r'\1 point \2 point \3'),
     (r'\b(\d+)\.x\b', r'\1 point x'),
     (r'\$0\.(\d\d)\b', lambda m: f'{int(m.group(1))} cents'),
     (r'\band/or\b', 'and or'),
-    (r'\bog\b', 'O G'),
     (r'(?<=\w)@(?=\w)', ' at '),
     (r'(?<=\w)/(?=\w)', ' slash '),
     (r'\$(\d+(?:\.\d+)?)([KMB]?)\b', lambda m: m.group(1) + {'K': ' thousand', 'M': ' million', 'B': ' billion', '': ''}[m.group(2)] + ' dollars'),
@@ -65,29 +81,46 @@ PRONOUNCE = [
     (r'(\d)%', r'\1 percent'),
 ]
 
+RULES = {'kokoro': KOKORO_RULES + COMMON_RULES, 'fish': COMMON_RULES}
+
 
 LEXICON = render.ROOT / 'pronounce.json'
 WHISPER_MODEL = 'small.en'
 RESPELL_TRIES = 3
+FINAL_TAKES = 3
+EVERYDAY = set('''a an the in on at to of for and or but is are was be it its your you we they this that with
+from by as not no so if then than too very just can do does did has have had will would should could file
+files app apps data code server'''.split())
 NUMBER_WORDS = set('''zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen
 sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million
 billion point percent dollars dollar cents x'''.split())
 
 
 def lexicon():
-    """Respellings learned by the listen-back check, e.g. {"Supabase": "Soopa base"}."""
-    return json.loads(LEXICON.read_text()) if LEXICON.exists() else {}
+    """Respellings learned by the listen-back check, per engine: {"fish": {"Supabase": "Soopa base"}}."""
+    data = json.loads(LEXICON.read_text()) if LEXICON.exists() else {}
+    if data and all(isinstance(v, str) for v in data.values()):
+        data = {'kokoro': data}
+    return data
+
+
+# Delivery cues for Fish: "[grinning, punchy]" directions and "(break)"-style sounds. Never spoken as words.
+CUE = re.compile(r'\[[^\]]*\]|\((?:break|long-break|breath|laugh|cough|sigh|lip-smacking)\)')
+
+
+def strip_cues(text):
+    return re.sub(r'\s+', ' ', CUE.sub(' ', text)).strip()
 
 
 def plain(text):
     return text.replace('*', '')
 
 
-def speakable(text, extra=None):
-    text = plain(text)
-    for word, spoken in {**lexicon(), **(extra or {})}.items():
+def speakable(text, extra=None, engine='kokoro'):
+    text = plain(text) if engine == 'fish' else strip_cues(plain(text))
+    for word, spoken in {**lexicon().get(engine, {}), **(extra or {})}.items():
         text = re.sub(rf'(?<![\w.]){re.escape(word)}(?![\w])', spoken, text)
-    for pattern, repl in PRONOUNCE:
+    for pattern, repl in RULES[engine]:
         text = re.sub(pattern, repl, text)
     return re.sub(r'\s+', ' ', text).strip()
 
@@ -113,17 +146,65 @@ def ensure_model():
             urllib.request.urlretrieve(MODEL_URL.format(name), path)
 
 
-class Engine:
-    def __init__(self, voice=DEFAULT_VOICE, speed=1.05):
-        from kokoro_onnx import Kokoro
+def resample(samples, sr):
+    n = int(len(samples) * render.SR / sr)
+    return np.interp(np.linspace(0, len(samples) - 1, n), np.arange(len(samples)), samples)
+
+
+def shift_pitch(clip, semitones):
+    if not semitones:
+        return clip
+    from pedalboard import Pedalboard, PitchShift
+    return Pedalboard([PitchShift(semitones=semitones)])(clip.astype(np.float32), render.SR).astype(np.float64)
+
+
+class Kokoro:
+    key = 'kokoro'
+
+    def __init__(self, voice=None, speed=1.05, pitch=0.0):
+        from kokoro_onnx import Kokoro as Model
         ensure_model()
-        self.tts = Kokoro(str(MODEL_DIR / MODEL_FILES[0]), str(MODEL_DIR / MODEL_FILES[1]))
-        self.voice, self.speed = voice, speed
+        self.tts = Model(str(MODEL_DIR / MODEL_FILES[0]), str(MODEL_DIR / MODEL_FILES[1]))
+        self.voice, self.speed, self.pitch = voice or DEFAULT_VOICE, speed, pitch
 
     def say(self, text):
         samples, sr = self.tts.create(text, voice=self.voice, speed=self.speed, lang='en-us')
-        n = int(len(samples) * render.SR / sr)
-        return np.interp(np.linspace(0, len(samples) - 1, n), np.arange(len(samples)), samples)
+        return shift_pitch(resample(samples, sr), self.pitch)
+
+
+class Fish:
+    key = 'fish'
+
+    def __init__(self, voice=None, pitch=0.0, speed=1.1):
+        self.token = os.environ['FISH_API_KEY'].strip()
+        self.voice, self.pitch, self.speed = voice or FISH_THATMOB, pitch, speed
+        self.model = os.environ.get('FISH_MODEL', '').strip() or 's2.1-pro-free'
+
+    def say(self, text):
+        import soundfile as sf
+        for attempt in range(4):
+            resp = requests.post('https://api.fish.audio/v1/tts', timeout=120,
+                                 headers={'Authorization': f'Bearer {self.token}', 'model': self.model},
+                                 json={'text': text, 'reference_id': self.voice, 'format': 'wav',
+                                       'sample_rate': render.SR, 'normalize': True,
+                                       'prosody': {'speed': self.speed}})
+            if resp.ok:
+                samples, sr = sf.read(io.BytesIO(resp.content))
+                samples = samples if samples.ndim == 1 else samples.mean(axis=1)
+                return shift_pitch(resample(samples, sr), self.pitch)
+            if resp.status_code not in (429, 500, 502, 503, 504):
+                break
+            time.sleep(5 * (attempt + 1))
+        raise RuntimeError(f'Fish TTS failed: HTTP {resp.status_code} {resp.text[:300].replace(self.token, "***")}')
+
+
+def engine(voice=None):
+    """The configured voice engine. Fish when a key is set, otherwise the free local Kokoro."""
+    name = os.environ.get('VOICE_ENGINE', '').strip().lower() or ('fish' if os.environ.get('FISH_API_KEY') else 'kokoro')
+    pitch = os.environ.get('VOICE_PITCH', '').strip()
+    if name == 'fish':
+        return Fish(voice, **({'pitch': float(pitch)} if pitch else {}))
+    return Kokoro(voice, **({'pitch': float(pitch)} if pitch else {}))
 
 
 # ---------- listen-back check ----------
@@ -132,19 +213,22 @@ _whisper = None
 _written_lower = set()
 
 
-def transcribe(clip):
+def transcribe(clip, words=False):
+    """The transcript, or with words=True a list of (word, start, end) in seconds."""
     global _whisper
     if _whisper is None:
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(WHISPER_MODEL, device='cpu', compute_type='int8',
                                 download_root=str(MODEL_DIR / 'whisper'))
     audio = np.interp(np.arange(0, len(clip), render.SR / 16000), np.arange(len(clip)), clip).astype(np.float32)
-    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5)
+    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words)
+    if words:
+        return [(w.word, w.start, w.end) for s in segments for w in s.words]
     return ' '.join(s.text for s in segments)
 
 
 def tokens(text):
-    return re.sub(r'[^a-z0-9 ]', ' ', plain(text).lower().replace('-', ' ').replace('.', ' ')).split()
+    return re.sub(r'[^a-z0-9 ]', ' ', strip_cues(plain(text)).lower().replace('-', ' ').replace('.', ' ')).split()
 
 
 def misheard(written, heard):
@@ -152,6 +236,7 @@ def misheard(written, heard):
     they are handled by the rules above and transcripts write them in too many ways."""
     a, b = tokens(written), tokens(heard)
     global _written_lower
+    written = strip_cues(written)
     _written_lower = set(re.findall(r'\b[a-z]+\b', plain(written)))
     bad = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
@@ -185,16 +270,21 @@ def closeness(word, line, heard):
     return difflib.SequenceMatcher(None, ''.join(tokens(line)), ''.join(tokens(heard))).ratio()
 
 
-def ask_respellings(words, line):
-    """Phonetic respellings from Claude, best first. Empty when Claude is unavailable."""
+def ask_respellings(words, line, phonemes=False):
+    """Phonetic respellings from Claude, best first. Empty when Claude is unavailable.
+    With phonemes, exact CMU ARPAbet pronunciations come first, wrapped in Fish Audio's phoneme tags."""
     schema = {'type': 'object', 'additionalProperties': False, 'required': ['words'], 'properties': {'words': {
-        'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['word', 'options'],
+        'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
+                                   'required': ['word', 'options', 'arpabet'],
                                    'properties': {'word': {'type': 'string'},
-                                                  'options': {'type': 'array', 'items': {'type': 'string'}}}}}}}
+                                                  'options': {'type': 'array', 'items': {'type': 'string'}},
+                                                  'arpabet': {'type': 'array', 'items': {'type': 'string'}}}}}}}
     prompt = (f'A text-to-speech voice mispronounces these words in the sentence "{line}": {", ".join(words)}.\n'
               f'For each word give {RESPELL_TRIES} respellings, best first, using plain English letters and spaces '
               'so the voice says it the way developers say it out loud (e.g. "Supabase" -> "Soopa base", '
-              '"Nginx" -> "Engine X", ".env" -> "dot E N V"). Keep brand casing where it helps.')
+              '"Nginx" -> "Engine X", ".env" -> "dot E N V"). Keep brand casing where it helps.\n'
+              'Also give up to 2 CMU ARPAbet pronunciations of the whole word as developers say it, with stress '
+              'digits, space separated (e.g. "Supabase" -> "S UW1 P AH0 B EY2 S").')
     try:
         proc = subprocess.run(['claude', '-p', prompt, '--model', 'claude-sonnet-5', '--tools', '',
                                '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
@@ -204,47 +294,126 @@ def ask_respellings(words, line):
     except (OSError, ValueError, subprocess.TimeoutExpired) as e:
         print(f'  warning: could not ask for respellings ({type(e).__name__})')
         return {}
-    got = {w['word'].lower(): w['options'][:RESPELL_TRIES] for w in out.get('words', [])}
+    tag = '<|phoneme_start|>{}<|phoneme_end|>'
+    got = {w['word'].lower(): ([tag.format(p) for p in w.get('arpabet', [])[:2]] if phonemes else [])
+           + w['options'][:RESPELL_TRIES] for w in out.get('words', [])}
     return {w: got.get(w.lower(), []) for w in words}
 
 
-def say_checked(engine, line):
-    """Speak a line, listen back, and respell any word the voice gets wrong. Learned fixes go in pronounce.json."""
-    clip = engine.say(speakable(line))
-    bad = misheard(line, transcribe(clip))
+def learn(engine, line, bad):
+    """Find a respelling or phoneme spelling for each misheard word and save it to pronounce.json."""
+    # Everyday words ("in", "the") only look misheard when the recognizer slips; never learn a fix for them.
+    bad = [w for w in bad if w.lower() not in EVERYDAY]
     if not bad:
-        return clip
-    print(f'  misheard {bad} in: {line}')
-    learned = lexicon()
-    for word, options in ask_respellings(bad, line).items():
-        best, best_score = None, closeness(word, line, transcribe(clip))
-        for option in options:
-            heard = transcribe(engine.say(speakable(line, {word: option})))
+        return
+    everything = lexicon()
+    learned = everything.setdefault(engine.key, {})
+    for word, options in ask_respellings(bad, strip_cues(line), phonemes=engine.key == 'fish').items():
+        best, best_score = None, None
+        for option in [o for o in options if o.strip().lower() != word.lower()]:
+            heard = transcribe(engine.say(speakable(line, {word: option}, engine.key)))
             if word not in misheard(line, heard):
                 print(f'  fixed {word!r} -> {option!r}')
                 learned[word] = option
                 break
-            if closeness(word, line, heard) > best_score:
-                best, best_score = option, closeness(word, line, heard)
+            score = closeness(word, line, heard)
+            if best_score is None or score > best_score:
+                best, best_score = option, score
         else:
             print(f'  warning: no respelling of {word!r} was understood' + (f', using the closest: {best!r}' if best else ''))
             if best:
                 learned[word] = best
-    LEXICON.write_text(json.dumps(dict(sorted(learned.items())), indent=2, ensure_ascii=False) + '\n')
-    # Re-speak with every fix applied together.
-    return engine.say(speakable(line))
+    everything[engine.key] = dict(sorted(learned.items()))
+    LEXICON.write_text(json.dumps(everything, indent=2, ensure_ascii=False) + '\n')
 
 
-def synthesize(lines, voice=DEFAULT_VOICE, speed=1.05, check=True):
-    engine = Engine(voice, speed)
-    return [say_checked(engine, line) if check else engine.say(speakable(line)) for line in lines]
+def say_checked(engine, line):
+    """Speak one line, listen back, fix misheard words, and keep the best of a few takes."""
+    best, best_bad = None, None
+    for take in range(FINAL_TAKES):
+        clip = engine.say(speakable(line, engine=engine.key))
+        bad = misheard(line, transcribe(clip))
+        if best is None or len(bad) < len(best_bad):
+            best, best_bad = clip, bad
+        if not bad:
+            break
+        if take == 0:
+            print(f'  misheard {bad} in: {strip_cues(line)}')
+            learn(engine, line, bad)
+    if best_bad:
+        print(f'  warning: still misheard {best_bad} after {FINAL_TAKES} takes: {strip_cues(line)}')
+    return best
+
+
+class Take(list):
+    """Per-slide clips cut from one continuous recording; render plays them back to back."""
+    continuous = True
+
+
+def split(audio, words, lines):
+    """Cut one recording into per-line clips at the pause before each line's first word."""
+    written = [(t, i) for i, line in enumerate(lines) for t in tokens(line)]
+    heard = [(t, start, end) for w, start, end in words for t in tokens(w)]
+    matcher = difflib.SequenceMatcher(None, [t for t, _ in written], [t for t, *_ in heard], autojunk=False)
+    heard_at = {}
+    for a, b, n in matcher.get_matching_blocks():
+        for k in range(n):
+            heard_at[a + k] = b + k
+    cuts = []
+    for i in range(1, len(lines)):
+        firsts = [k for k, (_, li) in enumerate(written) if li == i and k in heard_at]
+        if not firsts:
+            return None
+        h = heard_at[firsts[0]]
+        if h == 0:
+            return None
+        cuts.append((heard[h - 1][2] + heard[h][1]) / 2)
+    if cuts != sorted(cuts):
+        return None
+    edges = [0] + [int(c * render.SR) for c in cuts] + [len(audio)]
+    return Take(audio[a:b] for a, b in zip(edges, edges[1:]))
+
+
+def say_whole(engine, lines, check=True):
+    """One continuous recording of every line, so the delivery flows instead of restarting per line."""
+    text = ' (break) '.join(l.strip() for l in lines)
+    best, best_bad = None, None
+    for take in range(FINAL_TAKES):
+        audio = engine.say(speakable(text, engine=engine.key))
+        words = transcribe(audio, words=True)
+        bad = misheard(text, ' '.join(w for w, *_ in words)) if check else []
+        clips = split(audio, words, lines)
+        if clips is None:
+            print('  warning: could not line up this take with the script, trying again')
+            continue
+        if best is None or len(bad) < len(best_bad):
+            best, best_bad = clips, bad
+        if not bad:
+            break
+        if take == 0:
+            print(f'  misheard {bad}')
+            for line in lines:
+                learn(engine, line, [w for w in bad if set(tokens(w)) <= set(tokens(line))])
+    if best is None:
+        print('  warning: no take lined up with the script, recording line by line instead')
+        return [say_checked(engine, line) if check else engine.say(speakable(line, engine=engine.key)) for line in lines]
+    if best_bad:
+        print(f'  warning: still misheard {best_bad} after {FINAL_TAKES} takes')
+    return best
+
+
+def synthesize(lines, voice=None, check=True):
+    eng = engine(voice)
+    if eng.key == 'fish':
+        return say_whole(eng, lines, check)
+    return [say_checked(eng, line) if check else eng.say(speakable(line, engine=eng.key)) for line in lines]
 
 
 def main():
     reel = render.load_reel(sys.argv[1])
-    voice = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_VOICE
+    voice = sys.argv[2] if len(sys.argv) > 2 else None
     clips = synthesize(script(reel), voice)
-    out = render.OUT_DIR / f"reel-{reel['id']}-{voice}.mp4"
+    out = render.OUT_DIR / f"reel-{reel['id']}-{voice or 'voice'}.mp4"
     render.render_reel(reel, out, voice=clips)
 
 

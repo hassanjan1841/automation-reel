@@ -38,6 +38,7 @@ WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
 VOICE_LEAD = 0.25
+VOICE_TAIL = 1.2
 MIN_SLIDE, MAX_SLIDE = 3.0, 6.0
 MIN_TOTAL, MAX_TOTAL = 15.0, 25.0
 
@@ -293,7 +294,12 @@ def build_slides(reel, voice=None):
         room = sum(MAX_SLIDE - d for d in durs)
         k = (MIN_TOTAL - total) / room
         durs = [d + (MAX_SLIDE - d) * k for d in durs]
-    if voice:
+    if getattr(voice, 'continuous', False):
+        # One continuous recording: each slide lasts exactly as long as its part of the speech, so the voice never stops.
+        durs = [len(clip) / SR for clip in voice]
+        durs[0] += VOICE_LEAD
+        durs[-1] += VOICE_TAIL
+    elif voice:
         # Speech sets the pace: each slide stays up until its line is finished.
         durs = [max(d, VOICE_LEAD + len(clip) / SR + 0.45 + EXIT) for d, clip in zip(durs, voice)]
 
@@ -453,7 +459,13 @@ def build_audio(slides, path, voice=None):
             place(click_sound(rng), c, click_gain)
     for s in slides[1:]:
         place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
-    if voice:
+    if getattr(voice, 'continuous', False):
+        peak = max(np.max(np.abs(clip)) for clip in voice) or 1.0
+        at = VOICE_LEAD
+        for clip in voice:
+            place(clip / peak, at, 0.9)
+            at += len(clip) / SR
+    elif voice:
         for s, clip in zip(slides, voice):
             place(clip / (np.max(np.abs(clip)) or 1.0), s.start + VOICE_LEAD, 0.9)
 

@@ -7,7 +7,7 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and post from the evergreen queue only
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
-  VOICE                 Kokoro voice for the voiceover (default am_michael), or 'none' for sound effects only
+  VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
 """
 
@@ -160,7 +160,7 @@ def main():
         raise SystemExit('ERROR: no unposted reels left in reels.json. Run generate.py or add reels by hand.')
 
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
-    voice_name = os.environ.get('VOICE', '').strip() or voice.DEFAULT_VOICE
+    voice_name = os.environ.get('VOICE', '').strip() or None
     clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     path, slides = render.render_reel(reel, voice=clips)
     # Cover is the last fully visible frame of the hook slide.

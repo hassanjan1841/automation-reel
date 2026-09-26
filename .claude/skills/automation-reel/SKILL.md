@@ -15,8 +15,9 @@ daily-reel.yml (14:00 UTC)  ->  publish.py
                              pass/fix -> inserted in front of the unposted queue, pillar "timely"
                              any failure or reach < 7 -> fall back
   2. else first reel with posted_at: null
-  3. voice.synthesize()      Kokoro TTS, one clip per voiceover line; each clip is transcribed with Whisper,
-                             misheard words get Claude respellings, fixes saved to pronounce.json
+  3. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
+                             (one clip per line); takes are transcribed with Whisper, misheard words get
+                             Claude respellings or phonemes, fixes saved to pronounce.json per engine
   4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps, 15-25s)
   5. upload to Supabase bucket "reels" (public) -> Instagram REELS container -> poll -> media_publish
   6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
@@ -43,7 +44,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
 | `generate.py` | Evergreen top-up, voiceover backfill, the validator | `validate`, `generate`, `append`, `add_voiceovers`, `SYSTEM`, `SCHEMA`, `PILLARS` |
 | `render.py` | Slides, animation, SFX, ffmpeg | `build_slides`, `render_frames`, `build_audio`, `render_reel` |
-| `voice.py` | Kokoro voiceover + Whisper listen-back | `PRONOUNCE`, `lexicon`, `speakable`, `script`, `synthesize`, `say_checked`, `misheard` |
+| `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
 | `test_voice.py` | Pronunciation regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN` |
 | `pronounce.json` | Learned respellings, word to spoken form | data, written by `say_checked` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
@@ -99,7 +100,7 @@ Rules enforced by `generate.validate` (the single source of truth, also run on C
 - No emojis on slide text; emojis only in the caption.
 - Caption 2-3 non-empty lines; last line contains `?` and ends with 👇.
 - Hooks must be unique after lowercasing and stripping non-alphanumerics (`generate.norm`).
-- Voiceover: exactly 5 non-empty lines, 35 to 70 words in total, line 1 max 14 words, no symbols, `*` or emojis, and no line more than 60% similar to its slide (`generate.similar`). `--check` skips voiceover errors on posted reels, which predate it.
+- Voiceover: exactly 5 non-empty lines, 35 to 70 words in total, line 1 max 14 words, no symbols, `*` or emojis, no line more than 60% similar to its slide (`generate.similar`), and delivery cues per `generate.cue_errors`: every line starts with a `[cue]`, a fresh cue at least every 10 spoken words, a high-energy cue on the hook, at most one low-energy cue, at least 5 different cues. `--check` skips voiceover errors on posted reels, which predate it.
 
 Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats. The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
 
@@ -109,11 +110,11 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 
 **Add a reel by hand**: append with the next `id`, `posted_at`/`media_id` null, then `generate.py --voiceover` if you did not write the voiceover, `generate.py --check` and `voice.py <id>`. Move it up the list to post sooner (order of unposted entries is the posting order).
 
-**A word is mispronounced**: the listen-back check usually fixes it on its own and records it in `pronounce.json` (applied before `PRONOUNCE`). If a learned respelling sounds wrong, edit or delete it there. For patterns (numbers, acronyms, symbols) add a `(regex, respelling)` tuple to `voice.PRONOUNCE`; order matters, specific terms go before the generic acronym/plural rules. Add a case to `test_voice.SPEAKABLE` or `SENTENCES`, then run `test_voice.py --audio`.
+**A word is mispronounced**: the listen-back check usually fixes it on its own and records it in `pronounce.json` (keyed by engine, applied before the rules). If a learned respelling sounds wrong, edit or delete it there. For patterns (numbers, acronyms, symbols) add a `(regex, respelling)` tuple to `voice.COMMON_RULES` (every engine) or `voice.KOKORO_RULES`; order matters, specific terms go before the generic acronym/plural rules. Add a case to `test_voice.SPEAKABLE` or `SENTENCES`, then run `test_voice.py --audio`.
 
 **Change the look**: `render.THEMES` for colors, layout constants at the top of `render.py`. Keep text inside the Instagram safe zone (`SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`). Slide timing is driven by word count, clamped to 3-6s per slide and 15-25s total, then stretched to fit the voice.
 
-**Change the voice**: repo variable `VOICE` (any Kokoro voice, or `none` for SFX only).
+**Change the voice**: repo variable `VOICE` (a Fish voice id, a Kokoro voice, or `none` for SFX only); `VOICE_ENGINE` forces `fish` or `kokoro`. Fish needs the secret `FISH_API_KEY` and falls back to Kokoro without it. `FISH_MODEL` defaults to `s2.1-pro-free` (free until 2026-11-30). `VOICE_PITCH` exists but shifted voices sound robotic; pick a different voice instead.
 
 **Post only from the queue**: repo variable `TRENDING=off`.
 
@@ -124,7 +125,7 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `VOICE`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_API_KEY`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
