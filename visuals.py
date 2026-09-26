@@ -124,6 +124,42 @@ def tilted(rgb, mask, rx, ry, focal=1700.0):
     return out[..., :3], out[..., 3] / 255.0
 
 
+def sketch_ellipse(rect, seed, loops=1.15, wobble=6.0, n=160):
+    """Points of a hand-drawn loop around rect (x0, y0, x1, y1): slightly irregular, overshooting its start."""
+    rng = np.random.default_rng(seed)
+    x0, y0, x1, y1 = rect
+    cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2 + 26, (y1 - y0) / 2 + 18
+    phase = rng.uniform(0, 2 * math.pi)
+    k1, k2 = rng.uniform(-1, 1, 2)
+    pts = []
+    for i in range(n):
+        a = -2.4 + 2 * math.pi * loops * i / (n - 1)
+        r = 1 + 0.04 * math.sin(3 * a + phase) + 0.025 * math.sin(5 * a + 1.3 * phase)
+        pts.append((cx + rx * r * math.cos(a) + k1 * wobble * i / n, cy + ry * r * math.sin(a) + k2 * wobble * i / n))
+    return pts
+
+
+def sketch_underline(x0, x1, y, seed, n=60):
+    """A hand-drawn underline: a slight arc with a little wobble."""
+    rng = np.random.default_rng(seed)
+    tilt, bow = rng.uniform(-4, 4), rng.uniform(3, 8)
+    return [(x0 + (x1 - x0) * i / (n - 1), y + tilt * (i / (n - 1) - 0.5) - bow * math.sin(math.pi * i / (n - 1))
+             + 1.2 * math.sin(i * 0.9)) for i in range(n)]
+
+
+def stroke(rgb, pts, p, color, width=6):
+    """Draw the first fraction p of a path onto rgb (float array) in color, as if drawn with a marker."""
+    if p <= 0:
+        return
+    k = max(2, int(len(pts) * min(1.0, p)))
+    h, w = rgb.shape[:2]
+    ss = 2
+    img = Image.new('L', (w * ss, h * ss), 0)
+    ImageDraw.Draw(img).line([(x * ss, y * ss) for x, y in pts[:k]], fill=255, width=width * ss, joint='curve')
+    m = np.asarray(img.resize((w, h), Image.BILINEAR), dtype=np.float32)[..., None] / 255.0
+    rgb += (np.asarray(color, dtype=np.float32) - rgb) * m
+
+
 class Card:
     """A floating card: two-layer shadow, a 3D tilt entrance that settles flat, and per-frame content from
     layer(t) -> (rgb, mask). Subclasses fill self.sounds with (t, kind) for the sound track."""
@@ -150,12 +186,26 @@ class Card:
         for m, ox, oy, a in self.shadows:
             render.composite(frame, render.El(m, SHADOW, 0, 0, 0), alpha * a * (0.4 + 0.6 * p), self.x + ox,
                              self.y + dy + oy)
+        s = (t - self.SHEEN_AT) / self.SHEEN
+        if 0 < s < 1:
+            rgb = rgb + self.sheen(s)
         render.blend(frame, rgb, mask, alpha, self.x, self.y + dy)
+
+    SHEEN_AT, SHEEN = 0.55, 0.9
+
+    def sheen(self, s):
+        """A soft diagonal band of light that sweeps across the card once after it lands."""
+        if not hasattr(self, '_diag'):
+            yy, xx = np.mgrid[0:self.h, 0:self.w].astype(np.float32)
+            self._diag = (xx + yy * 0.6) / (self.w + self.h * 0.6)
+        centre = -0.2 + 1.4 * render.ease_out(s)
+        band = np.exp(-((self._diag - centre) / 0.06) ** 2) * 38 * math.sin(math.pi * s)
+        return band[..., None]
 
 
 # ---------- code ----------
 
-def code_image(code, language, title, w, max_h, marks=None):
+def code_image(code, language, title, w, max_h, marks=None, with_char_w=False):
     """A syntax-highlighted editor window. marks: {line index: (color, strike)} tints whole lines.
     Returns (image, row bands) or raises when the code cannot be read at a comfortable size."""
     from pygments import lex
@@ -196,20 +246,31 @@ def code_image(code, language, title, w, max_h, marks=None):
         if strike:
             y = (rows[i][0] + rows[i][1]) // 2
             d.line((56, y, 56 + f.getlength(lines[i]), y), fill=hex_rgb(color) + (230,), width=4)
-    return img, rows
+    return (img, rows, f.getlength('M')) if with_char_w else (img, rows)
 
 
 class Code(Card):
     """Lines appear one by one; the lines that carry the point get a soft highlight bar after."""
     STEP, START = 0.12, 0.3
 
-    def __init__(self, visual, box):
+    def __init__(self, visual, box, accent):
         box = widen(box)
-        img, self.rows = code_image(visual['code'], visual.get('language'), visual.get('title', ''), box[2], box[3])
+        img, self.rows, self.char_w = code_image(visual['code'], visual.get('language'), visual.get('title', ''),
+                                                 box[2], box[3], with_char_w=True)
         super().__init__(box[0], box[1] + (box[3] - img.height) // 2, img.width, img.height)
         self.img = np.asarray(img, dtype=np.float32)
         self.highlights = [i - 1 for i in visual.get('highlight', []) if 1 <= i <= len(self.rows)]
         self.sounds = [(self.START + self.STEP * i, 'tick') for i in range(len(self.rows))]
+        self.accent = accent
+        if self.highlights:
+            i = self.highlights[0]
+            line = visual['code'].rstrip('\n').split('\n')[i]
+            indent = len(line) - len(line.lstrip())
+            x0 = 56 + self.char_w * indent
+            x1 = min(self.w - 40, 56 + self.char_w * len(line.rstrip()))
+            self.circle = sketch_ellipse((x0, self.rows[i][0] + 4, x1, self.rows[i][1] - 4), seed=i + 7)
+            done = self.START + self.STEP * len(self.rows) + 0.45
+            self.sounds.append((done, 'scribble'))
 
     def layer(self, t):
         # The card is always full size (its shadow belongs to all of it); lines not typed yet are blank.
@@ -219,12 +280,15 @@ class Code(Card):
         if shown < len(self.rows):
             rgb = rgb.copy()
             rgb[self.rows[max(shown, 0)][0]:self.rows[-1][1]] = BG
-        p = render.ease_out(min(1.0, max(0.0, (t - self.START - self.STEP * len(self.rows) - 0.2) / 0.4)))
+        done = self.START + self.STEP * len(self.rows) + 0.2
+        p = render.ease_out(min(1.0, max(0.0, (t - done) / 0.4)))
         if p > 0 and self.highlights:
             rgb = rgb.copy()
             for i in self.highlights:
                 y0, y1 = self.rows[i]
                 rgb[y0:y1, 4:-4] += (255 - rgb[y0:y1, 4:-4]) * 0.08 * p
+            # The first highlighted line gets circled by hand.
+            stroke(rgb, self.circle, (t - done - 0.25) / 0.55, self.accent, 5)
         return rgb, mask
 
 
@@ -624,7 +688,9 @@ class Screenshot(Card):
         self.target = (min((fx0 + fx1) / 2, w - 80), (fy0 + fy1) / 2 - self.end_top + bar)
         self.cursor = cursor_mask()
         self.arrive = 0.3 + self.SECONDS * 0.7 + 0.2
-        self.sounds = [(0.35, 'swish'), (self.arrive + 0.45, 'click')]
+        self.sounds = [(0.35, 'swish'), (self.arrive + 0.45, 'click'), (self.arrive + 0.8, 'scribble')]
+        top = self.end_top - bar
+        self.loop = sketch_ellipse((max(fx0, 20), fy0 - top, min(fx1, w - 20), fy1 - top), seed=3)
 
     def layer(self, t):
         p = min(1.0, max(0.0, (t - 0.3) / self.SECONDS))
@@ -639,6 +705,7 @@ class Screenshot(Card):
         view += (self.accent - view) * ring * s
         rgb = self.chrome.copy()
         rgb[self.bar:self.bar + len(view), :] = view
+        stroke(rgb, self.loop, (t - self.arrive - 0.75) / 0.6, self.accent, 6)
         self.draw_cursor(rgb, t)
         return rgb, self.mask
 
@@ -680,7 +747,7 @@ def build(visual, theme, box):
     kind = (visual or {}).get('type')
     try:
         if kind == 'code':
-            return Code(visual, box)
+            return Code(visual, box, render.rgb(theme['accent']))
         if kind == 'diff':
             return Diff(visual, box, theme)
         if kind == 'terminal':

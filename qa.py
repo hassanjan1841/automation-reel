@@ -60,8 +60,11 @@ def review(video, reel, slides, voiceover=None):
             visual = slides[i].visual.spec if slides[i].visual else None
             meant = ''
             if visual:
-                meant = {'code': 'a code window', 'terminal': 'a terminal'}.get(visual['type'], 'a screenshot of '
-                        + visual.get('url', '') + ' with "' + visual.get('find', '') + '" outlined')
+                meant = {'code': 'a code window', 'terminal': 'a terminal typing commands',
+                         'diff': 'code before and after (removed lines red, added lines green)',
+                         'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat',
+                         }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
+                               + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
                          f'  visual: {meant or "none"}')
         prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines)
