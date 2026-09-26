@@ -478,13 +478,6 @@ def load_reel(reel_id):
     raise SystemExit(f'No reel with id {reel_id} in reels.json')
 
 
-def hook_end_ms(reel):
-    """Last fully visible hook frame, used as the Instagram cover (thumb_offset)."""
-    ensure_fonts()
-    slides, _ = build_slides(reel)
-    return int((slides[0].end - EXIT - 0.05) * 1000)
-
-
 def render_reel(reel, out_path=None, voice=None):
     ensure_fonts()
     OUT_DIR.mkdir(exist_ok=True)

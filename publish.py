@@ -6,6 +6,7 @@ Env:
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and post from the evergreen queue only
+  CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE                 Kokoro voice for the voiceover (default am_michael), or 'none' for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
 """
@@ -162,6 +163,7 @@ def main():
     voice_name = os.environ.get('VOICE', '').strip() or voice.DEFAULT_VOICE
     clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     path, slides = render.render_reel(reel, voice=clips)
+    # Cover is the last fully visible frame of the hook slide.
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
     caption = f"{reel['caption'].strip()}\n\n{' '.join(reel['hashtags'])}"
 
