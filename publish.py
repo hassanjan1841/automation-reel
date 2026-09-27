@@ -78,14 +78,34 @@ def storage_headers(key):
     return {'apikey': key, 'Authorization': f'Bearer {key}'}
 
 
+def allow_type(content_type):
+    """Add a MIME type to the bucket's allowed list (it was created for videos only)."""
+    base, key = env('SUPABASE_URL').rstrip('/'), env('SUPABASE_SERVICE_KEY')
+    bucket = check(requests.get(f'{base}/storage/v1/bucket/{BUCKET}', headers=storage_headers(key), timeout=30),
+                   'read bucket settings')
+    allowed = bucket.get('allowed_mime_types')
+    if not allowed or content_type in allowed:
+        return
+    check(requests.put(f'{base}/storage/v1/bucket/{BUCKET}', headers=storage_headers(key), timeout=30,
+                       json={'public': bucket.get('public', True), 'allowed_mime_types': allowed + [content_type],
+                             'file_size_limit': bucket.get('file_size_limit')}), 'update bucket settings')
+    print(f'Bucket now also accepts {content_type}')
+
+
 def upload(path, name, content_type='video/mp4'):
     base, key = env('SUPABASE_URL').rstrip('/'), env('SUPABASE_SERVICE_KEY')
-    with open(path, 'rb') as f:
-        resp = requests.post(
-            f'{base}/storage/v1/object/{BUCKET}/{name}',
-            headers={**storage_headers(key), 'Content-Type': content_type, 'x-upsert': 'true'},
-            data=f, timeout=300,
-        )
+
+    def send():
+        with open(path, 'rb') as f:
+            return requests.post(
+                f'{base}/storage/v1/object/{BUCKET}/{name}',
+                headers={**storage_headers(key), 'Content-Type': content_type, 'x-upsert': 'true'},
+                data=f, timeout=300,
+            )
+    resp = send()
+    if not resp.ok and 'invalid_mime_type' in resp.text:
+        allow_type(content_type)
+        resp = send()
     check(resp, 'Supabase upload')
     url = f'{base}/storage/v1/object/public/{BUCKET}/{name}'
     head = requests.head(url, timeout=30)
@@ -261,7 +281,13 @@ def main():
     try:
         url = upload(path, name)
         print(f'Uploaded to {url}')
-        cover_url = upload(cover, cover_name, 'image/jpeg') if cover_name else None
+        cover_url = None
+        if cover_name:
+            try:
+                cover_url = upload(cover, cover_name, 'image/jpeg')
+            except PublishError:  # a missing cover never blocks the post; the thumb_offset frame is used instead
+                print('Cover upload failed; posting with the video frame as the cover')
+                cover_name = None
         media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
     except PublishError as e:
         raise SystemExit(f'Publish failed: {e}')
