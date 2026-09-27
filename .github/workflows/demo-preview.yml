@@ -44,6 +44,9 @@ jobs:
         run: python demos.py record "$SPEC" ${{ inputs.size }}
 
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: demo
-          path: out/clips/*.mp4
+          path: |
+            out/clips/*.mp4
+            out/clips/debug-*

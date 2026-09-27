@@ -448,6 +448,19 @@ def tidy_ide(page):
     page.keyboard.press('Escape')
 
 
+def debug(page, name):
+    """Save what the page looked like when a step failed: a screenshot, visible text and the focused element."""
+    CLIPS.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(CLIPS / f'debug-{name}.png'))
+    info = page.evaluate('''() => ({
+        focus: document.activeElement && (document.activeElement.className || document.activeElement.tagName),
+        terminals: document.querySelectorAll('.terminal-wrapper').length,
+        rows: [...document.querySelectorAll('.xterm-rows')].map(r => r.innerText.slice(0, 300)),
+    })''')
+    (CLIPS / f'debug-{name}.json').write_text(json.dumps(info, indent=1))
+    print('debug:', json.dumps(info)[:600])
+
+
 def palette(page, text):
     page.keyboard.press(f'{MOD}+Shift+P')
     page.wait_for_timeout(300)
@@ -500,6 +513,7 @@ def ide_step(page, step):
         page.keyboard.press('Enter')
         page.wait_for_timeout(500)
         if not rows.count() or step['command'].split()[0] not in rows.inner_text(timeout=5000):
+            debug(page, 'terminal')
             raise RuntimeError('the command did not reach the terminal')
         deadline = time.time() + float(step.get('timeout', 25))
         while time.time() < deadline:
