@@ -133,6 +133,8 @@ IDE_SETTINGS = {
     'chat.disableAIFeatures': True, 'workbench.secondarySideBar.defaultVisibility': 'hidden',
     'workbench.welcomePage.walkthroughs.openOnInstall': False, 'workbench.editor.empty.hint': 'hidden',
     'editor.wordWrap': 'on', 'editor.scrollBeyondLastLine': False, 'workbench.panel.defaultLocation': 'bottom',
+    # The DOM renderer keeps terminal text in the page, so we can wait for output and check what was typed.
+    'terminal.integrated.gpuAcceleration': 'off',
 }
 
 
@@ -220,7 +222,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 11}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 12}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -484,20 +486,25 @@ def ide_step(page, step):
         # Type only once the shell has printed its prompt, or the first keys are lost.
         rows = page.locator('.xterm-rows').last
         for _ in range(40):
-            if '$' in (rows.inner_text() if rows.count() else ''):
+            if rows.count() and '$' in rows.inner_text(timeout=2000):
                 break
             page.wait_for_timeout(250)
-        # A freshly created terminal does not keep focus; focus it again now that it exists.
+        # A freshly created terminal does not keep focus; focus it again now that it exists, and click into it.
         palette(page, 'Terminal: Focus Terminal')
         page.wait_for_timeout(600)
+        term = page.locator('.terminal-wrapper .xterm').last
+        if term.count():
+            term.click()
+            page.wait_for_timeout(300)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
-        if step['command'].split()[0] not in rows.inner_text():
+        page.wait_for_timeout(500)
+        if not rows.count() or step['command'].split()[0] not in rows.inner_text(timeout=5000):
             raise RuntimeError('the command did not reach the terminal')
         deadline = time.time() + float(step.get('timeout', 25))
         while time.time() < deadline:
             page.wait_for_timeout(500)
-            if step.get('wait') and page.locator('.xterm-rows').filter(has_text=__import__('re').compile(step['wait'])).count():
+            if step.get('wait') and rows.count() and __import__('re').search(step['wait'], rows.inner_text(timeout=2000)):
                 break
     elif kind == 'save':
         page.keyboard.press(f'{MOD}+s')
