@@ -221,7 +221,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 13}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 14}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -292,6 +292,7 @@ def web_step(page, step, height):
 REEL_SHELL = r'''#!/bin/bash
 Q="$1"
 cd "$2"
+stty -echo 2>/dev/null
 printf '$ '
 n=0
 while true; do
@@ -346,7 +347,10 @@ def start_ide(workspace, port):
     (data / 'data' / 'Machine' / 'settings.json').write_text(json.dumps(settings))
     # PATH is kept (it is not secret and finds node/npx); every token and key is left out.
     clean = {'PATH': os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin'), 'HOME': str(data),
-             'TERM': 'xterm-256color', 'LANG': 'C.UTF-8'}
+             'TERM': 'xterm-256color', 'LANG': 'C.UTF-8',
+             # npm's update and funding notices would push the real output off screen.
+             'NPM_CONFIG_UPDATE_NOTIFIER': 'false', 'NPM_CONFIG_FUND': 'false', 'NPM_CONFIG_AUDIT': 'false',
+             'NPM_CONFIG_LOGLEVEL': 'error', 'NO_UPDATE_NOTIFIER': '1'}
     if platform.system() == 'Linux':
         server = ensure_ovs()
         return subprocess.Popen([str(server), '--host', '127.0.0.1', '--port', str(port), '--without-connection-token',
