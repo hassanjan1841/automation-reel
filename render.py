@@ -615,25 +615,59 @@ class Captions:
                 return
 
 
+def speech_beats(slides, voice):
+    """When each spoken sentence starts, in reel time: the camera punches on these instead of on a timer, so the
+    picture moves with what is being said. Empty without word timings."""
+    if not getattr(voice, 'words', None):
+        return []
+    beats, at, prev = [], VOICE_LEAD, None
+    for i, (s, ws) in enumerate(zip(slides, voice.words)):
+        off = at if voice.continuous else s.start + VOICE_LEAD
+        for w, a, b in ws:
+            if prev is None or prev[0][-1:] in '.!?' or a + off - prev[2] > 0.35:
+                beats.append(a + off)
+            prev = (w, a + off, b + off)
+        at += len(voice[i]) / SR
+    return beats
+
+
 class Camera:
     """Moves the slide content like a filmed shot so nothing is ever frozen: a slow breathing zoom and drift,
-    a zoom punch at every slide change and at least every PUNCH_EVERY seconds (varied strength, so the rhythm
-    never feels mechanical), a short shake on the hook and the call to action, and a zoom-out reveal at frame 0.
+    a zoom punch at every slide change and on every spoken sentence (or every PUNCH_EVERY seconds without a
+    voice; varied strength, so the rhythm never feels mechanical), a focus push into each point's visual (show,
+    focus, release: something changes every one to two seconds), a short shake on the hook and the call to
+    action, and a zoom-out reveal at frame 0.
     Chrome (progress bars, kicker) and captions are drawn after the camera, so they stay put like real UI."""
     BASE = 1.018              # slight overscan so drift and shake never show an edge
     PUNCH_EVERY = 2.6
     PUNCH_UP, PUNCH_DOWN = 0.07, 0.24
 
-    def __init__(self, slides, seed=11):
+    FOCUS = 0.1               # extra zoom while pushed into a visual
+
+    def __init__(self, slides, seed=11, beats=()):
         rng = np.random.default_rng(seed)
         self.punches = []
         for i, s in enumerate(slides):
             if i:
                 self.punches.append((s.start, 0.06 + rng.uniform(0, 0.025)))
-            t = s.start + self.PUNCH_EVERY
-            while t < s.end - 0.8:
-                self.punches.append((t, 0.025 + rng.uniform(0, 0.02)))
-                t += self.PUNCH_EVERY * rng.uniform(0.8, 1.0)
+            mine = [b for b in beats if s.start + 0.8 < b < s.end - 0.8]
+            if not beats:
+                t = s.start + self.PUNCH_EVERY
+                while t < s.end - 0.8:
+                    mine.append(t)
+                    t += self.PUNCH_EVERY * rng.uniform(0.8, 1.0)
+            last = s.start
+            for t in mine:
+                if t - last >= 1.2:  # sentence starts closer than this would make it jitter
+                    self.punches.append((t, 0.025 + rng.uniform(0, 0.02)))
+                    last = t
+        # Push into each point's visual partway through, hold, and ease back before the slide ends.
+        self.focuses = []
+        for s in slides:
+            v = s.visual
+            if s.kind == 'point' and v is not None and s.end - s.start >= 3.0:
+                d = s.end - s.start
+                self.focuses.append((s.start + 0.4 * d, s.end - 0.8, v.x + v.w / 2, v.y + v.h / 2))
         # Shake when the hook has landed and when the call to action appears.
         self.shakes = [(0.45, 7.0), (slides[-1].start + 0.1, 6.0)]
         self.jitter = rng.uniform(-1, 1, (4096, 2))
@@ -648,12 +682,23 @@ class Camera:
                 amount += strength * (1 - ease_out((d - self.PUNCH_UP) / self.PUNCH_DOWN))
         return amount
 
+    def focus(self, t):
+        """(zoom, focus x, focus y) of a push into a visual at time t."""
+        for start, end, fx, fy in self.focuses:
+            if start <= t < end + 0.5:
+                k = ease_out(min(1.0, (t - start) / 0.6)) * (1 - ease_in(min(1.0, max(0.0, (t - end) / 0.5))))
+                return self.FOCUS * k, fx, fy
+        return 0.0, W / 2, H / 2
+
     def params(self, t):
         breathe = 0.009 * (0.5 - 0.5 * math.cos(2 * math.pi * t / 3.1))
         reveal = 0.1 * (1 - ease_out(min(1.0, t / 0.6)))
-        scale = self.BASE + breathe + reveal + self.punch(t)
-        dx = 2.2 * math.sin(2 * math.pi * t / 5.3)
-        dy = 1.8 * math.sin(2 * math.pi * t / 6.7 + 1.0)
+        push, fx, fy = self.focus(t)
+        scale = self.BASE + breathe + reveal + self.punch(t) + push
+        # Zoom about the visual, drifting it a little toward the centre, instead of about the frame centre.
+        k = push / self.FOCUS if self.FOCUS else 0
+        dx = 2.2 * math.sin(2 * math.pi * t / 5.3) + (fx - W / 2) * (1 - scale) * k + (W / 2 - fx) * 0.25 * k
+        dy = 1.8 * math.sin(2 * math.pi * t / 6.7 + 1.0) + (fy - H / 2) * (1 - scale) * k + (H / 2 - fy) * 0.25 * k
         for at, amp in self.shakes:
             d = t - at
             if 0 <= d < 0.16:
@@ -721,14 +766,14 @@ def build_chrome(reel, theme, n_slides):
     return bars, bar_mask, statics
 
 
-def render_frames(reel, slides, theme, pipe, captions=None):
+def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
     bg = make_background(theme)
     bars, bar_mask, statics = build_chrome(reel, theme, len(slides))
     ink = rgb(theme['ink'])
     total = slides[-1].end
     n = round(total * FPS)
     track = El(bar_mask, ink, 0, 0, 0)
-    camera = Camera(slides)
+    camera = Camera(slides, beats=speech_beats(slides, voice))
     vignette, grain = finishing(theme)
     for f in range(n):
         t = f / FPS
@@ -867,7 +912,7 @@ def build_audio(slides, path, voice=None):
         place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
     kit = sound_kit(rng)
     # The camera's own moves: a breath of air on mid-slide punches (slide changes already whoosh), a thud on shakes.
-    camera = Camera(slides)
+    camera = Camera(slides, beats=speech_beats(slides, voice))
     starts = {round(s.start, 3) for s in slides}
     for at, _ in camera.punches:
         if round(at, 3) not in starts:
@@ -956,7 +1001,7 @@ def render_reel(reel, out_path=None, voice=None):
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         try:
             captions = Captions(voice, slides, theme) if getattr(voice, 'words', None) else None
-            render_frames(reel, slides, theme, proc.stdin, captions)
+            render_frames(reel, slides, theme, proc.stdin, captions, voice)
         finally:
             proc.stdin.close()
         if proc.wait() != 0:
