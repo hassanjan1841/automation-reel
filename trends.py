@@ -256,6 +256,13 @@ How to choose:
 - Skip gossip, funding rounds, lawsuits, politics and drama unless they change how developers work.
 - Do not repeat a topic that was already posted recently.
 
+Real voices (only when allowed this week, see the prompt):
+- When a story is about how developers are reacting to or using something, up to 2 points may show a real
+  public post as a "quote" visual: author, handle, platform (X, Hacker News, GitHub, Bluesky, Threads,
+  LinkedIn, Mastodon, YouTube or Blog), its url, and the text copied exactly (shorten only with "..." at
+  the ends, never change words). Pick posts from developers, founders and companies; never mock a private
+  person. The voiceover adds the creator's own take on each; a reel is never just a list of quotes.
+
 Verification is mandatory:
 - Use WebSearch and WebFetch to read the primary source (official blog, docs, changelog or repo) before writing.
 - Every fact on the slides must be supported by a page you fetched. Put those URLs in "sources", primary source first.
@@ -285,13 +292,23 @@ def claude(prompt, system, schema, model=None):
     return result['structured_output']
 
 
+def quotes_allowed(reels, days=6):
+    """Real posts at most once a week: Instagram reduces reach for accounts that repost others often."""
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    return not any(r.get('posted_at') and datetime.fromisoformat(r['posted_at']) > since
+                   and any(v.get('type') == 'quote' for p in r['points'] for v in p.get('visual') or [])
+                   for r in reels)
+
+
 def pick(reels, candidates, perf, model=None):
     recent = [r['hook'] for r in reels if r.get('posted_at')][-30:]
     lines = [f"- [{c['source']}] {c['title']} | {c['url']} | {c['signal']} {age_label(c['when'])}".strip()
              for c in candidates]
     prompt = (
-        f"Today is {datetime.now(timezone.utc):%A %d %B %Y}.\n\n"
-        f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
+        f"Today is {datetime.now(timezone.utc):%A %d %B %Y}.\n"
+        + ('Quote visuals of real posts are allowed today.\n\n' if quotes_allowed(reels)
+           else 'Quote visuals are NOT allowed today (one was used this week).\n\n')
+        + f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
         + ('\n\nRules learned from this account\'s own results:\n' + generate.learned() if generate.learned() else '')
@@ -321,6 +338,8 @@ slides, in the voiceover and in the caption: names, versions, numbers, dates, pr
 - A claim that something is still broken, unfixed, ongoing, "no fix yet" or "right now" must be confirmed as
   still true today from a current source; if a later fix or change exists, the reel must say so (fix) or,
   if the whole point no longer holds, reject.
+- Quote visuals: open each url and confirm the text is the author's exact words and the author, handle and
+  platform are right. Fix a small copying error; reject the reel if a quote cannot be found or is misattributed.
 - Describe what happened, not motives: words like "hid", "secretly", "quietly" or "sneaky" about a real
   company or person are only allowed when a source shows it was deliberate; otherwise reword neutrally (fix).
 - fix: small wording or number errors you can correct from the sources. Return the corrected reel,

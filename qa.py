@@ -70,6 +70,7 @@ def review(video, reel, slides, voiceover=None):
                          'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
                          'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
                          'ide': 'a real VS Code recording typing and running code',
+                         'quote': 'a credited quote of a real public post by ' + visual.get('author', ''),
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'

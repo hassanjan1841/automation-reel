@@ -7,6 +7,8 @@ A point may carry one of:
   {"type": "terminal", "commands": ["npm i drizzle-orm"]}                  typed out with key clicks
   {"type": "tweet", "text": "Junior dev: ... Senior dev: ..."}              a post card in the creator's own name
   {"type": "chat", "messages": [{"from": "client", "text": "..."}, {"from": "me", "text": "..."}]}
+  {"type": "quote", "author": "...", "handle": "@...", "platform": "X", "url": "https://...", "text": "..."}
+                                                                          a real public post, credited, verbatim
   {"type": "walkthrough", ...} or {"type": "ide", ...}   a real screen recording, see demos.py
   {"type": "screenshot", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
    "find": "Enable Row Level Security"}   scrolled to that text, a cursor glides over and clicks it, spotlit
@@ -398,16 +400,17 @@ class Terminal(Card):
 
 # ---------- post card and chat ----------
 
-def avatar(d, x, y, r, accent):
+def avatar(d, x, y, r, accent, initials='HJ'):
+    # Initials, never a photo: no faces in the reels.
     d.ellipse((x, y, x + 2 * r, y + 2 * r), fill=accent)
-    d.text((x + r, y + r), 'HJ', font=render.font('Bold', round(r * 0.8)), fill='#FFFFFF', anchor='mm')
+    d.text((x + r, y + r), initials[:2], font=render.font('Bold', round(r * 0.8)), fill='#FFFFFF', anchor='mm')
 
 
 class Post(Card):
     """A social post card in the creator's own name: avatar, name, handle and the text, lines landing one
     after another. No like or view counts: numbers on it would be invented."""
 
-    def __init__(self, visual, box, theme):
+    def __init__(self, visual, box, theme, author=AUTHOR, handle=AUTHOR_HANDLE, platform='', url=''):
         box = widen(box)
         text = visual['text'].strip()
         dark = theme is render.THEMES['dark']
@@ -436,9 +439,16 @@ class Post(Card):
             raise ValueError('post text is too long for the stage')
         img = Image.new('RGB', (w, h), bg)
         d = ImageDraw.Draw(img)
-        avatar(d, pad, pad, 48, render.THEMES['dark' if dark else 'light']['accent'])
-        d.text((pad + 116, pad + 22), AUTHOR, font=render.font('Bold', 36), fill=ink, anchor='lm')
-        d.text((pad + 116, pad + 70), AUTHOR_HANDLE, font=render.font('Regular', 30), fill=dim, anchor='lm')
+        initials = ''.join(p[0] for p in author.replace('@', '').split()[:2]).upper() or '?'
+        colour = render.THEMES['dark' if dark else 'light']['accent'] if author == AUTHOR else '#5B6474'
+        avatar(d, pad, pad, 48, colour, initials)
+        d.text((pad + 116, pad + 22), author[:28], font=render.font('Bold', 36), fill=ink, anchor='lm')
+        d.text((pad + 116, pad + 70), handle[:34], font=render.font('Regular', 30), fill=dim, anchor='lm')
+        if platform:
+            d.text((w - pad, pad + 22), platform, font=render.font('SemiBold', 28), fill=dim, anchor='rm')
+        if url:
+            host = url.split('//', 1)[-1].split('/', 1)[0].replace('www.', '')
+            d.text((w - pad, h - 22), host, font=render.font('Regular', 24), fill=dim, anchor='rs')
         y0 = pad + 96 + 30
         self.rows = []
         for i, line in enumerate(lines):
@@ -457,6 +467,16 @@ class Post(Card):
         rgb = self.img.copy()
         rgb[self.rows[max(shown, 0)][0]:self.rows[-1][1]] = self.bg
         return rgb, self.mask
+
+
+class Quote(Post):
+    """A real public post by someone else, redrawn as a credited quote card: their name, handle and platform,
+    the text word for word, and where it came from. Initials instead of profile photos."""
+
+    def __init__(self, visual, box, theme):
+        super().__init__({'text': '“' + visual['text'].strip() + '”'}, box, theme,
+                         author=visual.get('author', ''), handle=visual.get('handle', ''),
+                         platform=visual.get('platform', ''), url=visual.get('url', ''))
 
 
 class Chat(Card):
@@ -817,6 +837,8 @@ def build(visual, theme, box):
             return Post(visual, box, theme)
         if kind == 'chat':
             return Chat(visual, box, theme)
+        if kind == 'quote':
+            return Quote(visual, box, theme)
         if kind in ('walkthrough', 'ide'):
             return recorded(visual, box)
         if kind == 'screenshot':

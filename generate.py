@@ -186,11 +186,14 @@ def next_post_dates(reels, count):
     return [first + timedelta(days=queued + i) for i in range(count)]
 
 
+QUOTE_PLATFORMS = ('X', 'Hacker News', 'GitHub', 'Bluesky', 'Threads', 'LinkedIn', 'Mastodon', 'YouTube', 'Blog')
+
 VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
         'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot', 'walkthrough',
-                                            'ide']},
+                                            'ide', 'quote']},
+        'author': {'type': 'string'}, 'handle': {'type': 'string'}, 'platform': {'type': 'string'},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
         'before': {'type': 'string'}, 'after': {'type': 'string'},
@@ -255,6 +258,11 @@ def visual_errors(i, visual):
             cmds = v.get('commands', [])
             if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
                 errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
+        elif kind == 'quote':
+            if not 10 <= len(v.get('text', '')) <= 220 or not v.get('url', '').startswith('https://') \
+                    or not v.get('author') or v.get('platform') not in QUOTE_PLATFORMS:
+                errors.append(f'point {i} quote needs author, platform ({", ".join(QUOTE_PLATFORMS)}), an https url '
+                              'and the exact text (10 to 220 characters)')
         elif kind == 'walkthrough':
             steps = v.get('steps', [])
             if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 4:
@@ -279,8 +287,8 @@ def visual_errors(i, visual):
             if not 3 <= len(v.get('find', '')) <= 80:
                 errors.append(f'point {i} screenshot needs "find": short exact text on that page to outline')
         else:
-            errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough '
-                          'or ide')
+            errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough, '
+                          'ide or quote')
     return errors
 
 

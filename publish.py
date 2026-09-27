@@ -204,6 +204,14 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     return path, slides
 
 
+def credits(reel):
+    """A caption line crediting every real post shown, e.g. 'Quoted: @karpathy on X, pg on Hacker News'."""
+    quoted = [v for p in reel['points'] for v in (p.get('visual') or [])[:1] if v.get('type') == 'quote']
+    if not quoted:
+        return ''
+    return 'Quoted: ' + ', '.join(f"{v.get('handle') or v['author']} on {v['platform']}" for v in quoted) + '\n\n'
+
+
 # ---------- today's reel ----------
 
 def todays_reel(reels):
@@ -269,7 +277,7 @@ def main():
     path, slides = check_visuals(reel, clips, path, slides)
     # Cover is the last fully visible frame of the hook slide.
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
-    caption = f"{reel['caption'].strip()}\n\n{' '.join(reel['hashtags'])}"
+    caption = f"{reel['caption'].strip()}\n\n{credits(reel)}{' '.join(reel['hashtags'])}"
 
     # The exact reel beside the video, so a dry run can be reviewed and then posted as is (add it to reels.json).
     path.with_suffix('.json').write_text(json.dumps({k: v for k, v in reel.items() if k not in ('posted_at', 'media_id')},
