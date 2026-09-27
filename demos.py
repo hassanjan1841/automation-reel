@@ -220,7 +220,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 8}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 9}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -414,10 +414,20 @@ def prime_ide(page):
     page.locator('.monaco-workbench').wait_for(timeout=60000)
     page.wait_for_timeout(2500)
     accept_trust(page)
-    for command in ('View: Close Primary Side Bar', 'View: Close Secondary Side Bar', 'View: Close Panel',
-                    'View: Close All Editors'):
+    for command in ('View: Close Primary Side Bar', 'View: Close Panel', 'View: Close All Editors'):
         palette(page, command)
         page.wait_for_timeout(400)
+    hide_aux_bar(page)
+
+
+def hide_aux_bar(page):
+    """The secondary side bar (empty 'Drag a view here' area) has no reliable command name across versions;
+    toggle it off with its shortcut while it is visible."""
+    for _ in range(2):
+        aux = page.locator('.part.auxiliarybar')
+        if aux.count() and aux.first.is_visible():
+            page.keyboard.press(f'{MOD}+Alt+b')
+            page.wait_for_timeout(500)
 
 
 def accept_trust(page):
@@ -432,6 +442,7 @@ def tidy_ide(page):
     """Accept the workspace trust prompt (our own throwaway folder), then close the side bar so the editor
     fills the frame."""
     accept_trust(page)
+    hide_aux_bar(page)
     page.keyboard.press('Escape')
 
 
@@ -471,7 +482,8 @@ def ide_step(page, step):
         # Focus (not toggle) the terminal, then click into it so the keystrokes land there.
         palette(page, 'Terminal: Focus Terminal')
         page.wait_for_timeout(1500)
-        page.locator('.terminal-wrapper .xterm-screen').last.click()
+        # xterm.js reads keys from a hidden textarea; focus it directly.
+        page.locator('.xterm-helper-textarea').last.focus()
         page.wait_for_timeout(300)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
