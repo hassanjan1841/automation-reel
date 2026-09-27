@@ -202,5 +202,89 @@
     ],
     "posted_at": "2026-09-26T17:39:05+00:00",
     "media_id": "17881708983688631"
+  },
+  {
+    "id": 32,
+    "style": "light",
+    "kicker": "Tool bug",
+    "hook": "Claude Code silently *ignored* your AGENTS.md file",
+    "points": [
+      {
+        "title": "A remote flag gated the feature",
+        "body": "AGENTS.md only loaded if a hidden flag was on, tied to telemetry.",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://blog.szypowi.cz/p/claude-code-reads-agents.md-only-when-telemetry-is-on/",
+            "find": "telemetry is on"
+          },
+          {
+            "type": "diff",
+            "language": "ts",
+            "title": "load-instructions.ts",
+            "before": "if (remoteFlag.tengu_agents_md_mod) {\n  readFile('AGENTS.md')\n}",
+            "after": "readFile('AGENTS.md')\n// works with telemetry off"
+          }
+        ]
+      },
+      {
+        "title": "It failed silently, no warning shown",
+        "body": "Privacy-minded devs who disabled telemetry got no error, just ignored instructions.",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://blog.szypowi.cz/p/claude-code-reads-agents.md-only-when-telemetry-is-on/",
+            "find": "silent"
+          }
+        ]
+      },
+      {
+        "title": "Anthropic fixed it within days",
+        "body": "The flag was decoupled from telemetry, and the mod's source was published.",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/changelog",
+            "find": "telemetry disabled"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "claude update",
+              "claude --version"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Do you actually *verify* your agent reads its rules?",
+    "caption": "Claude Code quietly skipped your AGENTS.md file.\nIf telemetry was off, so were your instructions.\nDo you check what your AI tool actually reads? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#ai",
+      "#aitools",
+      "#devtips",
+      "#softwareengineering",
+      "#coding",
+      "#buildinpublic",
+      "#indiehackers",
+      "#webdev",
+      "#programming"
+    ],
+    "voiceover": [
+      "[urgent] Your coding agent might ignore the file steering it.",
+      "[serious, fast] It added a rules file, gated behind a hidden switch. (break) [urgent] That switch only turned on with telemetry.",
+      "[knowing] So if you turned telemetry off for privacy, (break) [exasperated] your instructions just vanished, with no warning at all.",
+      "[confident and fast] Anthropic fixed it within days, (break) [amused] and even published the code for anyone to check.",
+      "[warm, curious] Do you ever check what your tools actually read?"
+    ],
+    "pillar": "timely",
+    "sources": [
+      "https://code.claude.com/docs/en/changelog",
+      "https://blog.szypowi.cz/p/claude-code-reads-agents.md-only-when-telemetry-is-on/",
+      "https://news.ycombinator.com/item?id=49814947"
+    ],
+    "posted_at": null,
+    "media_id": null
   }
 ]
