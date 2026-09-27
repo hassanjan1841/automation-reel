@@ -272,6 +272,8 @@ def make_video(reel):
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
     voice_name = os.environ.get('VOICE', '').strip() or None
     clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
+    if clips is not None:
+        print(f'Voice check: {clips.verdict}')
     path, slides = render.render_reel(reel, voice=clips)
     return check_visuals(reel, clips, path, slides)
 

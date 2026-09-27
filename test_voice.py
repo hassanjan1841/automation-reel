@@ -2,6 +2,7 @@
 
   python test_voice.py           text rules and matching only (fast, no models)
   python test_voice.py --audio   also speak every sentence and listen back with Whisper
+  python test_voice.py --verify  the voice verifier on recorded faults in tests/ (Whisper, no voice calls)
 """
 
 import sys
@@ -57,6 +58,30 @@ SQL injection is still common.""".splitlines()
 KNOWN = {'Vite', 'Nginx'}
 
 
+# A real Fish take (2026-09-27): an "uhh" the voice invented before "Check" after a long pause.
+STRAY = ('tests/stray-uhh.wav', '[fired up] Your API is slow for one reason. (break) [confident and fast] Check the '
+                                'cache first.')
+
+
+def check_verifier():
+    import numpy as np
+    import soundfile as sf
+    import render
+    path, text = STRAY
+    audio, sr = sf.read(voice.render.ROOT / path)
+    audio = np.interp(np.arange(0, len(audio), sr / render.SR), np.arange(len(audio)), audio).astype(np.float32)
+    failures = []
+    _, strays = voice.verify(audio, text)
+    if not any(2.9 < a < 3.4 for _, a, _ in strays):
+        failures.append(f'verify missed the "uhh" before "Check" in {path}: strays {strays}')
+    words = voice.transcribe(audio, words=True, context=text)
+    cut = voice.mute(audio, strays, [(a, b) for w, a, b in words if set(voice.tokens(w)) - voice.FILLERS])
+    faults, left = voice.verify(cut, text)
+    if left or faults:
+        failures.append(f'after cutting the strays, {path} still has {faults} {left}')
+    return failures
+
+
 def main():
     failures = []
     for text, want in SPEAKABLE:
@@ -67,6 +92,9 @@ def main():
         got = voice.misheard(written, heard)
         if got != want:
             failures.append(f'misheard({written!r}, {heard!r}) = {got}, want {want}')
+
+    if '--verify' in sys.argv:
+        failures += check_verifier()
 
     if '--audio' in sys.argv:
         engine = voice.engine()

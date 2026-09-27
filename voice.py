@@ -89,6 +89,14 @@ LEXICON = render.ROOT / 'pronounce.json'
 WHISPER_MODEL = 'small.en'
 RESPELL_TRIES = 3
 FINAL_TAKES = 3
+# The beat between slides is silence added here, not asked of Fish: a "(long-break)" followed by a cue made it
+# fill the gap with an "uhh" (2026-09-27).
+BEAT = 0.3
+# Whisper leaves out "uh" and "um" unless its prompt contains them; this pass is only for catching stray sounds.
+FILLER_PROMPT = 'Umm, uh, er, hmm, ah. So, uh, like, you know.'
+SMALL_WORDS = {'a', 'an', 'the', 'and', 'or', 'so', 'to', 'of', 'in', 'on', 'it', 'is', 'i', 'you', 'we', 'he', 'she',
+               'they', 'that', 'this', 'but', 'be', 'at', 'as', 'do', 'for', 'with', 'if', 'yeah', 'yes', 'oh', 'okay'}
+FILLERS = {'um', 'umm', 'uh', 'uhh', 'er', 'erm', 'ah', 'ahh', 'hmm', 'mm', 'hm', 'eh', 'r'}
 EVERYDAY = set('''a an the in on at to of for and or but is are was be it its your you we they this that with
 from by as not no so if then than too very just can do does did has have had will would should could file
 files app apps data code server'''.split())
@@ -359,22 +367,12 @@ def learn(engine, line, bad):
     LEXICON.write_text(json.dumps(everything, indent=2, ensure_ascii=False) + '\n')
 
 
-def say_checked(engine, line):
-    """Speak one line, listen back, fix misheard words, and keep the best of a few takes."""
-    best, best_bad = None, None
-    for take in range(FINAL_TAKES):
-        clip = engine.say(speakable(line, engine=engine.key))
-        bad = misheard(line, transcribe(clip, context=line))
-        if best is None or len(bad) < len(best_bad):
-            best, best_bad = clip, bad
-        if not bad:
-            break
-        if take == 0:
-            print(f'  misheard {bad} in: {strip_cues(line)}')
-            learn(engine, line, bad)
-    if best_bad:
-        print(f'  warning: still misheard {best_bad} after {FINAL_TAKES} takes: {strip_cues(line)}')
-    return best
+def say_checked(engine, line, with_faults=False):
+    """Speak one line and keep the cleanest of a few takes (see clean_take)."""
+    clip, faults = clean_take(engine, line)
+    if faults:
+        print(f'  warning: still unclear {faults} after {FINAL_TAKES} takes: {strip_cues(line)}')
+    return (clip, faults) if with_faults else clip
 
 
 class Voiceover(list):
@@ -383,7 +381,7 @@ class Voiceover(list):
 
     def __init__(self, clips, words, continuous):
         super().__init__(clips)
-        self.words, self.continuous = words, continuous
+        self.words, self.continuous, self.verdict = words, continuous, 'not checked'
 
 
 def align(line, heard):
@@ -421,6 +419,85 @@ def align(line, heard):
     return out
 
 
+def islands(audio, gap=0.12, shortest=0.08):
+    """Bursts of sound separated by silence, as [(start, end)] in seconds. Quiet breaths fall below the level."""
+    frame = int(render.SR * 0.01)
+    rms = np.array([np.sqrt(np.mean(audio[k:k + frame] ** 2)) for k in range(0, len(audio) - frame, frame)])
+    if not len(rms):
+        return []
+    on = rms > 0.15 * np.percentile(rms, 95)
+    hold, found, k = round(gap / 0.01), [], 0
+    while k < len(on):
+        if not on[k]:
+            k += 1
+            continue
+        j = k
+        while j < len(on) and on[j:j + hold].any():
+            j += 1
+        if (j - k) * 0.01 >= shortest:
+            found.append((k * 0.01, j * 0.01))
+        k = j
+    return found
+
+
+def heard_alone(audio, start, end):
+    """What one burst of sound says on its own, with no script to lean on, fillers included."""
+    transcribe(audio[:render.SR // 10])  # loads the model
+    c = audio[int(max(0.0, start - 0.05) * render.SR):int((end + 0.05) * render.SR)]
+    c = np.interp(np.arange(0, len(c), render.SR / 16000), np.arange(len(c)), c).astype(np.float32)
+    segments, _ = _whisper.transcribe(c, language='en', beam_size=5, initial_prompt=FILLER_PROMPT)
+    return ' '.join(x.text for x in segments).strip()
+
+
+def verify(audio, text):
+    """Everything wrong with a take, listened to four ways, as (faults, strays):
+    - with the script as a hint: names and tech words the voice got wrong (these get respelled);
+    - without it: an everyday word said badly, which the hint papers over ("Check" as "you correct");
+    - each burst of sound on its own: a burst with no word of the script in it is a stray sound (an "uhh" the
+      voice invented, 2026-09-27), returned in strays as (heard, start, end) so it can be cut out;
+    - the bursts' words together: an everyday word missing from either listen without the hint is a fault.
+    faults are written words; an empty result is a clean take."""
+    script = strip_cues(plain(text))
+    bad = misheard(text, transcribe(audio, context=text))
+    loose = [w for w in misheard(text, transcribe(audio)) if plain_word(w)]
+    wanted = set(tokens(script))
+    strays, alone = [], []
+    for a, b in islands(audio):
+        said = heard_alone(audio, a, b)
+        heard = tokens(said)
+        hits = [t for t in heard if t in wanted]
+        # Mostly script words, one of them a real word: "you" alone does not make "Thank you" part of the script.
+        if not heard or len(hits) < 0.6 * len(heard) or not any(t not in SMALL_WORDS for t in hits):
+            strays.append((said or 'sound', a, b))
+        else:
+            alone.append(said)
+    loose += [w for w in misheard(text, ' '.join(alone)) if plain_word(w)]
+    return sorted(set(bad) | set(loose)), strays
+
+
+def mute(audio, spans, keep):
+    """Silence each stray span, widened to the quiet around it but never into a real word (keep: word spans)."""
+    out = audio.copy()
+    frame = int(render.SR * 0.01)
+    level = lambda k: float(np.sqrt(np.mean(out[k:k + frame] ** 2))) if k + frame <= len(out) else 0.0
+    quiet = 0.02 * float(np.max(np.abs(audio)) or 1.0)
+    for _, start, end in spans:
+        lo_limit = max([e for s, e in keep if e <= start + 0.02] + [0.0])
+        hi_limit = min([s for s, e in keep if s >= end - 0.02] + [len(audio) / render.SR])
+        a, b = int(start * render.SR), int(end * render.SR)
+        while a - frame > lo_limit * render.SR and level(a - frame) > quiet:
+            a -= frame
+        while b + frame < hi_limit * render.SR and level(b) > quiet:
+            b += frame
+        a, b = max(a, int(lo_limit * render.SR)), min(b, int(hi_limit * render.SR))
+        if b > a:
+            fade = min(frame, (b - a) // 2)
+            out[a:a + fade] *= np.linspace(1, 0, fade)
+            out[a + fade:b - fade] = 0
+            out[b - fade:b] *= np.linspace(0, 1, fade)
+    return out
+
+
 def split(audio, words, lines):
     """Cut one recording into per-line clips at the pause before each line's first word."""
     written = [(t, i) for i, line in enumerate(lines) for t in tokens(line)]
@@ -442,7 +519,9 @@ def split(audio, words, lines):
     if cuts != sorted(cuts):
         return None
     edges = [0] + [int(c * render.SR) for c in cuts] + [len(audio)]
-    clips = [audio[a:b] for a, b in zip(edges, edges[1:])]
+    beat = np.zeros(int(BEAT * render.SR), dtype=audio.dtype)
+    clips = [np.concatenate([audio[a:b], beat]) if k < len(lines) - 1 else audio[a:b]
+             for k, (a, b) in enumerate(zip(edges, edges[1:]))]
     offsets = [e / render.SR for e in edges[:-1]]
     ends = offsets[1:] + [len(audio) / render.SR]
     per_clip = []
@@ -452,52 +531,95 @@ def split(audio, words, lines):
     return Voiceover(clips, per_clip, continuous=True)
 
 
-def say_whole(engine, lines, check=True):
-    """One continuous recording of every line, so the delivery flows instead of restarting per line."""
-    # A longer beat between slides gives each point a moment to land before the next one starts.
-    text = ' (long-break) '.join(l.strip() for l in lines)
-    best, best_bad = None, None
+def clean_take(engine, text, check=True):
+    """The best of up to FINAL_TAKES recordings of text, as (audio, faults). A stray sound left in the best take
+    is cut out and the take is verified again, so what comes back is what was checked."""
+    best = None
     for take in range(FINAL_TAKES):
         audio = engine.say(speakable(text, engine=engine.key))
-        words = transcribe(audio, words=True, context=text)
-        bad = misheard(text, ' '.join(w for w, *_ in words)) if check else []
-        # The script as a hint lets names through but also papers over a garbled everyday word ("Check" heard
-        # as "you correct"), so everyday words are checked again without it. They only cost a retake: a common
-        # word is not respelled.
-        slurred = [w for w in misheard(text, transcribe(audio)) if plain_word(w) and w not in bad] if check else []
-        clips = split(audio, words, lines)
-        if clips is None:
-            print('  warning: could not line up this take with the script, trying again')
-            continue
-        if best is None or len(bad) + len(slurred) < len(best_bad):
-            best, best_bad = clips, bad + slurred
-        if not bad and not slurred:
+        if not check:
+            return audio, []
+        faults, strays = verify(audio, text)
+        if strays:
+            print(f"  stray sounds {[f'{h!r} at {a:.1f}s' for h, a, _ in strays]}")
+        if faults:
+            print(f'  unclear {faults}')
+            if take == 0:
+                learn(engine, text, [w for w in faults if not plain_word(w)])
+        if best is None or len(faults) + len(strays) < len(best[1]) + len(best[2]):
+            best = (audio, faults, strays)
+        if not faults and not strays:
             break
-        if slurred:
-            print(f'  unclear {slurred}, taking it again')
-        if bad and take == 0:
-            print(f'  misheard {bad}')
-            for line in lines:
-                learn(engine, line, [w for w in bad if set(tokens(w)) <= set(tokens(line))])
-    if best is None:
+    audio, faults, strays = best
+    if strays:
+        words = transcribe(audio, words=True, context=text)
+        keep = [(a, b) for w, a, b in words if set(tokens(w)) - FILLERS]
+        audio = mute(audio, strays, keep)
+        faults, strays = verify(audio, text)
+        print(f"  stray sounds cut out: {'clean' if not strays else f'still {strays}'}")
+    return audio, faults + [h for h, *_ in strays]
+
+
+def say_whole(engine, lines, check=True):
+    """One continuous recording of every line, so the delivery flows instead of restarting per line. Each line is
+    then verified on its own, and one that is still unclear is recorded again by itself and swapped in."""
+    text = ' (break) '.join(l.strip() for l in lines)
+    for attempt in range(2):
+        audio, _ = clean_take(engine, text, check)
+        clips = split(audio, transcribe(audio, words=True, context=text), lines)
+        if clips is not None:
+            break
+        print('  warning: could not line up this take with the script, trying again')
+    else:
         print('  warning: no take lined up with the script, recording line by line instead')
         return by_line(engine, lines, check)
-    if best_bad:
-        print(f'  warning: still misheard {best_bad} after {FINAL_TAKES} takes')
-    return best
+    for i, line in enumerate(lines if check else []):
+        faults, strays = verify(clips[i], line)
+        if not faults and not strays:
+            continue
+        print(f"  line {i + 1} unclear ({', '.join(faults + [repr(h) for h, *_ in strays])}), recording it on its own")
+        clip, left = say_checked(engine, line, with_faults=True)
+        if len(left) < len(faults) + len(strays):
+            pad = np.zeros(int(BEAT * render.SR), dtype=clip.dtype) if i < len(lines) - 1 else clip[:0]
+            clips[i] = np.concatenate([clip, pad])
+            clips.words[i] = align(line, transcribe(clip, words=True, context=line))
+    report(clips, lines, check)
+    return clips
+
+
+def report(clips, lines, check=True):
+    """Verify the finished voiceover line by line and record the verdict on it (clips.verdict), so the render
+    log and the reviewer know whether it is clean."""
+    if not check:
+        clips.verdict = 'not checked'
+        return
+    left = []
+    for line, clip in zip(lines, clips):
+        faults, strays = verify(clip, line)
+        left += faults + [f'stray {h!r}' for h, *_ in strays]
+    clips.verdict = 'clean' if not left else 'unclear: ' + ', '.join(left)
+    print(f'  voice verified: {clips.verdict}')
 
 
 def by_line(engine, lines, check=True):
     clips = [say_checked(engine, line) if check else engine.say(speakable(line, engine=engine.key)) for line in lines]
-    return Voiceover(clips, [align(line, transcribe(c, words=True, context=line)) for line, c in zip(lines, clips)],
-                     continuous=False)
+    clips = Voiceover(clips, [align(line, transcribe(c, words=True, context=line)) for line, c in zip(lines, clips)],
+                      continuous=False)
+    report(clips, lines, check)
+    return clips
 
 
 def synthesize(lines, voice=None, check=True):
     eng = engine(voice)
     if eng.key == 'fish':
         try:
-            return say_whole(eng, lines, check)
+            first = say_whole(eng, lines, check)
+            if first.verdict in ('clean', 'not checked'):
+                return first
+            # Still unclear after every retake and per-line fix: record the whole reel once more, keep the cleaner.
+            print('  voice not clean, recording the whole voiceover once more')
+            second = say_whole(eng, lines, check)
+            return min((first, second), key=lambda v: 0 if v.verdict == 'clean' else len(v.verdict.split(',')))
         except RuntimeError as e:
             # A missed day costs more than a different voice for one reel.
             print(f'Warning: {e}; using the Kokoro voice for this reel')
