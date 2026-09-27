@@ -8,7 +8,8 @@ Env:
   TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
   FORCE_POST=true       post even if this slot's reel already went out today (UTC)
-  SLOT                  1 (default: the day's series or news) or 2 (the evening reel: another series, never news)
+  SLOT                  1 (default: a how-to), 2 (the evening reel: relatable, another series) or 3 (news, a trick,
+                        X vs Y or the beginner series, picked at random per day; see generate.slot3_format)
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
@@ -233,14 +234,19 @@ def research_reel(reels):
         perf = trends.performance()
     except Exception as e:
         print(f'Could not read recent insights ({type(e).__name__})')
-    # News goes in the first reel of the day only, so a day never has two news reels.
-    if os.environ.get('TRENDING', 'on').strip().lower() != 'off' and generate.slot() == 1:
+    # News only in reel 3, on the days its random format is news; with no strong story another format is used.
+    if generate.slot() == 3 and generate.slot3_format() == 'news':
+        os.environ['REEL_FORMAT'] = 'news'
+    if os.environ.get('TRENDING', 'on').strip().lower() != 'off' and os.environ.get('REEL_FORMAT') == 'news':
         try:
             reel = trends.timely_reel(reels, perf)
             if reel:
                 return reel
         except Exception as e:  # the trend scan is best effort; an evergreen tip is the safety net
             print(f'Trend scan failed ({type(e).__name__}: {redact(str(e))[:300]}), writing an evergreen reel')
+    if os.environ.get('REEL_FORMAT') == 'news':
+        os.environ['REEL_FORMAT'] = generate.slot3_format(skip=('news',))
+        print(f"No strong story today; reel 3 is a {os.environ['REEL_FORMAT']} reel instead")
     reel = generate.today(reels, perf)
     if not reel:
         raise SystemExit('ERROR: could not write a valid reel today.')

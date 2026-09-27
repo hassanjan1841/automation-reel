@@ -202,18 +202,49 @@ SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
 
 
-SLOT_SHIFT = 3
+# Reel 1 teaches, reel 2 is relatable; each rotates through its own series (indexes into PILLARS) by weekday,
+# so the two reels of a day are always different kinds. Client vs Me comes up most, as the creator asked.
+TEACH = (0, 1, 4, 6)
+RELATE = (3, 2, 3, 5)
+
+
+# Reel 3 of the day picks one of these at random (fixed per date), so it never becomes a routine. "news" is only
+# used when the trend scan finds a strong, fact-checked story; otherwise another one is picked.
+EXTRA_FORMATS = {
+    'trick': ('trick', 'One-line trick: a single VS Code shortcut, git command, terminal or CSS trick that saves '
+                       'real time, shown with a terminal or code visual. One trick, not a list', 'Quick trick'),
+    'versus': ('versus', 'X vs Y: two real tools developers choose between (Supabase vs Firebase, Prisma vs '
+                         'Drizzle, Cursor vs Claude Code). Three honest differences and a clear verdict on who should '
+                         'pick which; no invented benchmarks or prices', 'X vs Y'),
+    'series': ('series', 'Beginner series "Next.js from zero": the next lesson after the episodes listed below, one '
+                         'small concept a beginner can follow, with a code visual', 'Next.js from zero'),
+}
+SLOT3_FORMATS = ('news', 'trick', 'versus', 'series')
 
 
 def slot():
-    """Which of the day's reels this run writes: 1 (the day's series, or news) or 2 (the evening reel)."""
-    return 2 if os.environ.get('SLOT', '').strip() == '2' else 1
+    """Which of the day's reels this run writes: 1 (a how-to), 2 (the evening, relatable reel) or 3 (news, a
+    trick, X vs Y or the beginner series)."""
+    value = os.environ.get('SLOT', '').strip()
+    return int(value) if value in ('2', '3') else 1
 
 
-def pillar_day(day):
-    """The weekday whose series a reel on this day follows. The evening reel takes the series three days on
-    (Monday evening is Thursday's), so the two reels of a day differ and every series runs twice a week."""
-    return (day.weekday() + (SLOT_SHIFT if slot() == 2 else 0)) % 7
+def slot3_format(day=None, skip=()):
+    """Reel 3's format for the day, random but fixed per date; skip formats already ruled out (news with no story)."""
+    forced = os.environ.get('REEL_FORMAT', '').strip()
+    if forced in SLOT3_FORMATS and forced not in skip:
+        return forced
+    day = day or datetime.now(timezone.utc).date()
+    options = [f for f in SLOT3_FORMATS if f not in skip]
+    return random.Random(f'format-{day.isoformat()}-{len(skip)}').choice(options)
+
+
+def pillar_for(day):
+    """(pillar key, what to write, series name) for a reel on this day in this run's slot."""
+    if slot() == 3:
+        fmt = slot3_format(day)
+        return EXTRA_FORMATS[fmt if fmt != 'news' else slot3_format(day, skip=('news',))]
+    return PILLARS[(TEACH if slot() == 1 else RELATE)[day.weekday() % 4]]
 
 
 def three_d_today(day=None):
@@ -224,7 +255,7 @@ def three_d_today(day=None):
         return forced == 'on'
     day = day or datetime.now(timezone.utc).date()
     chance = float(os.environ.get('THREE_D_CHANCE', '').strip() or THREE_D_CHANCE)
-    return random.Random(f'3d-{day.isoformat()}' + ('-2' if slot() == 2 else '')).random() < chance
+    return random.Random(f'3d-{day.isoformat()}' + (f'-{slot()}' if slot() > 1 else '')).random() < chance
 
 
 def three_d_note():
@@ -686,7 +717,7 @@ def repair(reel, errors, rounds=2):
 
 
 def generate(reels, count, dates=None, context=None):
-    plan = [(d, PILLARS[pillar_day(d)][:2]) for d in (dates or next_post_dates(reels, count))]
+    plan = [(d, pillar_for(d)[:2]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
 
@@ -743,6 +774,11 @@ def today(reels, performance=()):
         parts.append('How the account\'s recent posts did (views, reach, skip rate, watch time, saves, shares). '
                      'Lean into the topics, angles and formats that held people; avoid what they skipped:\n'
                      + '\n'.join(performance))
+    series = pillar_for(datetime.now(timezone.utc).date())[2]
+    if series == EXTRA_FORMATS['series'][2]:
+        done = [r['hook'].replace('*', '') for r in reels if r.get('series') == series]
+        parts.append('Episodes of this series so far, in order (continue from the last one; never repeat one):\n'
+                     + ('\n'.join(f'{k}. {h}' for k, h in enumerate(done, 1)) or 'none yet: start with lesson 1'))
     parts.append(three_d_note())
     context = '\n\n'.join(parts)
     new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
@@ -751,7 +787,7 @@ def today(reels, performance=()):
 
 def series_label(reels, day):
     """The day's series and its next episode number, e.g. ('Client vs Me', 4)."""
-    name = PILLARS[pillar_day(day)][2]
+    name = pillar_for(day)[2]
     return name, 1 + sum(1 for r in reels if r.get('series') == name and r.get('posted_at'))
 
 

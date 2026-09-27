@@ -7,6 +7,8 @@ on:
     - cron: '7 11 * * *'
     # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York).
     - cron: '7 15 * * *'
+    # The third reel: starts 19:07 UTC, posts at 20:00 UTC (1 AM Pakistan, 4 PM New York).
+    - cron: '7 19 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -16,7 +18,7 @@ on:
       slot:
         description: Which reel of the day (2 is the evening reel)
         type: choice
-        options: ['1', '2']
+        options: ['1', '2', '3']
         default: '1'
       three_d:
         description: 3D today (random follows THREE_D_CHANCE)
@@ -89,8 +91,8 @@ jobs:
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
           FORCE_POST: ${{ vars.FORCE_POST }}
-          SLOT: ${{ (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '2' || '1' }}
-          POST_AT_UTC: ${{ (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '16:00' || vars.POST_AT_UTC }}
+          SLOT: ${{ (github.event.schedule == '7 19 * * *' || inputs.slot == '3') && '3' || (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '2' || '1' }}
+          POST_AT_UTC: ${{ (github.event.schedule == '7 19 * * *' || inputs.slot == '3') && '20:00' || (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '16:00' || vars.POST_AT_UTC }}
           TRENDING: ${{ vars.TRENDING }}
           THREE_D: ${{ github.event_name == 'workflow_dispatch' && inputs.three_d != 'random' && inputs.three_d || vars.THREE_D }}
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}

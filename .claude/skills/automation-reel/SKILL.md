@@ -14,8 +14,10 @@ Hard rules from the creator, never relax them: no music (sound effects only); ev
 ```
 daily-reel.yml, twice a day  ->  publish.py
   slot 1: starts 11:07 UTC, posts at POST_AT_UTC 12:00 (5 PM Pakistan): the day's series or news
-  slot 2: starts 15:07 UTC, posts at 16:00 (9 PM Pakistan): SLOT=2, evergreen only, series of generate.pillar_day
-          (weekday + SLOT_SHIFT 3), its own 3D coin flip
+  slot 2: starts 15:07 UTC, posts at 16:00 (9 PM Pakistan): SLOT=2, relatable (generate.RELATE)
+  slot 3: starts 19:07 UTC, posts at 20:00 (1 AM Pakistan): SLOT=3, generate.slot3_format picks news, trick,
+          versus or series at random per date (news only with a strong fact-checked story, else another);
+          slot 1 teaches (generate.TEACH); only slot 3 runs the trend scan; each slot has its own 3D coin flip
   0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
   1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
   2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search, newer developments, no motives) ->
@@ -62,7 +64,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
-| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `slot`, `pillar_day`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
@@ -143,7 +145,7 @@ Rules enforced by `generate.validate` (the single source of truth, also run on C
 
 Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats; the honesty rules (no fake results, invented scenes framed as POV, "I tested" only with a real run, no one else's work as his own, hooks never promise more than the reel delivers). The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
 
-Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon AI tool in 30s, Tue Dev mistake, Wed POV (relatable), Thu Client vs Me, Fri Explained, Sat POV (relatable or ranking), Sun Build smart. 3D is allowed on a random share of days (`generate.three_d_today`, seeded by the date so reruns agree, `THREE_D_CHANCE` default 0.5, `THREE_D=on|off` forces it); both writers are told via `three_d_note`, and `publish.todays_reel` strips 3D (`generate.strip_3d`) on other days. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
+Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching series by weekday (`TEACH`: AI tool in 30s, Dev mistake, Explained, Build smart), reel 2 the relatable ones (`RELATE`: Client vs Me, POV, Client vs Me, POV ranking), reel 3 its day's format (`EXTRA_FORMATS`: Quick trick, X vs Y, Next.js from zero, or a news reel); the beginner series is given its earlier episodes to continue from. 3D is allowed on a random share of days (`generate.three_d_today`, seeded by the date so reruns agree, `THREE_D_CHANCE` default 0.5, `THREE_D=on|off` forces it); both writers are told via `three_d_note`, and `publish.todays_reel` strips 3D (`generate.strip_3d`) on other days. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
 
 ## Common tasks
 
@@ -164,7 +166,7 @@ Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon 
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
