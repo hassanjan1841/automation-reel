@@ -192,12 +192,18 @@ class Fish:
 
     def say(self, text):
         import soundfile as sf
+        resp = None
         for attempt in range(4):
-            resp = requests.post('https://api.fish.audio/v1/tts', timeout=120,
-                                 headers={'Authorization': f'Bearer {self.token}', 'model': self.model},
-                                 json={'text': text, 'reference_id': self.voice, 'format': 'wav',
-                                       'sample_rate': render.SR, 'normalize': True,
-                                       'prosody': {'speed': self.speed}})
+            try:
+                resp = requests.post('https://api.fish.audio/v1/tts', timeout=120,
+                                     headers={'Authorization': f'Bearer {self.token}', 'model': self.model},
+                                     json={'text': text, 'reference_id': self.voice, 'format': 'wav',
+                                           'sample_rate': render.SR, 'normalize': True,
+                                           'prosody': {'speed': self.speed}})
+            except requests.RequestException as e:  # dropped or reset connections are worth another try
+                print(f'  Fish request failed ({type(e).__name__}), retrying')
+                time.sleep(5 * (attempt + 1))
+                continue
             if resp.ok:
                 samples, sr = sf.read(io.BytesIO(resp.content))
                 samples = samples if samples.ndim == 1 else samples.mean(axis=1)
@@ -205,7 +211,8 @@ class Fish:
             if resp.status_code not in (429, 500, 502, 503, 504):
                 break
             time.sleep(5 * (attempt + 1))
-        raise RuntimeError(f'Fish TTS failed: HTTP {resp.status_code} {resp.text[:300].replace(self.token, "***")}')
+        detail = f'HTTP {resp.status_code} {resp.text[:300].replace(self.token, "***")}' if resp is not None else 'no response'
+        raise RuntimeError(f'Fish TTS failed: {detail}')
 
 
 def engine(voice=None):
@@ -473,7 +480,12 @@ def by_line(engine, lines, check=True):
 def synthesize(lines, voice=None, check=True):
     eng = engine(voice)
     if eng.key == 'fish':
-        return say_whole(eng, lines, check)
+        try:
+            return say_whole(eng, lines, check)
+        except RuntimeError as e:
+            # A missed day costs more than a different voice for one reel.
+            print(f'Warning: {e}; using the Kokoro voice for this reel')
+            return by_line(Kokoro(), lines, check)
     return by_line(eng, lines, check)
 
 
