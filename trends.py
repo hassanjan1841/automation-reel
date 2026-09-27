@@ -294,6 +294,7 @@ def pick(reels, candidates, perf, model=None):
         f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
+        + ('\n\nRules learned from this account\'s own results:\n' + generate.learned() if generate.learned() else '')
         + '\n\nSearch further if the list misses something big today, verify the best stories, and write up to 3 ranked reels.'
     )
     return claude(prompt, SYSTEM, SCHEMA, model)

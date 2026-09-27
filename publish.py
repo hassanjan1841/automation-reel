@@ -223,7 +223,9 @@ def todays_reel(reels):
     reel = generate.today(reels, perf)
     if not reel:
         raise SystemExit('ERROR: could not write a valid reel today.')
-    return reel
+    # Evergreen reels belong to the day's named series, shown as the label: "Client vs Me #4".
+    name, episode = generate.series_label(reels, datetime.now(timezone.utc).date())
+    return {**reel, 'series': name, 'episode': episode, 'kicker': f'{name} #{episode}'}
 
 
 def wait_for_post_time():

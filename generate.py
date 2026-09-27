@@ -26,14 +26,20 @@ MODEL = 'claude-sonnet-5'
 BATCH = 14
 POST_HOUR_UTC = 12
 
+# The week's mix leans on what held viewers best (relatable dev life), with named series so people come back.
+# Each day: (pillar key, what to write, series name). The series gets an episode number when posted.
 PILLARS = {
-    0: ('ai', 'AI tools for developers'),
-    1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres'),
-    2: ('take', 'Honest take on freelancing or dev life'),
-    3: ('freelance', 'Freelance or Upwork lesson'),
-    4: ('concept', 'Tech concept explained simply'),
-    5: ('saas', 'SaaS building and validation'),
-    6: ('productivity', 'Behind the scenes or productivity'),
+    0: ('ai', 'AI tools for developers: one tool or technique shown really working (prefer an ide recording of a '
+              'real run, or a walkthrough of the tool)', 'AI tool in 30s'),
+    1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
+                  '(diff or ide recording)', 'Dev mistake'),
+    2: ('relatable', 'Relatable dev life: a POV or meme-style reel most developers recognise, told with a post '
+                     'card or a POV chat; funny but kind, never mocking a real person', 'POV'),
+    3: ('freelance', 'Freelance life: a client situation as a POV chat, plus the lesson or the red flags to '
+                     'watch for', 'Client vs Me'),
+    4: ('concept', 'Tech concept explained simply, or myth vs fact about a tool or practice', 'Explained'),
+    5: ('relatable', 'Relatable dev humour or a ranking (tier list of tools or habits), with a clear opinion', 'POV'),
+    6: ('saas', 'SaaS building and validation, or a stack reveal: what to use for what, and why', 'Build smart'),
 }
 
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
@@ -61,7 +67,8 @@ def validate(reel):
     slide_text = [reel.get('kicker', ''), reel.get('hook', ''), reel.get('cta', '')]
 
     kicker = reel.get('kicker', '').strip()
-    if not kicker or words(kicker) > 3 or len(kicker) > 24:
+    # A series label ("Client vs Me #4") replaces the kicker when posted and may be a little longer.
+    if not kicker or (not reel.get('series') and (words(kicker) > 3 or len(kicker) > 24)):
         errors.append('kicker must be a short label (max 3 words)')
 
     hook = reel.get('hook', '')
@@ -125,8 +132,8 @@ def validate(reel):
         errors += cue_errors(vo)
 
     tags = reel.get('hashtags', [])
-    if not 8 <= len(tags) <= 12:
-        errors.append(f'needs 8 to 12 hashtags, got {len(tags)}')
+    if not 3 <= len(tags) <= 5:
+        errors.append(f'needs 3 to 5 focused hashtags, got {len(tags)}')
     if any(not HASHTAG.match(t) for t in tags) or len({t.lower() for t in tags}) != len(tags):
         errors.append('hashtags must be unique #words with no spaces')
     return errors
@@ -319,7 +326,10 @@ Field rules:
 - points: exactly 3. Each has a title (max 8 words) and a body (max 16 words, no asterisks).
 - cta: a short question for the comments with exactly one *highlighted* word.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
-- hashtags: 8 to 12 relevant tags, each like #nextjs, no spaces.
+- hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
+  captions for topics more than hashtags, so fewer and precise beats many.
+- caption: the first line says the topic in plain searchable words (what someone would type into Instagram
+  search, e.g. "Zod schema validation in TypeScript"), not a teaser.
 - voiceover: exactly 5 lines, what a narrator says out loud over the slides: one for the hook, one per point, one for the cta.
 
 Voiceover rules (it is heard, not read, while the viewer reads the slides):
@@ -461,7 +471,7 @@ def repair(reel, errors, rounds=2):
 
 
 def generate(reels, count, dates=None, context=None):
-    plan = [(d, PILLARS[d.weekday()]) for d in (dates or next_post_dates(reels, count))]
+    plan = [(d, PILLARS[d.weekday()][:2]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
 
@@ -503,15 +513,30 @@ def generate(reels, count, dates=None, context=None):
     return [reel for _, reel in sorted(accepted, key=lambda a: a[0])]
 
 
+def learned():
+    """The weekly rules from learn.py, or an empty string before there are any."""
+    path = render.ROOT / 'learnings.md'
+    return path.read_text().strip() if path.exists() else ''
+
+
 def today(reels, performance=()):
     """One fresh evergreen reel for today's pillar, written with how recent reels actually did."""
-    context = None
+    parts = []
+    if learned():
+        parts.append('Rules learned from this account\'s own results (follow them):\n' + learned())
     if performance:
-        context = ('How the account\'s recent posts did (views, reach, skip rate, watch time, saves, shares). '
-                   'Lean into the topics, angles and formats that held people; avoid what they skipped:\n'
-                   + '\n'.join(performance))
+        parts.append('How the account\'s recent posts did (views, reach, skip rate, watch time, saves, shares). '
+                     'Lean into the topics, angles and formats that held people; avoid what they skipped:\n'
+                     + '\n'.join(performance))
+    context = '\n\n'.join(parts) or None
     new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
     return new[0] if new else None
+
+
+def series_label(reels, day):
+    """The day's series and its next episode number, e.g. ('Client vs Me', 4)."""
+    name = PILLARS[day.weekday()][2]
+    return name, 1 + sum(1 for r in reels if r.get('series') == name and r.get('posted_at'))
 
 
 def append(reels, new):
@@ -683,7 +708,10 @@ def main():
         return
 
     if '--check' in sys.argv:
-        bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and 'voiceover' in e)]) for r in reels]
+        # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
+        bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
+                                                                                   or 'hashtags' in e))])
+               for r in reels]
         bad = [(i, e) for i, e in bad if e]
         dupes = len(reels) - len({norm(r['hook']) for r in reels})
         for i, errs in bad:

@@ -28,8 +28,9 @@ daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  -
   6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
-token-refresh.yml (Sun 10:00 UTC)
+weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
+  learn.py           per-reel insights -> learnings.md (rules the writer reads) + GitHub issue report
 
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
 
@@ -51,6 +52,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, chat, targeted screenshot with cursor click | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Chat`, `Screenshot`, `capture`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
+| `learn.py` | Weekly: measure posted reels, group by pillar/series/visual, write learnings.md + report | `measure`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
 | `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
@@ -128,7 +130,7 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 
 **Skip the news, always evergreen**: repo variable `TRENDING=off`. **Post time**: `POST_AT_UTC` (HH:MM, default 12:00); move the cron in `daily-reel.yml` with it so the job still starts about an hour early.
 
-**Pause**: disable the Daily reel workflow. Keep Token refresh on, or the IG token expires after 60 days.
+**Pause**: disable the Daily reel workflow. Keep Weekly on, or the IG token expires after 60 days.
 
 **Run in CI by hand**: Actions > Daily reel > Run workflow. `dry_run` defaults to true; the MP4 is uploaded as an artifact either way.
 
