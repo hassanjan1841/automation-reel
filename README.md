@@ -70,7 +70,7 @@ Append an object to `reels.json` with the next `id`, `posted_at: null` and `medi
 }
 ```
 
-The voiceover is heard while the slides are read, so it must not repeat the slide text: 35 to 70 words, no symbols, numbers written as spoken. Every line starts with a delivery cue like `[grinning, punchy]`, with a fresh cue at least every 10 spoken words so the voice does not fade; `(break)` is a short beat. Cues are not spoken. `python generate.py --cues` adds cues to voiceovers that have none. Leave it out and run `python generate.py --voiceover` to have Claude write it. Then run `python generate.py --check` and `python voice.py 15` to preview it. It is posted at the next daily run instead of a freshly written reel.
+The voiceover is heard while the slides are read, so it must not repeat the slide text: 40 to 55 words at about 2.6 words a second, with a longer beat between slides, no symbols, numbers written as spoken. Every line starts with a delivery cue like `[grinning, punchy]`, with a fresh cue at least every 10 spoken words so the voice does not fade; `(break)` is a short beat. Cues are not spoken. `python generate.py --cues` adds cues to voiceovers that have none. Leave it out and run `python generate.py --voiceover` to have Claude write it. Then run `python generate.py --check` and `python voice.py 15` to preview it. It is posted at the next daily run instead of a freshly written reel.
 
 ## Pause it
 
@@ -88,7 +88,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY` (Google Cloud, restricted to YouTube Data API v3), `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
-Optional repo variables or env: `POST_AT_UTC` (post time, default `12:00`), `FORCE_POST` (`true` posts even if a reel already went out today; normally a second run the same day does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
+Optional repo variables or env: `POST_AT_UTC` (post time, default `12:00`), `FORCE_POST` (`true` posts even if a reel already went out today; normally a second run the same day does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED` (default `1.0`; `1.1` felt rushed), `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
 
 ## Local setup
 

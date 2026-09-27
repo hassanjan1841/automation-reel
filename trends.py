@@ -273,7 +273,7 @@ Verification is mandatory:
 - Return up to 3 options: the strongest distinct stories you could verify, best first, each a complete reel.
 - Return an empty list if nothing today beats a good evergreen tip.
 - reach_score is your honest estimate from 1 to 10 of how well the reel will spread compared with a typical evergreen tip.
-- Count words carefully: hook 6 to 12, point titles max 8, point bodies max 16, voiceover 35 to 70 in total. Over-long reels are thrown away."""
+- Count words carefully: hook 5 to 8, point titles max 4, point bodies max 16, voiceover 40 to 55 in total. Over-long reels are thrown away."""
 
 
 def claude(prompt, system, schema, model=None):
@@ -344,7 +344,7 @@ slides, in the voiceover and in the caption: names, versions, numbers, dates, pr
 - Describe what happened, not motives: words like "hid", "secretly", "quietly" or "sneaky" about a real
   company or person are only allowed when a source shows it was deliberate; otherwise reword neutrally (fix).
 - fix: small wording or number errors you can correct from the sources. Return the corrected reel,
-  keeping the same format and word limits (hook 6 to 12 words, titles max 8, bodies max 16).
+  keeping the same format and word limits (hook 5 to 8 words, titles max 4, bodies max 16).
 - reject: the main claim is wrong, unsupported, or already outdated.
 List each problem you found, even when fixed."""
 

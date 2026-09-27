@@ -78,6 +78,7 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           VOICE: ${{ vars.VOICE }}
           VOICE_ENGINE: ${{ vars.VOICE_ENGINE }}
+          VOICE_SPEED: ${{ vars.VOICE_SPEED }}
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
           FORCE_POST: ${{ vars.FORCE_POST }}

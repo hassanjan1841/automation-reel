@@ -6,6 +6,7 @@ Env:
   VOICE_ENGINE   fish or kokoro (default fish when FISH_API_KEY is set, else kokoro)
   VOICE          Fish voice reference id or Kokoro voice name (default ThatMob / am_michael)
   VOICE_PITCH    semitones to shift the voice (default 0; shifting sounds robotic, pick a deeper voice instead)
+  VOICE_SPEED    speaking speed (default 1.0, about 2.6 words a second; 1.1 felt rushed)
   FISH_API_KEY   Fish Audio API key
   FISH_MODEL     default s2.1-pro-free
 """
@@ -171,7 +172,7 @@ def shift_pitch(clip, semitones):
 class Kokoro:
     key = 'kokoro'
 
-    def __init__(self, voice=None, speed=1.05, pitch=0.0):
+    def __init__(self, voice=None, speed=1.0, pitch=0.0):
         from kokoro_onnx import Kokoro as Model
         ensure_model()
         self.tts = Model(str(MODEL_DIR / MODEL_FILES[0]), str(MODEL_DIR / MODEL_FILES[1]))
@@ -185,7 +186,7 @@ class Kokoro:
 class Fish:
     key = 'fish'
 
-    def __init__(self, voice=None, pitch=0.0, speed=1.1):
+    def __init__(self, voice=None, pitch=0.0, speed=1.0):
         self.token = os.environ['FISH_API_KEY'].strip()
         self.voice, self.pitch, self.speed = voice or FISH_THATMOB, pitch, speed
         self.model = os.environ.get('FISH_MODEL', '').strip() or 's2.1-pro-free'
@@ -219,9 +220,10 @@ def engine(voice=None):
     """The configured voice engine. Fish when a key is set, otherwise the free local Kokoro."""
     name = os.environ.get('VOICE_ENGINE', '').strip().lower() or ('fish' if os.environ.get('FISH_API_KEY') else 'kokoro')
     pitch = os.environ.get('VOICE_PITCH', '').strip()
+    speed = os.environ.get('VOICE_SPEED', '').strip()
     if name == 'fish':
-        return Fish(voice, **({'pitch': float(pitch)} if pitch else {}))
-    return Kokoro(voice, **({'pitch': float(pitch)} if pitch else {}))
+        return Fish(voice, **({'pitch': float(pitch)} if pitch else {}), **({'speed': float(speed)} if speed else {}))
+    return Kokoro(voice, **({'pitch': float(pitch)} if pitch else {}), **({'speed': float(speed)} if speed else {}))
 
 
 # ---------- listen-back check ----------
@@ -445,7 +447,8 @@ def split(audio, words, lines):
 
 def say_whole(engine, lines, check=True):
     """One continuous recording of every line, so the delivery flows instead of restarting per line."""
-    text = ' (break) '.join(l.strip() for l in lines)
+    # A longer beat between slides gives each point a moment to land before the next one starts.
+    text = ' (long-break) '.join(l.strip() for l in lines)
     best, best_bad = None, None
     for take in range(FINAL_TAKES):
         audio = engine.say(speakable(text, engine=engine.key))

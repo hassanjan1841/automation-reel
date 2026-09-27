@@ -47,7 +47,7 @@ PILLARS = {
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
 HASHTAG = re.compile(r'^#[A-Za-z0-9_]+$')
 SYMBOLS = re.compile(r'[/&%$#;()\[\]{}<>=_|\\]')
-VO_MAX_WORDS = 70
+VO_MIN_WORDS, VO_MAX_WORDS = 40, 55
 
 
 def words(text):
@@ -74,8 +74,8 @@ def validate(reel):
         errors.append('kicker must be a short label (max 3 words)')
 
     hook = reel.get('hook', '')
-    if not 6 <= words(hook) <= 12:
-        errors.append(f'hook has {words(hook)} words, needs 6 to 12')
+    if not 5 <= words(hook) <= 8:
+        errors.append(f'hook has {words(hook)} words, needs 5 to 8')
     if not highlights(hook):
         errors.append('hook needs at least one *highlighted* word with balanced asterisks')
 
@@ -85,8 +85,8 @@ def validate(reel):
     for i, p in enumerate(points, 1):
         title, body = p.get('title', ''), p.get('body', '')
         slide_text += [title, body]
-        if not title or words(title) > 8:
-            errors.append(f'point {i} title has {words(title)} words, max 8')
+        if not title or words(title) > 4:
+            errors.append(f'point {i} title has {words(title)} words, max 4')
         if not body or words(body) > 16:
             errors.append(f'point {i} body has {words(body)} words, max 16')
         if highlights(title) is None:
@@ -134,8 +134,8 @@ def validate(reel):
             elif similar(line, slide) > (0.6 if 2 <= i <= 4 else 0.9):
                 errors.append(f'voiceover line {i} repeats the slide text; say it in different words')
         n = sum(words(l) for l in said)
-        if not 35 <= n <= VO_MAX_WORDS:
-            errors.append(f'voiceover has {n} words, needs 35 to {VO_MAX_WORDS}')
+        if not VO_MIN_WORDS <= n <= VO_MAX_WORDS:
+            errors.append(f'voiceover has {n} words, needs {VO_MIN_WORDS} to {VO_MAX_WORDS}')
         if words(said[0]) > 14:
             errors.append(f'voiceover line 1 has {words(said[0])} words, max 14')
         errors += cue_errors(vo)
@@ -431,8 +431,10 @@ SYSTEM = """You write short Instagram Reels scripts for @hassanjan.k, a freelanc
 
 Field rules:
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
-- hook: 6 to 12 words. Wrap the key word or two in *asterisks* to highlight them in the accent color.
-- points: exactly 3. Each has a title (max 8 words) and a body (max 16 words, no asterisks).
+- hook: 5 to 8 words, one idea a viewer gets in a glance. Wrap the key word or two in *asterisks* to highlight
+  them in the accent color.
+- points: exactly 3. Each has a title (max 4 words, a headline label like "Check cache first", not a
+  sentence; it says less than the voice, which carries the detail) and a body (max 16 words, no asterisks).
 - cta: a short question for the comments with exactly one *highlighted* word.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
@@ -444,12 +446,13 @@ Field rules:
 Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Never read the slide out. Say the same idea in different words and add what the slide leaves out: the why, a quick example, or what goes wrong if you ignore it.
 - Talk like a developer telling a friend something useful: contractions, "you", short sentences, a bit of personality. No announcer voice, no filler like "in this video" or "let's dive in".
-- Line 1 is the spoken hook and must grab in the first two seconds: a surprising claim, a sharp question or a tension. Max 14 words.
+- Line 1 is the spoken hook and must grab in the first two seconds: a surprising claim, a sharp question or a tension. Max 12 words.
 - Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
   over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
   must talk about its own point; never jump ahead to a later point.
 - Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
-- 35 to 70 words in total, so the reel stays under about 25 seconds.
+- 40 to 55 words in total. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
+  lines, so every idea lands for slower viewers too; saying less, clearly, beats saying more, fast.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
 
 Visuals (show the real thing instead of a text card; a reviewer looks at every frame and swaps out anything
@@ -837,7 +840,8 @@ def main():
     if '--check' in sys.argv:
         # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
         bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
-                                                                                   or 'hashtags' in e))])
+                                                                                   or 'hashtags' in e or 'hook has' in e
+                                                                                   or 'title has' in e))])
                for r in reels]
         bad = [(i, e) for i, e in bad if e]
         dupes = len(reels) - len({norm(r['hook']) for r in reels})
