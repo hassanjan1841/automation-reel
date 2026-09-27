@@ -106,7 +106,9 @@ def validate(reel):
 
     cta = reel.get('cta', '').strip()
     spans = highlights(cta)
-    if not cta.endswith('?'):
+    keyword = reel.get('dm_keyword')
+    errors += dm_errors(reel, cta)
+    if not keyword and not cta.endswith('?'):
         errors.append('cta must be a question')
     if not spans or len(spans) != 1:
         errors.append('cta needs exactly one *highlighted* word')
@@ -117,7 +119,7 @@ def validate(reel):
     lines = [l for l in reel.get('caption', '').split('\n') if l.strip()]
     if not 2 <= len(lines) <= 3:
         errors.append(f'caption needs 2 to 3 lines, got {len(lines)}')
-    elif not (lines[-1].rstrip().endswith('👇') and '?' in lines[-1]):
+    elif not (lines[-1].rstrip().endswith('👇') and ('?' in lines[-1] or (keyword and keyword in lines[-1]))):
         errors.append('caption must end with a question followed by 👇')
 
     vo = reel.get('voiceover')
@@ -375,6 +377,29 @@ def package_errors(text):
     return missing
 
 
+def dm_errors(post, offer):
+    """A comment-to-DM offer must be deliverable: a keyword people can type, a guide that holds what the post
+    promises, and the offer made where people see it (the cta or last slide, the voice and the caption)."""
+    keyword, guide = post.get('dm_keyword'), post.get('dm_guide')
+    if not keyword and not guide:
+        return []
+    if not keyword or not guide:
+        return ['dm_keyword and dm_guide go together']
+    errors = []
+    if not re.fullmatch(r'[A-Z0-9]{3,10}', keyword):
+        errors.append('dm_keyword must be one word in capitals, 3 to 10 letters')
+    if not 150 <= len(guide) <= 900:
+        errors.append(f'dm_guide is {len(guide)} characters, needs 150 to 900')
+    said = strip_cues(post['voiceover'][-1]) if post.get('voiceover') else keyword
+    for where, text in (('the cta', offer), ('the caption', post.get('caption', '')), ('the last voiceover line', said)):
+        if keyword.lower() not in text.lower().replace('*', ''):
+            errors.append(f'{where} must offer the guide with "Comment {keyword}"')
+    missing = package_errors(guide)
+    if missing:
+        errors.append(f'dm_guide names packages that do not exist: {", ".join(missing)}')
+    return errors
+
+
 def visual_errors(i, visual):
     """A point's visuals: a list of up to 3 choices, best first, each small enough to read on a phone."""
     if visual is None:
@@ -519,6 +544,7 @@ SCHEMA = {
                         },
                     },
                     'cta': {'type': 'string'},
+                    'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
@@ -541,7 +567,14 @@ Field rules:
 - points: exactly 3. Each has a title (max 4 words, a headline label like "Check cache first", not a
   sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
   the voice carries the detail.
-- cta: a short question for the comments with exactly one *highlighted* word.
+- cta: a short question for the comments with exactly one *highlighted* word. With a dm_keyword it is instead the
+  offer, e.g. "Comment *MCP* for the setup", with the keyword highlighted.
+- dm_keyword and dm_guide (comment-to-DM; people who comment the keyword get dm_guide as a private message):
+  give them to how-to, trick, versus and beginner reels that have something worth sending; leave them out of
+  relatable reels (POV, Client vs Me), which end with a question instead. dm_keyword: one short word in capitals
+  (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
+  written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
+  characters, no invented facts. The reel only promises what dm_guide really contains.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
   captions for topics more than hashtags, so fewer and precise beats many.
@@ -556,7 +589,7 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
   over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
   must talk about its own point; never jump ahead to a later point.
-- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that.
+- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that. With a dm_keyword, line 5 says the keyword and what they get, e.g. "Comment MCP and I'll send you the whole setup."
 - 40 to 55 words in total. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
   lines, so every idea lands for slower viewers too; saying less, clearly, beats saying more, fast.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
@@ -800,6 +833,7 @@ def append(reels, new):
             'id': next_id, 'pillar': reel['pillar'], 'style': last_style, 'kicker': reel['kicker'].strip(),
             'hook': reel['hook'].strip(), **({'hook_word': reel['hook_word']} if reel.get('hook_word') else {}),
             'points': reel['points'], 'cta': reel['cta'].strip(),
+            **{k: reel[k] for k in ('dm_keyword', 'dm_guide') if reel.get(k)},
             'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'],
             'voiceover': [l.strip() for l in reel['voiceover']], 'posted_at': None, 'media_id': None,
         })

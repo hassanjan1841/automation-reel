@@ -87,6 +87,10 @@ def review(video, reel, slides, voiceover=None):
         sources = reel.get('sources') or []
         checked = ('\n\nThe reel\'s claims were fact-checked against these sources (open them if a claim looks '
                    'doubtful):\n' + '\n'.join(sources)) if sources else ''
+        if reel.get('dm_guide'):
+            checked += (f"\n\nPeople who comment {reel.get('dm_keyword')} are sent this guide by DM. honest is false for "
+                        'the CTA slide if the reel promises more than this guide holds, or if the guide states '
+                        f"something untrue:\n{reel['dm_guide']}")
         prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),

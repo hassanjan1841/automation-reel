@@ -1,0 +1,39 @@
+name: Comment DMs
+
+on:
+  schedule:
+    # Every 15 minutes: answer keyword comments ("Comment MCP") with the promised guide. Off the hour.
+    - cron: '4,19,34,49 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: send, dry_run (print only) or check (token permissions only)
+        type: choice
+        options: [send, dry_run, check]
+        default: check
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comment-dms
+  cancel-in-progress: false
+
+jobs:
+  dm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests numpy pillow
+
+      - name: Answer keyword comments
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          DRY_RUN: ${{ inputs.mode == 'dry_run' && 'true' || 'false' }}
+        run: python dm.py ${{ inputs.mode == 'check' && '--check' || '' }}

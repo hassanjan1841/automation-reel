@@ -27,10 +27,11 @@ OUT = render.OUT_DIR / 'carousel'
 
 SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['title', 'subtitle', 'slides', 'takeaway', 'question', 'caption', 'hashtags', 'style'],
+    'required': ['title', 'subtitle', 'slides', 'takeaway', 'question', 'caption', 'hashtags', 'style', 'dm_keyword',
+                 'dm_guide'],
     'properties': {
         'title': {'type': 'string'}, 'subtitle': {'type': 'string'}, 'question': {'type': 'string'},
-        'takeaway': {'type': 'string'},
+        'takeaway': {'type': 'string'}, 'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
         'caption': {'type': 'string'}, 'hashtags': {'type': 'array', 'items': {'type': 'string'}},
         'style': {'type': 'string', 'enum': ['light', 'dark']},
         'slides': {'type': 'array', 'items': {
@@ -50,6 +51,10 @@ or are a checklist for a real task; the title promises that result.
 - alt: one plain sentence describing the slide for screen readers and search.
 - takeaway: the whole carousel in one short line (max 8 words), shown big on the last slide under "The
   takeaway", e.g. "One webhook. Ten minutes. Payments that never get lost."
+- dm_keyword and dm_guide: people who comment the keyword get dm_guide as a private message. dm_keyword: one short
+  word in capitals (3 to 10 letters) tied to the topic, e.g. "STRIPE". dm_guide: the complete guide as a plain
+  message (all steps, exact commands or code, official links), 150 to 900 characters, nothing invented. The
+  caption's last line offers it: "Comment STRIPE and I'll send you the full guide 👇".
 - question: a short question for the last slide that invites a real answer. That last slide is added for you
   and already asks people to save and follow, so every slide in "slides" is a real tip: none about saving,
   sharing, bookmarking or following.
@@ -102,6 +107,7 @@ def check(c):
             errors.append(f'slide {i} asks to save, share or follow; the last slide does that, make it a tip')
     if not 1 <= len(c.get('takeaway', '').split()) <= 8:
         errors.append('takeaway needs 1 to 8 words')
+    errors += generate.dm_errors(c, f"Comment {c.get('dm_keyword', '')}")
     if not 3 <= len(c['hashtags']) <= 5:
         errors.append('needs 3 to 5 hashtags')
     return errors
@@ -232,7 +238,8 @@ def end_slide(c, theme, total):
         d.text((m, y), line, font=render.font('SemiBold', 50) if take else render.font('Bold', 84),
                fill=theme['muted'] if take else theme['ink'], anchor='lt')
         y += q_line
-    d.text((m, y + 40), 'Save this for later', font=render.font('SemiBold', 48), fill=theme['accent'], anchor='lt')
+    offer = f"Comment {c['dm_keyword']} for the full guide" if c.get('dm_keyword') else 'Save this for later'
+    d.text((m, y + 40), offer, font=render.font('SemiBold', 48), fill=theme['accent'], anchor='lt')
     d.text((m, y + 110), f'Follow {render.HANDLE} for daily dev + AI tips', font=render.font('Regular', 36),
            fill=theme['muted'], anchor='lt')
     footer(d, theme, swipe=False)

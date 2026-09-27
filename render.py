@@ -371,7 +371,8 @@ def build_slides(reel, voice=None):
     top = CONTENT_TOP + (bottom - CONTENT_TOP - group_h) // 2 - (0 if captions else 40)
     end = add_words(s, q_lines, q_fnt, q_size, q_lh, top, start, theme, step=step, anim=anim)
     y = top + len(q_lines) * q_lh + 56
-    y += add_block(s, 'Comment below', 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
+    prompt = "I'll send it to your DMs" if reel.get('dm_keyword') else 'Comment below'
+    y += add_block(s, prompt, 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
     add_block(s, follow, 'Regular', fl_size, 'muted', y, end + 0.5, theme, max_h=160)
     s.need = end + 0.5 + 2.2
     slides.append(s)
