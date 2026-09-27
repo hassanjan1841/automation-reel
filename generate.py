@@ -89,8 +89,8 @@ def validate(reel):
         slide_text += [title, body]
         if not title or words(title) > 4:
             errors.append(f'point {i} title has {words(title)} words, max 4')
-        if not body or words(body) > 16:
-            errors.append(f'point {i} body has {words(body)} words, max 16')
+        if not body or words(body) > 8:
+            errors.append(f'point {i} body has {words(body)} words, max 8')
         if highlights(title) is None:
             errors.append(f'point {i} title has unbalanced asterisks')
         if '*' in body:
@@ -508,7 +508,8 @@ Field rules:
 - hook: 5 to 8 words, one idea a viewer gets in a glance. Wrap the key word or two in *asterisks* to highlight
   them in the accent color.
 - points: exactly 3. Each has a title (max 4 words, a headline label like "Check cache first", not a
-  sentence; it says less than the voice, which carries the detail) and a body (max 16 words, no asterisks).
+  sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
+  the voice carries the detail.
 - cta: a short question for the comments with exactly one *highlighted* word.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
@@ -926,7 +927,7 @@ def main():
     if '--check' in sys.argv:
         # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
         bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
-                                                                                   or 'hashtags' in e or 'hook has' in e
+                                                                                   or 'hashtags' in e or 'hook has' in e or 'body has' in e
                                                                                    or 'title has' in e))])
                for r in reels]
         bad = [(i, e) for i, e in bad if e]

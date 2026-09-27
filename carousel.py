@@ -45,10 +45,10 @@ It is the post people save: one practical topic, one idea per slide, useful on i
 build one concrete thing in steps ("Add Stripe checkout in one afternoon", "Give Claude access to your database")
 or are a checklist for a real task; the title promises that result.
 - title: 3 to 8 words, the topic in plain searchable words; subtitle: one short line on what the reader gets.
-- slides: 6 to 8. Each has a heading (max 7 words) and either 2 to 4 short "points" (max 12 words each) or a
+- slides: 6 to 8. Each has a heading (max 5 words) and either 2 to 3 short "points" (max 7 words each) or a
   "code" snippet (max 8 lines of 40 characters, current non-deprecated APIs) with its "language". Mix both.
 - alt: one plain sentence describing the slide for screen readers and search.
-- takeaway: the whole carousel in one short line (max 10 words), shown big on the last slide under "The
+- takeaway: the whole carousel in one short line (max 8 words), shown big on the last slide under "The
   takeaway", e.g. "One webhook. Ten minutes. Payments that never get lost."
 - question: a short question for the last slide that invites a real answer. That last slide is added for you
   and already asks people to save and follow, so every slide in "slides" is a real tip: none about saving,
@@ -86,22 +86,22 @@ def check(c):
     if not 6 <= len(c['slides']) <= 8:
         errors.append('needs 6 to 8 slides')
     for i, s in enumerate(c['slides'], 1):
-        if len(s['heading'].split()) > 7:
-            errors.append(f'slide {i} heading is over 7 words')
+        if len(s['heading'].split()) > 5:
+            errors.append(f'slide {i} heading is over 5 words')
         if s.get('code') and generate.package_errors(s['code']):
             errors.append(f"slide {i} names packages that do not exist: {', '.join(generate.package_errors(s['code']))}")
         if s.get('code'):
             lines = s['code'].rstrip('\n').split('\n')
             if len(lines) > 8 or max(len(l) for l in lines) > 40:
                 errors.append(f'slide {i} code is over 8 lines of 40 characters')
-        elif not 2 <= len(s.get('points') or []) <= 4 or any(len(p.split()) > 12 for p in s['points']):
-            errors.append(f'slide {i} needs 2 to 4 points of max 12 words, or code')
+        elif not 2 <= len(s.get('points') or []) <= 3 or any(len(p.split()) > 7 for p in s['points']):
+            errors.append(f'slide {i} needs 2 to 3 points of max 7 words, or code')
     for i, s in enumerate(c['slides'], 1):
         # The closing slide already asks to save; a second "save this" slide wastes a swipe (2026-09-27).
         if CALL_TO_ACTION.search(' '.join([s['heading']] + (s.get('points') or []))):
             errors.append(f'slide {i} asks to save, share or follow; the last slide does that, make it a tip')
-    if not 1 <= len(c.get('takeaway', '').split()) <= 10:
-        errors.append('takeaway needs 1 to 10 words')
+    if not 1 <= len(c.get('takeaway', '').split()) <= 8:
+        errors.append('takeaway needs 1 to 8 words')
     if not 3 <= len(c['hashtags']) <= 5:
         errors.append('needs 3 to 5 hashtags')
     return errors
@@ -183,7 +183,7 @@ def content_slide(s, theme, n, total, top=None):
         body_h = panel.height
     else:
         points = [wrap_text(p, f, W - 2 * m - 48) for p in s['points']]
-        body_h = sum(72 * len(p) + 40 for p in points) - 40
+        body_h = sum(72 * len(p) + 56 for p in points) - 56
     if top is None:
         return 60 + 96 * len(heading) + 40 + body_h
     y = top
@@ -206,7 +206,7 @@ def content_slide(s, theme, n, total, top=None):
             d.ellipse((m, y + 26, m + 16, y + 42), fill=theme['accent'])
             for li, line in enumerate(lines):
                 d.text((m + 44, y + li * 72), line, font=f, fill=theme['ink'], anchor='lt')
-            y += 72 * len(lines) + 40
+            y += 72 * len(lines) + 56
     footer(d, theme)
     return img
 
@@ -247,6 +247,8 @@ def draw(c):
     images = [title_slide(c, theme, total)] + [content_slide(s, theme, i + 2, total, top) for i, s in enumerate(c['slides'])] \
         + [end_slide(c, theme, total)]
     OUT.mkdir(parents=True, exist_ok=True)
+    for old in OUT.glob('slide-*.jpg'):
+        old.unlink()  # a longer earlier run would leave extra slides behind
     paths = []
     for i, im in enumerate(images, 1):
         path = OUT / f'slide-{i:02d}.jpg'
