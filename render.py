@@ -530,9 +530,12 @@ class Captions:
         if cur:
             chunks.append(cur)
         self.chunks = []
+        bounds = [sl.end for sl in slides]
         for k, chunk in enumerate(chunks):
             start = chunk[0][1]
             end = chunks[k + 1][0][1] if k + 1 < len(chunks) else chunk[-1][2] + 0.5
+            # Never carry a line's caption across the beat into the next slide.
+            end = min(end, chunk[-1][2] + 0.6, next((b for b in bounds if b > start + 0.05), end))
             self.chunks.append((start, end, *self.layout(chunk)))
 
     def layout(self, chunk):
