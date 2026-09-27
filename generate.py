@@ -386,6 +386,14 @@ def visual_errors(i, visual):
             elif set(items) & scene3d.ANIMAL_LOGOS:
                 errors.append(f'point {i} logos may not include animal or mascot logos: '
                               + ', '.join(sorted(set(items) & scene3d.ANIMAL_LOGOS)))
+            else:
+                for slug in items:
+                    try:
+                        scene3d.brand(slug, True)
+                    except ValueError as e:
+                        errors.append(f'point {i} logos: {e}')
+                    except OSError:
+                        break  # offline: the render will fall back to the next choice if a slug is wrong
         else:
             errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough, '
                           'ide, quote, diagram, device, bars or logos')

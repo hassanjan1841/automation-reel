@@ -18,9 +18,11 @@ import base64
 import hashlib
 import io
 import json
+import re
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path
 
 import render
@@ -32,6 +34,7 @@ ANIMAL_LOGOS = {'postgresql', 'docker', 'mysql', 'mariadb', 'linux', 'github', '
                 'discord', 'twitter', 'openbsd', 'freebsd', 'nestjs', 'deno', 'jenkins', 'rabbitmq', 'mozilla',
                 'tor', 'thunderbird', 'squarespace', 'sentry', 'bluesky'}
 THREE = 'https://cdn.jsdelivr.net/npm/three@0.170.0'
+SIMPLE_ICONS = 'https://cdn.jsdelivr.net/npm/simple-icons@13'
 FPS = 30
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
@@ -275,12 +278,16 @@ async function logos() {
     const geo = new THREE.ExtrudeGeometry(shapes, { depth: 2.4, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.3,
                                                      bevelSegments: 3, curveSegments: 14 });
     geo.center(); geo.scale(0.06, -0.06, 0.06);
-    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: P.dark ? 0xf2f3f5 : 0x1b1e26, roughness: 0.4,
-                                                                   metalness: 0.05 }));
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: P.brands[i].color, roughness: 0.4,
+      metalness: 0.05, emissive: P.brands[i].color, emissiveIntensity: P.dark ? 0.35 : 0.12 }));
     m.castShadow = true;
-    m.position.x = (i - (items.length - 1) / 2) * 2.1; group.add(m); meshes.push(m);
+    const x = (i - (items.length - 1) / 2) * 2.1;
+    m.position.x = x; group.add(m); meshes.push(m);
+    // The name under each logo: not every viewer knows every logo.
+    const l = label(P.brands[i].title, 34, P.ink, 600); l.position.set(x, -1.0, 0.6); l.material.opacity = 0;
+    group.add(l); m.userData.label = l;
   }
-  scene.add(group); floor(-1.1);
+  scene.add(group); floor(-1.45);
   const span = (items.length - 1) * 2.1 + 2.4, hfov = Math.atan(Math.tan(THREE.MathUtils.degToRad(17.5)) * W / H);
   camera.position.set(0, 0.7, Math.max(5.5, span / 2 / Math.tan(hfov) + 0.8)); camera.lookAt(0, 0, 0);
   return t => meshes.forEach((m, i) => {
@@ -288,6 +295,7 @@ async function logos() {
     m.scale.setScalar(Math.max(0.001, p));
     m.rotation.y = (1 - Math.min(1, ease((t - 0.15 - i * 0.2) / 1))) * Math.PI + 0.25 * Math.sin(t * 0.9 + i);
     m.position.y = 0.08 * Math.sin(t * 1.7 + i);
+    m.userData.label.material.opacity = ease((t - 0.6 - i * 0.2) / 0.4);
   });
 }
 
@@ -299,6 +307,30 @@ const step = await build();
 window.renderAt = t => { step(t); renderer.render(scene, camera); };
 window.READY = true;
 </script></body></html>"""
+
+
+def slug_of(title):
+    """Simple Icons' own title-to-slug rule ("Next.js" -> "nextdotjs")."""
+    import unicodedata
+    s = title.lower().replace('+', 'plus').replace('.', 'dot').replace('&', 'and')
+    s = unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9]', '', s)
+
+
+def brand(slug, dark):
+    """A logo's name and brand colour, lifted or darkened when it would vanish into the background."""
+    path = SCENES / 'simple-icons.json'
+    if not path.exists():
+        SCENES.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(f'{SIMPLE_ICONS}/_data/simple-icons.json', path)
+    data = json.loads(path.read_text())
+    icon = next((i for i in (data['icons'] if isinstance(data, dict) else data) if slug_of(i['title']) == slug), None)
+    if icon is None:
+        raise ValueError(f'"{slug}" is not a Simple Icons slug')
+    r, g, b = (int(icon['hex'][k:k + 2], 16) / 255 for k in (0, 2, 4))
+    lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    color = '#F2F3F5' if dark and lum < 0.2 else '#1B1E26' if not dark and lum > 0.85 else '#' + icon['hex']
+    return {'title': icon['title'], 'color': color}
 
 
 def device_image(spec, theme):
@@ -330,6 +362,8 @@ def render_scene(spec, theme, size, seconds=6.0, transparent=False):
               'ink': theme['ink'], 'muted': theme['muted']}
     if spec['type'] == 'device':
         params['image'] = device_image(spec, theme)
+    if spec['type'] == 'logos':
+        params['brands'] = [brand(slug, theme is render.THEMES['dark']) for slug in spec['items'][:5]]
     from playwright.sync_api import sync_playwright
     dpr = 2
     w, h = size[0] // dpr, size[1] // dpr
