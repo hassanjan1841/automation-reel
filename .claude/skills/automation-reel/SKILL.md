@@ -1,11 +1,13 @@
 ---
 name: automation-reel
-description: Everything needed to work on the automation-reel project, the pipeline that posts one Instagram Reel a day to @hassanjan.k. Use for any task in this repo - adding or editing reels in reels.json, changing slide rendering, voiceover pronunciation, the trend scan and fact-check, queue generation, Instagram publishing, insights, token refresh, GitHub Actions runs, or debugging a failed daily post.
+description: Everything needed to work on the automation-reel project, the pipeline that researches, writes, voices, renders, reviews and posts one Instagram Reel a day (plus a weekly carousel) to @hassanjan.k. Use for any task in this repo - the daily writer and news editor, fact-check and honesty review, slide rendering and visuals (code, diff, terminal, post, chat, quote, screenshot, recorded demos), voiceover and pronunciation, carousels, the weekly learning loop, Instagram publishing, insights, token refresh, GitHub Actions runs, or debugging a failed daily post.
 ---
 
 # automation-reel
 
-Python 3.12 + ffmpeg pipeline, run by GitHub Actions. No server, no database: `reels.json` is the record of what was posted; nothing is written ahead of time.
+Python 3.12 + ffmpeg + Playwright pipeline, run entirely by GitHub Actions (the creator's machine can be off). No server, no database: `reels.json` records posted reels and `carousels.json` posted carousels; nothing is written ahead of time.
+
+Hard rules from the creator, never relax them: no music (sound effects only); everything halal and honest (no invented results, stories, numbers or quotes, no one else's work as his own, AI-made content is fine but not deceptive); no Reddit; no faces or animals in visuals (initials instead of photos).
 
 ## Pipeline at a glance
 
@@ -13,19 +15,26 @@ Python 3.12 + ffmpeg pipeline, run by GitHub Actions. No server, no database: `r
 daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  ->  publish.py
   0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
   1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
-  2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search) -> validate -> Claude fact-check
+  2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search, newer developments, no motives) ->
+                             validate -> generate.repair -> Claude fact-check (sources + quotes verbatim)
                              pass/fix -> today's reel, pillar "timely"; any failure or reach < 7 -> fall back
-  3. else generate.today()   a fresh evergreen reel for today's pillar
-  3. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
+  3. else generate.today()   a fresh evergreen reel for today's pillar (generate.PILLARS), labelled with its
+                             series and episode (generate.series_label, e.g. "Client vs Me #4"); both writers
+                             read learnings.md (generate.learned)
+  3b. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
                              (one clip per line); takes are transcribed with Whisper, misheard words get
                              Claude respellings or phonemes, fixes saved to pronounce.json per engine
-  4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps), captions from
-                             the voiceover word times, point visuals from visuals.build()
-  4b. publish.check_visuals()  qa.review(): Claude reads one frame per slide; a rejected visual is replaced by
-                             the point's next choice or its body text and the reel is rendered again
+  4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps) + cover jpg:
+                             camera motion, captions from the voiceover word times, point visuals from
+                             visuals.build() (recorded demos come from demos.record at this point)
+  4b. publish.check_visuals()  qa.review() with the reel's sources: Claude reads one frame per slide.
+                             honest=false raises publish.Dishonest: a news reel is dropped and an evergreen
+                             reel is written and reviewed instead (a hand-added reel is never replaced);
+                             a rejected visual is replaced by the point's next choice or its text
   4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
   5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
-  6. delete upload, write posted_at + media_id, workflow commits reels.json + pronounce.json
+  6. delete uploads, write posted_at + media_id, workflow commits reels.json + pronounce.json
+     (once a day: a real run exits if a reel already went out today, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
 weekly.yml (Sun 10:00 UTC)
@@ -48,18 +57,20 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | File | Role | Key entry points |
 | --- | --- | --- |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
-| `publish.py` | Orchestrates one daily post | `main`, `upload`, `publish_to_instagram` |
-| `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
-| `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
-| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, chat, targeted screenshot with cursor click | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Chat`, `Screenshot`, `capture`, `sketch_ellipse`, `stroke` |
+| `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
+| `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
+| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `learn.py` | Weekly: measure posted reels, group by pillar/series/visual, write learnings.md + report | `measure`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `review`, `post`, `SCHEMA`, `LOG` |
-| `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
+| `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
 | `test_voice.py` | Pronunciation regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN` |
-| `pronounce.json` | Learned respellings, word to spoken form | data, written by `say_checked` |
+| `pronounce.json` | Learned respellings per engine, word to spoken form | data, written by `voice.learn` |
+| `learnings.md` | Rules from the weekly learning loop, read by both writers | data, written by `learn.py` |
+| `carousels.json` | Posted carousels | data, written by `carousel.py` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
 | `refresh_token.py` | IG token refresh | script |
 | `docs_check.py` | Docs vs code drift check, stdlib only | `check` |
@@ -90,17 +101,21 @@ First run downloads Poppins into `fonts/`, the Kokoro model into `models/` and W
 ```jsonc
 {
   "id": 31,                         // next integer; never reuse
-  "pillar": "devtip",               // ai|devtip|take|freelance|concept|saas|productivity|timely
+  "pillar": "devtip",               // ai|devtip|relatable|freelance|concept|saas|timely (older reels: take, productivity)
+  "series": "Dev mistake",          // evergreen reels: the day's series; "episode": its number
   "style": "light",                 // light|dark, alternate with the previous reel
-  "kicker": "Dev tip",              // 1-3 words, <= 24 chars
+  "kicker": "Dev tip",              // 1-3 words, <= 24 chars; replaced by "<series> #<episode>" when posted
   "hook": "Six to twelve words with the *key word* highlighted",
   "points": [                       // exactly 3
     { "title": "Max eight words", "body": "Max sixteen words, no asterisks.",
       "visual": [ { "type": "code", "language": "ts", "title": "user.ts", "code": "...", "highlight": [2] } ] }
-  ],                                // visual: optional, 1-3 choices best first (code, terminal, screenshot + find)
+  ],                                // visual: optional, 1-3 choices best first: code, diff (before/after), terminal,
+                                    // tweet (post in his name), chat (POV), quote (real post: author, handle, platform,
+                                    // url, exact text), screenshot (url + find), walkthrough (url + steps),
+                                    // ide (files, setup, steps) -- see generate.SYSTEM and generate.visual_errors
   "cta": "A short question with one *highlighted* word?",
   "caption": "Line one.\nLine two.\nA question to end on? 👇",
-  "hashtags": ["#nextjs", "..."],   // 8-12, unique, ^#[A-Za-z0-9_]+$
+  "hashtags": ["#nextjs", "..."],   // 3-5, unique, ^#[A-Za-z0-9_]+$ (older posted reels have 8-12)
   "voiceover": ["..."],             // 5 spoken lines (hook, 3 points, cta); required on unposted reels
   "sources": ["https://..."],       // timely reels only, primary source first; used to block reposting a story
   "posted_at": null,                // ISO timestamp, set by publish.py
@@ -112,21 +127,22 @@ Rules enforced by `generate.validate` (the single source of truth, also run on C
 - Hook 6-12 words with at least one balanced `*highlight*`. Titles max 8 words. Bodies max 16, no `*`.
 - CTA ends with `?` and has exactly one highlight.
 - No emojis on slide text; emojis only in the caption.
-- Caption 2-3 non-empty lines; last line contains `?` and ends with 👇.
+- Caption 2-3 non-empty lines, the first naming the topic in searchable words; last line contains `?` and ends with 👇 (`generate.tidy` adds a missing 👇).
 - Hooks must be unique after lowercasing and stripping non-alphanumerics (`generate.norm`).
-- Voiceover: exactly 5 non-empty lines, 35 to 70 words in total, line 1 max 14 words, no symbols, `*` or emojis, no line more than 60% similar to its slide (`generate.similar`), and delivery cues per `generate.cue_errors`: every line starts with a `[cue]`, a fresh cue at least every 10 spoken words, a high-energy cue on the hook, at most one low-energy cue, at least 5 different cues. `--check` skips voiceover errors on posted reels, which predate it.
+- Voiceover: exactly 5 non-empty lines, 35 to 70 words in total, line 1 max 14 words, no symbols, `*` or emojis, points' lines no more than 60% similar to their slides and the hook and closing lines no more than 90% (`generate.similar`), and delivery cues per `generate.cue_errors`: every line starts with a `[cue]`, a fresh cue at least every 10 spoken words, a high-energy cue on the hook, at most one low-energy cue, at least 5 different cues. `--check` skips voiceover, cue and hashtag-count errors on posted reels, which predate those rules.
+- Visuals per `generate.visual_errors`: code max 12x40, diff before/after max 12x40, terminal 1-6 commands of 40, tweet 10-200 chars, chat 2-5 messages of 60, quote on a known platform with an https url, walkthrough 1-4 steps, ide 1-8 steps with allowed commands only (`demos.allowed`) and max 12 typed lines of 60.
 
-Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats. The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
+Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats; the honesty rules (no fake results, invented scenes framed as POV, "I tested" only with a real run, no one else's work as his own, hooks never promise more than the reel delivers). The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
 
-Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`, Monday = `ai`).
+Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon AI tool in 30s, Tue Dev mistake, Wed POV (relatable), Thu Client vs Me, Fri Explained, Sat POV (relatable or ranking), Sun Build smart. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
 
 ## Common tasks
 
-**Add a reel by hand**: append with the next `id`, `posted_at`/`media_id` null, then `generate.py --voiceover` if you did not write the voiceover, `generate.py --check` and `voice.py <id>`. Move it up the list to post sooner (order of unposted entries is the posting order).
+**Add a reel by hand**: append with the next `id`, `posted_at`/`media_id` null, then `generate.py --voiceover` and `--cues` if you did not write the voiceover, `generate.py --check` and `voice.py <id>`. The first unposted entry is posted at the next daily run instead of a freshly written reel. A dry run saves `out/reel-<id>.json` beside its video, which can be added this way to post exactly what was reviewed.
 
 **A word is mispronounced**: the listen-back check usually fixes it on its own and records it in `pronounce.json` (keyed by engine, applied before the rules). If a learned respelling sounds wrong, edit or delete it there. For patterns (numbers, acronyms, symbols) add a `(regex, respelling)` tuple to `voice.COMMON_RULES` (every engine) or `voice.KOKORO_RULES`; order matters, specific terms go before the generic acronym/plural rules. Add a case to `test_voice.SPEAKABLE` or `SENTENCES`, then run `test_voice.py --audio`.
 
-**Change the look**: `render.THEMES` for colors, layout constants at the top of `render.py`. Keep text inside the Instagram safe zone (`SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`). Slide timing is driven by word count, clamped to 3-6s per slide and 15-25s total, then stretched to fit the voice.
+**Change the look**: `render.THEMES` for colors, layout constants at the top of `render.py`. Keep text inside the Instagram safe zone (`SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`). With a Fish voiceover each slide lasts exactly as long as its part of the one continuous take; without a voice, timing is driven by word count (3-6s per slide, 15-25s total).
 
 **Change the voice**: repo variable `VOICE` (a Fish voice id, a Kokoro voice, or `none` for SFX only); `VOICE_ENGINE` forces `fish` or `kokoro`. Fish needs the secret `FISH_API_KEY` and falls back to Kokoro without it. `FISH_MODEL` defaults to `s2.1-pro-free` (free until 2026-11-30). `VOICE_PITCH` exists but shifted voices sound robotic; pick a different voice instead.
 
@@ -138,21 +154,25 @@ Evergreen pillar is chosen by the weekday the reel will post (`generate.PILLARS`
 
 ## Secrets and variables
 
-Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_API_KEY`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
+Variables/env: `POST_AT_UTC`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
 
 - No music, ever: the creator does not use music in his videos. Sound is the voiceover plus non-tonal sound effects (shaped noise: whooshes, clicks, key taps, scribbles, thuds). Never add a music bed, beat, melodic riser or pitched drone.
-- Supabase Storage needs the legacy `service_role` JWT. New `sb_secret_` keys are rejected there.
+- Honesty is a hard gate: `qa.review` gets the reel's `sources`; honest=false is reserved for deception (fake results, invented scenes as real, unshown "I tested", passing off others' work, claims the sources contradict). A mismatched visual is only visual_ok=false.
+- The fact-checker must look for newer developments (fixes, reversals) after a source's date; a reel once claimed "no fix yet" when the official changelog had the fix.
+- Recorded demos: walkthroughs work anywhere; the IDE (openvscode-server) only on Linux, so test it with the Demo preview workflow. The headless screencast needs `--force-device-scale-factor` or frames come at half resolution. The IDE terminal runs `demos.REEL_SHELL` (commands are queued, typed out and run for real) because keys sent by Playwright never reached the shell. Clips speed up at most 1.5x (`visuals.Clip.MAX_SPEED`) and otherwise cut to their end.
+- Fish's free model `s2.1-pro-free` ends 2026-11-30: top up and set `FISH_MODEL=s2.1-pro`, or reels quietly fall back to Kokoro. Dropped Fish connections retry, then fall back to Kokoro rather than missing a day.
+- Supabase Storage needs the legacy `service_role` JWT. New `sb_secret_` keys are rejected there. The bucket was created for video only; `publish.allow_type` adds a MIME type (the cover JPEG, carousel slides) when an upload is refused.
 - The `reels` bucket must be public; `upload` HEADs the public URL and fails loudly if not.
 - The upload is deleted in `finally`, even on success, since Instagram has already fetched it.
 - The daily workflow uses the `reels-queue` concurrency group and `git pull --rebase` before pushing so `reels.json` commits do not collide. Keep that when adding workflows that write it.
 - The trend scan is best effort: fewer than 10 fresh items, any exception, reach below 7, no sources, a reused primary source, a duplicate hook or a fact-check reject all fall back to `generate.today`. Do not let a trends change raise past `publish.main`'s try/except.
 - Instagram insights: request one metric per call (`insights.metric`); one unsupported metric fails the whole request.
 - YouTube search costs 100 quota units per query; 8 queries a day is under the free 10,000.
-- `thumb_offset` (the cover) is the last fully visible frame of the hook slide.
+- The cover is `out/reel-<id>-cover.jpg` sent as `cover_url` (JPEG, hook inside the centre square); `thumb_offset` (last fully visible hook frame) stays as the fallback.
 - The listen-back check writes `pronounce.json` during a real run; the daily workflow commits it with `reels.json`. Numbers are not checked (transcripts spell them too many ways). Some names are said right but Whisper cannot spell them back; those go in `test_voice.KNOWN`.
 - `voice.ask_respellings` pins `claude-sonnet-5` instead of following `CLAUDE_MODEL`. If Claude is unavailable it returns no options and the line is spoken as is.
 - The daily workflow caches `models/` under key `kokoro-v1.0-whisper-small.en`; change the key when a model changes.
@@ -179,5 +199,5 @@ Automation around it:
 1. `.venv/bin/python generate.py --check` passes.
 2. `python3 docs_check.py` passes.
 3. For render/voice changes: render one light and one dark reel and look at the MP4 (safe zone, overflow, timing, audio). Voice changes also need `test_voice.py --audio` to pass.
-4. For publish/trends changes: `DRY_RUN=true .venv/bin/python publish.py` end to end.
+4. For publish/trends changes: `DRY_RUN=true .venv/bin/python publish.py` end to end; for the carousel, `DRY_RUN=true .venv/bin/python carousel.py`; for demos, the Demo preview workflow.
 5. Workflow changes: trigger Daily reel with `dry_run` on and check the run log and artifact.
