@@ -36,6 +36,11 @@ class PublishError(Exception):
     pass
 
 
+class Dishonest(Exception):
+    """The frame review found a claim that is not true; this reel must never be posted."""
+    pass
+
+
 def secrets():
     return [v for v in (os.environ.get('IG_TOKEN'), os.environ.get('SUPABASE_SERVICE_KEY')) if v]
 
@@ -178,7 +183,7 @@ def check_visuals(reel, clips, path, slides, rounds=3):
         dishonest = [r for r in results if r.get('honest') is False]
         if dishonest:
             # Honesty is a hard line: better no post today than a misleading one.
-            raise SystemExit('ERROR: the review found a dishonest claim, not posting: '
+            raise Dishonest('the review found a dishonest claim: '
                              + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in dishonest))
         rejected = {}
         for r in results:
@@ -249,6 +254,22 @@ def wait_for_post_time():
 
 # ---------- main ----------
 
+def new_entry(reels, reel):
+    posted = [r for r in reels if r.get('posted_at')]
+    return {'id': max((int(r['id']) for r in reels), default=0) + 1,
+            'style': 'dark' if posted and posted[-1]['style'] == 'light' else 'light',
+            **reel, 'posted_at': None, 'media_id': None}
+
+
+def make_video(reel):
+    """Voice, render and review one reel. Raises Dishonest if the review finds an untrue claim."""
+    print(f"Next reel: #{reel['id']} {reel['hook']!r}")
+    voice_name = os.environ.get('VOICE', '').strip() or None
+    clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
+    path, slides = render.render_reel(reel, voice=clips)
+    return check_visuals(reel, clips, path, slides)
+
+
 def main():
     dry = os.environ.get('DRY_RUN', '').strip().lower() in ('1', 'true', 'yes')
     output('posted', 'false')
@@ -260,21 +281,30 @@ def main():
         return
     # A reel added by hand goes first; otherwise today's reel is researched and written now, not ahead of time.
     reel = next((r for r in reels if not r.get('posted_at')), None)
-    if reel:
+    by_hand = reel is not None
+    if by_hand:
         print('Using the reel added by hand')
     else:
-        reel = todays_reel(reels)
-        posted = [r for r in reels if r.get('posted_at')]
-        reel = {'id': max((int(r['id']) for r in reels), default=0) + 1,
-                'style': 'dark' if posted and posted[-1]['style'] == 'light' else 'light',
-                **reel, 'posted_at': None, 'media_id': None}
+        reel = new_entry(reels, todays_reel(reels))
         reels.append(reel)
-
-    print(f"Next reel: #{reel['id']} {reel['hook']!r}")
-    voice_name = os.environ.get('VOICE', '').strip() or None
-    clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
-    path, slides = render.render_reel(reel, voice=clips)
-    path, slides = check_visuals(reel, clips, path, slides)
+    try:
+        path, slides = make_video(reel)
+    except Dishonest as e:
+        if by_hand:
+            raise SystemExit(f'ERROR: {e}; not posting the reel added by hand')
+        # A news reel that fails the honesty review is dropped; an evergreen tip for today's series takes its place.
+        print(f'{e}\nWriting an evergreen reel instead')
+        reels.remove(reel)
+        tip = generate.today(reels, [])
+        if not tip:
+            raise SystemExit('ERROR: could not write a replacement reel today.')
+        name, episode = generate.series_label(reels, datetime.now(timezone.utc).date())
+        reel = new_entry(reels, {**tip, 'series': name, 'episode': episode, 'kicker': f'{name} #{episode}'})
+        reels.append(reel)
+        try:
+            path, slides = make_video(reel)
+        except Dishonest as e2:
+            raise SystemExit(f'ERROR: {e2}; nothing posted today')
     # Cover is the last fully visible frame of the hook slide.
     thumb_ms = int((slides[0].end - render.EXIT - 0.05) * 1000)
     caption = f"{reel['caption'].strip()}\n\n{credits(reel)}{' '.join(reel['hashtags'])}"

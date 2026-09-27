@@ -70,3 +70,50 @@ jobs:
           git commit -m 'Weekly learnings'
           git pull --rebase origin ${{ github.ref_name }}
           git push
+
+  carousel:
+    # The weekly cheat-sheet carousel (saves-driven), posted alongside the daily reel.
+    needs: learn
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Write, review and post the carousel
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python carousel.py
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: carousel
+          path: out/carousel/*.jpg
+          retention-days: 14
+
+      - name: Record it
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add carousels.json 2>/dev/null || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Posted the weekly carousel'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

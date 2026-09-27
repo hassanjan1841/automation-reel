@@ -31,6 +31,7 @@ daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  -
 weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
   learn.py           per-reel insights -> learnings.md (rules the writer reads) + GitHub issue report
+  carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
 
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
 
@@ -53,6 +54,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, chat, targeted screenshot with cursor click | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Chat`, `Screenshot`, `capture`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `learn.py` | Weekly: measure posted reels, group by pillar/series/visual, write learnings.md + report | `measure`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
+| `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `review`, `post`, `SCHEMA`, `LOG` |
 | `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |
