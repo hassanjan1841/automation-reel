@@ -259,6 +259,10 @@ How to choose:
 Verification is mandatory:
 - Use WebSearch and WebFetch to read the primary source (official blog, docs, changelog or repo) before writing.
 - Every fact on the slides must be supported by a page you fetched. Put those URLs in "sources", primary source first.
+- Check whether the story has moved on since it was published (a fix, a reversal, an official reply) and write
+  the reel as things stand today. Never say something is still broken or unfixed without a current source.
+- Report what happened without guessing at motives: no "hid", "secretly" or "quietly" about a real company
+  unless a source shows intent.
 - Return up to 3 options: the strongest distinct stories you could verify, best first, each a complete reel.
 - Return an empty list if nothing today beats a good evergreen tip.
 - reach_score is your honest estimate from 1 to 10 of how well the reel will spread compared with a typical evergreen tip.
@@ -310,6 +314,14 @@ CHECK_SYSTEM = """You are a strict fact-checker for short Instagram reels about 
 Open every source URL with WebFetch and search for confirmation where needed. Check every claim on the
 slides, in the voiceover and in the caption: names, versions, numbers, dates, prices, commands and what a product does.
 - pass: every claim is supported by a page you read. Return the reel unchanged.
+- Stories move on after they are published. Always search for newer developments after the source's date:
+  fixes, patches, changelog entries, reversals, corrections, official replies. Prefer the official source
+  (changelog, docs, the company's own post) over a blog about it.
+- A claim that something is still broken, unfixed, ongoing, "no fix yet" or "right now" must be confirmed as
+  still true today from a current source; if a later fix or change exists, the reel must say so (fix) or,
+  if the whole point no longer holds, reject.
+- Describe what happened, not motives: words like "hid", "secretly", "quietly" or "sneaky" about a real
+  company or person are only allowed when a source shows it was deliberate; otherwise reword neutrally (fix).
 - fix: small wording or number errors you can correct from the sources. Return the corrected reel,
   keeping the same format and word limits (hook 6 to 12 words, titles max 8, bodies max 16).
 - reject: the main claim is wrong, unsupported, or already outdated.
