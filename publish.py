@@ -165,18 +165,21 @@ def publish_to_instagram(video_url, caption, thumb_ms, cover_url=None):
 # ---------- visual review ----------
 
 def check_visuals(reel, clips, path, slides, rounds=3):
-    """Have Claude look at the rendered frames. A visual that fails is replaced by the point's next choice,
-    or by its text, and the reel is rendered again."""
+    """Have Claude look at the rendered frames. A dishonest claim stops the post; a visual that fails is replaced
+    by the point's next choice, or by its text, and the reel is rendered again."""
     shown = reel
     for _ in range(rounds):
-        if not any(s.visual for s in slides):
-            break
         try:
             results = qa.review(path, shown, slides)
         except Exception as e:  # without a review, keep only visuals we draw ourselves; a page could be anything
             print(f'Visual review unavailable ({type(e).__name__}: {redact(str(e))[:200]}); dropping screenshots')
             results = [{'slide': i, 'ok': True, 'visual_ok': False, 'problem': 'not reviewed'}
                        for i, s in enumerate(slides) if s.visual and s.visual.spec.get('type') == 'screenshot']
+        dishonest = [r for r in results if r.get('honest') is False]
+        if dishonest:
+            # Honesty is a hard line: better no post today than a misleading one.
+            raise SystemExit('ERROR: the review found a dishonest claim, not posting: '
+                             + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in dishonest))
         rejected = {}
         for r in results:
             i = r['slide']
@@ -186,7 +189,7 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             elif not r['ok']:
                 print(f"Warning, slide {i}: {r['problem']}")
         if not rejected:
-            print(f'Visual review: {sum(bool(s.visual) for s in slides)} visuals passed')
+            print(f'Review passed: honest, {sum(bool(s.visual) for s in slides)} visuals fine')
             break
         # Rendered without the rejected choices; the queue keeps them so they can be fixed by hand.
         points = []

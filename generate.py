@@ -316,8 +316,9 @@ that does not clearly show what is being said):
 - tweet: a short post in the creator's own voice (10 to 200 characters, up to 6 lines), shown as a post card
   with his name. Use it for a relatable one-liner, a hot take or a dev-life joke. No like or view counts.
 - chat: a "Client / Me" exchange of 2 to 5 short messages (max 60 characters each, "from": client or me),
-  shown as a chat with typing dots. Use it for freelance and client situations; it should be recognisable and
-  a little funny. No real names.
+  shown as a chat with typing dots and labelled as a POV scene. Use it for freelance and client situations;
+  it should be recognisable and a little funny, and the voiceover treats it as a familiar situation, never as
+  something that happened to the creator. No real names.
 - screenshot: a public page that shows the point itself (a product screen, a pricing table, a setting, a docs
   heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
   label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
@@ -336,6 +337,15 @@ Delivery cues (the voice follows them; without fresh cues it starts strong and f
 Content rules:
 - Evergreen only. No news, release dates, version numbers, prices or anything that goes stale.
 - No invented personal stories, client anecdotes, testimonials, or made-up numbers and statistics.
+
+Honesty rules (the creator's hard line; deceptive marketing is not allowed even for a good product):
+- Never claim results that did not happen: no income, revenue, follower or "I made $X" claims, no fake
+  screenshots of earnings or dashboards, no invented metrics.
+- Never present a made-up scenario as a real event. A chat or story is illustrative: frame it as POV or as a
+  common situation ("every freelancer has had this chat"), never as "my client said".
+- Only say "I tested", "I built" or "I tried" when the reel shows a real run of it.
+- Never present someone else's code, post or idea as the creator's own; quote and credit it instead.
+- The hook may not promise more than the reel delivers. No bait, no exaggerated urgency.
 - Technically accurate. If unsure about a detail, choose a different angle.
 - Plain English, short words, concrete and useful. No hype.
 - No emojis on the slides (kicker, hook, points, cta). Emojis are fine in the caption.

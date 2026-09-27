@@ -19,9 +19,9 @@ from voice import strip_cues
 SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['slides'],
     'properties': {'slides': {'type': 'array', 'items': {
-        'type': 'object', 'additionalProperties': False, 'required': ['slide', 'ok', 'visual_ok', 'problem'],
+        'type': 'object', 'additionalProperties': False, 'required': ['slide', 'ok', 'visual_ok', 'honest', 'problem'],
         'properties': {'slide': {'type': 'integer'}, 'ok': {'type': 'boolean'}, 'visual_ok': {'type': 'boolean'},
-                       'problem': {'type': 'string'}}}}},
+                       'honest': {'type': 'boolean'}, 'problem': {'type': 'string'}}}}},
 }
 
 SYSTEM = """You review frames of an Instagram Reel before it is posted, as a strict editor who wants every
@@ -34,6 +34,9 @@ Judge each frame:
   generic homepage or logo with nothing relevant. Use true when the slide has no visual.
 - ok: the whole frame looks professional: no text cut off, overlapping or running outside the frame, nothing
   broken, captions readable.
+- honest: false if any frame claims results that are not shown to be real (income, revenue, followers,
+  metrics), presents an invented scene as a real event, says "I tested/built" without showing it, or shows
+  someone else's work as the creator's own. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.
 Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false."""
 

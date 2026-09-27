@@ -31,6 +31,8 @@ daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  -
 token-refresh.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
 
+demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
+
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
 
 docs-check.yml (every push)          docs_check.py   fails if the docs drifted from the code
@@ -48,6 +50,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `trends.py` | Scrape + editor + fact-checker | `collect`, `performance`, `pick`, `fact_check`, `timely_reel` |
 | `generate.py` | Evergreen top-up, voiceover/cue/visual backfill, the validator | `validate`, `visual_errors`, `cue_errors`, `generate`, `append`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, chat, targeted screenshot with cursor click | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Chat`, `Screenshot`, `capture`, `sketch_ellipse`, `stroke` |
+| `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `qa.py` | Claude reviews one frame per slide after rendering | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `split`, `learn`, `misheard` |

@@ -507,6 +507,10 @@ class Chat(Card):
         d.text((32 + r, head // 2), 'C', font=render.font('Bold', round(r * 0.9)), fill='#FFFFFF', anchor='mm')
         d.text((52 + 2 * r, head // 2), visual.get('title', 'Client'), font=render.font('SemiBold', round(size * 0.9)),
                fill='#F2F3F5' if dark else '#101114', anchor='lm')
+        # An illustrative scene, not a real conversation: say so on the card itself.
+        d.rounded_rectangle((w - 150, head // 2 - 22, w - 28, head // 2 + 22), radius=22,
+                            fill=self.me_bg)
+        d.text((w - 89, head // 2), 'POV', font=render.font('Bold', 26), fill='#FFFFFF', anchor='mm')
         self.base = np.asarray(base, dtype=np.float32)
         self.f = f
         self.w, self.h = w, h

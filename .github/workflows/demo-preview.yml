@@ -1,0 +1,49 @@
+name: Demo preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: A walkthrough or ide visual as JSON
+        required: true
+      size:
+        description: Width and height in pixels
+        default: '980 620'
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Install screenshot browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Record
+        env:
+          SPEC: ${{ inputs.spec }}
+        run: python demos.py record "$SPEC" ${{ inputs.size }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo
+          path: out/clips/*.mp4
