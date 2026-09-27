@@ -107,6 +107,13 @@ def everyday(word):
     return zipf_frequency(word, 'en') >= 4.0
 
 
+def plain_word(word):
+    """An ordinary English word, even capitalised at the start of a sentence ("Check"), but not an acronym or a
+    name like "Redis"."""
+    from wordfreq import zipf_frequency
+    return word.isalpha() and word[1:].islower() and zipf_frequency(word.lower(), 'en') >= 4.0
+
+
 def lexicon():
     """Respellings learned by the listen-back check, per engine: {"fish": {"Supabase": "Soopa base"}}."""
     data = json.loads(LEXICON.read_text()) if LEXICON.exists() else {}
@@ -454,15 +461,21 @@ def say_whole(engine, lines, check=True):
         audio = engine.say(speakable(text, engine=engine.key))
         words = transcribe(audio, words=True, context=text)
         bad = misheard(text, ' '.join(w for w, *_ in words)) if check else []
+        # The script as a hint lets names through but also papers over a garbled everyday word ("Check" heard
+        # as "you correct"), so everyday words are checked again without it. They only cost a retake: a common
+        # word is not respelled.
+        slurred = [w for w in misheard(text, transcribe(audio)) if plain_word(w) and w not in bad] if check else []
         clips = split(audio, words, lines)
         if clips is None:
             print('  warning: could not line up this take with the script, trying again')
             continue
-        if best is None or len(bad) < len(best_bad):
-            best, best_bad = clips, bad
-        if not bad:
+        if best is None or len(bad) + len(slurred) < len(best_bad):
+            best, best_bad = clips, bad + slurred
+        if not bad and not slurred:
             break
-        if take == 0:
+        if slurred:
+            print(f'  unclear {slurred}, taking it again')
+        if bad and take == 0:
             print(f'  misheard {bad}')
             for line in lines:
                 learn(engine, line, [w for w in bad if set(tokens(w)) <= set(tokens(line))])
