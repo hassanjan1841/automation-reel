@@ -1,0 +1,76 @@
+[
+  {
+    "title": "Stop Leaking API Keys By Accident",
+    "subtitle": "A fast checklist for handling secrets safely in any stack.",
+    "slides": [
+      {
+        "heading": "The mistake almost every dev makes",
+        "points": [
+          "Committing a .env file to git",
+          "Secrets stay in history even after deleting",
+          "Public repo scanners find keys in minutes"
+        ],
+        "alt": "A slide explaining that committing a .env file leaks secrets even after you delete it, because git history keeps it."
+      },
+      {
+        "heading": "Ignore env files before committing",
+        "code": ".env\n.env.local\n.env.*.local",
+        "language": "text",
+        "alt": "A code slide showing a .gitignore snippet that excludes .env, .env.local, and .env.*.local files."
+      },
+      {
+        "heading": "Load secrets with process.env",
+        "code": "const key = process.env.API_KEY;\nif (!key) throw new Error('No key');",
+        "language": "javascript",
+        "alt": "A code slide showing how to read an API key from process.env and fail fast if it is missing."
+      },
+      {
+        "heading": "Client code is never private",
+        "points": [
+          "Anything shipped to the browser is public",
+          "Only prefix truly public vars (e.g. NEXT_PUBLIC_)",
+          "Keep real secret keys server-side only"
+        ],
+        "alt": "A slide warning that any variable bundled into frontend JavaScript is visible to anyone, so secrets must stay server-side."
+      },
+      {
+        "heading": "If a key leaks, rotate fast",
+        "points": [
+          "Revoke the old key immediately",
+          "Generate a fresh one from the provider",
+          "Update every environment that used the old key"
+        ],
+        "alt": "A slide listing the steps to take right after an API key leaks: revoke, regenerate, and update everywhere it was used."
+      },
+      {
+        "heading": "Production needs a secret manager",
+        "points": [
+          "Use your host's built-in secret storage",
+          "Vercel, Render, and Railway all support it",
+          "Avoid plain text config files on servers"
+        ],
+        "alt": "A slide recommending built-in secret managers on hosts like Vercel, Render, and Railway instead of plain text config files."
+      },
+      {
+        "heading": "Save this before your next push",
+        "points": [
+          "Save it before your next commit",
+          "Send it to a teammate who needs it"
+        ],
+        "alt": "A closing slide encouraging viewers to save this checklist before their next git push and share it with a teammate."
+      }
+    ],
+    "question": "Have you ever accidentally committed an API key to git?",
+    "caption": "Environment variables and API key security for full-stack devs.\n\nOne git commit is all it takes to leak a secret to the whole internet.\n\nHave you ever accidentally committed a .env file? 👇",
+    "hashtags": [
+      "#webdev",
+      "#apisecurity",
+      "#environmentvariables",
+      "#fullstackdeveloper",
+      "#freelancedeveloper"
+    ],
+    "style": "dark",
+    "posted_at": "2026-09-27T18:31:45+00:00",
+    "media_id": "17909215953545019"
+  }
+]
