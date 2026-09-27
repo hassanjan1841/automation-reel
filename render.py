@@ -33,6 +33,7 @@ HANDLE = '@hassanjan.k'
 SAFE_TOP, SAFE_BOTTOM, MARGIN = 140, 1450, 90
 CONTENT_TOP, CONTENT_BOTTOM = 300, 1430
 POINT_BOTTOM = 1060
+HOOK_WORD_H = 420
 CAPTION_TOP, CAPTION_BOTTOM = 1330, 1470
 TEXT_W = W - 2 * MARGIN
 
@@ -304,9 +305,18 @@ def build_slides(reel, voice=None):
 
     # Hook: with a voice it is already on its way in at frame 0, so the very first frame is never empty.
     s = Slide('hook')
-    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 128, 60, TEXT_W, bottom - CONTENT_TOP, leading=1.08)
+    text_top = CONTENT_TOP
+    if captions and reel.get('hook_word'):
+        import visuals
+        # The key word spins in above the hook in 3D; the hook text takes the space below it.
+        s.visual = visuals.build({'type': 'word', 'text': reel['hook_word']}, theme,
+                                 (MARGIN, CONTENT_TOP - 60, TEXT_W, HOOK_WORD_H))
+        if s.visual:
+            s.visual.spec = {'type': 'word', 'text': reel['hook_word']}
+            text_top = CONTENT_TOP - 60 + HOOK_WORD_H
+    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 128, 60, TEXT_W, bottom - text_top, leading=1.08)
     block_h = len(lines) * line_h
-    top = CONTENT_TOP + (bottom - CONTENT_TOP - block_h) // 2 - (0 if captions else 60)
+    top = text_top + (bottom - text_top - block_h) // 2 - (0 if captions else 60)
     end = add_words(s, lines, fnt, size, line_h, top, -0.12 if captions else start, theme, step=step * 0.8, anim=anim)
     s.need = end + WORD_ANIM + 1.2 + 0.18 * words_in(reel['hook'])
     slides.append(s)

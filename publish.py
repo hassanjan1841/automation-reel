@@ -220,6 +220,12 @@ def credits(reel):
 # ---------- today's reel ----------
 
 def todays_reel(reels):
+    """Today's reel, with 3D removed on a day it is not allowed (the writer is told, this is the safety net)."""
+    reel = research_reel(reels)
+    return reel if generate.three_d_today() else generate.strip_3d(reel)
+
+
+def research_reel(reels):
     """Research today: a verified timely story if one is strong enough, else a fresh tip for today's pillar."""
     perf = []
     try:
@@ -296,6 +302,7 @@ def main():
         print(f'{e}\nWriting an evergreen reel instead')
         reels.remove(reel)
         tip = generate.today(reels, [])
+        tip = tip if not tip or generate.three_d_today() else generate.strip_3d(tip)
         if not tip:
             raise SystemExit('ERROR: could not write a replacement reel today.')
         name, episode = generate.series_label(reels, datetime.now(timezone.utc).date())

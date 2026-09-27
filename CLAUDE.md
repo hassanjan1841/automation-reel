@@ -6,7 +6,7 @@ Daily Instagram Reel pipeline for @hassanjan.k. Python 3.12 + ffmpeg, run by Git
 - `README.md` is the operator guide. Script docstrings are the source of truth for each script's usage and env vars.
 - Use `.venv/bin/python`. Never post for real while testing: use `DRY_RUN=true` with `publish.py` and `carousel.py`.
 - The creator's hard rules: no music ever (sound effects only); everything halal and honest (no invented results,
-  stories, numbers or quotes, nothing of anyone else's presented as his); never Reddit; no faces or animals in visuals.
+  stories, numbers or quotes, nothing of anyone else's presented as his); never Reddit; no faces or animals in visuals (3D scenes too: `scene3d.ANIMAL_LOGOS` blocks mascot logos).
 - `reels.json` is live state that the daily workflow commits to. Edit it only when the task is about reels, and run `generate.py --check` after.
 
 ## Docs stay in the same change as the code

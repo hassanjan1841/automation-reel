@@ -10,6 +10,7 @@ A point may carry one of:
   {"type": "quote", "author": "...", "handle": "@...", "platform": "X", "url": "https://...", "text": "..."}
                                                                           a real public post, credited, verbatim
   {"type": "walkthrough", ...} or {"type": "ide", ...}   a real screen recording, see demos.py
+  {"type": "diagram" | "device" | "bars" | "logos", ...}   a 3D scene, see scene3d.py
   {"type": "screenshot", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
    "find": "Enable Row Level Security"}   scrolled to that text, a cursor glides over and clicks it, spotlit
 
@@ -662,6 +663,48 @@ def recorded(visual, box):
     return Clip(demos.record(visual, size), (box[0], box[1], size[0], size[1]))
 
 
+# ---------- 3D scenes ----------
+
+class Scene:
+    """A three.js scene from scene3d.py floating straight on the reel background (no card; objects cast their own
+    shadows). It is rendered once, then its frames are stretched or squeezed to fill the slide, so the diagram's
+    packets finish their trip whatever the voice line's length. Rendering happens here, not at draw time, so a scene
+    that fails falls back to text like any other visual."""
+    LEAD, SECONDS = 0.25, 6.0
+
+    def __init__(self, spec, theme, box):
+        import scene3d
+        x, y, w, h = box
+        if spec.get('type') != 'device':
+            # Wide scenes read bigger in a shorter box; centre it in the space it was given.
+            h2 = min(h, round(w * 0.72))
+            y, h = y + (h - h2) // 3, h2
+        if spec.get('type') == 'logos' and set(spec.get('items', [])) & scene3d.ANIMAL_LOGOS:
+            raise ValueError('an animal or mascot logo is not allowed')
+        self.x, self.y, self.w, self.h = x, y, w, h
+        self.frames = sorted(scene3d.render_scene(spec, theme, (self.w, self.h), self.SECONDS, transparent=True)
+                             .glob('*.png'))
+        if not self.frames:
+            raise ValueError('3D scene rendered no frames')
+        self.duration = 4.0
+        self.sounds = [(0.35, 'swish')]
+        self.index, self.cached = -1, None
+
+    def draw(self, frame, t, alpha, dy):
+        if alpha <= 0.003:
+            return
+        p = max(0.0, t - self.LEAD) / max(1.0, self.duration - self.LEAD - 0.3)
+        i = min(len(self.frames) - 1, int(p * len(self.frames)))
+        if i != self.index:
+            a = np.asarray(Image.open(self.frames[i]).convert('RGBA'), dtype=np.float32)
+            self.index, self.cached = i, (a[..., :3], a[..., 3] / 255.0)
+        rgb, mask = self.cached
+        render.blend(frame, rgb, mask, alpha, self.x, self.y + dy)
+
+
+SCENES_3D = ('diagram', 'device', 'bars', 'logos', 'word')
+
+
 # ---------- screenshot ----------
 
 def capture(url, find):
@@ -841,6 +884,8 @@ def build(visual, theme, box):
             return Quote(visual, box, theme)
         if kind in ('walkthrough', 'ide'):
             return recorded(visual, box)
+        if kind in SCENES_3D:
+            return Scene(visual, theme, widen(box))
         if kind == 'screenshot':
             if not visual.get('find'):
                 raise ValueError('a screenshot needs the text to show ("find")')

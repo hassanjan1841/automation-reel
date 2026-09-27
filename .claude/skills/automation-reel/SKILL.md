@@ -59,9 +59,10 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
-| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
-| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
+| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
+| `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `PAGE`, `ANIMAL_LOGOS` |
 | `learn.py` | Weekly: measure posted reels, group by pillar/series/visual, write learnings.md + report | `measure`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `review`, `post`, `SCHEMA`, `LOG` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
@@ -106,13 +107,16 @@ First run downloads Poppins into `fonts/`, the Kokoro model into `models/` and W
   "style": "light",                 // light|dark, alternate with the previous reel
   "kicker": "Dev tip",              // 1-3 words, <= 24 chars; replaced by "<series> #<episode>" when posted
   "hook": "Six to twelve words with the *key word* highlighted",
+  "hook_word": "RLS",               // optional, 3D days only: one word of the hook, spun in as 3D text above it
   "points": [                       // exactly 3
     { "title": "Max eight words", "body": "Max sixteen words, no asterisks.",
       "visual": [ { "type": "code", "language": "ts", "title": "user.ts", "code": "...", "highlight": [2] } ] }
   ],                                // visual: optional, 1-3 choices best first: code, diff (before/after), terminal,
                                     // tweet (post in his name), chat (POV), quote (real post: author, handle, platform,
                                     // url, exact text), screenshot (url + find), walkthrough (url + steps),
-                                    // ide (files, setup, steps) -- see generate.SYSTEM and generate.visual_errors
+                                    // ide (files, setup, steps); on 3D days also diagram (nodes, edges, flow),
+                                    // device (laptop + code, phone + screenshot), bars (real numbers + source),
+                                    // logos (Simple Icons slugs) -- see generate.SYSTEM and generate.visual_errors
   "cta": "A short question with one *highlighted* word?",
   "caption": "Line one.\nLine two.\nA question to end on? 👇",
   "hashtags": ["#nextjs", "..."],   // 3-5, unique, ^#[A-Za-z0-9_]+$ (older posted reels have 8-12)
@@ -130,11 +134,11 @@ Rules enforced by `generate.validate` (the single source of truth, also run on C
 - Caption 2-3 non-empty lines, the first naming the topic in searchable words; last line contains `?` and ends with 👇 (`generate.tidy` adds a missing 👇).
 - Hooks must be unique after lowercasing and stripping non-alphanumerics (`generate.norm`).
 - Voiceover: exactly 5 non-empty lines, 35 to 70 words in total, line 1 max 14 words, no symbols, `*` or emojis, points' lines no more than 60% similar to their slides and the hook and closing lines no more than 90% (`generate.similar`), and delivery cues per `generate.cue_errors`: every line starts with a `[cue]`, a fresh cue at least every 10 spoken words, a high-energy cue on the hook, at most one low-energy cue, at least 5 different cues. `--check` skips voiceover, cue and hashtag-count errors on posted reels, which predate those rules.
-- Visuals per `generate.visual_errors`: code max 12x40, diff before/after max 12x40, terminal 1-6 commands of 40, tweet 10-200 chars, chat 2-5 messages of 60, quote on a known platform with an https url, walkthrough 1-4 steps, ide 1-8 steps with allowed commands only (`demos.allowed`) and max 12 typed lines of 60.
+- Visuals per `generate.visual_errors`: code max 12x40, diff before/after max 12x40, terminal 1-6 commands of 40, tweet 10-200 chars, chat 2-5 messages of 60, quote on a known platform with an https url, walkthrough 1-4 steps, ide 1-8 steps with allowed commands only (`demos.allowed`) and max 12 typed lines of 60. 3D: diagram 2-5 nodes (labels max 12) with edges and a 1-8 hop flow over node ids, device phone only with a screenshot, bars 2-5 with an https `source`, logos 1-4 slugs none in `scene3d.ANIMAL_LOGOS`, `hook_word` one word of the hook, at most 2 3D moments per reel (`generate.three_d_count`).
 
 Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats; the honesty rules (no fake results, invented scenes framed as POV, "I tested" only with a real run, no one else's work as his own, hooks never promise more than the reel delivers). The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
 
-Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon AI tool in 30s, Tue Dev mistake, Wed POV (relatable), Thu Client vs Me, Fri Explained, Sat POV (relatable or ranking), Sun Build smart. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
+Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon AI tool in 30s, Tue Dev mistake, Wed POV (relatable), Thu Client vs Me, Fri Explained, Sat POV (relatable or ranking), Sun Build smart. 3D is allowed on a random share of days (`generate.three_d_today`, seeded by the date so reruns agree, `THREE_D_CHANCE` default 0.5, `THREE_D=on|off` forces it); both writers are told via `three_d_note`, and `publish.todays_reel` strips 3D (`generate.strip_3d`) on other days. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
 
 ## Common tasks
 
@@ -155,7 +159,7 @@ Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon 
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_MODEL`, `TRENDING`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -164,6 +168,7 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Honesty is a hard gate: `qa.review` gets the reel's `sources`; honest=false is reserved for deception (fake results, invented scenes as real, unshown "I tested", passing off others' work, claims the sources contradict). A mismatched visual is only visual_ok=false.
 - The fact-checker must look for newer developments (fixes, reversals) after a source's date; a reel once claimed "no fix yet" when the official changelog had the fix.
 - Recorded demos: walkthroughs work anywhere; the IDE (openvscode-server) only on Linux, so test it with the Demo preview workflow. The headless screencast needs `--force-device-scale-factor` or frames come at half resolution. The IDE terminal runs `demos.REEL_SHELL` (commands are queued, typed out and run for real) because keys sent by Playwright never reached the shell. Clips speed up at most 1.5x (`visuals.Clip.MAX_SPEED`) and otherwise cut to their end.
+- 3D scenes (`scene3d.py`): three.js loads from jsDelivr, so rendering needs the network. Chromium runs with SwiftShader (software WebGL), about 3 to 4 seconds of render per second of scene. `set_content` skips init scripts, so params and the Poppins fonts are injected into the page HTML. The cache key includes the page source, so editing `PAGE` re-renders. A scene is rendered once at `visuals.Scene.SECONDS` and its frames are stretched to the slide. Logos come from Simple Icons, which contains animal mascots; keep `ANIMAL_LOGOS` up to date (the no-animals rule).
 - Fish's free model `s2.1-pro-free` ends 2026-11-30: top up and set `FISH_MODEL=s2.1-pro`, or reels quietly fall back to Kokoro. Dropped Fish connections retry, then fall back to Kokoro rather than missing a day.
 - Supabase Storage needs the legacy `service_role` JWT. New `sb_secret_` keys are rejected there. The bucket was created for video only; `publish.allow_type` adds a MIME type (the cover JPEG, carousel slides) when an upload is refused.
 - The `reels` bucket must be public; `upload` HEADs the public URL and fails loudly if not.

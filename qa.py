@@ -71,6 +71,15 @@ def review(video, reel, slides, voiceover=None):
                          'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
                          'ide': 'a real VS Code recording typing and running code',
                          'quote': 'a credited quote of a real public post by ' + visual.get('author', ''),
+                         'word': 'the hook word "' + visual.get('text', '') + '" as 3D text',
+                         'diagram': 'a 3D diagram of ' + ', '.join(n.get('label', '') for n in visual.get('nodes', []))
+                                    + ' with a packet moving along the flow',
+                         'device': 'a 3D ' + visual.get('device', 'laptop') + ' showing '
+                                   + (visual.get('show') or {}).get('type', 'code'),
+                         'bars': '3D bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
+                                                         for b in visual.get('bars', []))
+                                 + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
+                         'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'

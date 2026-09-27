@@ -308,6 +308,7 @@ def pick(reels, candidates, perf, model=None):
         f"Today is {datetime.now(timezone.utc):%A %d %B %Y}.\n"
         + ('Quote visuals of real posts are allowed today.\n\n' if quotes_allowed(reels)
            else 'Quote visuals are NOT allowed today (one was used this week).\n\n')
+        + generate.three_d_note() + '\n\n'
         + f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')

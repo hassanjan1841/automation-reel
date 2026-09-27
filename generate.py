@@ -14,6 +14,8 @@ Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE
 
 import difflib
 import json
+import os
+import random
 import re
 import subprocess
 import sys
@@ -92,6 +94,13 @@ def validate(reel):
         if '*' in body:
             errors.append(f'point {i} body must not use highlights')
         errors += visual_errors(i, p.get('visual'))
+
+    word = reel.get('hook_word')
+    if word is not None and (not re.fullmatch(r'[A-Za-z0-9.#+-]{2,10}', word)
+                             or word.lower() not in re.sub(r'\*', '', hook).lower()):
+        errors.append('hook_word must be one word from the hook, 2 to 10 letters')
+    if three_d_count(reel) > 2:
+        errors.append(f'{three_d_count(reel)} 3D moments; use at most 2 (hook_word and 3D visuals together)')
 
     cta = reel.get('cta', '').strip()
     spans = highlights(cta)
@@ -186,13 +195,53 @@ def next_post_dates(reels, count):
     return [first + timedelta(days=queued + i) for i in range(count)]
 
 
+NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
+SCENES_3D = ('diagram', 'device', 'bars', 'logos')
+THREE_D_CHANCE = 0.5
+
+
+def three_d_today(day=None):
+    """Whether 3D may be used today. Random so it never becomes a routine, but fixed per date so a rerun or a
+    repair on the same day agrees. THREE_D=on or off overrides; THREE_D_CHANCE sets the odds."""
+    forced = os.environ.get('THREE_D', '').strip().lower()
+    if forced in ('on', 'off'):
+        return forced == 'on'
+    day = day or datetime.now(timezone.utc).date()
+    chance = float(os.environ.get('THREE_D_CHANCE', '').strip() or THREE_D_CHANCE)
+    return random.Random(f'3d-{day.isoformat()}').random() < chance
+
+
+def three_d_note():
+    return ('3D is allowed today: use it for at most 2 moments in the reel (a hook_word and/or 3D visuals), only '
+            'where it explains better than a flat visual.' if three_d_today()
+            else '3D is NOT allowed today: no hook_word and no diagram, device, bars or logos visuals.')
+
+
+def three_d_count(reel):
+    """3D moments a reel would show: the hook word plus each point whose first choice is a 3D scene."""
+    firsts = [(p.get('visual') or [None]) for p in reel.get('points', [])]
+    firsts = [f if isinstance(f, list) else [f] for f in firsts]
+    return bool(reel.get('hook_word')) + sum(1 for f in firsts if f and f[0] and f[0].get('type') in SCENES_3D)
+
+
+def strip_3d(reel):
+    """The same reel with no 3D, for a day when 3D is not allowed."""
+    points = []
+    for p in reel.get('points', []):
+        choices = p.get('visual')
+        choices = [c for c in (choices if isinstance(choices, list) else [choices] if choices else [])
+                   if c.get('type') not in SCENES_3D]
+        points.append({**{k: v for k, v in p.items() if k != 'visual'}, **({'visual': choices} if choices else {})})
+    return {**{k: v for k, v in reel.items() if k != 'hook_word'}, 'points': points}
+
+
 QUOTE_PLATFORMS = ('X', 'Hacker News', 'GitHub', 'Bluesky', 'Threads', 'LinkedIn', 'Mastodon', 'YouTube', 'Blog')
 
 VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
         'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot', 'walkthrough',
-                                            'ide', 'quote']},
+                                            'ide', 'quote', 'diagram', 'device', 'bars', 'logos']},
         'author': {'type': 'string'}, 'handle': {'type': 'string'}, 'platform': {'type': 'string'},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
@@ -203,6 +252,24 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['from', 'text'],
             'properties': {'from': {'type': 'string', 'enum': ['client', 'me']}, 'text': {'type': 'string'}}}},
         'url': {'type': 'string'}, 'find': {'type': 'string'},
+        'nodes': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['id', 'label', 'kind'],
+            'properties': {'id': {'type': 'string'}, 'label': {'type': 'string'},
+                           'kind': {'type': 'string', 'enum': list(NODE_KINDS)}}}},
+        'edges': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'to'],
+            'properties': {'from': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'flow': {'type': 'array', 'items': {'type': 'string'}},
+        'device': {'type': 'string', 'enum': ['laptop', 'phone']},
+        'show': {'type': 'object', 'additionalProperties': False, 'required': ['type'],
+                 'properties': {'type': {'type': 'string', 'enum': ['code', 'screenshot']},
+                                'language': {'type': 'string'}, 'title': {'type': 'string'},
+                                'code': {'type': 'string'}, 'url': {'type': 'string'}, 'find': {'type': 'string'}}},
+        'unit': {'type': 'string'}, 'source': {'type': 'string'},
+        'bars': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'value'],
+            'properties': {'label': {'type': 'string'}, 'value': {'type': 'number'}}}},
+        'items': {'type': 'array', 'items': {'type': 'string'}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -286,9 +353,42 @@ def visual_errors(i, visual):
                 errors.append(f'point {i} screenshot needs an https url')
             if not 3 <= len(v.get('find', '')) <= 80:
                 errors.append(f'point {i} screenshot needs "find": short exact text on that page to outline')
+        elif kind == 'diagram':
+            nodes, ids = v.get('nodes', []), {n.get('id') for n in v.get('nodes', [])}
+            flow = [f.split('>') for f in v.get('flow', [])]
+            if not 2 <= len(nodes) <= 5 or any(not 1 <= len(n.get('label', '')) <= 12 for n in nodes):
+                errors.append(f'point {i} diagram needs 2 to 5 nodes with labels of max 12 characters')
+            elif any(e.get('from') not in ids or e.get('to') not in ids for e in v.get('edges', [])) \
+                    or not 1 <= len(flow) <= 8 or any(len(f) != 2 or f[0] not in ids or f[1] not in ids for f in flow):
+                errors.append(f'point {i} diagram edges and flow ("a>b", 1 to 8 hops) must use node ids')
+        elif kind == 'device':
+            show = v.get('show') or {}
+            if v.get('device') == 'phone' and show.get('type') != 'screenshot':
+                errors.append(f'point {i} phone device shows a screenshot only; use a laptop for code')
+            elif show.get('type') == 'code':
+                errors += visual_errors(i, [{**show, 'type': 'code'}])
+            elif show.get('type') == 'screenshot':
+                errors += visual_errors(i, [{**show, 'type': 'screenshot'}])
+            else:
+                errors.append(f'point {i} device needs "show": a code or screenshot visual')
+        elif kind == 'bars':
+            bars = v.get('bars', [])
+            if not 2 <= len(bars) <= 5 or any(not 1 <= len(b.get('label', '')) <= 10 or b.get('value', 0) <= 0
+                                              for b in bars):
+                errors.append(f'point {i} bars needs 2 to 5 bars with short labels and positive values')
+            if not v.get('source', '').startswith('https://'):
+                errors.append(f'point {i} bars needs "source": the https page the numbers come from')
+        elif kind == 'logos':
+            import scene3d
+            items = v.get('items', [])
+            if not 1 <= len(items) <= 4 or any(not re.fullmatch(r'[a-z0-9]+', x) for x in items):
+                errors.append(f'point {i} logos needs 1 to 4 Simple Icons slugs like "nextdotjs"')
+            elif set(items) & scene3d.ANIMAL_LOGOS:
+                errors.append(f'point {i} logos may not include animal or mascot logos: '
+                              + ', '.join(sorted(set(items) & scene3d.ANIMAL_LOGOS)))
         else:
             errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough, '
-                          'ide or quote')
+                          'ide, quote, diagram, device, bars or logos')
     return errors
 
 
@@ -302,6 +402,7 @@ SCHEMA = {
                 'properties': {
                     'kicker': {'type': 'string'},
                     'hook': {'type': 'string'},
+                    'hook_word': {'type': 'string'},
                     'points': {
                         'type': 'array',
                         'items': {
@@ -386,6 +487,22 @@ that does not clearly show what is being said):
   it" reels, because it really runs. Add a code or diff choice after it as a backup.
 - Only when nothing real can be shown (a pure opinion or habit), leave "visual" out; the slide then shows
   its body text.
+
+3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
+people, faces or animals):
+- hook_word: one word from the hook (2 to 10 letters, e.g. "RLS", "Zod", "CORS") that spins in as 3D text
+  above the hook. Leave it out unless the word itself is the topic.
+- diagram: how something flows between parts, shown as 3D blocks with a glowing packet travelling along
+  "flow". "nodes" (2 to 5: id, label max 12 characters, kind one of client, server, db, cache, queue,
+  cloud, phone, lock), "edges" ({"from", "to"}), "flow" (1 to 8 hops like "app>api", in the order the
+  voiceover describes them). The best choice for caching, webhooks, queues, auth flows and "how X works".
+- device: {"device": "laptop", "show": a code visual} puts the code on a 3D laptop that turns into view;
+  {"device": "phone", "show": a screenshot visual} for a mobile page. Use it for a product feel.
+- bars: 3D bars that rise, only for real numbers from a page you can cite: "title", "unit", 2 to 5 "bars"
+  ({"label", "value"}) and "source" (its https url). Never estimate or round beyond the source.
+- logos: 1 to 4 tool logos as Simple Icons slugs ("nextdotjs", "supabase", "stripe", "vercel") spinning in.
+  No animal or mascot logos (PostgreSQL, Docker, GitHub, Linux, Python...). For "the stack" or a tool intro.
+- Always add a flat choice after a 3D one (code, diff, screenshot) as a backup.
 
 Delivery cues (the voice follows them; without fresh cues it starts strong and fades within two seconds):
 - Direct the narrator like an energetic creator talking to camera. Cues go in square brackets before the words they shape; "(break)" is a short beat. Cues and "(break)" are not spoken and do not count as words.
@@ -536,7 +653,8 @@ def today(reels, performance=()):
         parts.append('How the account\'s recent posts did (views, reach, skip rate, watch time, saves, shares). '
                      'Lean into the topics, angles and formats that held people; avoid what they skipped:\n'
                      + '\n'.join(performance))
-    context = '\n\n'.join(parts) or None
+    parts.append(three_d_note())
+    context = '\n\n'.join(parts)
     new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
     return new[0] if new else None
 
@@ -554,7 +672,8 @@ def append(reels, new):
         last_style = 'dark' if last_style == 'light' else 'light'
         reels.append({
             'id': next_id, 'pillar': reel['pillar'], 'style': last_style, 'kicker': reel['kicker'].strip(),
-            'hook': reel['hook'].strip(), 'points': reel['points'], 'cta': reel['cta'].strip(),
+            'hook': reel['hook'].strip(), **({'hook_word': reel['hook_word']} if reel.get('hook_word') else {}),
+            'points': reel['points'], 'cta': reel['cta'].strip(),
             'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'],
             'voiceover': [l.strip() for l in reel['voiceover']], 'posted_at': None, 'media_id': None,
         })
