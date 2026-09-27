@@ -34,9 +34,11 @@ Judge each frame:
   generic homepage or logo with nothing relevant. Use true when the slide has no visual.
 - ok: the whole frame looks professional: no text cut off, overlapping or running outside the frame, nothing
   broken, captions readable.
-- honest: false if any frame claims results that are not shown to be real (income, revenue, followers,
-  metrics), presents an invented scene as a real event, says "I tested/built" without showing it, or shows
-  someone else's work as the creator's own. Otherwise true.
+- honest: false only for deception: claimed results that are not real (income, revenue, followers, metrics),
+  an invented scene presented as a real event, "I tested/built" without the reel showing it, someone else's
+  work shown as the creator's own, or a claim that the listed sources contradict. News claims that the
+  sources support are honest even if dramatic. A visual that does not match what is said is not dishonest:
+  mark visual_ok false instead. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.
 Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false."""
 
@@ -72,10 +74,14 @@ def review(video, reel, slides, voiceover=None):
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
                          f'  visual: {meant or "none"}')
-        prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines)
+        sources = reel.get('sources') or []
+        checked = ('\n\nThe reel\'s claims were fact-checked against these sources (open them if a claim looks '
+                   'doubtful):\n' + '\n'.join(sources)) if sources else ''
+        prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
-             '--system-prompt', SYSTEM, '--tools', 'Read', '--allowedTools', 'Read', '--add-dir', tmp,
+             '--system-prompt', SYSTEM, '--tools', 'Read', 'WebFetch', '--allowedTools', 'Read', 'WebFetch',
+             '--add-dir', tmp,
              '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
              '--json-schema', json.dumps(SCHEMA)],
             capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
