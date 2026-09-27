@@ -221,7 +221,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 14}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 15}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -537,8 +537,9 @@ def ide_step(page, step, queue):
                 page.keyboard.press('Home')
             page.keyboard.type(line, delay=int(step.get('delay', 55)))
     elif kind == 'run':
-        palette(page, 'Terminal: Focus Terminal')
         rows = page.locator('.xterm-rows').last
+        if not (rows.count() and rows.is_visible()):
+            palette(page, 'Terminal: Focus Terminal')
         for _ in range(40):
             if rows.count() and '$' in rows.inner_text(timeout=2000):
                 break
