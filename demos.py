@@ -220,7 +220,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 10}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 11}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -487,9 +487,13 @@ def ide_step(page, step):
             if '$' in (rows.inner_text() if rows.count() else ''):
                 break
             page.wait_for_timeout(250)
-        page.wait_for_timeout(400)
+        # A freshly created terminal does not keep focus; focus it again now that it exists.
+        palette(page, 'Terminal: Focus Terminal')
+        page.wait_for_timeout(600)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
+        if step['command'].split()[0] not in rows.inner_text():
+            raise RuntimeError('the command did not reach the terminal')
         deadline = time.time() + float(step.get('timeout', 25))
         while time.time() < deadline:
             page.wait_for_timeout(500)
