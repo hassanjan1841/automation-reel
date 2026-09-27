@@ -128,8 +128,7 @@ IDE_SETTINGS = {
     'terminal.integrated.enablePersistentSessions': False, 'security.workspace.trust.enabled': False,
     'terminal.integrated.showExitAlert': False, 'window.title': ' ', 'workbench.tree.renderIndentGuides': 'none',
     'terminal.integrated.tabs.enabled': False, 'terminal.integrated.defaultProfile.linux': 'bash',
-    'terminal.integrated.profiles.linux': {'bash': {'path': 'bash', 'args': ['--norc', '--noprofile']}},
-    'terminal.integrated.env.linux': {'PS1': '$ '}, 'terminal.integrated.cursorBlinking': True,
+    'terminal.integrated.cursorBlinking': True,
     'chat.disableAIFeatures': True, 'workbench.secondarySideBar.defaultVisibility': 'hidden',
     'workbench.welcomePage.walkthroughs.openOnInstall': False, 'workbench.editor.empty.hint': 'hidden',
     'editor.wordWrap': 'on', 'editor.scrollBeyondLastLine': False, 'workbench.panel.defaultLocation': 'bottom',
@@ -222,7 +221,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 12}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 13}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -287,6 +286,33 @@ def web_step(page, step, height):
 
 # ---------- IDE ----------
 
+# The terminal runs this instead of a bare shell: it waits for commands in a queue folder, types each one out at a
+# human pace, runs it for real, and marks it done. Keys sent from outside are unreliable in the web terminal; this is
+# not, and the output on screen is the command's real output.
+REEL_SHELL = r'''#!/bin/bash
+Q="$1"
+cd "$2"
+printf '$ '
+n=0
+while true; do
+  f="$Q/$(printf '%04d' $n)"
+  if [ -f "$f" ]; then
+    cmd=$(cat "$f")
+    for ((i=0; i<${#cmd}; i++)); do
+      printf '%s' "${cmd:$i:1}"
+      c="${cmd:$i:1}"
+      if [ "$c" = " " ]; then sleep 0.13; else sleep 0.0$((4 + RANDOM % 5)); fi
+    done
+    printf '\n'
+    bash -c "$cmd"
+    touch "$Q/done-$n"
+    printf '$ '
+    n=$((n+1))
+  fi
+  sleep 0.1
+done
+'''
+
 def free_port():
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0))
@@ -299,16 +325,28 @@ def allowed(command):
                                                                                               '$', '`', '>', '|', ';'))
 
 
+def ide_settings(workspace, queue):
+    """IDE_SETTINGS plus a terminal profile that runs the typing shell for this workspace and queue."""
+    shell = Path(queue).parent / 'reel-shell.sh'
+    return {**IDE_SETTINGS, 'terminal.integrated.defaultProfile.linux': 'reel',
+            'terminal.integrated.profiles.linux': {'reel': {'path': 'bash', 'args': [str(shell), str(queue),
+                                                                                     str(workspace)]}}}
+
+
 def start_ide(workspace, port):
-    """openvscode-server on localhost with an empty environment. Returns the process (or container id)."""
+    """openvscode-server on localhost with only PATH, HOME and TERM in its environment: nothing it runs can see
+    the pipeline's secrets. Returns the process."""
     data = Path(workspace).parent / 'ovs-data'
     # The server reads machine settings from <server-data-dir>/data/Machine/settings.json.
     (data / 'data' / 'Machine').mkdir(parents=True, exist_ok=True)
-    (data / 'data' / 'Machine' / 'settings.json').write_text(json.dumps(IDE_SETTINGS))
-    (Path(workspace) / '.vscode').mkdir(exist_ok=True)
-    (Path(workspace) / '.vscode' / 'settings.json').write_text(json.dumps(IDE_SETTINGS))
-    clean = {'PATH': '/usr/local/bin:/usr/bin:/bin', 'HOME': str(data), 'TERM': 'xterm-256color',
-             'PS1': '$ ', 'LANG': 'C.UTF-8'}
+    queue = Path(workspace).parent / 'queue'
+    queue.mkdir(exist_ok=True)
+    (queue.parent / 'reel-shell.sh').write_text(REEL_SHELL)
+    settings = ide_settings(workspace, queue)
+    (data / 'data' / 'Machine' / 'settings.json').write_text(json.dumps(settings))
+    # PATH is kept (it is not secret and finds node/npx); every token and key is left out.
+    clean = {'PATH': os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin'), 'HOME': str(data),
+             'TERM': 'xterm-256color', 'LANG': 'C.UTF-8'}
     if platform.system() == 'Linux':
         server = ensure_ovs()
         return subprocess.Popen([str(server), '--host', '127.0.0.1', '--port', str(port), '--without-connection-token',
@@ -380,12 +418,13 @@ def record_ide(spec, size):
                           else f'http://127.0.0.1:{port}/?folder={ws}', wait_until='domcontentloaded')
                 page.locator('.monaco-workbench').wait_for(timeout=60000)
                 page.wait_for_timeout(2500)
-                prime_ide(page)
+                prime_ide(page, ide_settings(ws, Path(tmp) / 'queue'))
                 tidy_ide(page)
                 cast = Screencast(page, size[0], size[1])
                 page.wait_for_timeout(500)
+                queue = {'dir': Path(tmp) / 'queue', 'n': 0}
                 for step in spec.get('steps', [])[:MAX_STEPS]:
-                    ide_step(page, step)
+                    ide_step(page, step, queue)
                 page.wait_for_timeout(1000)
                 cast.stop()
                 ctx.close()
@@ -399,7 +438,7 @@ def record_ide(spec, size):
     return out
 
 
-def prime_ide(page):
+def prime_ide(page, settings):
     """Apply IDE_SETTINGS as user settings (the web build keeps them in the browser, so files on disk are not
     enough), then reload into a clean window. Happens before recording starts."""
     accept_trust(page)
@@ -407,7 +446,7 @@ def prime_ide(page):
     page.wait_for_timeout(1500)
     page.locator('.editor-group-container .monaco-editor .view-lines').first.click()
     page.keyboard.press(f'{MOD}+a')
-    page.keyboard.insert_text(json.dumps(IDE_SETTINGS, indent=1))
+    page.keyboard.insert_text(json.dumps(settings, indent=1))
     page.keyboard.press(f'{MOD}+s')
     page.wait_for_timeout(800)
     palette(page, 'View: Close All Editors')
@@ -469,7 +508,7 @@ def palette(page, text):
     page.keyboard.press('Enter')
 
 
-def ide_step(page, step):
+def ide_step(page, step, queue):
     kind = step.get('do')
     if kind == 'open':
         page.keyboard.press(f'{MOD}+p')
@@ -494,32 +533,22 @@ def ide_step(page, step):
                 page.keyboard.press('Home')
             page.keyboard.type(line, delay=int(step.get('delay', 55)))
     elif kind == 'run':
-        # Focus (not toggle) the terminal, then click into it so the keystrokes land there.
         palette(page, 'Terminal: Focus Terminal')
-        # Type only once the shell has printed its prompt, or the first keys are lost.
         rows = page.locator('.xterm-rows').last
         for _ in range(40):
             if rows.count() and '$' in rows.inner_text(timeout=2000):
                 break
             page.wait_for_timeout(250)
-        # A freshly created terminal does not keep focus; focus it again now that it exists, and click into it.
-        palette(page, 'Terminal: Focus Terminal')
-        page.wait_for_timeout(600)
-        term = page.locator('.terminal-wrapper .xterm').last
-        if term.count():
-            term.click()
+        n = queue['n']
+        (queue['dir'] / f'{n:04d}').write_text(step['command'])
+        queue['n'] += 1
+        deadline = time.time() + float(step.get('timeout', 60))
+        while time.time() < deadline and not (queue['dir'] / f'done-{n}').exists():
             page.wait_for_timeout(300)
-        page.keyboard.type(step['command'], delay=45)
-        page.keyboard.press('Enter')
-        page.wait_for_timeout(500)
-        if not rows.count() or step['command'].split()[0] not in rows.inner_text(timeout=5000):
+        if not (queue['dir'] / f'done-{n}').exists():
             debug(page, 'terminal')
-            raise RuntimeError('the command did not reach the terminal')
-        deadline = time.time() + float(step.get('timeout', 25))
-        while time.time() < deadline:
-            page.wait_for_timeout(500)
-            if step.get('wait') and rows.count() and __import__('re').search(step['wait'], rows.inner_text(timeout=2000)):
-                break
+            raise RuntimeError(f"the command did not finish: {step['command']}")
+        page.wait_for_timeout(700)
     elif kind == 'save':
         page.keyboard.press(f'{MOD}+s')
     elif kind != 'wait':
