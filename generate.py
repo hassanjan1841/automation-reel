@@ -31,8 +31,9 @@ POST_HOUR_UTC = 12
 # The week's mix leans on what held viewers best (relatable dev life), with named series so people come back.
 # Each day: (pillar key, what to write, series name). The series gets an episode number when posted.
 PILLARS = {
-    0: ('ai', 'AI tools for developers: one tool or technique shown really working (prefer an ide recording of a '
-              'real run, or a walkthrough of the tool)', 'AI tool in 30s'),
+    0: ('ai', 'AI how-to with one concrete result: a Claude or AI tool doing real work (connect Claude to a tool '
+              'with MCP, a Claude Code skill, an automation that replies, sorts or builds something), shown with '
+              'the real steps (walkthrough, ide recording or screenshots)', 'AI tool in 30s'),
     1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
                   '(diff or ide recording)', 'Dev mistake'),
     2: ('relatable', 'Relatable dev life: a POV or meme-style reel most developers recognise, told with a post '
@@ -41,7 +42,8 @@ PILLARS = {
                      'watch for', 'Client vs Me'),
     4: ('concept', 'Tech concept explained simply, or myth vs fact about a tool or practice', 'Explained'),
     5: ('relatable', 'Relatable dev humour or a ranking (tier list of tools or habits), with a clear opinion', 'POV'),
-    6: ('saas', 'SaaS building and validation, or a stack reveal: what to use for what, and why', 'Build smart'),
+    6: ('saas', 'Build X in one afternoon: one real feature with Next.js, Supabase or Stripe (auth, checkout, '
+                'a webhook, a dashboard) in a few clear steps; or SaaS validation, or a stack reveal', 'Build smart'),
 }
 
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
@@ -200,6 +202,20 @@ SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
 
 
+SLOT_SHIFT = 3
+
+
+def slot():
+    """Which of the day's reels this run writes: 1 (the day's series, or news) or 2 (the evening reel)."""
+    return 2 if os.environ.get('SLOT', '').strip() == '2' else 1
+
+
+def pillar_day(day):
+    """The weekday whose series a reel on this day follows. The evening reel takes the series three days on
+    (Monday evening is Thursday's), so the two reels of a day differ and every series runs twice a week."""
+    return (day.weekday() + (SLOT_SHIFT if slot() == 2 else 0)) % 7
+
+
 def three_d_today(day=None):
     """Whether 3D may be used today. Random so it never becomes a routine, but fixed per date so a rerun or a
     repair on the same day agrees. THREE_D=on or off overrides; THREE_D_CHANCE sets the odds."""
@@ -208,7 +224,7 @@ def three_d_today(day=None):
         return forced == 'on'
     day = day or datetime.now(timezone.utc).date()
     chance = float(os.environ.get('THREE_D_CHANCE', '').strip() or THREE_D_CHANCE)
-    return random.Random(f'3d-{day.isoformat()}').random() < chance
+    return random.Random(f'3d-{day.isoformat()}' + ('-2' if slot() == 2 else '')).random() < chance
 
 
 def three_d_note():
@@ -285,6 +301,49 @@ VISUAL_SCHEMA = {
 }
 
 
+# An install command and the rest of its line; every word on it that is not a flag is a package.
+INSTALL = re.compile(r'\b(?:npm\s+(?:i|install|add)|pnpm\s+add|bun\s+add|yarn\s+add|npx(?:\s+-y)?|pip3?\s+install)\s+([^\n;&|]+)')
+ARGS = re.compile(r'"args"\s*:\s*\[\s*(?:"-y"\s*,\s*)?"(@?[a-z0-9][\w.@/-]*)"')
+_registry = {}
+
+
+def package_errors(text):
+    """Packages a snippet tells people to install that do not exist on npm or PyPI (an invented name would send
+    viewers to a typo-squatter). Offline, nothing is reported."""
+    wanted = []
+    for m in INSTALL.finditer(text):
+        kind = 'pypi' if m.group(0).startswith('pip') else 'npm'
+        words = [w for w in m.group(1).split() if not w.startswith('-')]
+        # npx runs one package; the words after it are its own arguments.
+        for w in words[:1] if m.group(0).startswith('npx') else words:
+            if kind == 'npm':
+                w = '@' + w[1:].split('@')[0] if w.startswith('@') else w.split('@')[0]
+            else:
+                w = re.split(r'[=<>\[]', w)[0]
+            if re.fullmatch(r'@?[A-Za-z0-9][\w.@/-]*', w) and '/' not in w.lstrip('@').split('/', 1)[0]:
+                wanted.append((kind, w))
+    wanted += [('npm', m) for m in ARGS.findall(text)]
+    missing = []
+    for kind, name in wanted:
+        name = name.rstrip('.,;')
+        if name in ('-y', '') or name.startswith('-'):
+            continue
+        if (kind, name) not in _registry:
+            url = (f'https://registry.npmjs.org/{name.replace("/", "%2f")}' if kind == 'npm'
+                   else f'https://pypi.org/pypi/{name}/json')
+            try:
+                import urllib.request
+                urllib.request.urlopen(urllib.request.Request(url, method='HEAD' if kind == 'npm' else 'GET'), timeout=10)
+                _registry[(kind, name)] = True
+            except urllib.error.HTTPError as e:
+                _registry[(kind, name)] = e.code != 404
+            except OSError:
+                _registry[(kind, name)] = True
+        if not _registry[(kind, name)]:
+            missing.append(name)
+    return missing
+
+
 def visual_errors(i, visual):
     """A point's visuals: a list of up to 3 choices, best first, each small enough to read on a phone."""
     if visual is None:
@@ -295,6 +354,13 @@ def visual_errors(i, visual):
     errors = []
     for v in choices:
         kind = v.get('type')
+        texts = [v.get('code', ''), v.get('after', ''), ' '.join(v.get('commands', [])), ' '.join(v.get('setup', [])),
+                 ' '.join(s.get('command', '') + ' ' + s.get('text', '') for s in v.get('steps', []))]
+        texts += [f.get('content', '') for f in v.get('files', [])] + [(v.get('show') or {}).get('code', '')]
+        missing = package_errors('\n'.join(texts))
+        if missing:
+            errors.append(f'point {i} names packages that do not exist: {", ".join(missing)}; use the real, '
+                          'official package')
         if kind == 'code':
             lines = v.get('code', '').rstrip('\n').split('\n')
             if not v.get('code', '').strip() or not v.get('language'):
@@ -513,6 +579,9 @@ people, faces or animals):
   ({"label", "value"}) and "source" (its https url). Never estimate or round beyond the source.
 - logos: 1 to 4 tool logos as Simple Icons slugs ("nextdotjs", "supabase", "stripe", "vercel") spinning in.
   No animal or mascot logos (PostgreSQL, Docker, GitHub, Linux, Python...). For "the stack" or a tool intro.
+- Packages: only real, official ones (from the tool's maker, e.g. "@modelcontextprotocol/server-postgres",
+  "@supabase/supabase-js"), never a lookalike or a random third-party package, least of all for anything that
+  handles credentials. Every package name is checked against npm and PyPI.
 - Always add a flat choice after a 3D one (code, diff, screenshot) as a backup.
 
 Delivery cues (the voice follows them; without fresh cues it starts strong and fades within two seconds):
@@ -523,7 +592,16 @@ Delivery cues (the voice follows them; without fresh cues it starts strong and f
 - Before the one word that carries a point, you may add [emphasis], e.g. "Nobody [emphasis] wanted it."
 - Keep the energy up. At most one low-energy cue ([calm], [soft], [quiet]) in the whole reel, and only as a contrast. Vary the cues; never repeat the same pattern on every line.
 
+What makes reels spread (learned from posts with thousands of comments and saves):
+- The hook promises one concrete result the viewer can get, often with a size: "in 2 minutes", "in one
+  afternoon", "with one line". Not a general tip; something they can do.
+- One tension beat in the voiceover: name the doubt the viewer has ("You might think this is slow...") or the
+  point where people get stuck ("Most people stop right here"), then answer it. Once per reel, not every line.
+- For a how-to, show the real steps on screen (walkthrough, ide, screenshots, code) in the order they happen.
+
 Content rules:
+- Never promote or explain tools for gambling, betting, interest-based loans or trading on credit, adult content,
+  or anything deceptive (fake reviews, spam, scraping personal data, bypassing paywalls).
 - Evergreen only. No news, release dates, version numbers, prices or anything that goes stale.
 - No invented personal stories, client anecdotes, testimonials, or made-up numbers and statistics.
 
@@ -607,7 +685,7 @@ def repair(reel, errors, rounds=2):
 
 
 def generate(reels, count, dates=None, context=None):
-    plan = [(d, PILLARS[d.weekday()][:2]) for d in (dates or next_post_dates(reels, count))]
+    plan = [(d, PILLARS[pillar_day(d)][:2]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
 
@@ -672,7 +750,7 @@ def today(reels, performance=()):
 
 def series_label(reels, day):
     """The day's series and its next episode number, e.g. ('Client vs Me', 4)."""
-    name = PILLARS[day.weekday()][2]
+    name = PILLARS[pillar_day(day)][2]
     return name, 1 + sum(1 for r in reels if r.get('series') == name and r.get('posted_at'))
 
 

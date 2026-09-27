@@ -27,9 +27,10 @@ OUT = render.OUT_DIR / 'carousel'
 
 SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['title', 'subtitle', 'slides', 'question', 'caption', 'hashtags', 'style'],
+    'required': ['title', 'subtitle', 'slides', 'takeaway', 'question', 'caption', 'hashtags', 'style'],
     'properties': {
         'title': {'type': 'string'}, 'subtitle': {'type': 'string'}, 'question': {'type': 'string'},
+        'takeaway': {'type': 'string'},
         'caption': {'type': 'string'}, 'hashtags': {'type': 'array', 'items': {'type': 'string'}},
         'style': {'type': 'string', 'enum': ['light', 'dark']},
         'slides': {'type': 'array', 'items': {
@@ -40,16 +41,23 @@ SCHEMA = {
 }
 
 SYSTEM = """You write a weekly Instagram cheat-sheet carousel for @hassanjan.k, a freelance full-stack developer.
-It is the post people save: one practical topic, one idea per slide, useful on its own.
+It is the post people save: one practical topic, one idea per slide, useful on its own. The strongest topics
+build one concrete thing in steps ("Add Stripe checkout in one afternoon", "Give Claude access to your database")
+or are a checklist for a real task; the title promises that result.
 - title: 3 to 8 words, the topic in plain searchable words; subtitle: one short line on what the reader gets.
 - slides: 6 to 8. Each has a heading (max 7 words) and either 2 to 4 short "points" (max 12 words each) or a
   "code" snippet (max 8 lines of 40 characters, current non-deprecated APIs) with its "language". Mix both.
 - alt: one plain sentence describing the slide for screen readers and search.
+- takeaway: the whole carousel in one short line (max 10 words), shown big on the last slide under "The
+  takeaway", e.g. "One webhook. Ten minutes. Payments that never get lost."
 - question: a short question for the last slide that invites a real answer. That last slide is added for you
   and already asks people to save and follow, so every slide in "slides" is a real tip: none about saving,
   sharing, bookmarking or following.
 - caption: first line is the topic in searchable words, then 1 or 2 short lines, ending with a question and 👇.
 - hashtags: 3 to 5 focused tags. style: light or dark.
+Never cover gambling, betting, interest-based loans, adult content or anything deceptive.
+Code uses only real, official packages from the tool's maker (e.g. "@modelcontextprotocol/server-postgres"), never
+a random third-party package, least of all for anything that handles credentials.
 Honesty: evergreen and accurate; no invented numbers, results or stories; nothing presented as someone else's
 work. No emojis on slides."""
 
@@ -80,6 +88,8 @@ def check(c):
     for i, s in enumerate(c['slides'], 1):
         if len(s['heading'].split()) > 7:
             errors.append(f'slide {i} heading is over 7 words')
+        if s.get('code') and generate.package_errors(s['code']):
+            errors.append(f"slide {i} names packages that do not exist: {', '.join(generate.package_errors(s['code']))}")
         if s.get('code'):
             lines = s['code'].rstrip('\n').split('\n')
             if len(lines) > 8 or max(len(l) for l in lines) > 40:
@@ -90,6 +100,8 @@ def check(c):
         # The closing slide already asks to save; a second "save this" slide wastes a swipe (2026-09-27).
         if CALL_TO_ACTION.search(' '.join([s['heading']] + (s.get('points') or []))):
             errors.append(f'slide {i} asks to save, share or follow; the last slide does that, make it a tip')
+    if not 1 <= len(c.get('takeaway', '').split()) <= 10:
+        errors.append('takeaway needs 1 to 10 words')
     if not 3 <= len(c['hashtags']) <= 5:
         errors.append('needs 3 to 5 hashtags')
     return errors
@@ -200,17 +212,28 @@ def content_slide(s, theme, n, total, top=None):
 
 
 def end_slide(c, theme, total):
+    """The takeaway in one big line, then the question and the one call to save and follow."""
     img = canvas(theme)
     d = ImageDraw.Draw(img)
     header(d, theme, total, total)
-    question = wrap_text(c['question'], render.font('Bold', 84), W - 2 * render.MARGIN)
-    y = centred(98 * len(question) + 160)
+    m, width = render.MARGIN, W - 2 * render.MARGIN
+    take = wrap_text(c.get('takeaway', ''), render.font('Bold', 84), width) if c.get('takeaway') else []
+    question = wrap_text(c['question'], render.font('SemiBold', 50) if take else render.font('Bold', 84), width)
+    q_line = 64 if take else 98
+    y = centred((70 + 98 * len(take) + 50 if take else 0) + q_line * len(question) + 160)
+    if take:
+        d.text((m, y), 'THE TAKEAWAY', font=render.font('SemiBold', 34), fill=theme['accent'], anchor='lt')
+        y += 70
+        for line in take:
+            d.text((m, y), line, font=render.font('Bold', 84), fill=theme['ink'], anchor='lt')
+            y += 98
+        y += 50
     for line in question:
-        d.text((render.MARGIN, y), line, font=render.font('Bold', 84), fill=theme['ink'], anchor='lt')
-        y += 98
-    d.text((render.MARGIN, y + 40), 'Save this for later', font=render.font('SemiBold', 48), fill=theme['accent'],
-           anchor='lt')
-    d.text((render.MARGIN, y + 110), f'Follow {render.HANDLE} for daily dev + AI tips', font=render.font('Regular', 36),
+        d.text((m, y), line, font=render.font('SemiBold', 50) if take else render.font('Bold', 84),
+               fill=theme['muted'] if take else theme['ink'], anchor='lt')
+        y += q_line
+    d.text((m, y + 40), 'Save this for later', font=render.font('SemiBold', 48), fill=theme['accent'], anchor='lt')
+    d.text((m, y + 110), f'Follow {render.HANDLE} for daily dev + AI tips', font=render.font('Regular', 36),
            fill=theme['muted'], anchor='lt')
     footer(d, theme, swipe=False)
     return img

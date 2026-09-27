@@ -7,7 +7,8 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
-  FORCE_POST=true       post even if a reel already went out today (UTC)
+  FORCE_POST=true       post even if this slot's reel already went out today (UTC)
+  SLOT                  1 (default: the day's series or news) or 2 (the evening reel: another series, never news)
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
   VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
@@ -232,7 +233,8 @@ def research_reel(reels):
         perf = trends.performance()
     except Exception as e:
         print(f'Could not read recent insights ({type(e).__name__})')
-    if os.environ.get('TRENDING', 'on').strip().lower() != 'off':
+    # News goes in the first reel of the day only, so a day never has two news reels.
+    if os.environ.get('TRENDING', 'on').strip().lower() != 'off' and generate.slot() == 1:
         try:
             reel = trends.timely_reel(reels, perf)
             if reel:
@@ -283,9 +285,11 @@ def main():
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
     today = datetime.now(timezone.utc).date().isoformat()
-    if not dry and any((r.get('posted_at') or '').startswith(today) for r in reels) \
+    posted_today = sum(1 for r in reels if (r.get('posted_at') or '').startswith(today))
+    if not dry and posted_today >= generate.slot() \
             and os.environ.get('FORCE_POST', '').strip().lower() not in ('1', 'true', 'yes'):
-        print(f'Already posted today ({today} UTC); nothing to do. Set FORCE_POST=true to post again.')
+        print(f'Reel {generate.slot()} of today ({today} UTC) already posted; nothing to do. '
+              'Set FORCE_POST=true to post again.')
         return
     # A reel added by hand goes first; otherwise today's reel is researched and written now, not ahead of time.
     reel = next((r for r in reels if not r.get('posted_at')), None)

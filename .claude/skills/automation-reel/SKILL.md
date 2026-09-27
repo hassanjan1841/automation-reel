@@ -12,7 +12,10 @@ Hard rules from the creator, never relax them: no music (sound effects only); ev
 ## Pipeline at a glance
 
 ```
-daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  ->  publish.py
+daily-reel.yml, twice a day  ->  publish.py
+  slot 1: starts 11:07 UTC, posts at POST_AT_UTC 12:00 (5 PM Pakistan): the day's series or news
+  slot 2: starts 15:07 UTC, posts at 16:00 (9 PM Pakistan): SLOT=2, evergreen only, series of generate.pillar_day
+          (weekday + SLOT_SHIFT 3), its own 3D coin flip
   0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
   1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
   2. trends.timely_reel()    scrape -> Claude picks up to 3 (web search, newer developments, no motives) ->
@@ -34,7 +37,7 @@ daily-reel.yml (starts 11:07 UTC, posts at POST_AT_UTC 12:00 = 5 PM Pakistan)  -
   4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
   5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
   6. delete uploads, write posted_at + media_id, workflow commits reels.json + pronounce.json
-     (once a day: a real run exits if a reel already went out today, unless FORCE_POST)
+     (per slot: a real run exits when today already has `slot` posts, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
 weekly.yml (Sun 10:00 UTC)
@@ -59,7 +62,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
-| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `slot`, `pillar_day`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
@@ -161,7 +164,7 @@ Evergreen pillar and series are chosen by the weekday (`generate.PILLARS`): Mon 
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -172,6 +175,9 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Recorded demos: walkthroughs work anywhere; the IDE (openvscode-server) only on Linux, so test it with the Demo preview workflow. The headless screencast needs `--force-device-scale-factor` or frames come at half resolution. The IDE terminal runs `demos.REEL_SHELL` (commands are queued, typed out and run for real) because keys sent by Playwright never reached the shell. Clips speed up at most 1.5x (`visuals.Clip.MAX_SPEED`) and otherwise cut to their end.
 - 3D scenes (`scene3d.py`): three.js loads from jsDelivr, so rendering needs the network. Chromium runs with SwiftShader (software WebGL), about 3 to 4 seconds of render per second of scene. `set_content` skips init scripts, so params and the Poppins fonts are injected into the page HTML. The cache key includes the page source, so editing `PAGE` re-renders. A scene is rendered once at `visuals.Scene.SECONDS` and its frames are stretched to the slide. Logos come from Simple Icons in their brand colour with the name underneath (`scene3d.brand`; a grey logo was rejected as unrecognisable), black ones turned light on the dark theme. Simple Icons contains animal mascots; keep `ANIMAL_LOGOS` up to date (the no-animals rule).
 - The voice verifier (`voice.verify`, used by `clean_take`, `say_whole`, `say_checked`, `report`) listens to every take four ways, because each alone missed a real fault: with the script as a hint (names; respelled via `learn`), without it (an everyday word said badly, like "Check" heard as "you correct"; the hint hides these), each burst of sound alone (`islands` + `heard_alone`: a burst with no script word is a stray sound, like the "uhh" Fish invented after a long pause), and the bursts' words together. Faults cost a retake (up to `FINAL_TAKES`); stray sounds left in the best take are cut to silence (`mute`, never into a word) and verified again; a line still unclear is recorded alone and swapped in; a whole voiceover still not clean is recorded once more. `clips.verdict` ('clean' or what is unclear) is printed as "Voice check" in the daily log. The beat between slides is silence added in `split` (`BEAT`), never a Fish `(long-break)`. `test_voice.py --verify` replays the recorded "uhh" (`tests/stray-uhh.wav`) and fails if the verifier misses it or the cut damages a word.
+- Writer rules learned from posts with thousands of comments (2026-09-28): the hook promises one concrete result ("in 2 minutes", "one afternoon"), one doubt or tension beat per voiceover ("You might think...", "Most people stop right here"), how-tos show the real steps. Monday is AI how-tos with a real result (Claude, MCP, automations), Sunday "Build X in one afternoon". Topic filter in `generate.SYSTEM` and `carousel.SYSTEM`: no gambling, betting, interest-based lending, adult content or deceptive tools.
+- Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
+- Carousels end with "THE TAKEAWAY" (the `takeaway` field, max 10 words) above the question.
 - Carousel layout: every tip slide starts at the same height, centred for the tallest slide (`carousel.centred`), so slides are not half empty and headings do not jump between swipes. Only the automatic last slide asks to save or follow; `carousel.check` rejects a tip slide that does (`CALL_TO_ACTION`), since the first carousel had two.
 - Pacing (researched 2026-09-27, the creator found 1.1x speed and long lines rushed): about 2.6 spoken words a second (`VOICE_SPEED` 1.0, 40-55 words), a silent beat between slides that we add ourselves (`voice.BEAT`, never a Fish `(long-break)`), short on-screen labels (hook 5-8, titles 4) and full 2-3 word captions. The screen is the quick layer, voice and captions the full one, and the loop gives slower viewers a second pass; do not raise these limits to fit more in.
 - Fish's free model `s2.1-pro-free` ends 2026-11-30: top up and set `FISH_MODEL=s2.1-pro`, or reels quietly fall back to Kokoro. Dropped Fish connections retry, then fall back to Kokoro rather than missing a day.

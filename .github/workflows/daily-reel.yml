@@ -5,12 +5,19 @@ on:
     # Starts an hour early (4 PM Pakistan) to research, write, voice, render and review today's reel, then posts
     # at POST_AT_UTC (12:00, 5 PM Pakistan). Off the hour because GitHub delays jobs queued exactly on the hour.
     - cron: '7 11 * * *'
+    # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York).
+    - cron: '7 15 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
         description: Render only, do not post
         type: boolean
         default: true
+      slot:
+        description: Which reel of the day (2 is the evening reel)
+        type: choice
+        options: ['1', '2']
+        default: '1'
       three_d:
         description: 3D today (random follows THREE_D_CHANCE)
         type: choice
@@ -82,6 +89,8 @@ jobs:
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
           FORCE_POST: ${{ vars.FORCE_POST }}
+          SLOT: ${{ (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '2' || '1' }}
+          POST_AT_UTC: ${{ (github.event.schedule == '7 15 * * *' || inputs.slot == '2') && '16:00' || vars.POST_AT_UTC }}
           TRENDING: ${{ vars.TRENDING }}
           THREE_D: ${{ github.event_name == 'workflow_dispatch' && inputs.three_d != 'random' && inputs.three_d || vars.THREE_D }}
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}
