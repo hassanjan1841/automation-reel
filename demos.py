@@ -128,6 +128,10 @@ IDE_SETTINGS = {
     'terminal.integrated.enablePersistentSessions': False, 'security.workspace.trust.enabled': False,
     'terminal.integrated.showExitAlert': False, 'window.title': ' ', 'workbench.tree.renderIndentGuides': 'none',
     'terminal.integrated.tabs.enabled': False, 'terminal.integrated.defaultProfile.linux': 'bash',
+    'terminal.integrated.profiles.linux': {'bash': {'path': 'bash', 'args': ['--norc', '--noprofile']}},
+    'terminal.integrated.env.linux': {'PS1': '$ '}, 'terminal.integrated.cursorBlinking': True,
+    'chat.disableAIFeatures': True, 'workbench.secondarySideBar.defaultVisibility': 'hidden',
+    'workbench.welcomePage.walkthroughs.openOnInstall': False, 'workbench.editor.empty.hint': 'hidden',
 }
 
 
@@ -215,7 +219,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 6}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 7}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -373,6 +377,7 @@ def record_ide(spec, size):
                           else f'http://127.0.0.1:{port}/?folder={ws}', wait_until='domcontentloaded')
                 page.locator('.monaco-workbench').wait_for(timeout=60000)
                 page.wait_for_timeout(2500)
+                prime_ide(page)
                 tidy_ide(page)
                 cast = Screencast(page, size[0], size[1])
                 page.wait_for_timeout(500)
@@ -391,14 +396,40 @@ def record_ide(spec, size):
     return out
 
 
-def tidy_ide(page):
-    """Accept the workspace trust prompt (our own throwaway folder), then close the side bar so the editor
-    fills the frame."""
+def prime_ide(page):
+    """Apply IDE_SETTINGS as user settings (the web build keeps them in the browser, so files on disk are not
+    enough), then reload into a clean window. Happens before recording starts."""
+    accept_trust(page)
+    palette(page, 'Preferences: Open User Settings (JSON)')
+    page.wait_for_timeout(1500)
+    page.locator('.editor-group-container .monaco-editor .view-lines').first.click()
+    page.keyboard.press(f'{MOD}+a')
+    page.keyboard.insert_text(json.dumps(IDE_SETTINGS, indent=1))
+    page.keyboard.press(f'{MOD}+s')
+    page.wait_for_timeout(800)
+    palette(page, 'View: Close All Editors')
+    page.wait_for_timeout(500)
+    page.reload(wait_until='domcontentloaded')
+    page.locator('.monaco-workbench').wait_for(timeout=60000)
+    page.wait_for_timeout(2500)
+    accept_trust(page)
+    for command in ('View: Close Secondary Side Bar', 'View: Close Panel', 'View: Close All Editors'):
+        palette(page, command)
+        page.wait_for_timeout(400)
+
+
+def accept_trust(page):
     for _ in range(3):
         trust = page.get_by_role('button', name='Yes, I trust the authors')
         if trust.count() and trust.first.is_visible():
             trust.first.click()
             page.wait_for_timeout(800)
+
+
+def tidy_ide(page):
+    """Accept the workspace trust prompt (our own throwaway folder), then close the side bar so the editor
+    fills the frame."""
+    accept_trust(page)
     for key in (f'{MOD}+b',):
         try:
             if page.locator('.part.sidebar').is_visible():
@@ -432,15 +463,17 @@ def ide_step(page, step):
         else:
             page.keyboard.press(DOC_END)
     elif kind == 'type':
-        page.locator('.monaco-editor textarea').first.focus()
+        # The code editor itself, not the chat or search boxes that are also Monaco editors.
+        page.locator('.editor-group-container .monaco-editor .view-lines').first.click()
+        page.keyboard.press(DOC_END)
         for i, line in enumerate(step['text'].split('\n')):
             if i:
                 page.keyboard.press('Enter')
                 page.keyboard.press('Home')
             page.keyboard.type(line, delay=int(step.get('delay', 55)))
     elif kind == 'run':
-        palette(page, 'Terminal: Focus Terminal')
-        page.wait_for_timeout(1200)
+        page.keyboard.press('Control+Backquote')
+        page.wait_for_timeout(1500)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
         deadline = time.time() + float(step.get('timeout', 25))
