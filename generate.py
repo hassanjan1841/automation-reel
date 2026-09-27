@@ -182,7 +182,8 @@ def next_post_dates(reels, count):
 VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
-        'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot']},
+        'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot', 'walkthrough',
+                                            'ide']},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
         'before': {'type': 'string'}, 'after': {'type': 'string'},
@@ -192,6 +193,17 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['from', 'text'],
             'properties': {'from': {'type': 'string', 'enum': ['client', 'me']}, 'text': {'type': 'string'}}}},
         'url': {'type': 'string'}, 'find': {'type': 'string'},
+        'files': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
+            'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
+        'setup': {'type': 'array', 'items': {'type': 'string'}},
+        'steps': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['do'],
+            'properties': {'do': {'type': 'string', 'enum': ['scroll', 'scroll_to', 'click', 'hover', 'type', 'wait',
+                                                             'open', 'run', 'save']},
+                           'text': {'type': 'string'}, 'into': {'type': 'string'}, 'file': {'type': 'string'},
+                           'command': {'type': 'string'}, 'screens': {'type': 'number'},
+                           'seconds': {'type': 'number'}, 'enter': {'type': 'boolean'}}}},
     },
 }
 
@@ -236,13 +248,32 @@ def visual_errors(i, visual):
             cmds = v.get('commands', [])
             if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
                 errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
+        elif kind == 'walkthrough':
+            steps = v.get('steps', [])
+            if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 8:
+                errors.append(f'point {i} walkthrough needs an https url and 1 to 8 steps')
+            elif any(s.get('do') in ('open', 'run', 'save') for s in steps):
+                errors.append(f'point {i} walkthrough steps are scroll, scroll_to, click, hover, type or wait')
+        elif kind == 'ide':
+            import demos
+            steps, files = v.get('steps', []), v.get('files', [])
+            typed = '\n'.join(s.get('text', '') for s in steps if s.get('do') == 'type')
+            if not files or not 1 <= len(steps) <= 8:
+                errors.append(f'point {i} ide needs files and 1 to 8 steps')
+            elif any(not demos.allowed(c) for c in v.get('setup', []) + [s.get('command', '') for s in steps
+                                                                           if s.get('do') == 'run']):
+                errors.append(f'point {i} ide commands must start with npm, npx, node, python, pip, git... and '
+                              'use no pipes, redirects, ; or $')
+            elif len(typed.split('\n')) > 12 or any(len(l) > 60 for l in typed.split('\n')):
+                errors.append(f'point {i} ide typed code is max 12 lines of 60 characters')
         elif kind == 'screenshot':
             if not v.get('url', '').startswith('https://'):
                 errors.append(f'point {i} screenshot needs an https url')
             if not 3 <= len(v.get('find', '')) <= 80:
                 errors.append(f'point {i} screenshot needs "find": short exact text on that page to outline')
         else:
-            errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat or screenshot')
+            errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough '
+                          'or ide')
     return errors
 
 
@@ -323,6 +354,16 @@ that does not clearly show what is being said):
   heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
   label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
   code or terminal choice after a screenshot when one fits.
+- walkthrough: a real recording of a public website (no logins): "url" plus up to 8 "steps" with "do" one of
+  scroll ("screens"), scroll_to ("text" visible on the page), click ("text" of a button or link), hover,
+  type ("into" a field's placeholder or label, "text"), wait ("seconds"). Use it to show a tool, a docs page
+  or a pricing page the way a person would click through it; texts must exist on the page.
+- ide: a real VS Code recording that types code and runs it, so the output on screen is real: "files" (name +
+  starting content), optional "setup" commands run off camera (e.g. "npm init -y", "npm i zod tsx"), and up
+  to 8 "steps": open ("file"), type ("text", max 12 lines of 60 characters), save, run ("command"), wait.
+  Commands start with npm, npx, node, python, pip, git, curl..., with no pipes, redirects, ";" or "$". Use
+  current, non-deprecated APIs. This is the strongest visual for "try this" dev tips and for honest "I tested
+  it" reels, because it really runs. Add a code or diff choice after it as a backup.
 - Only when nothing real can be shown (a pure opinion or habit), leave "visual" out; the slide then shows
   its body text.
 

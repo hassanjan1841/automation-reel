@@ -65,7 +65,9 @@ def review(video, reel, slides, voiceover=None):
             if visual:
                 meant = {'code': 'a code window', 'terminal': 'a terminal typing commands',
                          'diff': 'code before and after (removed lines red, added lines green)',
-                         'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat',
+                         'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
+                         'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
+                         'ide': 'a real VS Code recording typing and running code',
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'

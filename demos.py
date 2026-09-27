@@ -74,6 +74,10 @@ CURSOR_JS = r"""
 # Floating widgets (chat bubbles, "Ask AI" buttons, cookie and announcement bars) cover what we show; hide them.
 DECLUTTER_JS = r"""
 (() => {
+  const words = /cookie|consent|announc|is out|newsletter|subscribe|we use|ask ai|chat with|support/i;
+  // Common docs-chat and support widgets (they draw floating "Ask AI" buttons from closed web components).
+  const names = /cookie|consent|banner|announce|promo|newsletter|chat|intercom|crisp|drift|widget|launcher|inkeep|kapa|docsbot|mendable|markprompt|zendesk|hubspot|tawk|olark/i;
+  const hide = el => el.style.setProperty('display', 'none', 'important');
   const tidy = () => {
     if (!document.body) return;
     for (const el of document.querySelectorAll('body *')) {
@@ -81,15 +85,59 @@ DECLUTTER_JS = r"""
       const s = getComputedStyle(el);
       if (s.position !== 'fixed' && s.position !== 'sticky') continue;
       const r = el.getBoundingClientRect();
+      const cls = typeof el.className === 'string' ? el.className : '';
+      const text = (el.innerText || '').slice(0, 200);
       const floating = s.position === 'fixed' && r.top > innerHeight * 0.45 && r.height < innerHeight * 0.5;
-      const bar = /cookie|consent|banner|announce|promo|newsletter|chat|intercom|crisp|drift/i
-        .test((el.id || '') + ' ' + (el.className && el.className.baseVal === undefined ? el.className : ''));
-      if (floating || bar) el.style.setProperty('display', 'none', 'important');
+      const strip = r.height < 120 && words.test(text);
+      // Chat and "ask AI" launchers often live in shadow DOM or iframes: judge the host by its box and name.
+      const widget = (el.shadowRoot || el.tagName === 'IFRAME') && r.top > innerHeight * 0.3;
+      if (floating || strip || widget || names.test(el.id + ' ' + cls)) hide(el);
       else el.dataset.reelKept = '1';
     }
   };
+  // Floating launchers (chat, "Ask AI") often sit in a full-screen fixed layer; find what is actually drawn in the
+  // lower corners and hide its nearest fixed ancestor when that ancestor is button-sized.
+  const corners = () => {
+    for (const [fx, fy] of [[0.9, 0.9], [0.85, 0.82], [0.1, 0.9], [0.5, 0.95], [0.9, 0.75]]) {
+      let el = document.elementFromPoint(innerWidth * fx, innerHeight * fy);
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        const s = getComputedStyle(n);
+        if (s.position === 'fixed' || s.position === 'sticky') {
+          const r = n.getBoundingClientRect();
+          if (r.width < innerWidth * 0.7 && r.height < innerHeight * 0.4 && n !== window.__reelCursor) hide(n);
+          break;
+        }
+      }
+    }
+  };
+  // Launcher buttons by their label, when anything above them is fixed or sticky (i.e. they float over content).
+  const launcher = /^(ask ai|ask|chat|help|support|feedback|kapa|ai assistant)\b/i;
+  const floats = n => { for (; n && n !== document.body; n = n.parentElement) {
+    const p = getComputedStyle(n).position; if (p === 'fixed' || p === 'sticky') return true; } return false; };
+  const buttons = () => {
+    for (const b of document.querySelectorAll('button, a, [role=button]')) {
+      const t = (b.innerText || b.getAttribute('aria-label') || '').trim();
+      if (t.length < 30 && launcher.test(t) && floats(b)) hide(b);
+    }
+  };
+  // Widgets inside web components (shadow DOM) are invisible to the searches above: judge the host element by its
+  // tag name, or by what its open shadow root contains.
+  const hosts = () => {
+    for (const el of document.querySelectorAll('body > *, body > * > *')) {
+      const cls = typeof el.className === 'string' ? el.className : '';
+      if (names.test(el.id + ' ' + cls) && el !== window.__reelCursor) { hide(el); continue; }
+    }
+    for (const el of document.querySelectorAll('*')) {
+      if (!el.tagName.includes('-') && !el.shadowRoot) continue;
+      const inner = el.shadowRoot ? (el.shadowRoot.textContent || '').slice(0, 300) : '';
+      if (names.test(el.tagName) || /kapa|assistant|ask ai/i.test(el.tagName + ' ' + inner)) hide(el);
+    }
+  };
   tidy();
-  setInterval(tidy, 800);
+  corners();
+  buttons();
+  hosts();
+  setInterval(() => { tidy(); corners(); buttons(); hosts(); }, 400);
 })();
 """
 
@@ -221,7 +269,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 15}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 20}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -402,7 +450,10 @@ def record_ide(spec, size):
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp) / 'workspace'
         ws.mkdir()
-        for name, content in spec.get('files', {}).items():
+        files = spec.get('files', {})
+        # The writer sends [{"name", "content"}]; a hand-written spec may use {"name": "content"}.
+        files = {f['name']: f['content'] for f in files} if isinstance(files, list) else files
+        for name, content in files.items():
             path = ws / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)

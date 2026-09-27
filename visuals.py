@@ -7,6 +7,7 @@ A point may carry one of:
   {"type": "terminal", "commands": ["npm i drizzle-orm"]}                  typed out with key clicks
   {"type": "tweet", "text": "Junior dev: ... Senior dev: ..."}              a post card in the creator's own name
   {"type": "chat", "messages": [{"from": "client", "text": "..."}, {"from": "me", "text": "..."}]}
+  {"type": "walkthrough", ...} or {"type": "ide", ...}   a real screen recording, see demos.py
   {"type": "screenshot", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
    "find": "Enable Row Level Security"}   scrolled to that text, a cursor glides over and clicks it, spotlit
 
@@ -17,6 +18,7 @@ fit); the slide then falls back to its body text.
 
 import hashlib
 import math
+import subprocess
 import re
 import textwrap
 import urllib.request
@@ -585,6 +587,60 @@ class Chat(Card):
         return rgb, mask
 
 
+# ---------- recorded demos ----------
+
+class Clip(Card):
+    """A real screen recording (website walkthrough or live coding) playing inside the card. It is sped up to
+    fit the slide (never slowed down, at most MAX_SPEED); if it is still too long, its end is kept, since that is
+    where the result is. Frames are streamed from ffmpeg in order, so memory stays small."""
+    MAX_SPEED, LEAD = 4.0, 0.35
+
+    def __init__(self, path, box, chrome=None):
+        self.path = path
+        w, h = box[2], box[3]
+        super().__init__(box[0], box[1], w, h, radius=26)
+        probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0',
+                                str(path)], capture_output=True, text=True, check=True)
+        self.length = float(probe.stdout.strip())
+        self.proc, self.index, self.last = None, -1, None
+        self.sounds = [(0.4, 'swish')]
+
+    def open(self):
+        avail = max(1.0, self.duration - self.LEAD - 0.3)
+        speed = min(self.MAX_SPEED, max(1.0, self.length / avail))
+        start = max(0.0, self.length - avail * speed)
+        vf = f'setpts=(PTS-STARTPTS)/{speed:.4f},fps=30,scale={self.w}:{self.h}:force_original_aspect_ratio=increase,' \
+             f'crop={self.w}:{self.h}'
+        self.proc = subprocess.Popen(['ffmpeg', '-v', 'error', '-ss', f'{start:.3f}', '-i', str(self.path), '-vf', vf,
+                                      '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)
+
+    def frame(self, t):
+        if self.proc is None:
+            self.open()
+        want = max(0, int((t - self.LEAD) * 30))
+        size = self.w * self.h * 3
+        while self.index < want:
+            buf = self.proc.stdout.read(size)
+            if len(buf) < size:
+                break  # the clip ended: hold its last frame
+            self.last = np.frombuffer(buf, dtype=np.uint8).reshape(self.h, self.w, 3).astype(np.float32)
+            self.index += 1
+        return self.last
+
+    def layer(self, t):
+        rgb = self.frame(t)
+        if rgb is None:
+            rgb = np.full((self.h, self.w, 3), 30.0, dtype=np.float32)
+        return rgb, self.mask
+
+
+def recorded(visual, box):
+    import demos
+    box = widen(box)
+    size = (box[2], box[3] - box[3] % 2)
+    return Clip(demos.record(visual, size), (box[0], box[1], size[0], size[1]))
+
+
 # ---------- screenshot ----------
 
 def capture(url, find):
@@ -760,6 +816,8 @@ def build(visual, theme, box):
             return Post(visual, box, theme)
         if kind == 'chat':
             return Chat(visual, box, theme)
+        if kind in ('walkthrough', 'ide'):
+            return recorded(visual, box)
         if kind == 'screenshot':
             if not visual.get('find'):
                 raise ValueError('a screenshot needs the text to show ("find")')
