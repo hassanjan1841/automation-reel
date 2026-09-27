@@ -44,10 +44,11 @@ Be strict about visuals: when in doubt whether a screenshot shows the point, vis
 
 
 def frames(video, slides, folder):
-    """One frame per slide, late enough that its text and visual are fully in."""
+    """One frame per slide, as late as possible: every visual has finished animating (a diff caught mid-change
+    looks garbled) and the camera still holds its push into the visual, before the release and the exit."""
     paths = []
     for i, s in enumerate(slides):
-        t = s.start + min(max(1.2, (s.end - s.start) * 0.6), s.end - s.start - render.EXIT - 0.05)
+        t = s.start + max(min(1.2, s.end - s.start - 0.3), s.end - s.start - 0.9)
         path = Path(folder) / f'slide-{i}.png'
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(video), '-frames:v', '1',
                         '-vf', 'scale=540:-1', str(path)], check=True)

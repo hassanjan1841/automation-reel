@@ -667,7 +667,10 @@ class Camera:
             v = s.visual
             if s.kind == 'point' and v is not None and s.end - s.start >= 3.0:
                 d = s.end - s.start
-                self.focuses.append((s.start + 0.4 * d, s.end - 0.8, v.x + v.w / 2, v.y + v.h / 2))
+                # Never so far that a wide visual (a full-width code card) runs off the frame.
+                zoom = min(self.FOCUS, (W - 24) / v.w - self.BASE - 0.012)
+                if zoom > 0.01:
+                    self.focuses.append((s.start + 0.4 * d, s.end - 0.8, v.x + v.w / 2, v.y + v.h / 2, zoom))
         # Shake when the hook has landed and when the call to action appears.
         self.shakes = [(0.45, 7.0), (slides[-1].start + 0.1, 6.0)]
         self.jitter = rng.uniform(-1, 1, (4096, 2))
@@ -684,10 +687,10 @@ class Camera:
 
     def focus(self, t):
         """(zoom, focus x, focus y) of a push into a visual at time t."""
-        for start, end, fx, fy in self.focuses:
+        for start, end, fx, fy, zoom in self.focuses:
             if start <= t < end + 0.5:
                 k = ease_out(min(1.0, (t - start) / 0.6)) * (1 - ease_in(min(1.0, max(0.0, (t - end) / 0.5))))
-                return self.FOCUS * k, fx, fy
+                return zoom * k, fx, fy
         return 0.0, W / 2, H / 2
 
     def params(self, t):
@@ -696,7 +699,7 @@ class Camera:
         push, fx, fy = self.focus(t)
         scale = self.BASE + breathe + reveal + self.punch(t) + push
         # Zoom about the visual, drifting it a little toward the centre, instead of about the frame centre.
-        k = push / self.FOCUS if self.FOCUS else 0
+        k = 1.0 if push else 0.0
         dx = 2.2 * math.sin(2 * math.pi * t / 5.3) + (fx - W / 2) * (1 - scale) * k + (W / 2 - fx) * 0.25 * k
         dy = 1.8 * math.sin(2 * math.pi * t / 6.7 + 1.0) + (fy - H / 2) * (1 - scale) * k + (H / 2 - fy) * 0.25 * k
         for at, amp in self.shakes:
