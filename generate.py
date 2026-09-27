@@ -250,8 +250,8 @@ def visual_errors(i, visual):
                 errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
         elif kind == 'walkthrough':
             steps = v.get('steps', [])
-            if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 8:
-                errors.append(f'point {i} walkthrough needs an https url and 1 to 8 steps')
+            if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 4:
+                errors.append(f'point {i} walkthrough needs an https url and 1 to 4 steps (short and focused)')
             elif any(s.get('do') in ('open', 'run', 'save') for s in steps):
                 errors.append(f'point {i} walkthrough steps are scroll, scroll_to, click, hover, type or wait')
         elif kind == 'ide':
@@ -354,7 +354,9 @@ that does not clearly show what is being said):
   heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
   label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
   code or terminal choice after a screenshot when one fits.
-- walkthrough: a real recording of a public website (no logins): "url" plus up to 8 "steps" with "do" one of
+- A point with a walkthrough or ide recording needs time on screen: make its voiceover line 18 to 24 words
+  (with cues), so the recording plays at a natural speed instead of being rushed.
+- walkthrough: a real recording of a public website (no logins): "url" plus 2 to 4 "steps" with "do" one of
   scroll ("screens"), scroll_to ("text" visible on the page), click ("text" of a button or link), hover,
   type ("into" a field's placeholder or label, "text"), wait ("seconds"). Use it to show a tool, a docs page
   or a pricing page the way a person would click through it; texts must exist on the page.

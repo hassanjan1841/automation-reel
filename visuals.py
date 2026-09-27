@@ -590,10 +590,11 @@ class Chat(Card):
 # ---------- recorded demos ----------
 
 class Clip(Card):
-    """A real screen recording (website walkthrough or live coding) playing inside the card. It is sped up to
-    fit the slide (never slowed down, at most MAX_SPEED); if it is still too long, its end is kept, since that is
-    where the result is. Frames are streamed from ffmpeg in order, so memory stays small."""
-    MAX_SPEED, LEAD = 4.0, 0.35
+    """A real screen recording (website walkthrough or live coding) playing inside the card. It may be sped up a
+    little to fit the slide (at most MAX_SPEED, faster reads as hurried); if it is still too long, it jumps to its
+    end, where the result is, like an editor's cut. Frames are streamed from ffmpeg in order, so memory stays
+    small."""
+    MAX_SPEED, LEAD = 1.5, 0.35
 
     def __init__(self, path, box, chrome=None):
         self.path = path
