@@ -74,6 +74,10 @@ SYSTEM = """You analyse an Instagram creator's own reel results and write short,
 the next reels. The account is small, so be careful with small numbers: say "early sign" when a group has fewer
 than 3 reels, and never invent a pattern the data does not show. Lower skip rate (share of viewers who scroll away
 in the first 3 seconds) and longer average watch time are the main goals; shares and saves come next.
+The creator's hard rules come first; never suggest breaking them: no faces, people or animals on screen (no
+talking head), no music (sound effects and the AI voiceover only), halal and honest content (no invented results,
+stories or numbers), never Reddit. The reels are faceless: text slides, code, diffs, terminals, screenshots, screen
+recordings, chats, quotes and 3D scenes, so only suggest formats from that list.
 Return two parts: "rules" (at most 8 bullets the writer should follow, each tied to the numbers) and "report"
 (a short, friendly summary for the creator in plain words: what worked, what did not, what changes next week)."""
 
