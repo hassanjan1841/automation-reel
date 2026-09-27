@@ -132,6 +132,7 @@ IDE_SETTINGS = {
     'terminal.integrated.env.linux': {'PS1': '$ '}, 'terminal.integrated.cursorBlinking': True,
     'chat.disableAIFeatures': True, 'workbench.secondarySideBar.defaultVisibility': 'hidden',
     'workbench.welcomePage.walkthroughs.openOnInstall': False, 'workbench.editor.empty.hint': 'hidden',
+    'editor.wordWrap': 'on', 'editor.scrollBeyondLastLine': False, 'workbench.panel.defaultLocation': 'bottom',
 }
 
 
@@ -219,7 +220,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 7}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 8}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -413,7 +414,8 @@ def prime_ide(page):
     page.locator('.monaco-workbench').wait_for(timeout=60000)
     page.wait_for_timeout(2500)
     accept_trust(page)
-    for command in ('View: Close Secondary Side Bar', 'View: Close Panel', 'View: Close All Editors'):
+    for command in ('View: Close Primary Side Bar', 'View: Close Secondary Side Bar', 'View: Close Panel',
+                    'View: Close All Editors'):
         palette(page, command)
         page.wait_for_timeout(400)
 
@@ -430,12 +432,6 @@ def tidy_ide(page):
     """Accept the workspace trust prompt (our own throwaway folder), then close the side bar so the editor
     fills the frame."""
     accept_trust(page)
-    for key in (f'{MOD}+b',):
-        try:
-            if page.locator('.part.sidebar').is_visible():
-                page.keyboard.press(key)
-        except Exception:
-            pass
     page.keyboard.press('Escape')
 
 
@@ -472,8 +468,11 @@ def ide_step(page, step):
                 page.keyboard.press('Home')
             page.keyboard.type(line, delay=int(step.get('delay', 55)))
     elif kind == 'run':
-        page.keyboard.press('Control+Backquote')
+        # Focus (not toggle) the terminal, then click into it so the keystrokes land there.
+        palette(page, 'Terminal: Focus Terminal')
         page.wait_for_timeout(1500)
+        page.locator('.terminal-wrapper .xterm-screen').last.click()
+        page.wait_for_timeout(300)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
         deadline = time.time() + float(step.get('timeout', 25))
