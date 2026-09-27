@@ -78,12 +78,12 @@ def storage_headers(key):
     return {'apikey': key, 'Authorization': f'Bearer {key}'}
 
 
-def upload(path, name):
+def upload(path, name, content_type='video/mp4'):
     base, key = env('SUPABASE_URL').rstrip('/'), env('SUPABASE_SERVICE_KEY')
     with open(path, 'rb') as f:
         resp = requests.post(
             f'{base}/storage/v1/object/{BUCKET}/{name}',
-            headers={**storage_headers(key), 'Content-Type': 'video/mp4', 'x-upsert': 'true'},
+            headers={**storage_headers(key), 'Content-Type': content_type, 'x-upsert': 'true'},
             data=f, timeout=300,
         )
     check(resp, 'Supabase upload')
@@ -112,14 +112,16 @@ def ig_post(path, token, **data):
     return check(requests.post(f'{GRAPH}/{path}', data={**data, 'access_token': token}, timeout=120), f'POST {path}')
 
 
-def publish_to_instagram(video_url, caption, thumb_ms):
+def publish_to_instagram(video_url, caption, thumb_ms, cover_url=None):
     token = env('IG_TOKEN')
     me = ig_get('me', token, fields='user_id,username')
     ig_id = me.get('user_id') or me.get('id')
     print(f"Posting as @{me.get('username')} ({ig_id})")
 
+    # cover_url wins over thumb_offset when both are sent; the offset stays as the fallback.
+    extra = {'cover_url': cover_url} if cover_url else {}
     container = ig_post(f'{ig_id}/media', token, media_type='REELS', video_url=video_url, caption=caption,
-                        share_to_feed='true', thumb_offset=str(thumb_ms))
+                        share_to_feed='true', thumb_offset=str(thumb_ms), **extra)
     cid = container['id']
     print(f'Container {cid} created, waiting for Instagram to process the video')
 
@@ -254,14 +256,19 @@ def main():
     wait_for_post_time()
 
     name = f"reel-{reel['id']}-{int(time.time())}.mp4"
+    cover = path.with_name(path.stem + '-cover.jpg')
+    cover_name = name.replace('.mp4', '-cover.jpg') if cover.exists() else None
     try:
         url = upload(path, name)
         print(f'Uploaded to {url}')
-        media_id = publish_to_instagram(url, caption, thumb_ms)
+        cover_url = upload(cover, cover_name, 'image/jpeg') if cover_name else None
+        media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
     except PublishError as e:
         raise SystemExit(f'Publish failed: {e}')
     finally:
         delete_upload(name)
+        if cover_name:
+            delete_upload(cover_name)
 
     reel['posted_at'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     reel['media_id'] = media_id
