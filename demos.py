@@ -36,6 +36,7 @@ CLIPS = render.OUT_DIR / 'clips'
 TOOLS = render.ROOT / 'models' / 'tools'
 MAX_STEPS = 10
 DPR = 2
+IDE_DPR = 1.6
 # VS Code follows the browser's platform: Cmd on macOS, Ctrl on Linux.
 MOD = 'Meta' if sys.platform == 'darwin' else 'Control'
 DOC_END = 'Meta+ArrowDown' if sys.platform == 'darwin' else 'Control+End'
@@ -154,9 +155,9 @@ class Screencast:
         except Exception:
             pass
 
-    def save(self, out):
-        if len(self.frames) < 2:
-            raise RuntimeError('the screencast captured no frames')
+    def save(self, out, min_seconds=3.0):
+        if len(self.frames) < 2 or self.frames[-1][0] - self.frames[0][0] < min_seconds:
+            raise RuntimeError('the recording is too short; the steps probably did not run')
         with tempfile.TemporaryDirectory() as tmp:
             lines = []
             for i, (ts, data) in enumerate(self.frames):
@@ -202,11 +203,11 @@ def smooth_scroll_to(page, el, height):
         page.wait_for_timeout(30)
 
 
-def browser_context(p, width, height, mobile=True):
+def browser_context(p, width, height, mobile=True, dpr=DPR):
     # Without the forced scale factor the headless screencast sends CSS-pixel frames (half resolution at DPR 2).
     browser = p.chromium.launch(args=['--disable-blink-features=AutomationControlled',
-                                      f'--force-device-scale-factor={DPR}'])
-    ctx = browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=DPR,
+                                      f'--force-device-scale-factor={dpr}'])
+    ctx = browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=dpr,
                               is_mobile=mobile, color_scheme='dark' if not mobile else 'light')
     ctx.add_init_script(CURSOR_JS)
     ctx.add_init_script(f'document.addEventListener("DOMContentLoaded", () => {{ {MASK_JS} }});')
@@ -214,7 +215,7 @@ def browser_context(p, width, height, mobile=True):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 5}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 6}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -294,6 +295,7 @@ def allowed(command):
 def start_ide(workspace, port):
     """openvscode-server on localhost with an empty environment. Returns the process (or container id)."""
     data = Path(workspace).parent / 'ovs-data'
+    # The server reads machine settings from <server-data-dir>/data/Machine/settings.json.
     (data / 'data' / 'Machine').mkdir(parents=True, exist_ok=True)
     (data / 'data' / 'Machine' / 'settings.json').write_text(json.dumps(IDE_SETTINGS))
     (Path(workspace) / '.vscode').mkdir(exist_ok=True)
@@ -303,7 +305,7 @@ def start_ide(workspace, port):
     if platform.system() == 'Linux':
         server = ensure_ovs()
         return subprocess.Popen([str(server), '--host', '127.0.0.1', '--port', str(port), '--without-connection-token',
-                                 '--server-data-dir', str(data / 'data'), '--user-data-dir', str(data / 'data'),
+                                 '--server-data-dir', str(data), '--user-data-dir', str(data / 'user'),
                                  '--default-folder', str(workspace)], env=clean,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # macOS: the Linux build in Docker, with the workspace mounted.
@@ -362,9 +364,10 @@ def record_ide(spec, size):
         server = start_ide(ws, port)
         try:
             wait_up(port)
-            w, h = size[0] // DPR, size[1] // DPR
+            # A little less zoom than websites, so a whole snippet and the terminal fit, still readable.
+            w, h = round(size[0] / IDE_DPR), round(size[1] / IDE_DPR)
             with sync_playwright() as p:
-                browser, ctx = browser_context(p, w, h, mobile=False)
+                browser, ctx = browser_context(p, w, h, mobile=False, dpr=IDE_DPR)
                 page = ctx.new_page()
                 page.goto(f'http://127.0.0.1:{port}/?folder=/home/workspace' if platform.system() != 'Linux'
                           else f'http://127.0.0.1:{port}/?folder={ws}', wait_until='domcontentloaded')
@@ -389,7 +392,13 @@ def record_ide(spec, size):
 
 
 def tidy_ide(page):
-    """Close the side bar and any panel so the editor fills the frame."""
+    """Accept the workspace trust prompt (our own throwaway folder), then close the side bar so the editor
+    fills the frame."""
+    for _ in range(3):
+        trust = page.get_by_role('button', name='Yes, I trust the authors')
+        if trust.count() and trust.first.is_visible():
+            trust.first.click()
+            page.wait_for_timeout(800)
     for key in (f'{MOD}+b',):
         try:
             if page.locator('.part.sidebar').is_visible():
