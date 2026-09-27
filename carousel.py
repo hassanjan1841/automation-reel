@@ -8,6 +8,7 @@ Usage: python carousel.py
 
 import json
 import os
+import re
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -21,6 +22,7 @@ import visuals
 
 W, H = 1080, 1350
 LOG = render.ROOT / 'carousels.json'
+CALL_TO_ACTION = re.compile(r'\b(save (this|it)|share (this|it)|bookmark|follow (me|us|for|@)|send (it|this)|tag a)\b', re.I)
 OUT = render.OUT_DIR / 'carousel'
 
 SCHEMA = {
@@ -43,7 +45,9 @@ It is the post people save: one practical topic, one idea per slide, useful on i
 - slides: 6 to 8. Each has a heading (max 7 words) and either 2 to 4 short "points" (max 12 words each) or a
   "code" snippet (max 8 lines of 40 characters, current non-deprecated APIs) with its "language". Mix both.
 - alt: one plain sentence describing the slide for screen readers and search.
-- question: a short question for the last slide that invites a real answer.
+- question: a short question for the last slide that invites a real answer. That last slide is added for you
+  and already asks people to save and follow, so every slide in "slides" is a real tip: none about saving,
+  sharing, bookmarking or following.
 - caption: first line is the topic in searchable words, then 1 or 2 short lines, ending with a question and 👇.
 - hashtags: 3 to 5 focused tags. style: light or dark.
 Honesty: evergreen and accurate; no invented numbers, results or stories; nothing presented as someone else's
@@ -82,6 +86,10 @@ def check(c):
                 errors.append(f'slide {i} code is over 8 lines of 40 characters')
         elif not 2 <= len(s.get('points') or []) <= 4 or any(len(p.split()) > 12 for p in s['points']):
             errors.append(f'slide {i} needs 2 to 4 points of max 12 words, or code')
+    for i, s in enumerate(c['slides'], 1):
+        # The closing slide already asks to save; a second "save this" slide wastes a swipe (2026-09-27).
+        if CALL_TO_ACTION.search(' '.join([s['heading']] + (s.get('points') or []))):
+            errors.append(f'slide {i} asks to save, share or follow; the last slide does that, make it a tip')
     if not 3 <= len(c['hashtags']) <= 5:
         errors.append('needs 3 to 5 hashtags')
     return errors
@@ -128,31 +136,52 @@ def title_slide(c, theme, total):
     header(d, theme, 1, total)
     fnt, size, lines, line_h = render.fit(render.parse_highlights(c['title']), 'Bold', 118, 60, W - 2 * render.MARGIN,
                                           560, leading=1.08)
-    y = 360
+    sub = wrap_text(c['subtitle'], render.font('Regular', 44), W - 2 * render.MARGIN)
+    y = centred(len(lines) * line_h + 50 + 62 * len(sub))
     for li, line in enumerate(lines):
         for word, hl, x, _ in line:
             d.text((render.MARGIN + x, y + li * line_h), word, font=fnt, fill=theme['ink'], anchor='lt')
     y += len(lines) * line_h + 50
-    for line in wrap_text(c['subtitle'], render.font('Regular', 44), W - 2 * render.MARGIN):
+    for line in sub:
         d.text((render.MARGIN, y), line, font=render.font('Regular', 44), fill=theme['muted'], anchor='lt')
         y += 62
     footer(d, theme)
     return img
 
 
-def content_slide(s, theme, n, total):
+TOP, BOTTOM = 190, H - 150
+
+
+def centred(height):
+    """Top of a block of this height centred between the header and the footer, so no slide is half empty."""
+    return TOP + max(0, (BOTTOM - TOP - height) // 2)
+
+
+def content_slide(s, theme, n, total, top=None):
+    """One tip. With top=None only measures: returns the block height, so every slide can start at the same
+    height (centred for the tallest one) and headings do not jump around between swipes."""
     img = canvas(theme)
     d = ImageDraw.Draw(img)
     header(d, theme, n, total)
     m = render.MARGIN
-    d.text((m, 190), f'{n - 1:02d}', font=render.font('Bold', 40), fill=theme['accent'], anchor='lt')
-    y = 250
-    for line in wrap_text(s['heading'], render.font('Bold', 74), W - 2 * m):
-        d.text((m, y), line, font=render.font('Bold', 74), fill=theme['ink'], anchor='lt')
-        y += 86
+    heading = wrap_text(s['heading'], render.font('Bold', 84), W - 2 * m)
+    f = render.font('Regular', 54)
+    if s.get('code'):
+        panel, _ = visuals.code_image(s['code'], s.get('language'), '', W - 2 * 60, BOTTOM - TOP - 60 - 96 * len(heading) - 40)
+        body_h = panel.height
+    else:
+        points = [wrap_text(p, f, W - 2 * m - 48) for p in s['points']]
+        body_h = sum(72 * len(p) + 40 for p in points) - 40
+    if top is None:
+        return 60 + 96 * len(heading) + 40 + body_h
+    y = top
+    d.text((m, y), f'{n - 1:02d}', font=render.font('Bold', 44), fill=theme['accent'], anchor='lt')
+    y += 60
+    for line in heading:
+        d.text((m, y), line, font=render.font('Bold', 84), fill=theme['ink'], anchor='lt')
+        y += 96
     y += 40
     if s.get('code'):
-        panel, _ = visuals.code_image(s['code'], s.get('language'), '', W - 2 * 60, H - y - 170)
         shadow = Image.new('RGBA', (panel.width + 80, panel.height + 80), (0, 0, 0, 0))
         ImageDraw.Draw(shadow).rounded_rectangle((40, 52, panel.width + 40, panel.height + 52), radius=28,
                                                  fill=(0, 0, 0, 70))
@@ -161,12 +190,11 @@ def content_slide(s, theme, n, total):
         mask = Image.fromarray((visuals.rounded_mask(panel.width, panel.height, 28) * 255).astype(np.uint8))
         img.paste(panel, (60, y), mask)
     else:
-        f = render.font('Regular', 46)
-        for p in s['points']:
-            d.ellipse((m, y + 22, m + 14, y + 36), fill=theme['accent'])
-            for li, line in enumerate(wrap_text(p, f, W - 2 * m - 44)):
-                d.text((m + 40, y + li * 62), line, font=f, fill=theme['ink'], anchor='lt')
-            y += 62 * len(wrap_text(p, f, W - 2 * m - 44)) + 34
+        for lines in points:
+            d.ellipse((m, y + 26, m + 16, y + 42), fill=theme['accent'])
+            for li, line in enumerate(lines):
+                d.text((m + 44, y + li * 72), line, font=f, fill=theme['ink'], anchor='lt')
+            y += 72 * len(lines) + 40
     footer(d, theme)
     return img
 
@@ -175,8 +203,9 @@ def end_slide(c, theme, total):
     img = canvas(theme)
     d = ImageDraw.Draw(img)
     header(d, theme, total, total)
-    y = 420
-    for line in wrap_text(c['question'], render.font('Bold', 84), W - 2 * render.MARGIN):
+    question = wrap_text(c['question'], render.font('Bold', 84), W - 2 * render.MARGIN)
+    y = centred(98 * len(question) + 160)
+    for line in question:
         d.text((render.MARGIN, y), line, font=render.font('Bold', 84), fill=theme['ink'], anchor='lt')
         y += 98
     d.text((render.MARGIN, y + 40), 'Save this for later', font=render.font('SemiBold', 48), fill=theme['accent'],
@@ -191,7 +220,8 @@ def draw(c):
     render.ensure_fonts()
     theme = render.THEMES[c['style']]
     total = len(c['slides']) + 2
-    images = [title_slide(c, theme, total)] + [content_slide(s, theme, i + 2, total) for i, s in enumerate(c['slides'])] \
+    top = centred(max(content_slide(s, theme, i + 2, total) for i, s in enumerate(c['slides'])))
+    images = [title_slide(c, theme, total)] + [content_slide(s, theme, i + 2, total, top) for i, s in enumerate(c['slides'])] \
         + [end_slide(c, theme, total)]
     OUT.mkdir(parents=True, exist_ok=True)
     paths = []
