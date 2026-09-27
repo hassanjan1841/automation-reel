@@ -220,7 +220,7 @@ def browser_context(p, width, height, mobile=True, dpr=DPR):
 
 
 def cache_path(spec, size):
-    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 9}, sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps({**spec, 'size': size, 'v': 10}, sort_keys=True).encode()).hexdigest()[:16]
     CLIPS.mkdir(parents=True, exist_ok=True)
     return CLIPS / f'{key}.mp4'
 
@@ -481,10 +481,13 @@ def ide_step(page, step):
     elif kind == 'run':
         # Focus (not toggle) the terminal, then click into it so the keystrokes land there.
         palette(page, 'Terminal: Focus Terminal')
-        page.wait_for_timeout(1500)
-        # xterm.js reads keys from a hidden textarea; focus it directly.
-        page.locator('.xterm-helper-textarea').last.focus()
-        page.wait_for_timeout(300)
+        # Type only once the shell has printed its prompt, or the first keys are lost.
+        rows = page.locator('.xterm-rows').last
+        for _ in range(40):
+            if '$' in (rows.inner_text() if rows.count() else ''):
+                break
+            page.wait_for_timeout(250)
+        page.wait_for_timeout(400)
         page.keyboard.type(step['command'], delay=45)
         page.keyboard.press('Enter')
         deadline = time.time() + float(step.get('timeout', 25))
