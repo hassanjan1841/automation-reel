@@ -4,5 +4,7 @@
     "Postgres": "Postgress",
     "Supabase": "Soo pa base"
   },
-  "fish": {}
+  "fish": {
+    "sonnet": "<|phoneme_start|>S AA1 N AH0 T<|phoneme_end|>"
+  }
 }

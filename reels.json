@@ -497,5 +497,85 @@
     ],
     "slot": 2,
     "seconds": 17.5
+  },
+  {
+    "id": 35,
+    "style": "dark",
+    "kicker": "Quick trick #1",
+    "hook": "How do you switch branches *instantly*?",
+    "points": [
+      {
+        "title": "Typing full branch names",
+        "body": "Slow, easy to mistype under pressure",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git branch",
+              "git checkout feature/user-auth-refactor"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The dash shortcut",
+        "body": "One dash jumps you right back",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git checkout -"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Works with git switch",
+        "body": "Same shortcut works for switch too",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git switch -"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *DASH* for more git shortcuts",
+    "dm_keyword": "DASH",
+    "dm_guide": "Here's the trick: git checkout - takes you back to the branch you were just on, same idea as cd - in bash. Works with git switch - too, no typing needed. Two more that save time daily: git branch -D old-branch to force delete a branch, and git log --oneline --graph for a quick readable history. Docs: https://git-scm.com/docs/git-checkout and https://git-scm.com/docs/git-switch",
+    "caption": "Git checkout dash trick to switch branches instantly\nStop typing full branch names every time\nWhat's your favorite git shortcut? 👇",
+    "hashtags": [
+      "#git",
+      "#coding",
+      "#devtips",
+      "#terminal"
+    ],
+    "voiceover": [
+      "[intrigued, fast] How do you jump back to a branch instantly?",
+      "[knowing] We've all guessed branch names hoping tab saves us.",
+      "[excited] Turns out a single dash after checkout jumps straight back.",
+      "[confident and fast] Same trick works with git switch, no branch name needed.",
+      "[warm, curious] Comment dash and I'll send you more shortcuts."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 1,
+    "posted_at": "2026-09-28T20:00:43+00:00",
+    "media_id": "18501892000100675",
+    "shown": [
+      "text",
+      "terminal",
+      "terminal",
+      "terminal",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.2
   }
 ]
