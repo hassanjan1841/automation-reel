@@ -1,5 +1,6 @@
 """Offline tests for the learning loop and what feeds it: history.py storage, the weekly test in generate.py, the
-news writer's use of it, trends.performance's fallback, what publish.py records, every step of learn.py, the
+news writer's use of it, trends.performance's fallback, what publish.py records, the catch-up scheduler and the
+never-post-a-slot-twice rule, every step of learn.py, the
 weekly workflow's commit step, and a six-week simulation of the whole loop against a fake Instagram and a fake
 Claude. No network, no Claude, no Instagram; runs with only requests, pillow and numpy installed (like CI).
 
@@ -29,6 +30,7 @@ import history
 import learn
 import publish
 import render
+import scheduler
 import trends
 
 ROOT = Path(__file__).resolve().parent
@@ -341,10 +343,10 @@ class PublishTest(Sandbox):
             x.end = 4.0 * (i + 1) + 0.37
         return s
 
-    def run_main(self, reels, todays=None):
+    def run_main(self, reels, todays=None, force='true'):
         render.QUEUE.write_text(json.dumps(reels))
         video = self.tmp / 'reel.mp4'
-        os.environ.update(FORCE_POST='true', SLOT='2')
+        os.environ.update(FORCE_POST=force, SLOT='2')
         with mock.patch.object(publish, 'make_video', return_value=(video, self.slides())), \
                 mock.patch.object(publish, 'upload', return_value='https://x/y.mp4'), \
                 mock.patch.object(publish, 'delete_upload'), mock.patch.object(publish, 'wait_for_post_time'), \
@@ -372,6 +374,20 @@ class PublishTest(Sandbox):
         self.assertEqual(saved['test'], {'name': 'hook_style', 'arm': 'question'})
         self.assertEqual(generate.validate(saved), [])
         self.assertEqual(json.loads((self.tmp / 'reel.json').read_text())['test'], saved['test'])
+
+    def test_never_the_same_slot_twice(self):
+        today = datetime.now(timezone.utc).replace(microsecond=0)
+        done = {**copy.deepcopy(VALID), 'id': 5, 'style': 'light', 'posted_at': today.isoformat(), 'media_id': '1', 'slot': 2}
+        written = {**copy.deepcopy(VALID), 'hook': QUESTION_HOOK, 'test': {'name': 'hook_style', 'arm': 'question'}}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            reels = self.run_main([done], todays=written, force='')       # SLOT=2 again: nothing posted
+        self.assertEqual(len(reels), 1)
+        self.assertIn('already posted', out.getvalue())
+        done['slot'] = 1
+        reels = self.run_main([done], todays=written, force='')       # slot 1 posted, this is slot 2: posts
+        self.assertEqual(reels[-1]['slot'], 2)
+        self.assertEqual(reels[-1]['media_id'], '17999')
 
     def test_dry_run_records_nothing(self):
         hand = {**copy.deepcopy(VALID), 'id': 5, 'posted_at': None, 'media_id': None}
@@ -757,6 +773,92 @@ class ClaudeTest(Sandbox):
         for part in ('"skip_vs_usual": -1', 'R', 'The weekly test: T', 'I', 'O', 'LAST', generate.SYSTEM[:200]):
             self.assertIn(part, prompt)
         self.assertNotIn('media_id', prompt)
+
+
+def at(hh, mm, day=date(2026, 9, 28)):
+    return datetime.combine(day, datetime.min.time(), timezone.utc).replace(hour=hh, minute=mm)
+
+
+def run(created, status='completed'):
+    return {'status': status, 'createdAt': created.strftime('%Y-%m-%dT%H:%M:%SZ')}
+
+
+class SchedulerTest(Sandbox):
+    def posted(self, when, slot=None):
+        return {'id': 1, 'posted_at': when.isoformat(), **({'slot': slot} if slot else {})}
+
+    def test_windows(self):
+        self.assertEqual([scheduler.window(at(h, m)) for h, m in ((0, 0), (11, 6), (11, 7), (15, 6), (15, 7), (19, 6),
+                                                                  (19, 7), (23, 59))],
+                         [None, None, 1, 1, 2, 2, 3, 3])
+
+    def test_posted_slots(self):
+        reels = [self.posted(at(14, 26), slot=1), self.posted(at(16, 1)), self.posted(at(20, 0), slot=3),
+                 self.posted(at(12, 0, date(2026, 9, 27)), slot=2), {'id': 9, 'posted_at': None}]
+        self.assertEqual(scheduler.posted_slots(reels, date(2026, 9, 28)), {1, 2, 3})
+        self.assertEqual(scheduler.posted_slots(reels, date(2026, 9, 27)), {2})
+
+    def test_due_reel(self):
+        slot1 = [self.posted(at(14, 26), slot=1)]
+        self.assertEqual(scheduler.due_reel(at(15, 20), slot1, []), 2)          # today's case: slot 2 missing
+        self.assertIsNone(scheduler.due_reel(at(14, 0), slot1, []))             # slot 1 done, slot 2 not open yet
+        self.assertEqual(scheduler.due_reel(at(14, 0), [], []), 1)              # slot 1 missed: still in its window
+        self.assertIsNone(scheduler.due_reel(at(10, 0), [], []))                # before the first slot
+        self.assertIsNone(scheduler.due_reel(at(15, 20), slot1, [run(at(15, 10), 'in_progress')]))  # already running
+        self.assertIsNone(scheduler.due_reel(at(15, 20), slot1, [run(at(15, 10), 'queued')]))
+        self.assertEqual(scheduler.due_reel(at(15, 50), slot1, [run(at(15, 10))]), 2)          # one failed try: retry
+        self.assertIsNone(scheduler.due_reel(at(15, 50), slot1, [run(at(15, 10)), run(at(15, 30))]))  # gave up
+        self.assertEqual(scheduler.due_reel(at(19, 30), slot1, [run(at(15, 10)), run(at(15, 30))]), 3)  # next slot
+        self.assertIsNone(scheduler.due_reel(at(19, 30), slot1 + [self.posted(at(20, 0), slot=3)], []))
+
+    def test_due_weekly(self):
+        sunday = date(2026, 10, 4)
+        self.assertTrue(scheduler.due_weekly(at(10, 30, sunday), []))
+        self.assertFalse(scheduler.due_weekly(at(9, 59, sunday), []))
+        self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
+        self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
+
+    def run_scheduler(self, now, reels, daily, weekly, argv=()):
+        render.QUEUE.write_text(json.dumps(reels))
+        calls = []
+
+        def gh(*args):
+            calls.append(args)
+            if args[:2] == ('run', 'list'):
+                return json.dumps(daily if args[3] == 'daily-reel.yml' else weekly)
+            return ''
+
+        class Now(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return now
+        with mock.patch.object(scheduler, 'QUEUE', render.QUEUE), mock.patch.object(scheduler, 'gh', gh), \
+                mock.patch.object(scheduler, 'datetime', Now), mock.patch.object(sys, 'argv', ['scheduler.py', *argv]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            scheduler.main()
+        return [c for c in calls if c[0] == 'workflow']
+
+    def test_main_starts_the_missing_slot(self):
+        started = self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [])
+        self.assertEqual(started, [('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', 'slot=2')])
+        self.assertEqual(self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [], argv=['--dry']), [])
+        self.assertEqual(self.run_scheduler(at(16, 5), [self.posted(at(14, 26), slot=1), self.posted(at(16, 0), slot=2)],
+                                            [], []), [])
+
+    def test_main_starts_a_missed_weekly(self):
+        sunday = date(2026, 10, 4)
+        started = self.run_scheduler(at(10, 40, sunday), [], [], [])
+        self.assertIn(('workflow', 'run', 'weekly.yml', '-f', 'post_carousel=true'), started)
+        self.assertEqual(self.run_scheduler(at(10, 40, sunday), [], [], [run(at(10, 3, sunday))]), [])
+
+    def test_workflow(self):
+        text = (ROOT / '.github/workflows/scheduler.yml').read_text()
+        for part in ('actions: write', 'GH_TOKEN: ${{ github.token }}', 'run: python scheduler.py', 'workflow_dispatch'):
+            self.assertIn(part, text)
+        daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
+        for part in ('dry_run:', 'slot:'):
+            self.assertIn(part, daily)
+        self.assertIn('post_carousel:', (ROOT / '.github/workflows/weekly.yml').read_text())
 
 
 class OutageTest(Sandbox):

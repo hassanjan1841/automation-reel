@@ -7,7 +7,7 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
-  FORCE_POST=true       post even if this slot's reel already went out today (UTC)
+  FORCE_POST=true       post even if this slot's reel already went out today (UTC); without it a slot never posts twice
   SLOT                  1 (default: a how-to), 2 (the evening reel: relatable, another series) or 3 (news, a trick,
                         X vs Y or the beginner series, picked at random per day; see generate.slot3_format)
   CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
@@ -26,6 +26,7 @@ import requests
 import generate
 import qa
 import render
+import scheduler
 import trends
 import voice
 
@@ -297,8 +298,8 @@ def main():
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
     today = datetime.now(timezone.utc).date().isoformat()
-    posted_today = sum(1 for r in reels if (r.get('posted_at') or '').startswith(today))
-    if not dry and posted_today >= generate.slot() \
+    # Never post the same slot twice in a day, however many times a run is started (the scheduler retries).
+    if not dry and generate.slot() in scheduler.posted_slots(reels, datetime.now(timezone.utc).date()) \
             and os.environ.get('FORCE_POST', '').strip().lower() not in ('1', 'true', 'yes'):
         print(f'Reel {generate.slot()} of today ({today} UTC) already posted; nothing to do. '
               'Set FORCE_POST=true to post again.')

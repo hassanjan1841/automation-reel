@@ -7,6 +7,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 - **Comment DMs** (`dm.yml`, every 15 minutes): `dm.py` answers keyword comments. How-to reels and every carousel end with an offer like "Comment MCP for the setup"; whoever comments the keyword gets the post's `dm_guide` as a private reply (Instagram's official way to message a commenter, allowed for 7 days) and a public "Sent you a DM" under their comment, which is also how it knows not to send twice. Run it by hand with `check` to confirm the token may read comments and send messages. The token needs the `instagram_business_manage_comments` and `instagram_business_manage_messages` permissions.
 - **Demo preview** (`demo-preview.yml`, run by hand): records one walkthrough or IDE demo on GitHub's machine and attaches the video, to try a demo before it goes into a reel.
 - **Insights** (`insights.yml`, run by hand): prints account stats and per-reel views, reach, skip rate, watch time, likes, comments, saves and shares, and attaches each reel's cover as an artifact named `thumbs`, sorted by skip rate.
+- **Scheduler** (`scheduler.yml`, every 10 minutes): `scheduler.py` starts any Daily reel slot or Sunday Weekly run that GitHub's own schedule dropped. See [Reliable timing](#reliable-timing).
 - **Tests** (`tests.yml` on every push and pull request): `python test_learn.py`, the offline tests of the learning loop.
 - **Docs** (`docs-check.yml` on every push, `docs-sync.yml` on code pushes to `main` and Saturdays 09:00 UTC): keeps this README, `CLAUDE.md` and the project skill in step with the code. See [Docs](#docs).
 
@@ -21,6 +22,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `scene3d.py` | 3D moments, drawn with three.js in headless Chromium frame by frame and floating straight on the reel background with soft shadows: a tech diagram (blocks with a glowing packet travelling along the flow), the hook word in extruded 3D, a laptop or phone showing code or a screenshot, rising bars for real sourced numbers, and spinning tool logos in their brand colours with their names (Simple Icons; animal or mascot logos are blocked). Objects only, never people or animals. 3D is allowed on a random half of days (`THREE_D_CHANCE`, fixed per date), at most 2 moments per reel; `THREE_D=on` or `off` forces it. `python scene3d.py '<json>' 980 620 6` renders one to `out/scenes/`. |
 | `learn.py` | The weekly learning loop, see [Learning](#learning). |
 | `history.py` | Where the learning loop keeps its data, as files in the repo: `metrics/`, `rules.json`, `experiments.json`, `ideas.json`, `reports/`, and `learnings.md` generated from the rules. `python history.py` prints what is stored. |
+| `scheduler.py` | Starts any reel slot or Sunday Weekly run that GitHub's schedule dropped; safe to run any number of times. `python scheduler.py --dry` prints the decision. See [Reliable timing](#reliable-timing). |
 | `test_learn.py` | Offline tests of the learning loop, including a six-week simulation against a fake Instagram. `python test_learn.py`; CI runs it on every push. |
 | `carousel.py` | The weekly cheat-sheet carousel: Claude writes it, slides are drawn in the reel style (code slides in the editor window), reviewed for readability and honesty, posted as an Instagram carousel with alt text. `DRY_RUN=true python carousel.py` renders to `out/carousel/`. |
 | `qa.py` | Visual review after rendering: Claude looks at one frame per slide and rejects visuals that are irrelevant, unreadable or broken (cookie banner, error page). `publish.py` then renders the point's next visual choice, or its text. `python qa.py 3` renders reel 3 and prints the review. |
@@ -93,9 +95,19 @@ Only the weekly job writes these files, so it never collides with the daily post
 
 Run it by hand any time: Actions → **Weekly** → **Run workflow**. A manual run refreshes the token and runs the learning loop; it posts the carousel only if you tick `post_carousel`.
 
+## Reliable timing
+
+GitHub drops many scheduled runs when it is busy: in the first days the Daily reel's three crons fired only twice in three days, and a 15-minute cron fired about three times in half a day. So posting never depends on one cron firing:
+
+- Each reel slot owns a window: slot 1 from 11:07 UTC, slot 2 from 15:07, slot 3 from 19:07 until midnight. `scheduler.py` (run by **Scheduler**) looks at `reels.json` and the running workflows; if the current slot has not posted today and nothing is running, it starts the Daily reel for that slot. That run waits for the post time, or posts at once when late. A slot whose window has passed is skipped rather than stacked on the next one, and a slot that failed twice in its window is left for you to look at.
+- On Sundays from 10:00 UTC it also starts **Weekly** if it has not run that day.
+- `publish.py` never posts the same slot twice in a day, however many times it is started, so all of this is safe to repeat.
+
+The Scheduler itself runs on a GitHub cron too, so for timing that never slips, have an outside service start it every 10 to 15 minutes: a `POST` to `https://api.github.com/repos/hassanjan1841/automation-reel/actions/workflows/scheduler.yml/dispatches` with body `{"ref":"main"}` and a fine-grained token that has **Actions: read and write** on this repo (for example from cron-job.org, or Supabase `pg_cron` with `pg_net`).
+
 ## Pause it
 
-GitHub → Actions → **Daily reel** → `...` → **Disable workflow**. Enable it again to resume. Keep **Weekly** on: if it stays off for more than 60 days the Instagram token expires and has to be generated again.
+GitHub → Actions → **Daily reel** and **Scheduler** → `...` → **Disable workflow**. Enable them again to resume. Keep **Weekly** on: if it stays off for more than 60 days the Instagram token expires and has to be generated again.
 
 ## Voice
 
@@ -109,7 +121,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY` (Google Cloud, restricted to YouTube Data API v3), `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
-Optional repo variables or env: `POST_AT_UTC` (reel 1's post time, default `12:00`; reel 2 posts at `16:00`, reel 3 at `20:00`), `SLOT` (`2` or `3` for the later reels, set by their crons; a manual run has a `slot` choice), `REEL_FORMAT` (forces reel 3's format: `news`, `trick`, `versus` or `series`), `FORCE_POST` (`true` posts even if a reel already went out today; normally a second run the same day does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED` (default `1.0`; `1.1` felt rushed), `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `EXPERIMENT` (`off` stops the weekly test; a test's name forces it, for trying it out), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
+Optional repo variables or env: `POST_AT_UTC` (reel 1's post time, default `12:00`; reel 2 posts at `16:00`, reel 3 at `20:00`), `SLOT` (`2` or `3` for the later reels, set by their crons; a manual run has a `slot` choice), `REEL_FORMAT` (forces reel 3's format: `news`, `trick`, `versus` or `series`), `FORCE_POST` (`true` posts even if this slot's reel already went out today; normally a second run for the same slot does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED` (default `1.0`; `1.1` felt rushed), `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `EXPERIMENT` (`off` stops the weekly test; a test's name forces it, for trying it out), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
 
 ## Local setup
 
