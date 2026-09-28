@@ -38,13 +38,14 @@ daily-reel.yml, twice a day  ->  publish.py
                              a rejected visual is replaced by the point's next choice or its text
   4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
   5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
-  6. delete uploads, write posted_at + media_id, workflow commits reels.json + pronounce.json
+  6. delete uploads, write posted_at + media_id + shown (what each slide really showed, publish.shown),
+     workflow commits reels.json + pronounce.json
      (per slot: a real run exits when today already has `slot` posts, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
 weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
-  learn.py           per-reel insights -> learnings.md (rules the writer reads) + GitHub issue report
+  learn.py           per-reel insights (incl. 3D vs flat) -> learnings.md (rules the writer reads) + GitHub issue report
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
 
 dm.yml (every 15 min)      dm.py            keyword comments -> post's dm_guide as a private reply + public "Sent you a DM" (the dedupe marker)
@@ -63,13 +64,13 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | File | Role | Key entry points |
 | --- | --- | --- |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
-| `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
+| `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
 | `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
-| `learn.py` | Weekly: measure posted reels, group by pillar/series/visual, write learnings.md + report | `measure`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
+| `learn.py` | Weekly: measure posted reels, group by pillar/series/visual/hook word/3D, write learnings.md + report | `measure`, `looks`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `review`, `post`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
@@ -132,7 +133,9 @@ First run downloads Poppins into `fonts/`, the Kokoro model into `models/` and W
   "voiceover": ["..."],             // 5 spoken lines (hook, 3 points, cta); required on unposted reels
   "sources": ["https://..."],       // timely reels only, primary source first; used to block reposting a story
   "posted_at": null,                // ISO timestamp, set by publish.py
-  "media_id": null                  // Instagram media id, set by publish.py
+  "media_id": null,                 // Instagram media id, set by publish.py
+  "shown": ["word", "code", "text", "diagram", "text"]  // set by publish.py when posted (publish.shown): what each
+                                    // slide really showed (hook, points, cta), after fallbacks and review swaps
 }
 ```
 
@@ -182,6 +185,11 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Writer rules learned from posts with thousands of comments (2026-09-28): the hook promises one concrete result ("in 2 minutes", "one afternoon"), one doubt or tension beat per voiceover ("You might think...", "Most people stop right here"), how-tos show the real steps. Monday is AI how-tos with a real result (Claude, MCP, automations), Sunday "Build X in one afternoon". Topic filter in `generate.SYSTEM` and `carousel.SYSTEM`: no gambling, betting, interest-based lending, adult content or deceptive tools.
 - Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
 - Comment-to-DM (2026-09-28, learned from posts with more comments than likes): how-to, trick, versus and beginner reels, and every carousel, carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done.
+- 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or
+  "text only") and `three_d` ("3D" or "flat"), and `learn.groups` averages each. It reads `shown`, because the queue
+  keeps rejected choices and `visuals.build` falls back to text when a scene fails, so a first choice is not proof it
+  was on screen; reels posted before `shown` existed fall back to their first choices and `hook_word`. Decide whether
+  to raise `THREE_D_CHANCE` or the 2-moment limit from these numbers, not before.
 - Beats (2026-09-28, something changes every 1 to 2 seconds): `render.Camera` punches on each spoken sentence (`render.speech_beats`, from the voice's word times, at least 1.2s apart; a timer only without a voice) and pushes into each point's visual (`Camera.focus`: from 40% of the slide, ease out 0.8s before its end; a wide visual gets a smaller push so it never runs off the frame), so a point is show, focus, release. `qa.frames` grabs each slide 0.9s before its end, after every visual has finished animating and while the push still holds; at 60% it caught diffs mid-change and rejected them as garbled. `build_audio` uses the same camera, so the air sounds follow the beats.
 - Carousels end with "THE TAKEAWAY" (the `takeaway` field, max 8 words) above the question. Few words and lots of space (the creator's ask, 2026-09-28): headings max 5 words, 2 to 3 bullets of max 7 words, enforced by `carousel.check`.
 - Carousel layout: every tip slide starts at the same height, centred for the tallest slide (`carousel.centred`), so slides are not half empty and headings do not jump between swipes. Only the automatic last slide asks to save or follow; `carousel.check` rejects a tip slide that does (`CALL_TO_ACTION`), since the first carousel had two.
