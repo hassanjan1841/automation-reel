@@ -286,5 +286,137 @@
     ],
     "posted_at": "2026-09-27T05:57:31+00:00",
     "media_id": "17903572650587584"
+  },
+  {
+    "id": 33,
+    "style": "dark",
+    "kicker": "AI tool in 30s #1",
+    "hook": "Can *Claude Code* query your database itself?",
+    "points": [
+      {
+        "title": "Install the MCP server",
+        "body": "One command starts it, no install.",
+        "visual": [
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "install.sh",
+            "code": "npx -y \\\n  @modelcontextprotocol/server-postgres\\\n  postgresql://localhost/db",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Connect it to Claude",
+        "body": "Add one server entry to config.",
+        "visual": [
+          {
+            "type": "device",
+            "device": "laptop",
+            "show": {
+              "type": "code",
+              "language": "json",
+              "title": "config.json",
+              "code": "{\n  \"mcpServers\": {\n    \"postgres\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\",\n\"@modelcontextprotocol/server-postgres\"]\n    }\n  }\n}"
+            }
+          },
+          {
+            "type": "code",
+            "language": "json",
+            "title": "config.json",
+            "code": "{\n  \"mcpServers\": {\n    \"postgres\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\",\n\"@modelcontextprotocol/server-postgres\"]\n    }\n  }\n}",
+            "highlight": [
+              5,
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Watch it query live",
+        "body": "Claude reads live rows through it.",
+        "visual": [
+          {
+            "type": "diagram",
+            "nodes": [
+              {
+                "id": "claude",
+                "label": "Claude",
+                "kind": "client"
+              },
+              {
+                "id": "mcp",
+                "label": "MCP Server",
+                "kind": "server"
+              },
+              {
+                "id": "db",
+                "label": "Database",
+                "kind": "db"
+              }
+            ],
+            "edges": [
+              {
+                "from": "claude",
+                "to": "mcp"
+              },
+              {
+                "from": "mcp",
+                "to": "db"
+              }
+            ],
+            "flow": [
+              "claude>mcp",
+              "mcp>db",
+              "db>mcp",
+              "mcp>claude"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "SELECT * FROM users LIMIT 5;"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *MCP* for the full setup",
+    "dm_keyword": "MCP",
+    "dm_guide": "MCP plus Postgres setup:\n1. Install Node if you don't have it.\n2. Open your claude_desktop_config.json file.\n3. Add this entry:\n{ \"mcpServers\": { \"postgres\": { \"command\": \"npx\", \"args\": [\"-y\",\"@modelcontextprotocol/server-postgres\",\"postgresql://user:pass@localhost/db\"] } } }\n4. Restart Claude Desktop.\n5. Ask Claude to query your tables in plain English.\nDocs: https://modelcontextprotocol.io/quickstart",
+    "caption": "Connect Claude to your Postgres database with MCP\nNo more copy pasting query results into chat.\nWhat would you let Claude query first? 👇",
+    "hashtags": [
+      "#mcp",
+      "#claudeai",
+      "#postgres",
+      "#aitools"
+    ],
+    "voiceover": [
+      "[urgent] Can Claude actually look inside your own database?",
+      "[confident and fast] One line installs the official Postgres server. (break) [snappy] No dashboard, no signup.",
+      "[steady] Drop it into Claude's config file. (break) [quick] Point it at your database and save.",
+      "[excited] Now just ask it a question. (break) [amazed] It pulls real rows straight from your tables.",
+      "[warm, curious] Comment MCP and I'll send you the exact config."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 1,
+    "posted_at": "2026-09-28T14:36:00+00:00",
+    "media_id": "18391810495228311",
+    "shown": [
+      "text",
+      "code",
+      "device",
+      "diagram",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.5
   }
 ]
