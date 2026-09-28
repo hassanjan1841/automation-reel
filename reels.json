@@ -418,5 +418,84 @@
     ],
     "slot": 1,
     "seconds": 19.5
+  },
+  {
+    "id": 34,
+    "style": "light",
+    "kicker": "Client vs Me #1",
+    "hook": "Why does *scope creep* always start small?",
+    "points": [
+      {
+        "title": "The free favor ask",
+        "body": "A tiny free ask turns into more",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "Quick fix, should take like 2 minutes right?"
+              },
+              {
+                "from": "me",
+                "text": "Sure, no charge for something that small."
+              },
+              {
+                "from": "client",
+                "text": "Cool. Also can we add a login system?"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Red flag: no boundaries",
+        "body": "First ask is rarely the last",
+        "visual": [
+          {
+            "type": "tweet",
+            "text": "The first quick favor is never quick. It's the opening move.",
+            "author": "hassanjan.k"
+          }
+        ]
+      },
+      {
+        "title": "Lock scope in writing",
+        "body": "Write every request before you code"
+      }
+    ],
+    "cta": "What's the worst client *ask* you've had?",
+    "caption": "Freelance client scope creep and red flags\nThe free favor is never free\nWhat's your worst client red flag story? 👇",
+    "hashtags": [
+      "#freelance",
+      "#scopecreep",
+      "#clientwork",
+      "#freelancelife"
+    ],
+    "voiceover": [
+      "[fired up] Every scope creep disaster starts with one small favor.",
+      "[deadpan] They ask for one quick tweak, totally free.",
+      "[serious, fast] That's the first crack. (break) [urgent] Not the last one.",
+      "[confident and fast] Lock every request in writing before you touch the code.",
+      "[warm, curious] So tell me, what's your biggest client red flag?"
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Client vs Me",
+    "episode": 1,
+    "posted_at": "2026-09-28T16:01:00+00:00",
+    "media_id": "18354976720172128",
+    "shown": [
+      "text",
+      "chat",
+      "tweet",
+      "text",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 17.5
   }
 ]
