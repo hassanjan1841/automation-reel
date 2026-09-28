@@ -780,6 +780,20 @@ class OutageTest(Sandbox):
         self.assertEqual(len(list((self.tmp / 'reports').iterdir())), 1)
 
 
+class ReportTest(Sandbox):
+    def test_stray_markup_and_watch_time(self):
+        self.assertEqual(learn.clean('All good.</summary>\n</invoke>\n'), 'All good.')
+        self.assertEqual(learn.clean('Use <Suspense> for this'), 'Use <Suspense> for this')
+        rows = [row(i, date(2026, 9, 26), 0.5 * i, hook='H', reels_skip_rate=80 + i, ig_reels_avg_watch_time=3000 + 100 * i)
+                for i in range(1, 5)]
+        text = learn.report(date(2026, 9, 28), rows, {'skip_rate': 82, 'watched_share': None}, [], 'T', [], [], [], [], '',
+                            {'summary': 'Fine.</summary>\n</invoke>', 'decision': 'None.</decision>'})
+        self.assertNotIn('</', text)
+        self.assertIn('| Watch time (average) | 3.2s |', text)
+        self.assertIn('watched 3.1s', text)
+        self.assertNotIn('of it)', text)
+
+
 class WorkflowTest(unittest.TestCase):
     def test_commit_step_stages_every_existing_file(self):
         """The weekly job's `git add` loop: a missing file must not stop the others from being committed."""

@@ -41,6 +41,7 @@ MUTANTS = [
     ('generate.py', "    if not new and test:", "    if False:", 'a test can cost the day'),
     ('learn.py', "    return str(error).replace(token, '***') if token else str(error)", "    return str(error)",
      'the token can reach the log'),
+    ('learn.py', "    return STRAY_MARKUP.sub(' ', text or '').strip()", "    return (text or '').strip()", 'stray markup in the report'),
     ('publish.py', "    reel['slot'] = generate.slot()\n", "", 'slot not recorded'),
     ('publish.py', "    reel['seconds'] = round(slides[-1].end, 1)\n", "", 'length not recorded'),
     ('trends.py', "    if vals:\n        return vals\n    for name in names:", "    return vals\n    for name in names:",

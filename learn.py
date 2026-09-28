@@ -335,7 +335,7 @@ def check_new_rules(proposed, summary, rules, today):
     known = {re.sub(r'\W+', ' ', r['text'].lower()).strip() for r in rules}
     room = max(0, MAX_ACTIVE_RULES - len(history.active(rules)))
     for p in proposed:
-        text, why = p.get('text', '').strip(), None
+        text, why = clean(p.get('text')), None
         if not text:
             continue
         if HARD_RULES.search(text):
@@ -509,6 +509,14 @@ def write_up(rows, summary, rules, test, ideas, openings, last):
 
 # ---------- 5. report ----------
 
+# Claude's structured text once ended with leftover markup ("</summary></invoke>") in a real run.
+STRAY_MARKUP = re.compile(r'\s*</?(summary|decision|new_rules|invoke|parameter|function_calls)\b[^>]*>\s*')
+
+
+def clean(text):
+    return STRAY_MARKUP.sub(' ', text or '').strip()
+
+
 def fmt(value, kind=''):
     if value is None:
         return '-'
@@ -516,6 +524,8 @@ def fmt(value, kind=''):
         return f'{value:.0%}'
     if kind == 'pct':
         return f'{value:.1f}%'
+    if kind == 'ms':
+        return f'{value / 1000:.1f}s'
     return f'{value:g}' if isinstance(value, float) else str(value)
 
 
@@ -525,7 +535,8 @@ def week_table(reel_rows, today):
         return [r for r in reel_rows if start <= posted_day(r) < end]
     this, last = pick(today - timedelta(days=7), today), pick(today - timedelta(days=14), today - timedelta(days=7))
     lines = ['| | This week | Last week |', '| --- | --- | --- |', f'| Reels measured | {len(this)} | {len(last)} |']
-    for label, key, kind in (('Skip rate', 'reels_skip_rate', 'pct'), ('Share of the reel watched', 'watched_share', 'share'),
+    for label, key, kind in (('Skip rate', 'reels_skip_rate', 'pct'), ('Watch time', 'ig_reels_avg_watch_time', 'ms'),
+                             ('Share of the reel watched', 'watched_share', 'share'),
                              ('Views at 7 days', 'views_7d', ''), ('Saves', 'saved', ''), ('Shares', 'shares', ''),
                              ('Keyword comments', 'dm_asks', '')):
         lines.append(f'| {label} (average) | {fmt(mean(this, key), kind)} | {fmt(mean(last, key), kind)} |')
@@ -550,7 +561,8 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
         for label, group in (('Kept the most viewers', best), ('Lost the most viewers', worst)):
             parts.append(f'**{label}**\n' + '\n'.join(
                 f"- #{r['id']} {r['hook']}: skip rate {fmt(r.get('reels_skip_rate'), 'pct')} "
-                f"({r['skip_vs_usual']:+.1f} vs usual), watched {fmt(r.get('watched_share'), 'share')}" for r in group))
+                f"({r['skip_vs_usual']:+.1f} vs usual), watched {fmt(r.get('ig_reels_avg_watch_time'), 'ms')}"
+                + (f" ({fmt(r['watched_share'], 'share')} of it)" if r.get('watched_share') is not None else '') for r in group))
         if openings:
             parts.append(f'What the strong openings share: {openings}')
     carousels = [r for r in rows if r['kind'] == 'carousel']
@@ -567,9 +579,9 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
                  + f"{counts['kept']} proven, {counts['trial']} on trial, {counts['retired']} retired.")
     if ideas:
         parts.append('## What people asked for\n' + '\n'.join(f"- {i['topic']} ({i['asked']})" for i in ideas))
-    parts.append('## Summary\n' + (write.get('summary') or 'The write-up was unavailable this week; the numbers above '
+    parts.append('## Summary\n' + (clean(write.get('summary')) or 'The write-up was unavailable this week; the numbers above '
                                                              'are complete.'))
-    parts.append('## One decision for you\n' + (write.get('decision') or 'None this week.'))
+    parts.append('## One decision for you\n' + (clean(write.get('decision')) or 'None this week.'))
     return '\n\n'.join(parts) + '\n'
 
 
