@@ -41,7 +41,7 @@ daily-reel.yml, twice a day  ->  publish.py
   5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
   6. delete uploads, write posted_at + media_id, and for the learning loop shown (publish.shown: what each
      slide really showed), slot and seconds (the reel's length); workflow commits reels.json + pronounce.json
-     (per slot: a real run exits when today already has `slot` posts, unless FORCE_POST)
+     (per slot: a real run exits when this slot already posted today, scheduler.posted_slots, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
 weekly.yml (Sun 10:00 UTC)
@@ -55,6 +55,9 @@ dm.yml (every 15 min)      dm.py            keyword comments -> post's dm_guide 
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
 
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
+
+scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
+                     posted, nothing running, at most 2 tries) or a missed Sunday Weekly; outside triggers dispatch it
 
 tests.yml (every push and PR)        test_learn.py   offline tests of the learning loop (requests, pillow, numpy only)
 docs-check.yml (every push)          docs_check.py   fails if the docs drifted from the code
@@ -76,6 +79,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
 | `learn.py` | Weekly learning loop: measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `value_at`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
+| `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `SLOT_STARTS`, `MAX_ATTEMPTS` |
 | `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `review`, `post`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
@@ -196,6 +200,12 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Writer rules learned from posts with thousands of comments (2026-09-28): the hook promises one concrete result ("in 2 minutes", "one afternoon"), one doubt or tension beat per voiceover ("You might think...", "Most people stop right here"), how-tos show the real steps. Monday is AI how-tos with a real result (Claude, MCP, automations), Sunday "Build X in one afternoon". Topic filter in `generate.SYSTEM` and `carousel.SYSTEM`: no gambling, betting, interest-based lending, adult content or deceptive tools.
 - Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
 - Comment-to-DM (2026-09-28, learned from posts with more comments than likes): how-to, trick, versus and beginner reels, and every carousel, carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done.
+- GitHub drops scheduled runs (2026-09-28: the Daily reel's crons fired twice in three days, none on the 28th).
+  `scheduler.py` fills the gaps: each slot owns a window from its start to the next slot's start, and a missing
+  slot is started once its window opens if nothing is running (at most `MAX_ATTEMPTS` tries); a passed window is
+  skipped, never stacked. `publish.main` skips a slot already posted today (`scheduler.posted_slots`), so any
+  number of triggers is safe. Scheduler runs on a cron too; an outside trigger dispatching scheduler.yml is what
+  makes timing reliable (README, "Reliable timing"). Keep `SLOT_STARTS` in step with daily-reel.yml's crons.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or
   "text only") and `three_d` ("3D" or "flat"). It reads `shown`, because the queue keeps rejected choices and
   `visuals.build` falls back to text when a scene fails, so a first choice is not proof it was on screen; reels posted

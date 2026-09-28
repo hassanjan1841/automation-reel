@@ -34,6 +34,7 @@ import dm
 import generate
 import history
 import render
+import scheduler
 
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
 REPORT = render.OUT_DIR / 'report.md'
@@ -141,10 +142,7 @@ def looks(reel):
 
 def slot_of(reel):
     """The day's slot: recorded since slots were tracked, else from the post hour (12:00, 16:00, 20:00 UTC)."""
-    if reel.get('slot'):
-        return reel['slot']
-    hour = datetime.fromisoformat(reel['posted_at']).astimezone(timezone.utc).hour
-    return 1 if hour < 14 else 2 if hour < 18 else 3
+    return scheduler.slot_of(reel)
 
 
 def median(values):

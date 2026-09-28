@@ -1,0 +1,33 @@
+name: Scheduler
+
+# GitHub drops many scheduled runs, so the Daily reel and Weekly crons alone do not post reliably. This starts
+# whatever is due and missing (see scheduler.py). It is safe to run at any time and any number of times, so an
+# outside trigger can also dispatch it (see README, "Reliable timing").
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: scheduler
+  cancel-in-progress: false
+
+jobs:
+  start-due-runs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Start what is due
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scheduler.py
