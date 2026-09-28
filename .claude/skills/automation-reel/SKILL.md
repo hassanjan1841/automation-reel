@@ -25,7 +25,8 @@ daily-reel.yml, twice a day  ->  publish.py
                              pass/fix -> today's reel, pillar "timely"; any failure or reach < 7 -> fall back
   3. else generate.today()   a fresh evergreen reel for today's pillar (generate.PILLARS), labelled with its
                              series and episode (generate.series_label, e.g. "Client vs Me #4"); both writers
-                             read learnings.md (generate.learned)
+                             read learnings.md (generate.learned), the comment topics (generate.asked) and the
+                             weekly test's option for this reel (generate.experiment_today), which validate enforces
   3b. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
                              (one clip per line); takes are transcribed with Whisper, misheard words get
                              Claude respellings or phonemes, fixes saved to pronounce.json per engine
@@ -38,21 +39,24 @@ daily-reel.yml, twice a day  ->  publish.py
                              a rejected visual is replaced by the point's next choice or its text
   4c. publish.wait_for_post_time()  sleep until POST_AT_UTC when ready early (not in DRY_RUN)
   5. upload the video and out/reel-<id>-cover.jpg to Supabase bucket "reels" (public) -> Instagram REELS container (cover_url, thumb_offset as fallback) -> poll -> media_publish
-  6. delete uploads, write posted_at + media_id + shown (what each slide really showed, publish.shown),
-     workflow commits reels.json + pronounce.json
+  6. delete uploads, write posted_at + media_id, and for the learning loop shown (publish.shown: what each
+     slide really showed), slot and seconds (the reel's length); workflow commits reels.json + pronounce.json
      (per slot: a real run exits when today already has `slot` posts, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
 weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
-  learn.py           per-reel insights (incl. 3D vs flat) -> learnings.md (rules the writer reads) + GitHub issue report
+  learn.py           the learning loop (see "Learning loop" below): snapshots -> metrics/, rules.json judged ->
+                     learnings.md, the weekly test (experiments.json), ideas.json, reports/<week>.md + GitHub issue
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
+                     (a manual run posts it only with the post_carousel input ticked)
 
 dm.yml (every 15 min)      dm.py            keyword comments -> post's dm_guide as a private reply + public "Sent you a DM" (the dedupe marker)
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
 
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
 
+tests.yml (every push and PR)        test_learn.py   offline tests of the learning loop (requests, pillow, numpy only)
 docs-check.yml (every push)          docs_check.py   fails if the docs drifted from the code
 docs-sync.yml (code push + Sat 09:00) docs_sync.py   Claude fixes the docs, opens a PR from docs-sync
 ```
@@ -65,19 +69,22 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | --- | --- | --- |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
-| `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
-| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
+| `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `insights_of`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `EXPERIMENTS`, `experiment_today`, `experiment_note`, `experiment_errors`, `vo_words`, `asked`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
-| `learn.py` | Weekly: measure posted reels, group by pillar/series/visual/hook word/3D, write learnings.md + report | `measure`, `looks`, `groups`, `write_up`, `LEARNINGS`, `MIN_AGE_HOURS` |
+| `learn.py` | Weekly learning loop: measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
+| `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `value_at`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
+| `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `review`, `post`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard` |
 | `test_voice.py` | Pronunciation and voice-verifier regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN`, `STRAY`, `check_verifier` |
 | `pronounce.json` | Learned respellings per engine, word to spoken form | data, written by `voice.learn` |
-| `learnings.md` | Rules from the weekly learning loop, read by both writers | data, written by `learn.py` |
+| `learnings.md` | The active rules, read by the writers (reels, news, carousel) | data, generated from `rules.json` by `history.save_rules` |
+| `rules.json`, `experiments.json`, `ideas.json`, `metrics/`, `reports/` | The learning loop's data | data, written by `learn.py` only |
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
 | `dm.py` | Comment-to-DM for reels and carousels with dm_keyword/dm_guide | `main`, `posts`, `asks`, `comments`, `answer`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
@@ -93,6 +100,8 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs 
 .venv/bin/python generate.py --check     # validate every reel; exit 1 on any error or duplicate hook
 .venv/bin/python render.py <id>          # out/reel-<id>.mp4, no voice
 .venv/bin/python voice.py <id> [voice]   # out/reel-<id>-<voice>.mp4 with voiceover (listen-back check on)
+.venv/bin/python test_learn.py          # learning loop, offline (-v lists every test)
+.venv/bin/python history.py             # what the learning loop has stored
 .venv/bin/python test_voice.py          # pronunciation rules; add --audio to speak and transcribe every test sentence
 .venv/bin/python test_voice.py --verify # the voice verifier still catches and cuts the recorded "uhh" (Whisper, no voice calls)
 .venv/bin/python scene3d.py '<json>' 980 620 6   # render one 3D scene to out/scenes/
@@ -134,8 +143,10 @@ First run downloads Poppins into `fonts/`, the Kokoro model into `models/` and W
   "sources": ["https://..."],       // timely reels only, primary source first; used to block reposting a story
   "posted_at": null,                // ISO timestamp, set by publish.py
   "media_id": null,                 // Instagram media id, set by publish.py
-  "shown": ["word", "code", "text", "diagram", "text"]  // set by publish.py when posted (publish.shown): what each
+  "shown": ["word", "code", "text", "diagram", "text"], // set by publish.py when posted (publish.shown): what each
                                     // slide really showed (hook, points, cta), after fallbacks and review swaps
+  "slot": 1, "seconds": 21.6,       // set when posted: the day's slot and the reel's length (for share watched)
+  "test": {"name": "hook_style", "arm": "question"}  // the weekly test option it was written under (generate.EXPERIMENTS)
 }
 ```
 
@@ -171,7 +182,7 @@ Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching s
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -186,10 +197,10 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
 - Comment-to-DM (2026-09-28, learned from posts with more comments than likes): how-to, trick, versus and beginner reels, and every carousel, carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or
-  "text only") and `three_d` ("3D" or "flat"), and `learn.groups` averages each. It reads `shown`, because the queue
-  keeps rejected choices and `visuals.build` falls back to text when a scene fails, so a first choice is not proof it
-  was on screen; reels posted before `shown` existed fall back to their first choices and `hook_word`. Decide whether
-  to raise `THREE_D_CHANCE` or the 2-moment limit from these numbers, not before.
+  "text only") and `three_d` ("3D" or "flat"). It reads `shown`, because the queue keeps rejected choices and
+  `visuals.build` falls back to text when a scene fails, so a first choice is not proof it was on screen; reels posted
+  before `shown` existed fall back to their first choices and `hook_word`. Decide whether to raise `THREE_D_CHANCE`
+  or the 2-moment limit from these numbers, not before.
 - Beats (2026-09-28, something changes every 1 to 2 seconds): `render.Camera` punches on each spoken sentence (`render.speech_beats`, from the voice's word times, at least 1.2s apart; a timer only without a voice) and pushes into each point's visual (`Camera.focus`: from 40% of the slide, ease out 0.8s before its end; a wide visual gets a smaller push so it never runs off the frame), so a point is show, focus, release. `qa.frames` grabs each slide 0.9s before its end, after every visual has finished animating and while the push still holds; at 60% it caught diffs mid-change and rejected them as garbled. `build_audio` uses the same camera, so the air sounds follow the beats.
 - Carousels end with "THE TAKEAWAY" (the `takeaway` field, max 8 words) above the question. Few words and lots of space (the creator's ask, 2026-09-28): headings max 5 words, 2 to 3 bullets of max 7 words, enforced by `carousel.check`.
 - Carousel layout: every tip slide starts at the same height, centred for the tallest slide (`carousel.centred`), so slides are not half empty and headings do not jump between swipes. Only the automatic last slide asks to save or follow; `carousel.check` rejects a tip slide that does (`CALL_TO_ACTION`), since the first carousel had two.
@@ -224,10 +235,40 @@ Automation around it:
 - Stop hook `.claude/hooks/docs_guard.py` (registered in `.claude/settings.json`) blocks once per distinct change set when `docs_check.py` fails or code changed without doc changes. It remembers the last flagged state in `.git/docs-guard-ack`.
 - `docs-sync.yml` runs `docs_sync.py`: diff of code since the docs were last committed (ignoring `reels.json`) plus `docs_check.py` output goes to Claude with read-only tools (Read/Glob/Grep). Claude returns `{file, old, new}` edits as structured output; `apply` accepts only the three doc files and each `old` must match exactly once. One retry reports failed edits back. `docs_check.py` must pass, then a PR is opened from `docs-sync`. Claude never gets write tools because Claude Code protects `.claude/` from edits in non-interactive runs. Needs "Allow GitHub Actions to create and approve pull requests" in repo settings.
 
+## Learning loop
+
+`learn.py` runs every Sunday; `history.py` holds its files. Rules of thumb when changing it:
+- Data lives in plain files in the repo, no database (the creator's choice, 2026-09-28): `metrics/<month>.jsonl` is
+  append-only, one line per post per weekly snapshot; a post is fetched until a snapshot at `history.SETTLED_DAYS`
+  (28) exists, then never again. Only the weekly job writes these files (never the daily runs), so commits never
+  collide. Move to Supabase Postgres only for a live dashboard, a second account or hourly numbers; the jsonl rows
+  map one-to-one onto a table.
+- Reels are scored against the account's usual (median): `skip_vs_usual` (lower is better) and `watched_vs_usual`
+  (share of the reel watched, from `seconds`). Views only at the same age (`views_7d`). `learn.clearly` decides:
+  2 skip points (`CLEAR_SKIP`) or 5% of the reel watched (`CLEAR_WATCHED`).
+- Rules (`rules.json`): trial -> kept or retired. `learn.evaluate_rules` compares reels since the rule with the 4
+  weeks before it, after 2 weeks; no clear effect by 4 weeks retires it (a short prompt is worth more). Before/after
+  is confounded by anything else that changed then (other rules, the test, the news cycle); the weekly test is the
+  clean comparison, which is why its winner goes straight to kept. New rules from Claude must cite groups of
+  `MIN_EVIDENCE` (5) reels that clearly differ (`learn.check_new_rules`), in fields the writer controls
+  (`learn.RULE_FIELDS`: not the slot; a real run once proposed "move the 8pm post" as a writer rule, which belongs in
+  the report's decision), and never match `learn.HARD_RULES`; at most 30 words each (`MAX_RULE_WORDS`), 3 new a week and 10 active. `learnings.md` is generated; edit `rules.json`, not it.
+- The weekly test (`generate.EXPERIMENTS`): each option is `(instruction, check, error)`; the arm is random per date
+  and slot (`generate.experiment_today`), the writers are told (`experiment_note`), the reel carries `test` and
+  `generate.validate` enforces it (so `repair` fixes a miss). Only add tests the writer controls, code can check,
+  and that never bend the honesty rules. `learn.run_experiment` ends a test when each option has 5 measured reels
+  (or after 3 weeks), turns a clear winner into a kept rule, and starts the next untried test.
+- Comment topics go to `ideas.json` as topics only (no usernames, no quotes); the writers are told never to say a
+  named person asked. The openings review downloads covers (`thumbnail_url`) and gives them to Claude with Read.
+- Claude failures never lose the week: numbers, rule verdicts and the test still save, and the report says the
+  write-up was unavailable. Test with `test_learn.py`; the `verify` skill has the full procedure.
+
 ## Before calling a change done
 
 1. `.venv/bin/python generate.py --check` passes.
 2. `python3 docs_check.py` passes.
-3. For render/voice changes: render one light and one dark reel and look at the MP4 (safe zone, overflow, timing, audio). Voice changes also need `test_voice.py --audio` to pass.
-4. For publish/trends changes: `DRY_RUN=true .venv/bin/python publish.py` end to end; for the carousel, `DRY_RUN=true .venv/bin/python carousel.py`; for demos, the Demo preview workflow.
-5. Workflow changes: trigger Daily reel with `dry_run` on and check the run log and artifact.
+3. `.venv/bin/python test_learn.py` passes (learning loop, writer tests, publish records). For anything bigger,
+   follow the `verify` skill (`.claude/skills/verify/SKILL.md`).
+4. For render/voice changes: render one light and one dark reel and look at the MP4 (safe zone, overflow, timing, audio). Voice changes also need `test_voice.py --audio` to pass.
+5. For publish/trends changes: `DRY_RUN=true .venv/bin/python publish.py` end to end; for the carousel, `DRY_RUN=true .venv/bin/python carousel.py`; for demos, the Demo preview workflow.
+6. Workflow changes: trigger Daily reel with `dry_run` on and check the run log and artifact.

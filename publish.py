@@ -366,7 +366,10 @@ def main():
 
     reel['posted_at'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     reel['media_id'] = media_id
+    # For the learning loop: what was on screen, which of the day's slots, and how long the reel ran.
     reel['shown'] = shown(slides)
+    reel['slot'] = generate.slot()
+    reel['seconds'] = round(slides[-1].end, 1)
     render.QUEUE.write_text(json.dumps(reels, indent=2, ensure_ascii=False) + '\n')
     output('posted', 'true')
     output('reel_id', reel['id'])

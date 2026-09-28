@@ -96,6 +96,7 @@ jobs:
           TRENDING: ${{ vars.TRENDING }}
           THREE_D: ${{ github.event_name == 'workflow_dispatch' && inputs.three_d != 'random' && inputs.three_d || vars.THREE_D }}
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}
+          EXPERIMENT: ${{ vars.EXPERIMENT }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python publish.py
