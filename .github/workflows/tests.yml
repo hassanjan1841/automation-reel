@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    paths-ignore:
+      - reels.json
+      - metrics/**
+      - reports/**
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  learning-loop:
+    # Offline tests of the learning loop (test_learn.py). Only the packages the weekly learn job installs, so a
+    # new import that job lacks fails here first.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests pillow numpy
+
+      - run: python test_learn.py -v

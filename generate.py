@@ -21,6 +21,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 
+import history
 import render
 from voice import strip_cues
 
@@ -149,7 +150,7 @@ def validate(reel):
         errors.append(f'needs 3 to 5 focused hashtags, got {len(tags)}')
     if any(not HASHTAG.match(t) for t in tags) or len({t.lower() for t in tags}) != len(tags):
         errors.append('hashtags must be unique #words with no spaces')
-    return errors
+    return errors + experiment_errors(reel)
 
 
 CUE_GAP = 10
@@ -264,6 +265,63 @@ def three_d_note():
     return ('3D is allowed today: use it for at most 2 moments in the reel (a hook_word and/or 3D visuals), only '
             'where it explains better than a flat visual.' if three_d_today()
             else '3D is NOT allowed today: no hook_word and no diagram, device, bars or logos visuals.')
+
+
+# The weekly test (learn.py starts one at a time, in experiments.json): each reel gets one option by chance, fixed
+# per date and slot, the writer is told which, validate() holds the reel to it, and learn.py compares the options.
+# Only things the writer controls and code can check; none of them bends the honesty rules.
+NUMBER = re.compile(r'\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|'
+                    r'hundred|thousand)\b', re.I)
+EXPERIMENTS = {
+    'hook_style': {
+        'question': ('The hook is a question the reel answers, ending with "?".',
+                     lambda r: r.get('hook', '').strip().endswith('?'), 'the hook must end with "?" (a question)'),
+        'statement': ('The hook is a bold statement, not a question: no "?" in it.',
+                      lambda r: '?' not in r.get('hook', ''), 'the hook must be a statement with no "?"'),
+    },
+    'length': {
+        'short': ('Keep the voiceover short: 40 to 46 words in total.',
+                  lambda r: 40 <= vo_words(r) <= 46, 'the voiceover must have 40 to 46 words'),
+        'long': ('Use the full voiceover length: 49 to 55 words in total.',
+                 lambda r: 49 <= vo_words(r) <= 55, 'the voiceover must have 49 to 55 words'),
+    },
+    'hook_number': {
+        'number': ('The hook contains a number (a time, a count or a size), written as digits.',
+                   lambda r: bool(NUMBER.search(r.get('hook', ''))), 'the hook must contain a number'),
+        'no_number': ('The hook contains no numbers at all.',
+                      lambda r: not NUMBER.search(r.get('hook', '')), 'the hook must not contain any number'),
+    },
+}
+
+
+def vo_words(reel):
+    return sum(words(strip_cues(l)) for l in reel.get('voiceover') or [])
+
+
+def experiment_today(day=None):
+    """{'name', 'arm'} of the running test for this reel, or None. EXPERIMENT=off stops it, EXPERIMENT=<name>
+    forces a test (for trying it out)."""
+    forced = os.environ.get('EXPERIMENT', '').strip()
+    if forced == 'off':
+        return None
+    name = forced if forced in EXPERIMENTS else ((history.experiments().get('active') or {}).get('name'))
+    if name not in EXPERIMENTS:
+        return None
+    day = day or datetime.now(timezone.utc).date()
+    arms = sorted(EXPERIMENTS[name])
+    return {'name': name, 'arm': random.Random(f'test-{name}-{day.isoformat()}-{slot()}').choice(arms)}
+
+
+def experiment_note():
+    test = experiment_today()
+    return f"This week's test, follow it exactly: {EXPERIMENTS[test['name']][test['arm']][0]}" if test else ''
+
+
+def experiment_errors(reel):
+    """Whether a reel follows the test option it was written under (its "test" field)."""
+    test = reel.get('test') or {}
+    arm = EXPERIMENTS.get(test.get('name'), {}).get(test.get('arm'))
+    return [] if not arm or arm[1](reel) else [f"{arm[2]} (this week's test)"]
 
 
 def three_d_count(reel):
@@ -749,7 +807,8 @@ def repair(reel, errors, rounds=2):
     return None if errors else reel
 
 
-def generate(reels, count, dates=None, context=None):
+def generate(reels, count, dates=None, context=None, test=None):
+    """Valid new reels for the planned dates. With a test ({'name', 'arm'}), every reel carries it and must follow it."""
     plan = [(d, pillar_for(d)[:2]) for d in (dates or next_post_dates(reels, count))]
     seen = {norm(r['hook']) for r in reels}
     todo, accepted, feedback = list(plan), [], None
@@ -768,7 +827,7 @@ def generate(reels, count, dates=None, context=None):
         problems, missed = [], todo[len(candidates):]
         for slot, cand in zip(todo, candidates):
             date, (pillar, _) = slot
-            cand = tidy(cand)
+            cand = tidy({**cand, **({'test': test} if test else {})})
             errs = validate(cand)
             if errs and norm(cand.get('hook', '')) not in seen:
                 print(f"Repairing {cand.get('hook', '?')!r}: {'; '.join(errs)}")
@@ -798,6 +857,15 @@ def learned():
     return path.read_text().strip() if path.exists() else ''
 
 
+def asked():
+    """Topics viewers asked for in comments (learn.py writes them to ideas.json), as a note for the writers."""
+    items = history.ideas()
+    if not items:
+        return ''
+    return ('Topics viewers asked for in comments (take one only if it fits what you are writing today; never say '
+            'a named person asked, never quote them):\n' + '\n'.join(f"- {i['topic']}" for i in items))
+
+
 def today(reels, performance=()):
     """One fresh evergreen reel for today's pillar, written with how recent reels actually did."""
     parts = []
@@ -812,9 +880,18 @@ def today(reels, performance=()):
         done = [r['hook'].replace('*', '') for r in reels if r.get('series') == series]
         parts.append('Episodes of this series so far, in order (continue from the last one; never repeat one):\n'
                      + ('\n'.join(f'{k}. {h}' for k, h in enumerate(done, 1)) or 'none yet: start with lesson 1'))
+    if asked():
+        parts.append(asked())
     parts.append(three_d_note())
+    test = experiment_today()
+    if test:
+        parts.append(experiment_note())
     context = '\n\n'.join(parts)
-    new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
+    new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context, test=test)
+    if not new and test:
+        # A missed day costs more than one reel outside the test; it is simply left out of the comparison.
+        print(f"No valid reel that follows the test ({test['name']}: {test['arm']}); writing one without it")
+        new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context)
     return new[0] if new else None
 
 

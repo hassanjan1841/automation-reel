@@ -72,7 +72,8 @@ def write(reels, carousels):
     context = generate.learned()
     prompt = ('Write this week\'s carousel. Topics already covered, do not repeat them:\n'
               + '\n'.join(f'- {t}' for t in done)
-              + (f'\n\nWhat this account\'s viewers respond to:\n{context}' if context else ''))
+              + (f'\n\nWhat this account\'s viewers respond to:\n{context}' if context else '')
+              + (f'\n\n{generate.asked()}' if generate.asked() else ''))
     for _ in range(2):
         proc = subprocess.run(['claude', '-p', prompt, '--model', generate.MODEL, '--system-prompt', SYSTEM,
                                '--tools', '', '--setting-sources', '', '--no-session-persistence',

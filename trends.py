@@ -190,6 +190,28 @@ def collect():
     return fresh, failed
 
 
+PERF_METRICS = ('views', 'reach', 'saved', 'shares', 'total_interactions')
+REEL_PERF_METRICS = ('ig_reels_avg_watch_time', 'reels_skip_rate')
+
+
+def insights_of(base, media, token):
+    """{metric: value} for one post. One request for all metrics; if Instagram refuses it (one unsupported metric
+    fails the whole request), one request per metric, so the others still come through."""
+    names = PERF_METRICS + (REEL_PERF_METRICS if media.get('media_type') == 'VIDEO' else ())
+    res = get(f"{base}/{media['id']}/insights", params={'metric': ','.join(names), 'access_token': token}).json()
+    vals = {d['name']: d['values'][0]['value'] for d in res.get('data', []) if d.get('values')}
+    if vals:
+        return vals
+    for name in names:
+        try:
+            data = get(f"{base}/{media['id']}/insights", params={'metric': name, 'access_token': token}).json().get('data', [])
+            if data and data[0].get('values'):
+                vals[name] = data[0]['values'][0]['value']
+        except (requests.RequestException, ValueError, KeyError):
+            continue
+    return vals
+
+
 def performance():
     """How recent reels did, so Claude learns which topics land with this audience."""
     token = os.environ.get('IG_TOKEN')
@@ -206,11 +228,7 @@ def performance():
         caption = ((m.get('caption') or '').strip().splitlines() or ['(no caption)'])[0][:80]
         stats = ''
         try:
-            res = get(f"{base}/{m['id']}/insights", params={
-                'metric': 'views,reach,saved,shares,total_interactions' + (
-                    ',ig_reels_avg_watch_time,reels_skip_rate' if m.get('media_type') == 'VIDEO' else ''),
-                'access_token': token}).json()
-            vals = {d['name']: d['values'][0]['value'] for d in res.get('data', [])}
+            vals = insights_of(base, m, token)
             if vals:
                 watch = vals.pop('ig_reels_avg_watch_time', None)
                 skip = vals.pop('reels_skip_rate', None)
@@ -309,6 +327,7 @@ def pick(reels, candidates, perf, model=None):
         + ('Quote visuals of real posts are allowed today.\n\n' if quotes_allowed(reels)
            else 'Quote visuals are NOT allowed today (one was used this week).\n\n')
         + generate.three_d_note() + '\n\n'
+        + (generate.experiment_note() + '\n\n' if generate.experiment_note() else '')
         + f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
@@ -364,9 +383,11 @@ def timely_reel(reels, perf=None):
         return None
     options = sorted(pick(reels, candidates, performance() if perf is None else perf)['options'], key=lambda o: -o['reach_score'])
     used = {u for r in reels for u in r.get('sources', [])}
+    test = generate.experiment_today()
+    tested = {'test': test} if test else {}
     hooks = {generate.norm(r['hook']) for r in reels}
     for i, option in enumerate(options, 1):
-        reel, sources = generate.tidy(option['reel']), [s for s in option['sources'] if s.startswith('http')]
+        reel, sources = generate.tidy({**option['reel'], **tested}), [s for s in option['sources'] if s.startswith('http')]
         print(f"Option {i}: reach {option['reach_score']}/10, {reel['hook']!r}. {option['reason']}")
         errors = generate.validate(reel)
         if errors and option['reach_score'] >= MIN_REACH and sources:
@@ -388,7 +409,7 @@ def timely_reel(reels, perf=None):
         print(f"  fact-check: {check['verdict']}" + (f" ({'; '.join(check['problems'])[:300]})" if check['problems'] else ''))
         if check['verdict'] == 'reject':
             continue
-        reel = generate.tidy(check['reel'])
+        reel = generate.tidy({**check['reel'], **tested})
         errors = generate.validate(reel)
         if errors:
             fixed = generate.repair(reel, errors)
