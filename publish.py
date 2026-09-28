@@ -211,6 +211,12 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     return path, slides
 
 
+def shown(slides):
+    """What each rendered slide actually showed, for the learning loop: the visual type drawn ('word' is the 3D hook
+    word) or 'text'. The queue keeps every choice, but a rejected or failed visual falls back to the next or to text."""
+    return [s.visual.spec.get('type', 'text') if s.visual else 'text' for s in slides]
+
+
 def credits(reel):
     """A caption line crediting every real post shown, e.g. 'Quoted: @karpathy on X, pg on Hacker News'."""
     quoted = [v for p in reel['points'] for v in (p.get('visual') or [])[:1] if v.get('type') == 'quote']
@@ -360,6 +366,7 @@ def main():
 
     reel['posted_at'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     reel['media_id'] = media_id
+    reel['shown'] = shown(slides)
     render.QUEUE.write_text(json.dumps(reels, indent=2, ensure_ascii=False) + '\n')
     output('posted', 'true')
     output('reel_id', reel['id'])

@@ -14,6 +14,7 @@ from collections import defaultdict
 
 import requests
 
+import generate
 import render
 
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
@@ -44,11 +45,25 @@ def measure(reels, token):
         if age < MIN_AGE_HOURS:
             continue
         m = {name: metric(r['media_id'], name, token) for name in METRICS}
-        visuals = sorted({v['type'] for p in r['points'] for v in (p.get('visual') or [])[:1]})
         rows.append({'id': r['id'], 'hook': r['hook'].replace('*', ''), 'pillar': r.get('pillar', '?'),
                      'series': r.get('series') or ('news' if r.get('pillar') == 'timely' else 'none'),
-                     'visuals': visuals or ['text'], 'posted_at': r['posted_at'][:10], **m})
+                     **looks(r), 'posted_at': r['posted_at'][:10], **m})
     return rows
+
+
+def looks(reel):
+    """The reel's visual types, whether its hook word spun in as 3D text, and whether it had any 3D at all. Uses
+    what was actually shown (publish.shown) when recorded; older reels fall back to each point's first choice."""
+    shown = reel.get('shown')
+    if shown:
+        visuals = sorted({t for t in shown[1:1 + len(reel['points'])] if t != 'text'})
+        hook_3d = shown[0] == 'word'
+    else:
+        visuals = sorted({v['type'] for p in reel['points'] for v in (p.get('visual') or [])[:1]})
+        hook_3d = bool(reel.get('hook_word'))
+    three_d = hook_3d or any(v in generate.SCENES_3D for v in visuals)
+    return {'visuals': visuals or ['text'], 'hook_word': '3D word' if hook_3d else 'text only',
+            'three_d': '3D' if three_d else 'flat'}
 
 
 def average(rows, key):
@@ -57,9 +72,10 @@ def average(rows, key):
 
 
 def groups(rows):
-    """Average skip rate, watch time, views, saves and shares per pillar, series and visual type."""
+    """Average skip rate, watch time, views, saves and shares per pillar, series, visual type, hook (3D word or
+    text only) and 3D (any 3D moment or flat)."""
     out = {}
-    for field in ('pillar', 'series', 'visuals'):
+    for field in ('pillar', 'series', 'visuals', 'hook_word', 'three_d'):
         buckets = defaultdict(list)
         for r in rows:
             for key in (r[field] if isinstance(r[field], list) else [r[field]]):
@@ -78,6 +94,8 @@ The creator's hard rules come first; never suggest breaking them: no faces, peop
 talking head), no music (sound effects and the AI voiceover only), halal and honest content (no invented results,
 stories or numbers), never Reddit. The reels are faceless: text slides, code, diffs, terminals, screenshots, screen
 recordings, chats, quotes and 3D scenes, so only suggest formats from that list.
+"hook_word" compares hooks with a 3D spinning key word against text-only hooks, and "three_d" reels with any 3D
+moment against flat ones; the skip rate is the fairest test of the hook word. Say how many reels each side has.
 Return two parts: "rules" (at most 8 bullets the writer should follow, each tied to the numbers) and "report"
 (a short, friendly summary for the creator in plain words: what worked, what did not, what changes next week)."""
 
