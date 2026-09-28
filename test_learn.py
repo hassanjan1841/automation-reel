@@ -796,6 +796,12 @@ class WorkflowTest(unittest.TestCase):
             staged = run('git', 'diff', '--cached', '--name-only').stdout.split()
         self.assertEqual(sorted(staged), ['experiments.json', 'learnings.md', 'metrics/2026-10.jsonl', 'rules.json'])
 
+    def test_a_manual_weekly_run_never_posts_unless_asked(self):
+        text = (ROOT / '.github/workflows/weekly.yml').read_text()
+        job = text.split('\n  carousel:')[1]
+        self.assertIn("if: github.event_name == 'schedule' || inputs.post_carousel", job)
+        self.assertRegex(text, r'post_carousel:\n(.*\n){2}\s+default: false')
+
     def test_learn_job_installs_what_learn_imports(self):
         text = (ROOT / '.github/workflows/weekly.yml').read_text()
         job = text.split('  learn:')[1].split('\n  carousel:')[0]

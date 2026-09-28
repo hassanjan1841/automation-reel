@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 10 * * 0' # Sundays 10:00 UTC
   workflow_dispatch:
+    inputs:
+      post_carousel:
+        description: Also write and post this week's carousel for real (the Sunday schedule always does)
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -76,8 +81,10 @@ jobs:
           git push
 
   carousel:
-    # The weekly cheat-sheet carousel (saves-driven), posted alongside the daily reel.
+    # The weekly cheat-sheet carousel (saves-driven), posted alongside the daily reel. A manual run posts it only
+    # when post_carousel is ticked, so the learning loop can be run by hand without posting.
     needs: learn
+    if: github.event_name == 'schedule' || inputs.post_carousel
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

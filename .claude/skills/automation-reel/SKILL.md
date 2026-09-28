@@ -49,6 +49,7 @@ weekly.yml (Sun 10:00 UTC)
   learn.py           the learning loop (see "Learning loop" below): snapshots -> metrics/, rules.json judged ->
                      learnings.md, the weekly test (experiments.json), ideas.json, reports/<week>.md + GitHub issue
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
+                     (a manual run posts it only with the post_carousel input ticked)
 
 dm.yml (every 15 min)      dm.py            keyword comments -> post's dm_guide as a private reply + public "Sent you a DM" (the dedupe marker)
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4

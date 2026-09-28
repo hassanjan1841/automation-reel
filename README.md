@@ -91,6 +91,8 @@ Every Sunday `learn.py` works out what holds viewers and feeds it back to the wr
 
 Only the weekly job writes these files, so it never collides with the daily posts committing `reels.json`. Each posted reel records what the loop needs: `shown` (what each slide really showed), `slot`, `seconds` and `test`.
 
+Run it by hand any time: Actions → **Weekly** → **Run workflow**. A manual run refreshes the token and runs the learning loop; it posts the carousel only if you tick `post_carousel`.
+
 ## Pause it
 
 GitHub → Actions → **Daily reel** → `...` → **Disable workflow**. Enable it again to resume. Keep **Weekly** on: if it stays off for more than 60 days the Instagram token expires and has to be generated again.
