@@ -577,5 +577,119 @@
     ],
     "slot": 3,
     "seconds": 17.2
+  },
+  {
+    "id": 36,
+    "style": "light",
+    "kicker": "Dev mistake #1",
+    "hook": "Why is your *Supabase* query so slow?",
+    "hook_word": "Supabase",
+    "points": [
+      {
+        "title": "The N+1 Trap",
+        "body": "One query fires per row not once",
+        "visual": [
+          {
+            "type": "diagram",
+            "nodes": [
+              {
+                "id": "app",
+                "label": "App",
+                "kind": "client"
+              },
+              {
+                "id": "db",
+                "label": "Database",
+                "kind": "db"
+              }
+            ],
+            "edges": [
+              {
+                "from": "app",
+                "to": "db"
+              }
+            ],
+            "flow": [
+              "app>db",
+              "app>db",
+              "app>db",
+              "app>db"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "posts.ts",
+            "language": "ts",
+            "before": "const posts = await getPosts()\nfor (const post of posts) {\n  const { data: author } =\n    await supabase\n      .from('users')\n      .select('name')\n      .eq('id', post.user_id)\n}",
+            "after": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')"
+          }
+        ]
+      },
+      {
+        "title": "Join In One Call",
+        "body": "Nested select joins tables in one call",
+        "visual": [
+          {
+            "type": "code",
+            "title": "posts.ts",
+            "language": "ts",
+            "code": "const { data } = await supabase\n  .from('posts')\n  .select(`\n    *,\n    users ( name, avatar )\n  `)",
+            "highlight": [
+              3,
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Check The Query Count",
+        "body": "Explain analyze shows the real query count",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "psql $DATABASE_URL",
+              "EXPLAIN ANALYZE SELECT * FROM posts;"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *JOIN* for the fix",
+    "dm_keyword": "JOIN",
+    "dm_guide": "Here's the N+1 fix for Supabase. Instead of looping and querying per row, use a nested select to pull related rows through the foreign key in one call:\n\nconst { data } = await supabase.from('posts').select('*, users(name, avatar)')\n\nThat's one round trip instead of one query per row. Check the real query count with EXPLAIN ANALYZE in psql. Docs: https://supabase.com/docs/reference/javascript/select and https://www.postgresql.org/docs/current/sql-explain.html",
+    "caption": "Supabase N+1 query problem in Next.js\nOne extra query per row kills your app speed\nComment JOIN and I'll send you the full guide 👇",
+    "hashtags": [
+      "#supabase",
+      "#postgres",
+      "#nextjs",
+      "#sql"
+    ],
+    "voiceover": [
+      "[urgent] Ever wonder why one Supabase call turns into fifty?",
+      "[serious, fast] That's the N plus one trap. (break) [emphasis] One query per row, every single time.",
+      "[confident] Join the tables in one call using a nested select.",
+      "[knowing] Then check explain analyze. (break) [confident] Confirm it's really one round trip now.",
+      "[warm, curious] Comment join. (break) [excited] I'll send you the fix and the docs."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "devtip",
+    "series": "Dev mistake",
+    "episode": 1,
+    "posted_at": "2026-09-29T12:01:14+00:00",
+    "media_id": "18045482657817263",
+    "shown": [
+      "word",
+      "diagram",
+      "code",
+      "terminal",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.2
   }
 ]
