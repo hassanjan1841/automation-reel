@@ -12,6 +12,7 @@ and report exactly what ran. Load the `automation-reel` skill first for how the 
 
 ```bash
 .venv/bin/python test_learn.py            # learning loop, the weekly test, writer and publish records
+.venv/bin/python test_study.py            # study.py on synthetic videos (needs ffmpeg on PATH, else those tests skip)
 .venv/bin/python generate.py --check      # every reel in reels.json still valid
 python3 docs_check.py                     # docs match the code
 .venv/bin/python test_voice.py            # pronunciation rules (text only)
@@ -27,7 +28,7 @@ and say which it was.
 .venv/bin/python tests/mutants.py
 ```
 
-It breaks the code one known way at a time in a throwaway copy and expects `test_learn.py` to fail each time.
+It breaks the code one known way at a time in a throwaway copy and expects `test_learn.py` (for `study.py`, `test_study.py`) to fail each time.
 For every new behaviour you add, add a mutant to `tests/mutants.py` (the exact code, what to break it into, a
 label). A mutant that survives means a behaviour no test protects: write the test, then rerun. A mutant marked
 STALE means the code moved: update it.
@@ -55,6 +56,7 @@ Never post for real. These use temp copies of the data files and fake Instagram 
 | The writer, validation, the weekly test, prompts (`generate.py`, `trends.py`) | `.venv/bin/python tests/e2e_writer.py` (real Claude writes a reel per test option; each must be valid and follow it) |
 | Publishing, rendering, visuals, 3D (`publish.py`, `render.py`, `visuals.py`, `scene3d.py`, `qa.py`) | `.venv/bin/python tests/e2e_publish.py`, then with `--reject`, and once with `--real-review`; look at frames (below) |
 | The learning loop (`learn.py`, `history.py`) | `.venv/bin/python tests/e2e_learn.py 10` (ten days of daily runs, real Claude for rules, report, comment topics and covers) |
+| The video study (`study.py`) | `.venv/bin/python study.py <an mp4, e.g. a dry-run render in out/>` with `STUDIES` pointed at a temp folder, or Actions > Study videos with one link; read the whole report: every section filled, measured numbers plausible, nothing in "What we could test" breaks a hard rule |
 | The carousel | `DRY_RUN=true .venv/bin/python carousel.py` |
 | The voice | `.venv/bin/python test_voice.py --audio` and `--verify` |
 | A workflow | Actions > Daily reel > Run workflow with `dry_run` on; read the log and the artifact |

@@ -8,6 +8,8 @@ so this decides what should be running right now and starts it with workflow_dis
   Weekly: on Sunday from 10:00 UTC, if no Weekly run has started today, start one (it posts the carousel).
   Learning: on each day in LEARN_DAYS (every day by default) from 06:00 UTC, if no Learning run has started today,
   start learn.yml.
+  Study: on Sunday from 08:00 UTC, if no scheduled or hand-started Study videos run has started today, start
+  study.yml with auto (the weekly study of other creators; runs from "study" issues do not count).
 
 Safe to run as often as you like: it only starts what is missing, and publish.py itself never posts a slot twice.
 Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any outside trigger that dispatches
@@ -31,6 +33,7 @@ QUEUE = ROOT / 'reels.json'
 # When each slot's run starts (UTC); the post times (12:00, 16:00, 20:00) are set in daily-reel.yml.
 SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
+STUDY_START = time(8, 0)    # Sundays: the weekly study of other creators (study.yml)
 LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by then
 DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 ACTIVE = ('queued', 'in_progress', 'waiting', 'requested', 'pending')
@@ -85,6 +88,11 @@ def due_weekly(now, weekly_runs_today):
     return now.weekday() == 6 and now.time() >= WEEKLY_START and not weekly_runs_today
 
 
+def due_study(now, study_runs_today):
+    """The Sunday study, when no scheduled or started-by-hand run happened today (issue runs do not count)."""
+    return now.weekday() == 6 and now.time() >= STUDY_START and not [r for r in study_runs_today if r.get('event') != 'issues']
+
+
 def learn_days(value):
     """The weekdays (0 is Monday) the learning loop runs on, from LEARN_DAYS."""
     names = [d.strip().lower()[:3] for d in (value or '').replace(' ', ',').split(',') if d.strip()]
@@ -105,8 +113,8 @@ def gh(*args):
 
 
 def runs(workflow):
-    """Recent runs of a workflow: [{'status', 'createdAt'}]."""
-    return json.loads(gh('run', 'list', '--workflow', workflow, '--limit', '20', '--json', 'status,createdAt'))
+    """Recent runs of a workflow: [{'status', 'createdAt', 'event'}]."""
+    return json.loads(gh('run', 'list', '--workflow', workflow, '--limit', '20', '--json', 'status,createdAt,event'))
 
 
 def main():
@@ -133,7 +141,14 @@ def main():
         print('Starting Learning (today\'s analysis)')
         if not dry:
             gh('workflow', 'run', 'learn.yml')
-    if not slot and not due_weekly(now, weekly_today) and not learn:
+    study_today = [r for r in runs('study.yml') if r['createdAt'][:10] == now.date().isoformat()] \
+        if now.weekday() == 6 else []
+    study = due_study(now, study_today)
+    if study:
+        print('Starting the weekly study of other creators')
+        if not dry:
+            gh('workflow', 'run', 'study.yml', '-f', 'auto=true')
+    if not slot and not due_weekly(now, weekly_today) and not learn and not study:
         print('Nothing to start')
 
 

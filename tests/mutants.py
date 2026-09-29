@@ -1,5 +1,6 @@
 """Mutation check for the offline tests: break the code on purpose, one known way at a time, in a throwaway copy of
-the repo, and make sure test_learn.py fails for every one. A mutant that survives is a behaviour no test protects.
+the repo, and make sure test_learn.py (test_study.py for study.py) fails for every one. A mutant that survives is a
+behaviour no test protects.
 
 Add a mutant here for every new behaviour a change introduces (the exact old text, what to break it into, a label).
 
@@ -61,7 +62,8 @@ MUTANTS = [
      "    if slot is None or slot in posted_slots(reels, now.date()):", 'starts a run while one is running'),
     ('scheduler.py', "    if started_in_window(now, daily_runs) >= MAX_ATTEMPTS:", "    if False:", 'retries a failing slot forever'),
     ('scheduler.py', "        if now.time() >= start:", "        if now.time() > start:", 'window opens late'),
-    ('scheduler.py', "    return now.weekday() == 6 and", "    return now.weekday() == 5 and", 'weekly on the wrong day'),
+    ('scheduler.py', "    return now.weekday() == 6 and now.time() >= WEEKLY_START", "    return now.weekday() == 5 and now.time() >= WEEKLY_START",
+     'weekly on the wrong day'),
     ('publish.py', "    reel['seconds'] = round(slides[-1].end, 1)\n", "", 'length not recorded'),
     ('trends.py', "    if vals:\n        return vals\n    for name in names:", "    return vals\n    for name in names:",
      'no per-metric fallback'),
@@ -72,7 +74,31 @@ MUTANTS = [
      '            if [ -e "$f" ]; then git add "$f"; fi\n          done',
      'for f in x; do\n            git add learnings.md rules.json experiments.json ideas.json metrics reports || true\n'
      '          done', 'git add is all or nothing'),
+    ('study.py', "    problems = empty_fields(analysis)\n    if problems:", "    problems = []\n    if problems:",
+     'a placeholder breakdown is accepted'),
+    ('study.py', "        if d >= CUT and t - last >= 0.3:", "        if d >= CUT:", 'one cut counted many times'),
+    ('study.py', "'blank_start': bool(frames[0].std() < 6)", "'blank_start': False", 'blank openings missed'),
+    ('study.py', "        except Exception as e:  # one bad link must not stop the others", "        except KeyError as e:",
+     'one bad link stops the rest'),
+    ('study.py', "        if seconds > 180 or views < 10_000:", "        if views < 10_000:", 'long videos picked'),
+    ('study.py', "    with open(INDEX, 'a') as fh:", "    with open(INDEX, 'w') as fh:", 'the index is overwritten'),
+    ('study.py', "if url not in seen and not re.search(", "if not re.search(", 'duplicate links studied twice'),
+    ('study.py', "        if p['url'] in done or p['channel_id'] in channels:", "        if p['channel_id'] in channels:",
+     'the weekly study repeats a video'),
+    ('study.py', "        if len(seen) >= 2:", "        if seen:", 'a one-off counts as a recurring pattern'),
+    ('study.py', "        seen = sorted({n for n in p['studies'] if 1 <= n <= len(rows)})", "        seen = p['studies']",
+     'study numbers taken on trust'),
+    ('study.py', "        if posted >= since and views >= 10_000 and views >= 2 * usual:", "        if views >= 10_000:",
+     'every Short of a watched channel picked'),
+    ('study.py', "        if '--auto' in args:\n            print('Nothing new worth studying this week')\n            return\n", "",
+     'a quiet week fails the run'),
+    ('scheduler.py', "            gh('workflow', 'run', 'study.yml', '-f', 'auto=true')", "            pass",
+     'the Sunday study never started'),
+    ('scheduler.py', "if r.get('event') != 'issues']", "]", 'an issue run skips the Sunday study'),
 ]
+
+# Which test file must catch a mutant in each file (everything else: test_learn.py).
+TESTS = {'study.py': 'test_study.py'}
 
 
 def main():
@@ -88,7 +114,7 @@ def main():
                 survived.append(label)
                 continue
             f.write_text(text.replace(old, new))
-            proc = subprocess.run([sys.executable, 'test_learn.py'], cwd=copy, capture_output=True, text=True, timeout=900)
+            proc = subprocess.run([sys.executable, TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=900)
             caught = proc.returncode != 0
             print(f"{'caught  ' if caught else 'SURVIVED'} {label}")
             if not caught:

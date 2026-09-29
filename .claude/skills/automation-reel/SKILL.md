@@ -61,9 +61,21 @@ insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs ar
 
 scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
                      posted, nothing running, at most 2 tries), the day's Learning run (LEARN_DAYS) or a missed
-                     Sunday Weekly; a cron-job.org job dispatches it every 10 minutes
+                     Sunday Weekly, or the Sunday Study (study.yml auto, from 08:00; issue runs do not count);
+                     a cron-job.org job dispatches it every 10 minutes
+
+study.yml (Sun 08:00 UTC --auto, also started by scheduler.py; issue labelled "study" by the repo owner; or manual
+           with videos / search / top / auto)
+  study.py --auto    study.auto_picks: this week's study.TOPICS (study.week_topics) + watchlist studies/channels.json
+                     (study.channel_outliers; grows from 5x-subscriber outliers, MAX_CHANNELS), never a studied source,
+                     one per channel; then study.digest (patterns in >= 2 studies, counted in code) -> <date>-digest.md
+  study.py --issue | <links> | --search "q" --top N   download (yt-dlp, or issue attachments with GH_TOKEN),
+                     measure (study.measure: cuts, beats, blank start, loudness, Whisper words), Claude breakdown
+                     (study.breakdown, retried once when a field comes back empty or "placeholder"),
+                     studies/<date>-<slug>.md + studies/index.jsonl; out/study.md -> issue comment, studies/ committed
 
 tests.yml (every push and PR)        test_learn.py   offline tests of the learning loop (requests, pillow, numpy only)
+                                     test_study.py   offline tests of study.py (plus ffmpeg)
 docs-check.yml (every push)          docs_check.py   fails if the docs drifted from the code
 docs-sync.yml (code push + Sat 09:00) docs_sync.py   Claude fixes the docs, opens a PR from docs-sync
 ```
@@ -84,6 +96,8 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
 | `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `SLOT_STARTS`, `LEARN_START`, `MAX_ATTEMPTS` |
+| `study.py` | Deep study of other creators' videos: download, measure, Claude breakdown into adoptable / not adoptable patterns; saved in studies/ | `sources_in`, `fetch`, `search`, `channel_outliers`, `auto_picks`, `week_topics`, `digest`, `TOPICS`, `probe`, `motion`, `measure`, `breakdown`, `empty_fields`, `report`, `save`, `study`, `main` |
+| `test_study.py` | Offline tests of study.py on synthetic ffmpeg videos, fake Claude and YouTube | `make_video`, `Measure`, `Breakdown`, `Main` |
 | `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `review`, `post`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
@@ -110,6 +124,9 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs 
 .venv/bin/python voice.py <id> [voice]   # out/reel-<id>-<voice>.mp4 with voiceover (listen-back check on)
 .venv/bin/python test_learn.py          # learning loop, offline (-v lists every test)
 .venv/bin/python history.py             # what the learning loop has stored
+.venv/bin/python test_study.py          # study.py, offline (needs ffmpeg)
+.venv/bin/python study.py <file or link> # study a video: studies/<date>-<slug>.md (needs claude CLI; yt-dlp for links)
+.venv/bin/python study.py --auto         # the Sunday study: finds its own videos (YOUTUBE_API_KEY), then the digest
 .venv/bin/python test_voice.py          # pronunciation rules; add --audio to speak and transcribe every test sentence
 .venv/bin/python test_voice.py --verify # the voice verifier still catches and cuts the recorded "uhh" (Whisper, no voice calls)
 .venv/bin/python scene3d.py '<json>' 980 620 6   # render one 3D scene to out/scenes/
@@ -190,7 +207,7 @@ Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching s
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`, and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`).
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas

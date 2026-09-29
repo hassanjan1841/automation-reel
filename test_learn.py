@@ -863,8 +863,9 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
-    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days=''):
+    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None):
         learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
+        studied = [run(now)] if studied is None else studied   # and the Sunday study
         os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
@@ -872,7 +873,8 @@ class SchedulerTest(Sandbox):
         def gh(*args):
             calls.append(args)
             if args[:2] == ('run', 'list'):
-                return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned}[args[3]])
+                return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned,
+                                   'study.yml': studied}[args[3]])
             return ''
 
         class Now(datetime):
@@ -897,6 +899,20 @@ class SchedulerTest(Sandbox):
         started = self.run_scheduler(at(10, 40, sunday), [], [], [])
         self.assertIn(('workflow', 'run', 'weekly.yml', '-f', 'post_carousel=true'), started)
         self.assertEqual(self.run_scheduler(at(10, 40, sunday), [], [], [run(at(10, 3, sunday))]), [])
+
+    def test_due_study(self):
+        sunday = date(2026, 10, 4)
+        self.assertTrue(scheduler.due_study(at(8, 5, sunday), []))
+        self.assertFalse(scheduler.due_study(at(7, 59, sunday), []))
+        self.assertFalse(scheduler.due_study(at(8, 5), []))  # a Monday
+        self.assertFalse(scheduler.due_study(at(9, 0, sunday), [{**run(at(8, 1, sunday)), 'event': 'schedule'}]))
+        self.assertTrue(scheduler.due_study(at(9, 0, sunday), [{**run(at(8, 1, sunday)), 'event': 'issues'}]))
+
+    def test_main_starts_a_missed_study(self):
+        sunday = date(2026, 10, 4)
+        started = self.run_scheduler(at(8, 20, sunday), [], [], [], studied=[])
+        self.assertEqual(started, [('workflow', 'run', 'study.yml', '-f', 'auto=true')])
+        self.assertEqual(self.run_scheduler(at(8, 20, sunday), [], [], [], studied=[run(at(8, 2, sunday))]), [])
 
     def test_learn_days(self):
         self.assertEqual(scheduler.learn_days(''), set(range(7)))
