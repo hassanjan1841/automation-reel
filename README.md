@@ -103,7 +103,7 @@ GitHub drops many scheduled runs when it is busy: in the first days the Daily re
 - On Sundays from 10:00 UTC it also starts **Weekly** if it has not run that day.
 - `publish.py` never posts the same slot twice in a day, however many times it is started, so all of this is safe to repeat.
 
-The Scheduler itself runs on a GitHub cron too, so for timing that never slips, have an outside service start it every 10 to 15 minutes: a `POST` to `https://api.github.com/repos/hassanjan1841/automation-reel/actions/workflows/scheduler.yml/dispatches` with body `{"ref":"main"}` and a fine-grained token that has **Actions: read and write** on this repo (for example from cron-job.org, or Supabase `pg_cron` with `pg_net`).
+The Scheduler itself runs on a GitHub cron too, so for timing that never slips, have an outside service start it every 10 to 15 minutes: a `POST` to `https://api.github.com/repos/hassanjan1841/automation-reel/actions/workflows/scheduler.yml/dispatches` with body `{"ref":"main"}`, headers `Authorization: Bearer <token>`, `Accept: application/vnd.github+json` and `Content-Type: application/json` (without it GitHub answers 415 and nothing starts), and a fine-grained token that has **Actions: read and write** on this repo. A success is HTTP 204. This runs from a cron-job.org job every 10 minutes (set up 2026-09-29); if reels stop starting on time, check that job's history first.
 
 ## Pause it
 
