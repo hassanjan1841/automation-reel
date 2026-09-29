@@ -165,6 +165,113 @@ class Pieces(unittest.TestCase):
                 study.search('q', key='k')
 
 
+def short(vid, views, days_ago=3, seconds=30, channel='chan'):
+    from datetime import datetime, timedelta, timezone
+    posted = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    return {'id': vid, 'snippet': {'title': vid.upper(), 'channelId': channel, 'channelTitle': 'Chan', 'publishedAt': posted},
+            'statistics': {'viewCount': str(views)}, 'contentDetails': {'duration': f'PT{seconds}S'}}
+
+
+class Auto(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        self.patches = [mock.patch.object(study, 'STUDIES', root), mock.patch.object(study, 'INDEX', root / 'index.jsonl'),
+                        mock.patch.object(study, 'CHANNELS', root / 'channels.json')]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_channel_outliers(self):
+        videos = [short('a', 20000), short('b', 15000), short('c', 200000), short('old', 900000, days_ago=40),
+                  short('long', 900000, seconds=600), short('d', 18000)]
+
+        def get(url, params=None, timeout=None):
+            data = {'channels': {'items': [{'contentDetails': {'relatedPlaylists': {'uploads': 'UU1'}}}]},
+                    'playlistItems': {'items': [{'contentDetails': {'videoId': v['id']}} for v in videos]},
+                    'videos': {'items': videos}}[url.rsplit('/', 1)[1]]
+            return SimpleNamespace(json=lambda: data)
+        with mock.patch.object(study.requests, 'get', get):
+            picks = study.channel_outliers('chan', 'k')
+        # usual (median of all its Shorts, old ones too) is 20,000: only c beats it twice among the recent ones
+        self.assertEqual([p['url'] for p in picks], ['https://www.youtube.com/shorts/c'])
+        self.assertEqual(picks[0]['outlier'], 10.0)
+
+    def test_week_topics_rotate(self):
+        a, b = study.week_topics(date(2026, 10, 4)), study.week_topics(date(2026, 10, 11))
+        self.assertEqual(len(a), study.AUTO_TOPICS)
+        self.assertTrue(set(a).isdisjoint(b))
+        self.assertTrue(set(a) <= set(study.TOPICS))
+
+    def pick(self, vid, outlier, channel, why='search "x"'):
+        return {'url': f'https://www.youtube.com/shorts/{vid}', 'title': vid, 'channel': channel.title(),
+                'channel_id': channel, 'views': 50000, 'followers': 1000, 'outlier': outlier, 'why': why}
+
+    def test_auto_picks(self):
+        study.INDEX.write_text(json.dumps({'source': 'https://www.youtube.com/shorts/seen'}) + '\n')
+        study.CHANNELS.write_text(json.dumps({'watched': {'title': 'W', 'added': '2026-09-01', 'outlier': 9}}))
+        found = [self.pick('seen', 99, 'x'), self.pick('big', 50, 'new'), self.pick('big2', 40, 'new'),
+                 self.pick('small', 2, 'small')]
+        with mock.patch.object(study, 'search', side_effect=[found, [], []]) as search, \
+                mock.patch.object(study, 'channel_outliers', return_value=[self.pick('w1', 8, 'watched', 'channel')]) as co:
+            picks = study.auto_picks('k', date(2026, 10, 4), top=3)
+        self.assertEqual(search.call_count, study.AUTO_TOPICS)
+        co.assert_called_once_with('watched', 'k')
+        self.assertEqual([p['title'] for p in picks], ['big', 'w1', 'small'])  # never seen, one per channel
+        watch = json.loads(study.CHANNELS.read_text())
+        self.assertEqual(set(watch), {'watched', 'x', 'new'})  # big outliers join; the 2x one does not
+
+    def test_watchlist_is_capped(self):
+        study.CHANNELS.write_text(json.dumps({f'c{i}': {'title': 't', 'added': f'2026-09-{i + 1:02d}', 'outlier': 5}
+                                              for i in range(study.MAX_CHANNELS)}))
+        with mock.patch.object(study, 'search', side_effect=[[self.pick('n', 30, 'newest')], [], []]), \
+                mock.patch.object(study, 'channel_outliers', return_value=[]):
+            study.auto_picks('k', date(2026, 10, 4))
+        watch = json.loads(study.CHANNELS.read_text())
+        self.assertEqual(len(watch), study.MAX_CHANNELS)
+        self.assertIn('newest', watch)
+        self.assertNotIn('c0', watch)  # the oldest made room
+
+    def test_digest_counts_itself(self):
+        self.assertEqual(study.digest('.'), '')  # fewer than 3 studies: nothing to sum up
+        study.INDEX.write_text(''.join(json.dumps({'source': f's{i}', 'title': f'T{i}', 'adoptable': ['p']}) + '\n'
+                                       for i in range(4)))
+        answer = {'summary': 'They open on the thing itself.', 'recurring': [
+            {'pattern': 'Visual first', 'studies': [1, 2, 3, 3], 'for_us': 'Open on code.', 'test': 'Half open on code.'},
+            {'pattern': 'Only once', 'studies': [2], 'for_us': '-', 'test': '-'},
+            {'pattern': 'Made up', 'studies': [2, 99], 'for_us': '-', 'test': '-'}]}
+        with mock.patch.object(study, 'claude', return_value=answer), mock.patch.object(study, 'ours', return_value=''):
+            text = study.digest('.')
+        self.assertIn('**Visual first** (in 3 of 4 studies)', text)
+        self.assertNotIn('Only once', text)
+        self.assertNotIn('Made up', text)  # a study number that does not exist is not counted
+
+    def test_main_auto(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['study.py', '--auto']), \
+                mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': 'k'}), mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), \
+                mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
+                mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.object(study, 'auto_picks', return_value=[]):
+                study.main()  # nothing new: no failure
+            self.assertFalse((Path(tmp) / 'study.md').exists())
+            with mock.patch.object(study, 'auto_picks', return_value=[self.pick('a', 9, 'c')]), \
+                    mock.patch.object(study, 'study', return_value='# Study: a'), \
+                    mock.patch.object(study, 'digest', side_effect=RuntimeError('claude down')):
+                study.main()  # a failed digest keeps the studies
+            self.assertIn('# Study: a', (Path(tmp) / 'study.md').read_text())
+            with mock.patch.object(study, 'auto_picks', return_value=[self.pick('a', 9, 'c')]), \
+                    mock.patch.object(study, 'study', return_value='# Study: a'), \
+                    mock.patch.object(study, 'digest', return_value='# What keeps working for others\n'):
+                study.main()
+            self.assertTrue((Path(tmp) / 'study.md').read_text().startswith('# What keeps working'))
+            self.assertEqual(len(list(study.STUDIES.glob('*-digest.md'))), 1)
+
+
 class Breakdown(unittest.TestCase):
     METRICS = {'loudness': [-20.0], 'seconds': 6}
 

@@ -62,7 +62,8 @@ MUTANTS = [
      "    if slot is None or slot in posted_slots(reels, now.date()):", 'starts a run while one is running'),
     ('scheduler.py', "    if started_in_window(now, daily_runs) >= MAX_ATTEMPTS:", "    if False:", 'retries a failing slot forever'),
     ('scheduler.py', "        if now.time() >= start:", "        if now.time() > start:", 'window opens late'),
-    ('scheduler.py', "    return now.weekday() == 6 and", "    return now.weekday() == 5 and", 'weekly on the wrong day'),
+    ('scheduler.py', "    return now.weekday() == 6 and now.time() >= WEEKLY_START", "    return now.weekday() == 5 and now.time() >= WEEKLY_START",
+     'weekly on the wrong day'),
     ('publish.py', "    reel['seconds'] = round(slides[-1].end, 1)\n", "", 'length not recorded'),
     ('trends.py', "    if vals:\n        return vals\n    for name in names:", "    return vals\n    for name in names:",
      'no per-metric fallback'),
@@ -82,6 +83,18 @@ MUTANTS = [
     ('study.py', "        if seconds > 180 or views < 10_000:", "        if views < 10_000:", 'long videos picked'),
     ('study.py', "    with open(INDEX, 'a') as fh:", "    with open(INDEX, 'w') as fh:", 'the index is overwritten'),
     ('study.py', "if url not in seen and not re.search(", "if not re.search(", 'duplicate links studied twice'),
+    ('study.py', "        if p['url'] in done or p['channel_id'] in channels:", "        if p['channel_id'] in channels:",
+     'the weekly study repeats a video'),
+    ('study.py', "        if len(seen) >= 2:", "        if seen:", 'a one-off counts as a recurring pattern'),
+    ('study.py', "        seen = sorted({n for n in p['studies'] if 1 <= n <= len(rows)})", "        seen = p['studies']",
+     'study numbers taken on trust'),
+    ('study.py', "        if posted >= since and views >= 10_000 and views >= 2 * usual:", "        if views >= 10_000:",
+     'every Short of a watched channel picked'),
+    ('study.py', "        if '--auto' in args:\n            print('Nothing new worth studying this week')\n            return\n", "",
+     'a quiet week fails the run'),
+    ('scheduler.py', "            gh('workflow', 'run', 'study.yml', '-f', 'auto=true')", "            pass",
+     'the Sunday study never started'),
+    ('scheduler.py', "if r.get('event') != 'issues']", "]", 'an issue run skips the Sunday study'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

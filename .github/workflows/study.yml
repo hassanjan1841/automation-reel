@@ -7,8 +7,12 @@ name: Study videos
 #     report is a comment on it.
 #   - Or Actions > Study videos > Run workflow: paste links, or a search (needs secret YOUTUBE_API_KEY) to study the
 #     Shorts that beat their channel most in the last 30 days.
+#   - Every Sunday from 08:00 UTC on its own (study.py --auto: its own topics and watchlist, then a digest of what
+#     keeps coming back); scheduler.py starts it when GitHub drops the cron.
 # Reports are saved in studies/ (one file per video, plus studies/index.jsonl).
 on:
+  schedule:
+    - cron: '0 8 * * 0' # Sundays 08:00 UTC
   issues:
     types: [labeled]  # also fires when an issue is opened with the label
   workflow_dispatch:
@@ -23,6 +27,10 @@ on:
         description: 'How many search results to study'
         required: false
         default: '3'
+      auto:
+        description: 'Or the weekly study: find what to study on its own'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,7 +44,7 @@ jobs:
   study:
     # Issues only from the repo owner, so nobody else can make the job download things.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name != 'issues' ||
       (github.event.label.name == 'study' && github.event.issue.user.login == github.repository_owner)
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -74,9 +82,12 @@ jobs:
           VIDEOS: ${{ inputs.videos }}
           SEARCH: ${{ inputs.search }}
           TOP: ${{ inputs.top }}
+          AUTO: ${{ github.event_name == 'schedule' || inputs.auto }}
         run: |
           if [ "${{ github.event_name }}" = issues ]; then
             python study.py --issue
+          elif [ "$AUTO" = true ]; then
+            python study.py --auto
           elif [ -n "$SEARCH" ]; then
             python study.py --search "$SEARCH" --top "${TOP:-3}"
           else

@@ -16,8 +16,13 @@ Sources:
   python study.py --search "claude code tips"   find the Shorts that beat their channel most (YouTube Data API,
                   [--top 3]                     last 30 days) and study the top ones
   python study.py --issue                       the links and attachments in ISSUE_BODY (the study workflow)
+  python study.py --auto                        the weekly study, all on its own: this week's few TOPICS searched,
+                                                the watched channels' new Shorts that beat their usual (the
+                                                watchlist, studies/channels.json, grows from big outliers), never
+                                                a video studied before; then a digest of the patterns that keep
+                                                coming back across recent studies (studies/<date>-digest.md)
 
-Env: CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_MODEL, YOUTUBE_API_KEY (for --search), GH_TOKEN (to fetch issue attachments),
+Env: CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_MODEL, YOUTUBE_API_KEY (for --search and --auto), GH_TOKEN (to fetch issue attachments),
      ISSUE_BODY (with --issue)
 """
 
@@ -51,6 +56,15 @@ MAX_FRAMES = 16
 SETTLE = 1.0               # seconds after a cut or beat to take its frame
 URL = re.compile(r'https?://[^\s)<>\]"\']+')
 YOUTUBE_API = 'https://www.googleapis.com/youtube/v3'
+CHANNELS = STUDIES / 'channels.json'   # the watchlist the weekly study builds itself
+# What the weekly study searches, a few a week in turn: the account's own ground (search costs 100 of the free
+# 10,000 daily quota units each).
+TOPICS = ['claude code', 'cursor ai', 'ai coding tools', 'coding tips', 'web development tips', 'nextjs',
+          'freelance developer', 'programming', 'chatgpt for developers', 'supabase', 'saas developer', 'vibe coding']
+AUTO_TOPICS = 3
+AUTO_TOP = 4
+MAX_CHANNELS = 20
+DIGEST_STUDIES = 30
 
 
 # ---------- getting the video ----------
@@ -119,9 +133,83 @@ def search(query, top=3, key=None, days=30):
         if seconds > 180 or views < 10_000:
             continue
         picks.append({'url': f"https://www.youtube.com/shorts/{v['id']}", 'title': v['snippet']['title'],
-                      'channel': v['snippet']['channelTitle'], 'views': views, 'followers': subs,
+                      'channel': v['snippet']['channelTitle'], 'channel_id': v['snippet']['channelId'],
+                      'views': views, 'followers': subs,
                       'outlier': round(views / max(subs, 1000), 1)})
     return sorted(picks, key=lambda p: -p['outlier'])[:top]
+
+
+def channel_outliers(channel_id, key, days=14):
+    """A watched channel's new Shorts that beat its own usual: views at least twice the median of its recent Shorts."""
+    items = requests.get(f'{YOUTUBE_API}/channels', timeout=30, params={
+        'part': 'contentDetails,snippet', 'id': channel_id, 'key': key}).json().get('items', [])
+    if not items:
+        return []
+    uploads = items[0]['contentDetails']['relatedPlaylists']['uploads']
+    listed = requests.get(f'{YOUTUBE_API}/playlistItems', timeout=30, params={
+        'part': 'contentDetails', 'playlistId': uploads, 'maxResults': 25, 'key': key}).json().get('items', [])
+    ids = [i['contentDetails']['videoId'] for i in listed]
+    if not ids:
+        return []
+    videos = requests.get(f'{YOUTUBE_API}/videos', timeout=30, params={
+        'part': 'snippet,statistics,contentDetails', 'id': ','.join(ids), 'key': key}).json().get('items', [])
+    shorts = [v for v in videos if iso_seconds(v['contentDetails']['duration']) <= 180]
+    if len(shorts) < 3:
+        return []
+    usual = statistics.median(int(v['statistics'].get('viewCount', 0)) for v in shorts) or 1
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    picks = []
+    for v in shorts:
+        views = int(v['statistics'].get('viewCount', 0))
+        posted = datetime.fromisoformat(v['snippet']['publishedAt'].replace('Z', '+00:00'))
+        if posted >= since and views >= 10_000 and views >= 2 * usual:
+            picks.append({'url': f"https://www.youtube.com/shorts/{v['id']}", 'title': v['snippet']['title'],
+                          'channel': v['snippet']['channelTitle'], 'channel_id': channel_id, 'views': views,
+                          'followers': None, 'outlier': round(views / usual, 1), 'why': 'beat its channel usual'})
+    return picks
+
+
+def studied():
+    """Every source studied before, from the index."""
+    if not INDEX.exists():
+        return set()
+    return {json.loads(line)['source'] for line in INDEX.read_text().splitlines() if line.strip()}
+
+
+def week_topics(day, n=AUTO_TOPICS):
+    """This week's search topics: TOPICS in turn, a different few each week."""
+    week = day.isocalendar()[1]
+    return [TOPICS[(week * n + i) % len(TOPICS)] for i in range(n)]
+
+
+def auto_picks(key, day, top=AUTO_TOP):
+    """What the weekly study looks at, found on its own: the outliers of this week's topics and the new Shorts of the
+    watched channels that beat their own usual. Never a video studied before, at most one per channel. Channels
+    that had a big outlier (views 5x their subscribers or more) join the watchlist (studies/channels.json)."""
+    done, found = studied(), []
+    for topic in week_topics(day):
+        for p in search(topic, 5, key):
+            found.append({**p, 'why': f'search "{topic}"'})
+    watch = history.read_json(CHANNELS, {})
+    for channel_id in list(watch)[:MAX_CHANNELS]:
+        try:
+            found += channel_outliers(channel_id, key)
+        except Exception as e:  # one channel gone or private must not stop the week
+            print(f'  channel {channel_id} skipped: {type(e).__name__}')
+    for p in found:
+        if p['why'].startswith('search') and p['outlier'] >= 5 and p['channel_id'] not in watch:
+            watch[p['channel_id']] = {'title': p['channel'], 'added': day.isoformat(), 'outlier': p['outlier']}
+    if len(watch) > MAX_CHANNELS:  # keep the newest
+        watch = dict(sorted(watch.items(), key=lambda kv: kv[1]['added'])[-MAX_CHANNELS:])
+    STUDIES.mkdir(exist_ok=True)
+    history.write_json(CHANNELS, watch)
+    picks, channels = [], set()
+    for p in sorted(found, key=lambda p: -p['outlier']):
+        if p['url'] in done or p['channel_id'] in channels:
+            continue
+        picks.append(p)
+        channels.add(p['channel_id'])
+    return picks[:top]
 
 
 def iso_seconds(duration):
@@ -299,11 +387,11 @@ def ours():
             'The picture changes mostly at slide changes, with camera punches on each sentence. ' + numbers)
 
 
-def claude(prompt, folder):
+def claude(prompt, folder, system=SYSTEM, schema=SCHEMA):
     proc = subprocess.run(['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
-                           '--system-prompt', SYSTEM, '--tools', 'Read', '--allowedTools', 'Read', '--add-dir', str(folder),
+                           '--system-prompt', system, '--tools', 'Read', '--allowedTools', 'Read', '--add-dir', str(folder),
                            '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-                           '--json-schema', json.dumps(SCHEMA)],
+                           '--json-schema', json.dumps(schema)],
                           capture_output=True, text=True, timeout=900, stdin=subprocess.DEVNULL)
     if proc.returncode != 0:
         raise RuntimeError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-300:]}')
@@ -341,6 +429,46 @@ def empty_fields(a):
     missing += [f'hook.{k}' for k in ('spoken', 'on_screen', 'type') if PLACEHOLDER.match(a.get('hook', {}).get(k) or '')]
     missing += [k for k in ('structure', 'why_it_works') if not a.get(k)]
     return missing
+
+
+DIGEST_SYSTEM = """You read the patterns found in recent studies of other creators' short videos that did well, for a
+faceless developer account (@hassanjan.k: AI tools, coding tips, freelancing; no faces, no music, nothing invented,
+never Reddit, never copying). Find the patterns that keep coming back across different videos: those are the ones
+worth testing. For each, list the numbers of the studies it appears in (only studies whose patterns really show
+it; never guess), how it would look in this account's reels, and one test (change one thing in half of the reels).
+Leave out anything that breaks the account's rules. The summary says in two or three sentences what the studied
+videos do that the account's reels do not."""
+
+DIGEST_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['summary', 'recurring'],
+                 'properties': {'summary': {'type': 'string'},
+                                'recurring': {'type': 'array', 'items': {
+                                    'type': 'object', 'additionalProperties': False,
+                                    'required': ['pattern', 'studies', 'for_us', 'test'],
+                                    'properties': {'pattern': {'type': 'string'},
+                                                   'studies': {'type': 'array', 'items': {'type': 'integer'}},
+                                                   'for_us': {'type': 'string'}, 'test': {'type': 'string'}}}}}}
+
+
+def digest(folder):
+    """What keeps coming back across the recent studies, as markdown, or '' with fewer than 3 studies. How many
+    studies show a pattern is counted here from the numbers Claude cites, and a pattern needs at least 2."""
+    rows = [json.loads(line) for line in INDEX.read_text().splitlines() if line.strip()][-DIGEST_STUDIES:] \
+        if INDEX.exists() else []
+    if len(rows) < 3:
+        return ''
+    listing = '\n'.join(f"[{i}] {r.get('title') or r['source']}" + (f" by {r['channel']}" if r.get('channel') else '')
+                        + f": {r.get('beats_per_10s')} beats per 10 s, speech from {r.get('speech_start')} s; patterns: "
+                        + '; '.join(r.get('adoptable') or []) for i, r in enumerate(rows, 1))
+    out = claude('Recent studies:\n' + listing + '\n\n' + ours(), folder, DIGEST_SYSTEM, DIGEST_SCHEMA)
+    lines = []
+    for p in out['recurring']:
+        seen = sorted({n for n in p['studies'] if 1 <= n <= len(rows)})
+        if len(seen) >= 2:
+            lines.append((len(seen), f"- **{p['pattern']}** (in {len(seen)} of {len(rows)} studies): {p['for_us']} "
+                                     f"Test: {p['test']}"))
+    lines.sort(key=lambda x: -x[0])
+    return (f"# What keeps working for others ({len(rows)} recent studies)\n\n{out['summary'].strip()}\n\n"
+            + ('\n'.join(t for _, t in lines) or '- No pattern shows up in two studies yet.') + '\n')
 
 
 # ---------- saving ----------
@@ -415,11 +543,23 @@ def main():
         for pick in search(args[args.index('--search') + 1], top, key):
             print(f"Found {pick['url']}: {pick['views']:,} views, {pick['followers']:,} subscribers ({pick['outlier']}x)")
             todo.append((pick['url'], {k: pick[k] for k in ('title', 'channel', 'views', 'followers')}))
+    elif '--auto' in args:
+        key = os.environ.get('YOUTUBE_API_KEY', '').strip()
+        if not key:
+            raise SystemExit('--auto needs YOUTUBE_API_KEY')
+        day = datetime.now(timezone.utc).date()
+        print('Topics this week:', ', '.join(week_topics(day)))
+        for pick in auto_picks(key, day):
+            print(f"Found {pick['url']} ({pick['why']}): {pick['views']:,} views, {pick['outlier']}x")
+            todo.append((pick['url'], {k: pick[k] for k in ('title', 'channel', 'views', 'followers')}))
     elif '--issue' in args:
         todo = [(s, None) for s in sources_in(os.environ.get('ISSUE_BODY', ''))]
     else:
         todo = [(s, None) for s in args if not s.startswith('--')]
     if not todo:
+        if '--auto' in args:
+            print('Nothing new worth studying this week')
+            return
         raise SystemExit('No videos to study')
     texts, failed = [], []
     for source, extra in todo:
@@ -428,8 +568,17 @@ def main():
         except Exception as e:  # one bad link must not stop the others
             print(f'  failed: {source}: {type(e).__name__}: {str(e)[:300]}')
             failed.append(f'- {source}: {str(e)[:200]}')
+    summary = ''
+    if '--auto' in args and texts:
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                summary = digest(tmp)
+            if summary:
+                (STUDIES / f"{datetime.now(timezone.utc).date().isoformat()}-digest.md").write_text(summary)
+        except Exception as e:  # the studies are saved; the digest can wait a week
+            print(f'  digest unavailable: {type(e).__name__}: {str(e)[:200]}')
     render.OUT_DIR.mkdir(exist_ok=True)
-    OUT.write_text('\n\n---\n\n'.join(texts) + ('\n\n**Could not study:**\n' + '\n'.join(failed) if failed else '') + '\n')
+    OUT.write_text((summary + '\n---\n\n' if summary else '') + '\n\n---\n\n'.join(texts) + ('\n\n**Could not study:**\n' + '\n'.join(failed) if failed else '') + '\n')
     if not texts:
         raise SystemExit(1)
 
