@@ -775,5 +775,82 @@
     ],
     "slot": 2,
     "seconds": 16.7
+  },
+  {
+    "id": 38,
+    "style": "light",
+    "kicker": "Quick trick #2",
+    "hook": "Still renaming *variables* one line at a time?",
+    "points": [
+      {
+        "title": "Select next match",
+        "body": "Ctrl D grabs the next match",
+        "visual": [
+          {
+            "type": "code",
+            "title": "app.ts",
+            "language": "ts",
+            "code": "const userName = \"alex\";\nconsole.log(userName);\nsendWelcome(userName);",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Edit all at once",
+        "body": "One edit updates every match",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "app.ts",
+            "language": "ts",
+            "before": "const usrName = \"alex\";\nconsole.log(usrName);\nsendWelcome(usrName);",
+            "after": "const userName = \"alex\";\nconsole.log(userName);\nsendWelcome(userName);"
+          }
+        ]
+      },
+      {
+        "title": "Skip find and replace",
+        "body": "No dialog just instant edits"
+      }
+    ],
+    "cta": "Comment *MULTI* and I'll send you the shortcut",
+    "dm_keyword": "MULTI",
+    "dm_guide": "Here is the trick. On Windows or Linux press Control D, on Mac press Command D, with your cursor on a word. It selects the next matching word. Keep pressing to grab every match, then type once to edit them all at the same time. Press Escape to exit multi cursor mode. Works in any file, any language. Full docs from VS Code: https://code.visualstudio.com/docs/editor/codebasics#_multiple-selections-multicursor",
+    "caption": "VS Code multi cursor shortcut (Ctrl D / Cmd D)\nStop renaming variables one by one\nWhat's your favorite VS Code shortcut? 👇",
+    "hashtags": [
+      "#vscode",
+      "#codingtips",
+      "#webdev",
+      "#productivity"
+    ],
+    "voiceover": [
+      "[grinning, punchy] What if you never had to rename a variable twice?",
+      "[confident and fast] Put your cursor on it, (break) [quick] hit control d to grab every match.",
+      "[excited] Every match lights up together, (break) [emphasis] so one edit updates them all.",
+      "[knowing] No more opening find and replace or scrolling through files.",
+      "[warm, curious] Comment multi and I'll send you the full shortcut guide."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 2,
+    "posted_at": "2026-09-29T20:01:47+00:00",
+    "media_id": "17932549161147166",
+    "shown": [
+      "text",
+      "code",
+      "diff",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.1
   }
 ]
