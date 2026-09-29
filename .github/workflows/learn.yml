@@ -1,0 +1,67 @@
+name: Learning
+
+# The learning loop (learn.py): measure every post, judge the rules and the running test, write rules for the writer
+# (rules.json -> learnings.md) and a report. Runs daily by default: scheduler.py starts it (GitHub drops many cron
+# runs), on the days in repo variable LEARN_DAYS; the cron below is only a backup. The data files are only
+# written here (see history.py).
+on:
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: reels-queue
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests pillow numpy
+
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Learn from the latest numbers
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          EXPERIMENT: ${{ vars.EXPERIMENT }}
+        run: python learn.py
+
+      - name: Save the rules and send the report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # One issue per week; each day's report is a comment on it, so it is one thread, not a new issue a day.
+          if [ -f out/report.md ]; then
+            title="Reel reports $(date -u +%G-W%V)"
+            number=$(gh issue list --state open --limit 50 --json number,title --jq ".[] | select(.title == \"$title\") | .number" | head -1)
+            if [ -n "$number" ]; then
+              gh issue comment "$number" --body-file out/report.md
+            else
+              gh issue create --title "$title" --body-file out/report.md
+            fi
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for f in learnings.md rules.json experiments.json ideas.json metrics reports; do
+            if [ -e "$f" ]; then git add "$f"; fi
+          done
+          if git diff --cached --quiet; then echo 'No new learnings'; exit 0; fi
+          git commit -m 'Learnings'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

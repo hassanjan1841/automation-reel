@@ -44,10 +44,13 @@ daily-reel.yml, twice a day  ->  publish.py
      (per slot: a real run exits when this slot already posted today, scheduler.posted_slots, unless FORCE_POST)
   7. test_voice.py          pronunciation regression test (text rules only in CI)
 
+learn.yml (daily from 06:00 UTC via scheduler.py, LEARN_DAYS; backup cron 06:30)
+  learn.py           the learning loop (see "Learning loop" below): snapshots -> metrics/, rules.json judged ->
+                     learnings.md, the running test (experiments.json), ideas.json, reports/<date>.md + a comment on
+                     the week's "Reel reports <year>-W<week>" issue
+
 weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
-  learn.py           the learning loop (see "Learning loop" below): snapshots -> metrics/, rules.json judged ->
-                     learnings.md, the weekly test (experiments.json), ideas.json, reports/<week>.md + GitHub issue
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
                      (a manual run posts it only with the post_carousel input ticked)
 
@@ -57,7 +60,8 @@ demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub a
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
 
 scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
-                     posted, nothing running, at most 2 tries) or a missed Sunday Weekly; outside triggers dispatch it
+                     posted, nothing running, at most 2 tries), the day's Learning run (LEARN_DAYS) or a missed
+                     Sunday Weekly; a cron-job.org job dispatches it every 10 minutes
 
 tests.yml (every push and PR)        test_learn.py   offline tests of the learning loop (requests, pillow, numpy only)
 docs-check.yml (every push)          docs_check.py   fails if the docs drifted from the code
@@ -77,9 +81,9 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
-| `learn.py` | Weekly learning loop: measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
-| `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `value_at`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
-| `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `SLOT_STARTS`, `MAX_ATTEMPTS` |
+| `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
+| `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
+| `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `SLOT_STARTS`, `LEARN_START`, `MAX_ATTEMPTS` |
 | `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `review`, `post`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources) | `review`, `frames`, `SYSTEM`, `SCHEMA` |
@@ -186,7 +190,7 @@ Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching s
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT`, `FORCE_POST` (a real run skips when a reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`), `CLAUDE_MODEL`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -247,11 +251,16 @@ Automation around it:
 
 ## Learning loop
 
-`learn.py` runs every Sunday; `history.py` holds its files. Rules of thumb when changing it:
+`learn.py` runs daily by default (learn.yml, started by scheduler.py); `history.py` holds its files. Rules of thumb when changing it:
+- The loop runs daily by default (the creator's choice, 2026-09-29: daily until results are proven, then e.g.
+  `LEARN_DAYS=sun,wed`). It is safe to run any day: rule trials and tests are judged by dates and reel counts, new
+  rules are capped at 3 per 7 days, and yesterday's report is passed to the write-up.
 - Data lives in plain files in the repo, no database (the creator's choice, 2026-09-28): `metrics/<month>.jsonl` is
-  append-only, one line per post per weekly snapshot; a post is fetched until a snapshot at `history.SETTLED_DAYS`
-  (28) exists, then never again. Only the weekly job writes these files (never the daily runs), so commits never
-  collide. Move to Supabase Postgres only for a live dashboard, a second account or hourly numbers; the jsonl rows
+  append-only, one line per post per snapshot; `history.snapshot_due` reads a post every day for its first week
+  (`DAILY_DAYS`, to see how long it keeps getting views: `learn.views_curve`), then weekly until a snapshot at
+  `history.SETTLED_DAYS` (28) exists, then never again. A post is first read after `MIN_AGE_HOURS` (about a day)
+  and scored only from `SCORE_MIN_DAYS` (2). Only the learning job writes these files (never the daily runs), so
+  commits never collide. Move to Supabase Postgres only for a live dashboard, a second account or hourly numbers; the jsonl rows
   map one-to-one onto a table.
 - Reels are scored against the account's usual (median): `skip_vs_usual` (lower is better) and `watched_vs_usual`
   (share of the reel watched, from `seconds`). Views only at the same age (`views_7d`). `learn.clearly` decides:

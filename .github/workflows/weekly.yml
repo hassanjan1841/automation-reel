@@ -37,53 +37,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: python refresh_token.py
 
-  learn:
-    # Measure every post, judge the rules and the weekly test, write rules for the writer (rules.json ->
-    # learnings.md) and a report for the creator. The data files are only written here (see history.py).
-    needs: refresh-token
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-
-      - run: pip install requests pillow numpy
-
-      - name: Install Claude Code
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Learn from the week
-        env:
-          IG_TOKEN: ${{ secrets.IG_TOKEN }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          EXPERIMENT: ${{ vars.EXPERIMENT }}
-        run: python learn.py
-
-      - name: Save the rules and send the report
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -f out/report.md ]; then
-            gh issue create --title "Weekly reel report $(date -u +%Y-%m-%d)" --body-file out/report.md
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          for f in learnings.md rules.json experiments.json ideas.json metrics reports; do
-            if [ -e "$f" ]; then git add "$f"; fi
-          done
-          if git diff --cached --quiet; then echo 'No new learnings'; exit 0; fi
-          git commit -m 'Weekly learnings'
-          git pull --rebase origin ${{ github.ref_name }}
-          git push
-
   carousel:
     # The weekly cheat-sheet carousel (saves-driven), posted alongside the daily reel. A manual run posts it only
-    # when post_carousel is ticked, so the learning loop can be run by hand without posting.
-    needs: learn
+    # when post_carousel is ticked, so the token can be refreshed by hand without posting.
+    needs: refresh-token
     if: github.event_name == 'schedule' || inputs.post_carousel
     runs-on: ubuntu-latest
     timeout-minutes: 30

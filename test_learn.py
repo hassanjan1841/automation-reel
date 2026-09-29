@@ -104,8 +104,22 @@ class HistoryTest(Sandbox):
         self.assertEqual([s['views'] for s in posts['reel:1']], [10, 20])
         self.assertEqual(history.value_at(posts['reel:1'], 'views', 7), 20)
         self.assertIsNone(history.value_at(posts['reel:1'], 'views', 8))
+        self.assertEqual(history.value_at([{'age_days': 0.8, 'views': 5}], 'views', 1), 5)   # a quarter day early counts
+        self.assertIsNone(history.value_at([{'age_days': 0.7, 'views': 5}], 'views', 1))
         self.assertFalse(history.settled(posts['reel:1']))
         self.assertTrue(history.settled([{'age_days': history.SETTLED_DAYS}]))
+
+    def test_snapshot_cadence(self):
+        day = date(2026, 10, 20)
+        snap = lambda d, age: {'date': d.isoformat(), 'age_days': age}
+        self.assertTrue(history.snapshot_due([], 1.0, day))
+        self.assertFalse(history.snapshot_due([snap(day, 1.0)], 1.1, day))              # never twice a day
+        self.assertTrue(history.snapshot_due([snap(day - timedelta(days=1), 3.0)], 4.0, day))   # daily in week one
+        self.assertTrue(history.snapshot_due([snap(day - timedelta(days=1), 7.0)], 8.0, day))
+        self.assertFalse(history.snapshot_due([snap(day - timedelta(days=3), 9.0)], 12.0, day))  # then weekly
+        self.assertTrue(history.snapshot_due([snap(day - timedelta(days=7), 9.0)], 16.0, day))
+        self.assertTrue(history.snapshot_due([], 16.0, day))                            # never read: read now
+        self.assertFalse(history.snapshot_due([snap(day - timedelta(days=9), 28.0)], 37.0, day))  # settled
 
     def test_rules_and_learnings(self):
         rules = [{'id': 1, 'text': 'A', 'status': 'trial'}, {'id': 2, 'text': 'B', 'status': 'kept'},
@@ -126,10 +140,11 @@ class HistoryTest(Sandbox):
 
     def test_reports(self):
         self.assertEqual(history.week_name(date(2026, 10, 4)), '2026-W40')
-        history.save_report(date(2026, 9, 27), 'old')
+        history.save_report(date(2026, 10, 3), 'old')
         history.save_report(date(2026, 10, 4), 'new')
+        self.assertEqual(sorted(p.name for p in (self.tmp / 'reports').iterdir()), ['2026-10-03.md', '2026-10-04.md'])
         self.assertEqual(history.last_report(date(2026, 10, 4)), 'old\n')
-        self.assertEqual(history.last_report(date(2026, 9, 27)), '')
+        self.assertEqual(history.last_report(date(2026, 10, 3)), '')
 
     def test_defaults_without_files(self):
         self.assertEqual(history.rules(), [])
@@ -444,7 +459,7 @@ class MeasureTest(Sandbox):
         super().tearDown()
 
     def test_measure(self):
-        reels = [reel(1, self.now - timedelta(hours=30)),                      # too new
+        reels = [reel(1, self.now - timedelta(hours=10)),                      # too new (first read after ~a day)
                  reel(2, self.now - timedelta(days=3), dm_keyword='MCP'),      # measured, keyword counted
                  reel(3, self.now - timedelta(days=40)),                        # already settled
                  {**reel(4, self.now - timedelta(days=5)), 'media_id': None}]   # never published
@@ -549,6 +564,24 @@ class ScoreTest(Sandbox):
         self.assertEqual(set(summary), set(learn.GROUP_FIELDS))
         self.assertEqual(summary['test']['hook_style: question']['reels'], 1)
         json.dumps(summary)
+
+    def test_views_curve(self):
+        s = [{'date': '2026-10-02', 'age_days': 1.0, 'views': 100}, {'date': '2026-10-04', 'age_days': 3.0, 'views': 150},
+             {'date': '2026-10-08', 'age_days': 7.0, 'views': 200}]
+        self.assertEqual(learn.views_curve(s), {'views_1d': 100, 'views_3d': 150, 'views_7d': 200, 'late_views': 0.5})
+        self.assertEqual(learn.views_curve(s[:2])['late_views'], None)
+        rows = [{**row(i, date(2026, 10, 1), 0), 'hook': 'H', 'views_1d': 100, 'views_3d': 150, 'views_7d': 200,
+                 'late_views': 0.5} for i in range(3)]
+        text = learn.views_life(rows)
+        self.assertIn('100 views on day 1, 150 by day 3, 200 by day 7; 50% of a week', text)
+        self.assertEqual(learn.views_life([row(1, date(2026, 10, 1), 0)]), '')
+
+    def test_young_reels_are_not_the_usual(self):
+        t0 = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
+        snaps = [{'date': '2026-09-05', 'kind': 'reel', 'id': i, 'age_days': a, 'reels_skip_rate': sk}
+                 for i, a, sk in ((1, 4, 60), (2, 4, 70), (3, 1.0, 99))]
+        _, usual = learn.table([reel(i, t0) for i in (1, 2, 3)], [], history.by_post(snaps))
+        self.assertEqual(usual['skip_rate'], 65)
 
     def test_verdict_and_clearly(self):
         day = date(2026, 9, 1)
@@ -706,6 +739,18 @@ class JudgeTest(Sandbox):
         self.assertEqual(accepted, [])
         self.assertIn('longer than', dropped[0][1])
 
+    def test_new_rules_capped_per_week_not_per_run(self):
+        ev = [{'field': 'hook_word', 'better': '3D word', 'worse': 'text only'}]
+        recent = [{'id': i, 'text': f'Recent {i}', 'status': 'trial', 'source': 'weekly',
+                   'since': (self.today - timedelta(days=i)).isoformat()} for i in (1, 2)]
+        accepted, dropped = learn.check_new_rules([{'text': f'New {i}', 'evidence': ev} for i in range(3)], self.summary(),
+                                                  recent, self.today)
+        self.assertEqual(len(accepted), 1)
+        self.assertIn('at most 3 new a week', dropped[0][1])
+        old = [{**r, 'since': (self.today - timedelta(days=8)).isoformat()} for r in recent]
+        self.assertEqual(len(learn.check_new_rules([{'text': f'New {i}', 'evidence': ev} for i in range(3)],
+                                                   self.summary(), old, self.today)[0]), 3)
+
     def test_rule_caps(self):
         ev = [{'field': 'hook_word', 'better': '3D word', 'worse': 'text only'}]
         many = [{'text': f'Rule {i}', 'evidence': ev} for i in range(5)]
@@ -770,7 +815,7 @@ class ClaudeTest(Sandbox):
             learn.write_up(rows, {'slot': {}}, [{'text': 'R', 'status': 'trial', 'since': 'x', 'verdict': ''}], 'T',
                            [{'topic': 'I'}], 'O', 'LAST')
         prompt = c.call_args[0][0]
-        for part in ('"skip_vs_usual": -1', 'R', 'The weekly test: T', 'I', 'O', 'LAST', generate.SYSTEM[:200]):
+        for part in ('"skip_vs_usual": -1', 'R', 'The running test: T', 'I', 'O', 'LAST', generate.SYSTEM[:200]):
             self.assertIn(part, prompt)
         self.assertNotIn('media_id', prompt)
 
@@ -818,14 +863,16 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
-    def run_scheduler(self, now, reels, daily, weekly, argv=()):
+    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days=''):
+        learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
+        os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
 
         def gh(*args):
             calls.append(args)
             if args[:2] == ('run', 'list'):
-                return json.dumps(daily if args[3] == 'daily-reel.yml' else weekly)
+                return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned}[args[3]])
             return ''
 
         class Now(datetime):
@@ -851,8 +898,30 @@ class SchedulerTest(Sandbox):
         self.assertIn(('workflow', 'run', 'weekly.yml', '-f', 'post_carousel=true'), started)
         self.assertEqual(self.run_scheduler(at(10, 40, sunday), [], [], [run(at(10, 3, sunday))]), [])
 
+    def test_learn_days(self):
+        self.assertEqual(scheduler.learn_days(''), set(range(7)))
+        self.assertEqual(scheduler.learn_days('daily'), set(range(7)))
+        self.assertEqual(scheduler.learn_days('sun,wed'), {6, 2})
+        self.assertEqual(scheduler.learn_days('Sunday, Wednesday'), {6, 2})
+        self.assertRaises(SystemExit, scheduler.learn_days, 'someday')
+
+    def test_due_learn(self):
+        every = set(range(7))
+        self.assertTrue(scheduler.due_learn(at(6, 5), [], every))
+        self.assertFalse(scheduler.due_learn(at(5, 59), [], every))
+        self.assertFalse(scheduler.due_learn(at(6, 5), [run(at(6, 1))], every))
+        self.assertFalse(scheduler.due_learn(at(6, 5), [], {6}))  # 2026-09-28 is a Monday
+
+    def test_main_starts_the_learning_run(self):
+        self.assertEqual(self.run_scheduler(at(6, 20), [], [], [], learned=[]), [('workflow', 'run', 'learn.yml')])
+        self.assertEqual(self.run_scheduler(at(6, 20), [], [], [], learned=[], learn_days='sun,wed'), [])
+        self.assertEqual(self.run_scheduler(at(6, 20), [], [], [], learned=[], argv=['--dry']), [])
+        yesterday = run(datetime(2026, 9, 27, 6, 10, tzinfo=timezone.utc))
+        self.assertEqual(self.run_scheduler(at(6, 20), [], [], [], learned=[yesterday]), [('workflow', 'run', 'learn.yml')])
+
     def test_workflow(self):
         text = (ROOT / '.github/workflows/scheduler.yml').read_text()
+        self.assertIn('LEARN_DAYS: ${{ vars.LEARN_DAYS }}', text)
         for part in ('actions: write', 'GH_TOKEN: ${{ github.token }}', 'run: python scheduler.py', 'workflow_dispatch'):
             self.assertIn(part, text)
         daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
@@ -875,7 +944,7 @@ class OutageTest(Sandbox):
             learn.main()
         text = (self.tmp / 'out' / 'report.md').read_text()
         self.assertIn('The write-up was unavailable', text)
-        self.assertIn('## This week vs last week', text)
+        self.assertIn('## Last 7 days vs the 7 before', text)
         self.assertEqual(len(history.snapshots()), 8)
         self.assertEqual([r['text'] for r in history.rules()], ['Old rule'])
         self.assertEqual(history.experiments()['active']['name'], 'hook_style')
@@ -898,8 +967,8 @@ class ReportTest(Sandbox):
 
 class WorkflowTest(unittest.TestCase):
     def test_commit_step_stages_every_existing_file(self):
-        """The weekly job's `git add` loop: a missing file must not stop the others from being committed."""
-        text = (ROOT / '.github/workflows/weekly.yml').read_text()
+        """The learning job's `git add` loop: a missing file must not stop the others from being committed."""
+        text = (ROOT / '.github/workflows/learn.yml').read_text()
         loop = re.search(r'( *for f in learnings\.md.*?\n *done\n)', text, re.S).group(1)
         with tempfile.TemporaryDirectory() as tmp:
             run = lambda *a: subprocess.run(a, cwd=tmp, capture_output=True, text=True, check=True)
@@ -919,16 +988,23 @@ class WorkflowTest(unittest.TestCase):
         self.assertRegex(text, r'post_carousel:\n(.*\n){2}\s+default: false')
 
     def test_learn_job_installs_what_learn_imports(self):
-        text = (ROOT / '.github/workflows/weekly.yml').read_text()
-        job = text.split('  learn:')[1].split('\n  carousel:')[0]
-        self.assertIn('pip install requests pillow numpy', job)
+        text = (ROOT / '.github/workflows/learn.yml').read_text()
+        self.assertIn('pip install requests pillow numpy', text)
+        self.assertIn('run: python learn.py', text)
+        self.assertNotIn('learn.py', (ROOT / '.github/workflows/weekly.yml').read_text())  # it moved to learn.yml
+
+    def test_one_issue_a_week(self):
+        text = (ROOT / '.github/workflows/learn.yml').read_text()
+        for part in ('title="Reel reports $(date -u +%G-W%V)"', 'gh issue comment "$number"', 'gh issue create --title "$title"'):
+            self.assertIn(part, text)
 
 
 # ---------- the whole loop, six weeks ----------
 
 class SimulationTest(Sandbox):
-    """Three reels a day for six weeks, posted under whatever test is running, measured and judged every Sunday by
-    learn.main against a fake Instagram in which question hooks really do hold viewers better."""
+    """Three reels a day for six weeks, posted under whatever test is running, measured and judged every morning by
+    learn.main (the daily default) against a fake Instagram in which question hooks really do hold viewers better
+    and views keep growing for a month."""
 
     EFFECT = {'question': -5.0, 'statement': 5.0}
 
@@ -945,15 +1021,18 @@ class SimulationTest(Sandbox):
     def test_six_weeks(self):
         (self.tmp / 'learnings.md').write_text('# What holds our viewers\n\n- Old rule one\n- Old rule two\n')
         start = datetime(2026, 10, 5, tzinfo=timezone.utc)  # a Monday
-        reels, carousels, reports = [], [], []
+        reels, carousels, calls_per_day = [], [], {}
         ig = FakeInstagram(self.metrics)
         self.by_media = {}
-        proposals = iter([[], [{'text': 'Keep hooks under seven words',
-                                'evidence': [{'field': 'slot', 'better': 'slot 1', 'worse': 'slot 3'}]}]] + [[]] * 10)
+        asked = {'n': 0}
 
         def fake_claude(prompt, system, schema, **kw):
             if system == learn.SYSTEM:
-                return {'new_rules': next(proposals), 'summary': 'All good.', 'decision': 'none this week'}
+                asked['n'] += 1
+                slot_rule = [{'text': 'Keep hooks under seven words',
+                              'evidence': [{'field': 'slot', 'better': 'slot 1', 'worse': 'slot 3'}]}]
+                return {'new_rules': slot_rule if asked['n'] == 5 else [], 'summary': 'All good.',
+                        'decision': 'none this time'}
             if system == learn.IDEAS_SYSTEM:
                 return {'ideas': [{'topic': 'Supabase auth', 'asked': 2}]}
             return {'observations': 'Short hooks.'}
@@ -962,15 +1041,17 @@ class SimulationTest(Sandbox):
         for day in range(42):
             when = start + timedelta(days=day)
             self.now = when + timedelta(hours=10)
-            if when.weekday() == 6:  # Sunday: the weekly job, before that day's posts
-                render.QUEUE.write_text(json.dumps(reels))
-                learn.CAROUSELS.write_text(json.dumps(carousels))
-                before = len(ig.calls)
-                with mock.patch.object(learn, 'utcnow', return_value=self.now), \
-                        mock.patch.object(learn.requests, 'get', ig.get), mock.patch.object(dm, 'comments', comments), \
-                        mock.patch.object(learn, 'claude', fake_claude), mock.patch.dict(os.environ, {'IG_TOKEN': 't'}):
-                    learn.main()
-                reports.append((when.date(), len(ig.calls) - before))
+            # Every morning: the learning loop, before that day's posts.
+            render.QUEUE.write_text(json.dumps(reels))
+            learn.CAROUSELS.write_text(json.dumps(carousels))
+            before = len(ig.calls)
+            with mock.patch.object(learn, 'utcnow', return_value=self.now), \
+                    mock.patch.object(learn.requests, 'get', ig.get), mock.patch.object(dm, 'comments', comments), \
+                    mock.patch.object(learn, 'claude', fake_claude), mock.patch.dict(os.environ, {'IG_TOKEN': 't'}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                learn.main()
+            calls_per_day[when.date()] = len(ig.calls) - before
+            if when.weekday() == 6:
                 carousels.append({'title': f'Carousel {day}', 'media_id': f'c{day}',
                                   'posted_at': (when + timedelta(hours=10, minutes=30)).isoformat()})
                 self.by_media[f'c{day}'] = {'id': f'c{day}', 'posted_at': carousels[-1]['posted_at']}
@@ -994,35 +1075,49 @@ class SimulationTest(Sandbox):
         proven = [r for r in rules if r['source'] == 'experiment']
         self.assertEqual([r['status'] for r in proven], ['kept'])
         self.assertIn(generate.EXPERIMENTS['hook_style']['question'][0] + ' (proven)', (self.tmp / 'learnings.md').read_text())
-        # Each next test started on its own the same Sunday, and the reels written while it ran carry it. The fake
-        # Instagram gives length and numbers no effect, so those tests find none; then every test has run.
+        # Each next test started on its own, and the reels written while it ran carry it. The fake Instagram gives
+        # length and numbers no effect, so those tests find none; then every test has run.
         self.assertEqual([d['name'] for d in exp['done']], list(generate.EXPERIMENTS))
         self.assertTrue(all('no clear difference' in d['result'] for d in exp['done'][1:]), exp['done'])
-        for d in exp['done']:
+        for i, d in enumerate(exp['done']):
             during = [r for r in reels if d['since'] <= r['posted_at'][:10] < d['until']]
             self.assertTrue(during and all(r['test']['name'] == d['name'] for r in during), d)
-            self.assertEqual(exp['done'][exp['done'].index(d) - 1]['until'] if exp['done'].index(d) else d['since'], d['since'])
+            if i:
+                self.assertEqual(exp['done'][i - 1]['until'], d['since'])
         self.assertIsNone(exp['active'])
         self.assertNotIn('test', reels[-1])
-        # A proposed rule with no clear evidence behind it never reached the writer.
+        # A proposed rule resting on the posting slot never reached the writer.
         self.assertNotIn('Keep hooks under seven words', (self.tmp / 'learnings.md').read_text())
-        # One report per Sunday, saved and readable.
-        saved = sorted(p.name for p in (self.tmp / 'reports').iterdir())
-        self.assertEqual(len(saved), len(reports))  # even the first Sunday: Monday to Friday's reels are 48h+ old
-        last = (self.tmp / 'reports' / saved[-1]).read_text()
-        for heading in ('## This week vs last week', '## Best and worst openings', '## Carousels', "## This week's test",
-                        '## Rules', '## What people asked for', '## Summary', '## One decision for you'):
+        # One report a day once there were reels two days old to score, saved and readable.
+        saved = sorted(p.stem for p in (self.tmp / 'reports').iterdir())
+        first = date.fromisoformat(saved[0])
+        self.assertEqual(saved, [(first + timedelta(days=i)).isoformat() for i in range((date(2026, 11, 15) - first).days + 1)])
+        self.assertLessEqual(first, date(2026, 10, 8))
+        last = (self.tmp / 'reports' / f'{saved[-1]}.md').read_text()
+        for heading in ('## Last 7 days vs the 7 before', '## How long reels keep getting views', '## Best and worst openings',
+                        '## Carousels', '## The running test', '## Rules', '## What people asked for', '## Summary',
+                        '## One decision for you'):
             self.assertIn(heading, last)
-        self.assertIn('Keep hooks under seven words (no clear difference', last + (self.tmp / 'reports' / saved[0]).read_text()
-                      + ''.join((self.tmp / 'reports' / s).read_text() for s in saved))
+        everything = ''.join((self.tmp / 'reports' / f'{s}.md').read_text() for s in saved)
+        self.assertIn('Keep hooks under seven words (no clear difference', everything)
         self.assertEqual((self.tmp / 'out' / 'report.md').read_text(), last)
-        # Snapshots went to monthly files, and settled posts stopped costing API calls.
+        # Snapshots: daily for a post's first week, then weekly, until it settled; monthly files.
         files = sorted(p.name for p in (self.tmp / 'metrics').iterdir())
         self.assertEqual(files, ['2026-10.jsonl', '2026-11.jsonl'])
         posts = history.by_post()
-        first = posts['reel:1']
-        self.assertTrue(history.settled(first))
-        self.assertEqual(sum(s['age_days'] >= history.SETTLED_DAYS for s in first), 1)
+        first_reel = posts['reel:1']
+        ages = [s['age_days'] for s in first_reel]
+        self.assertEqual(sum(a <= history.DAILY_DAYS + 1 for a in ages), 8)          # days 1 to 8, every day
+        self.assertTrue(all(round(b - a, 1) >= 7 for a, b in zip(ages[8:], ages[9:])), ages)   # then weekly
+        self.assertTrue(history.settled(first_reel))
+        self.assertEqual(sum(a >= history.SETTLED_DAYS for a in ages), 1)
+        # The curve shows reels still gaining views after day 1 in this fake account.
+        row_1 = learn.views_curve(first_reel)
+        self.assertTrue(row_1['views_1d'] < row_1['views_3d'] < row_1['views_7d'], row_1)
+        # Daily reading stays cheap: well under what reading every post every day would cost.
+        late = calls_per_day[date(2026, 11, 15)]
+        every_post_every_day = len(history.by_post()) * len(learn.REEL_METRICS)
+        self.assertLess(late, every_post_every_day / 2, (late, every_post_every_day))
         self.assertEqual(json.loads((self.tmp / 'ideas.json').read_text())[0]['topic'], 'Supabase auth')
 
 

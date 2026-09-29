@@ -30,4 +30,5 @@ jobs:
       - name: Start what is due
         env:
           GH_TOKEN: ${{ github.token }}
+          LEARN_DAYS: ${{ vars.LEARN_DAYS }}
         run: python scheduler.py
