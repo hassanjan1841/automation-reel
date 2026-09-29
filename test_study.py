@@ -217,7 +217,8 @@ class Auto(unittest.TestCase):
         found = [self.pick('seen', 99, 'x'), self.pick('big', 50, 'new'), self.pick('big2', 40, 'new'),
                  self.pick('small', 2, 'small')]
         with mock.patch.object(study, 'search', side_effect=[found, [], []]) as search, \
-                mock.patch.object(study, 'channel_outliers', return_value=[self.pick('w1', 8, 'watched', 'channel')]) as co:
+                mock.patch.object(study, 'channel_outliers', return_value=[self.pick('w1', 8, 'watched', 'channel')]) as co, \
+                mock.patch.object(study, 'relevant', side_effect=lambda picks: picks):
             picks = study.auto_picks('k', date(2026, 10, 4), top=3)
         self.assertEqual(search.call_count, study.AUTO_TOPICS)
         co.assert_called_once_with('watched', 'k')
@@ -229,12 +230,30 @@ class Auto(unittest.TestCase):
         study.CHANNELS.write_text(json.dumps({f'c{i}': {'title': 't', 'added': f'2026-09-{i + 1:02d}', 'outlier': 5}
                                               for i in range(study.MAX_CHANNELS)}))
         with mock.patch.object(study, 'search', side_effect=[[self.pick('n', 30, 'newest')], [], []]), \
-                mock.patch.object(study, 'channel_outliers', return_value=[]):
+                mock.patch.object(study, 'channel_outliers', return_value=[]), \
+                mock.patch.object(study, 'relevant', side_effect=lambda picks: picks):
             study.auto_picks('k', date(2026, 10, 4))
         watch = json.loads(study.CHANNELS.read_text())
         self.assertEqual(len(watch), study.MAX_CHANNELS)
         self.assertIn('newest', watch)
         self.assertNotIn('c0', watch)  # the oldest made room
+
+    def test_off_topic_is_dropped(self):
+        study.CHANNELS.write_text(json.dumps({'gaming': {'title': 'G', 'added': '2026-09-01', 'outlier': 30}}))
+        found = [self.pick('dev', 20, 'dev'), self.pick('game', 90, 'games')]
+        with mock.patch.object(study, 'search', side_effect=[found, [], []]), \
+                mock.patch.object(study, 'channel_outliers', return_value=[self.pick('g1', 50, 'gaming', 'channel')]), \
+                mock.patch.object(study, 'claude', return_value={'relevant': [1]}) as claude:
+            picks = study.auto_picks('k', date(2026, 10, 4))
+        self.assertIn('[2] game (channel: Games)', claude.call_args[0][0])
+        self.assertEqual([p['title'] for p in picks], ['dev'])
+        self.assertEqual(set(json.loads(study.CHANNELS.read_text())), {'dev'})  # the gaming channel left, games never joined
+
+    def test_relevance_unavailable_keeps_all(self):
+        found = [self.pick('a', 9, 'a'), self.pick('b', 8, 'b')]
+        with mock.patch.object(study, 'claude', side_effect=RuntimeError('down')), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(study.relevant(found), found)
+        self.assertEqual(study.relevant([]), [])
 
     def test_digest_counts_itself(self):
         self.assertEqual(study.digest('.'), '')  # fewer than 3 studies: nothing to sum up
