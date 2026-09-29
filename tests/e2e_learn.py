@@ -1,11 +1,11 @@
-"""End-to-end run of the weekly learning loop with the real Claude CLI and a fake Instagram.
+"""End-to-end run of the learning loop with the real Claude CLI and a fake Instagram.
 
-Four weeks of reels (three a day, under the running test, with a real effect: question hooks hold viewers better)
-and a carousel are "posted", then learn.main runs every Sunday exactly as in the weekly job: real Claude writes the
+Some days of reels (three a day, under the running test, with a real effect: question hooks hold viewers better)
+and a carousel are "posted", then learn.main runs every morning exactly as in the learning job: real Claude writes the
 rules and the report, extracts comment topics and looks at real cover images. Everything is written to a temp
 folder; the repo's own files are never touched. Needs the claude CLI logged in; no Instagram, no network otherwise.
 
-Usage: .venv/bin/python tests/e2e_learn.py [weeks]     prints each report, exit 1 if a check fails
+Usage: .venv/bin/python tests/e2e_learn.py [days]     default 10 days; prints each report, exit 1 if a check fails
 """
 
 import json
@@ -47,7 +47,7 @@ def cover(text, dark):
 
 
 def main():
-    weeks = int(sys.argv[1]) if len(sys.argv) > 1 else 4
+    days = int(sys.argv[1]) if len(sys.argv) > 1 else 10
     tmp = Path(tempfile.mkdtemp(prefix='e2e-learn-'))
     patches = [mock.patch.object(history, n, tmp / f) for n, f in (
         ('METRICS', 'metrics'), ('RULES', 'rules.json'), ('EXPERIMENTS', 'experiments.json'), ('IDEAS', 'ideas.json'),
@@ -88,22 +88,26 @@ def main():
         return SimpleNamespace(ok=True, json=lambda: {'thumbnail_url': f'https://cdn.example/{media}.jpg'})
 
     failures = []
-    for day in range(weeks * 7):
+    for day in range(days):
         when = start + timedelta(days=day)
         now[0] = when + timedelta(hours=10)
-        if when.weekday() == 6:
+        if True:  # every morning, as the learning job runs by default
             render.QUEUE.write_text(json.dumps(reels))
             learn.CAROUSELS.write_text(json.dumps(carousels))
             with mock.patch.object(learn, 'utcnow', return_value=now[0]), mock.patch.object(learn.requests, 'get', fake_get), \
                     mock.patch.object(dm, 'comments', lambda media, token: [{'text': c} for c in COMMENTS]), \
                     mock.patch.dict(os.environ, {'IG_TOKEN': 'fake'}):
                 learn.main()
-            text = (tmp / 'out' / 'report.md').read_text() if (tmp / 'out' / 'report.md').exists() else ''
-            for heading in ('## Summary', '## One decision for you', "## This week's test", '## Rules'):
-                if heading not in text:
-                    failures.append(f'{when.date()}: report has no {heading}')
-            if 'write-up was unavailable' in text:
-                failures.append(f'{when.date()}: the real Claude write-up failed')
+            saved = tmp / 'reports' / f'{when.date().isoformat()}.md'
+            if saved.exists():  # the first days have no reel two days old yet, so no report
+                text = saved.read_text()
+                print(f'--- report {when.date()} ---\n{text}')
+                for heading in ('## Summary', '## One decision for you', '## The running test', '## Rules',
+                                '## Last 7 days vs the 7 before'):
+                    if heading not in text:
+                        failures.append(f'{when.date()}: report has no {heading}')
+                if 'write-up was unavailable' in text:
+                    failures.append(f'{when.date()}: the real Claude write-up failed')
         for slot, hour in ((1, 12), (2, 16), (3, 20)):
             os.environ['SLOT'] = str(slot)
             test = generate.experiment_today(when.date())
@@ -132,6 +136,10 @@ def main():
             failures.append(f"rule without evidence reached the writer: {r['text']}")
         if learn.HARD_RULES.search(r['text']) and r['source'] != 'imported':
             failures.append(f"rule touching the hard rules: {r['text']}")
+    if not (tmp / 'reports').exists():
+        failures.append('no report was written')
+    if days >= 8 and 'How long reels keep getting views' not in ''.join(p.read_text() for p in (tmp / 'reports').glob('*.md')):
+        failures.append('no views curve after a week of daily readings')
     if not history.ideas():
         failures.append('no topic ideas from the comments')
     for p in reversed(patches):

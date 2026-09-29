@@ -1,9 +1,11 @@
-"""Weekly learning loop: measure how every post did, judge the writer's rules and this week's test, and turn what
-the numbers show into rules the daily writer follows (learnings.md) plus a report for the creator.
+"""The learning loop: measure how every post did, judge the writer's rules and the running test, and turn what
+the numbers show into rules the daily writer follows (learnings.md) plus a report for the creator. It runs every
+day by default (learn.yml, started by scheduler.py; repo variable LEARN_DAYS picks the days, e.g. "sun,wed").
 
 Each run:
-  1. measure    reads each post's Instagram numbers once a week until they settle (history.SETTLED_DAYS) and
-                appends them to metrics/ (history.py); keyword comments and comment topics are read too
+  1. measure    reads each post's Instagram numbers every day for its first week, then weekly until they settle
+                (history.snapshot_due), and appends them to metrics/ (history.py); keyword comments and comment
+                topics are read too; the daily readings show how long a reel keeps getting views
   2. score      every reel against the account's usual (median) skip rate and share of the reel watched, by
                 pillar, series, visual, 3D, slot and test option; views are compared at the same age (7 days)
   3. judge      rules on trial for 2 weeks are compared with the reels before them: kept, retired or still on trial;
@@ -13,8 +15,8 @@ Each run:
   5. report     reports/<week>.md and out/report.md (the workflow opens a GitHub issue with it)
 
 Env: IG_TOKEN, CLAUDE_CODE_OAUTH_TOKEN (write-up, comment topics and the look at the covers), CLAUDE_MODEL,
-     GRAPH_VERSION, EXPERIMENT=off (no weekly test)
-Usage: python learn.py            the weekly run
+     GRAPH_VERSION, EXPERIMENT=off (no test running)
+Usage: python learn.py            one run of the loop
 """
 
 import json
@@ -44,15 +46,17 @@ CAROUSELS = render.ROOT / 'carousels.json'
 REEL_METRICS = ('views', 'reach', 'reels_skip_rate', 'ig_reels_avg_watch_time', 'saved', 'shares', 'likes',
                 'comments', 'follows', 'profile_visits')
 CAROUSEL_METRICS = ('views', 'reach', 'saved', 'shares', 'likes', 'comments', 'follows', 'profile_visits')
-# Insights settle over about two days; newer posts would look worse than they are.
-MIN_AGE_HOURS = 48
+# A post is first measured about a day after it went out (views at day 1); it is scored against the others only
+# from two days old, when skip rate and watch time have settled.
+MIN_AGE_HOURS = 20
+SCORE_MIN_DAYS = 2
 MIN_EVIDENCE = 5            # reels on each side of any comparison before it can become or judge a rule
 CLEAR_SKIP = 2.0            # skip rate points that count as a real difference
 CLEAR_WATCHED = 0.05        # share of the reel watched that counts as a real difference
 RULE_TRIAL_DAYS = 14        # a new rule is judged after this long
 RULE_GIVE_UP_DAYS = 28      # still no clear effect by then: retired, so the writer's prompt stays short
 MAX_ACTIVE_RULES = 10
-MAX_NEW_RULES = 3
+MAX_NEW_RULES = 3           # per 7 days, however often the loop runs
 MAX_RULE_WORDS = 30         # a rule is one short instruction; the writer's prompt stays short
 EXPERIMENT_MAX_DAYS = 21    # a test that cannot get enough reels in 3 weeks ends without a verdict
 IDEA_DAYS = 14              # comments on posts from the last two weeks become topic ideas
@@ -97,11 +101,13 @@ def age_hours(entry, now):
 
 
 def measure(reels, carousels, token, stored):
-    """New snapshots for posts old enough and not yet settled, and the text of recent comments (for topic ideas)."""
+    """New snapshots for posts that are due one (history.snapshot_due), and the text of recent comments (for topic
+    ideas)."""
     now, rows, texts = utcnow(), [], []
     for kind, post_id, entry in posts(reels, carousels):
         hours = age_hours(entry, now)
-        if hours < MIN_AGE_HOURS or history.settled(stored.get(history.key(kind, post_id), [])):
+        if hours < MIN_AGE_HOURS or not history.snapshot_due(stored.get(history.key(kind, post_id), []), hours / 24,
+                                                                  now.date()):
             continue
         names = REEL_METRICS if kind == 'reel' else CAROUSEL_METRICS
         row = {'date': now.date().isoformat(), 'kind': kind, 'id': post_id, 'media_id': entry['media_id'],
@@ -150,6 +156,14 @@ def median(values):
     return statistics.median(values) if values else None
 
 
+def views_curve(post_snapshots):
+    """Views at 1, 3 and 7 days old, and the share of the first week's views that came after day 1 (how long a reel
+    kept being shown)."""
+    v1, v3, v7 = (history.value_at(post_snapshots, 'views', d) for d in (1, 3, 7))
+    return {'views_1d': v1, 'views_3d': v3, 'views_7d': v7,
+            'late_views': round((v7 - v1) / v7, 3) if v1 is not None and v7 else None}
+
+
 def table(reels, carousels, snaps):
     """One row per measured post from its latest snapshot, reels scored against the account's usual."""
     rows = []
@@ -159,7 +173,7 @@ def table(reels, carousels, snaps):
             continue
         latest = {k: v for k, v in s[-1].items() if k not in ('date', 'kind', 'id', 'media_id')}
         row = {'kind': kind, 'id': post_id, 'media_id': entry['media_id'], 'posted_at': entry['posted_at'][:16],
-               **latest, 'views_7d': history.value_at(s, 'views', 7)}
+               **latest, **views_curve(s)}
         if kind == 'reel':
             watch = latest.get('ig_reels_avg_watch_time')
             seconds = entry.get('seconds')
@@ -174,8 +188,10 @@ def table(reels, carousels, snaps):
             row['title'] = entry.get('title', '')
         rows.append(row)
     reel_rows = [r for r in rows if r['kind'] == 'reel']
-    usual_skip = median(r.get('reels_skip_rate') for r in reel_rows)
-    usual_watched = median(r.get('watched_share') for r in reel_rows)
+    # The usual is taken from reels at least SCORE_MIN_DAYS old; a day-old reel's numbers are still moving.
+    old = [r for r in reel_rows if r.get('age_days', 0) >= SCORE_MIN_DAYS]
+    usual_skip = median(r.get('reels_skip_rate') for r in old)
+    usual_watched = median(r.get('watched_share') for r in old)
     usual_watched = round(usual_watched, 3) if usual_watched is not None else None
     for r in reel_rows:
         r['skip_vs_usual'] = round(r['reels_skip_rate'] - usual_skip, 1) \
@@ -190,7 +206,7 @@ def mean(rows, key):
     return round(statistics.mean(vals), 3 if key in ('watched_share', 'watched_vs_usual') else 1) if vals else None
 
 
-STATS = ('skip_vs_usual', 'watched_vs_usual', 'reels_skip_rate', 'watched_share', 'views_7d', 'saved', 'shares',
+STATS = ('skip_vs_usual', 'watched_vs_usual', 'reels_skip_rate', 'watched_share', 'views_7d', 'late_views', 'saved', 'shares',
          'dm_asks', 'follows')
 
 
@@ -279,7 +295,7 @@ def run_experiment(exp, reel_rows, rules, today):
     """Conclude the running test when each option has enough reels (or after EXPERIMENT_MAX_DAYS) and start the
     next one. A clear winner becomes a proven rule. Returns (experiments, what to report)."""
     if os.environ.get('EXPERIMENT', '').strip() == 'off':
-        return exp, 'Weekly tests are switched off (EXPERIMENT=off).'
+        return exp, 'Tests are switched off (EXPERIMENT=off).'
     lines = []
     active = exp.get('active')
     if active and active['name'] in generate.EXPERIMENTS:
@@ -332,6 +348,8 @@ def check_new_rules(proposed, summary, rules, today):
     accepted, dropped = [], []
     known = {re.sub(r'\W+', ' ', r['text'].lower()).strip() for r in rules}
     room = max(0, MAX_ACTIVE_RULES - len(history.active(rules)))
+    this_week = sum(1 for r in rules if r.get('source') == 'weekly'
+                    and (today - datetime.fromisoformat(r['since']).date()).days < 7)
     for p in proposed:
         text, why = clean(p.get('text')), None
         if not text:
@@ -363,8 +381,8 @@ def check_new_rules(proposed, summary, rules, today):
                                  f"skip rate {diff[0]:+.1f} points")
             if not clear:
                 why = f'no clear difference between groups of {MIN_EVIDENCE}+ reels the writer controls behind it'
-            elif len(accepted) >= min(MAX_NEW_RULES, room):
-                why = 'too many rules already; the writer\'s prompt stays short'
+            elif len(accepted) >= min(MAX_NEW_RULES - this_week, room):
+                why = 'too many rules already (at most 3 new a week, 10 in all); the writer\'s prompt stays short'
         if why:
             dropped.append((text, why))
             continue
@@ -459,7 +477,9 @@ def review_openings(best, worst, token):
 SYSTEM = """You analyse an Instagram creator's own reel results and propose rules for the writer of the next reels.
 Lower skip rate (share of viewers who scroll away in the first 3 seconds) and a higher share of the reel watched
 are the main goals; saves, shares and keyword comments (dm_asks) come next. Each reel is scored against the account's
-usual: skip_vs_usual (negative is better) and watched_vs_usual (positive is better). Views are compared at 7 days old.
+usual: skip_vs_usual (negative is better) and watched_vs_usual (positive is better). Views are compared at 7 days old;
+views_1d, views_3d and late_views (the share of the first week's views that came after day 1) show how long a reel
+kept being shown by Instagram.
 The creator's hard rules come first; never suggest breaking them: no faces, people or animals on screen (no
 talking head), no music (sound effects and the AI voiceover only), halal and honest content (no invented results,
 stories or numbers), never Reddit. The reels are faceless: text slides, code, diffs, terminals, screenshots, screen
@@ -476,7 +496,8 @@ Return:
 - summary: a short, friendly summary for the creator in plain words: what worked, what did not, what the test
   showed, what changes next week. Say how many reels each claim rests on; say "early sign" below 5.
 - decision: one concrete change for the creator to approve (a setting such as THREE_D_CHANCE, a slot's format, a
-  series to drop), with the numbers behind it; or "none this week" when the numbers do not support one."""
+  series to drop), with the numbers behind it; or "none this time" when the numbers do not support one. The loop
+  runs daily: do not repeat yesterday's decision unless the numbers now make a stronger case."""
 
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['new_rules', 'summary', 'decision'],
           'properties': {'new_rules': {'type': 'array', 'items': {
@@ -489,7 +510,7 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['new_rul
 
 def write_up(rows, summary, rules, test, ideas, openings, last):
     keep = ('id', 'kind', 'hook', 'title', 'posted_at', 'pillar', 'series', 'visuals', 'hook_word', 'three_d',
-            'slot', 'test', 'seconds', 'age_days', 'views_7d', 'reels_skip_rate', 'skip_vs_usual', 'watched_share',
+            'slot', 'test', 'seconds', 'age_days', 'views_1d', 'views_3d', 'views_7d', 'late_views', 'reels_skip_rate', 'skip_vs_usual', 'watched_share',
             'watched_vs_usual', 'saved', 'shares', 'dm_asks', 'follows', 'profile_visits')
     prompt = ('Per-post results:\n' + json.dumps([{k: r[k] for k in keep if r.get(k) is not None} for r in rows],
                                                  ensure_ascii=False)
@@ -497,7 +518,7 @@ def write_up(rows, summary, rules, test, ideas, openings, last):
               + json.dumps(summary, indent=1, ensure_ascii=False)
               + '\n\nThe writer\'s rules now (status, since, verdict):\n'
               + json.dumps([{k: r[k] for k in ('text', 'status', 'since', 'verdict')} for r in rules], ensure_ascii=False)
-              + f'\n\nThe weekly test: {test}'
+              + f'\n\nThe running test: {test}'
               + ('\n\nTopics viewers asked for: ' + '; '.join(i['topic'] for i in ideas) if ideas else '')
               + (f'\n\nWhat the best openings share (from their covers): {openings}' if openings else '')
               + ('\n\nLast week\'s report:\n' + last[:3000] if last else '')
@@ -528,16 +549,30 @@ def fmt(value, kind=''):
 
 
 def week_table(reel_rows, today):
-    """This week's reels next to last week's, by post date."""
+    """The last 7 days' reels next to the 7 days before, by post date."""
     def pick(start, end):
         return [r for r in reel_rows if start <= posted_day(r) < end]
     this, last = pick(today - timedelta(days=7), today), pick(today - timedelta(days=14), today - timedelta(days=7))
-    lines = ['| | This week | Last week |', '| --- | --- | --- |', f'| Reels measured | {len(this)} | {len(last)} |']
+    lines = ['| | Last 7 days | The 7 before |', '| --- | --- | --- |', f'| Reels measured | {len(this)} | {len(last)} |']
     for label, key, kind in (('Skip rate', 'reels_skip_rate', 'pct'), ('Watch time', 'ig_reels_avg_watch_time', 'ms'),
                              ('Share of the reel watched', 'watched_share', 'share'),
                              ('Views at 7 days', 'views_7d', ''), ('Saves', 'saved', ''), ('Shares', 'shares', ''),
                              ('Keyword comments', 'dm_asks', '')):
         lines.append(f'| {label} (average) | {fmt(mean(this, key), kind)} | {fmt(mean(last, key), kind)} |')
+    return '\n'.join(lines)
+
+
+def views_life(rows):
+    """How long reels keep getting views: the average curve over the reels a week old, and the latest few."""
+    done = [r for r in rows if r.get('views_7d') is not None and r.get('views_1d') is not None]
+    if not done:
+        return ''
+    lines = [f"Reels a week old: {len(done)}. On average {fmt(mean(done, 'views_1d'))} views on day 1, "
+             f"{fmt(mean(done, 'views_3d'))} by day 3, {fmt(mean(done, 'views_7d'))} by day 7; "
+             f"{fmt(mean(done, 'late_views'), 'share')} of a week's views came after day 1."]
+    for r in sorted(done, key=lambda r: r['posted_at'])[-5:]:
+        lines.append(f"- #{r['id']} {r['hook']}: {fmt(r['views_1d'])} / {fmt(r.get('views_3d'))} / {fmt(r['views_7d'])} "
+                     f"(day 1 / 3 / 7)")
     return '\n'.join(lines)
 
 
@@ -550,10 +585,13 @@ def ranked(reel_rows):
 def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, openings, write):
     reel_rows = [r for r in rows if r['kind'] == 'reel']
     best, worst = ranked(reel_rows)
-    parts = [f'# Weekly reel report {history.week_name(today)}',
+    parts = [f'# Reel report {today.isoformat()}',
              f"Usual skip rate {fmt(usual['skip_rate'], 'pct')}, usual share watched {fmt(usual['watched_share'], 'share')} "
              f'({len(reel_rows)} reels measured).',
-             '## This week vs last week', week_table(reel_rows, today)]
+             '## Last 7 days vs the 7 before', week_table(reel_rows, today)]
+    life = views_life([r for r in rows if r['kind'] == 'reel'])
+    if life:
+        parts.append('## How long reels keep getting views\n' + life)
     if best:
         parts.append('## Best and worst openings')
         for label, group in (('Kept the most viewers', best), ('Lost the most viewers', worst)):
@@ -568,7 +606,7 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
         parts.append('## Carousels\n' + '\n'.join(
             f"- {r['title']}: {fmt(r.get('saved'))} saves, {fmt(r.get('shares'))} shares, {fmt(r.get('reach'))} reach, "
             f"{fmt(r.get('dm_asks'))} keyword comments" for r in carousels))
-    parts.append(f'## This week\'s test\n{test}')
+    parts.append(f'## The running test\n{test}')
     rule_lines = [f"- {status}: {r['text']} ({r['verdict']})" for status, r in changes]
     rule_lines += [f"- new, on trial: {r['text']} ({r['evidence']})" for r in accepted]
     rule_lines += [f'- not added: {text} ({why})' for text, why in dropped]
@@ -577,9 +615,9 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
                  + f"{counts['kept']} proven, {counts['trial']} on trial, {counts['retired']} retired.")
     if ideas:
         parts.append('## What people asked for\n' + '\n'.join(f"- {i['topic']} ({i['asked']})" for i in ideas))
-    parts.append('## Summary\n' + (clean(write.get('summary')) or 'The write-up was unavailable this week; the numbers above '
+    parts.append('## Summary\n' + (clean(write.get('summary')) or 'The write-up was unavailable this time; the numbers above '
                                                              'are complete.'))
-    parts.append('## One decision for you\n' + (clean(write.get('decision')) or 'None this week.'))
+    parts.append('## One decision for you\n' + (clean(write.get('decision')) or 'None this time.'))
     return '\n\n'.join(parts) + '\n'
 
 
@@ -596,7 +634,8 @@ def main():
     history.append_snapshots(new)
     print(f'Measured {len(new)} posts ({len(stored)} earlier snapshots kept)')
     rows, usual = table(reels, carousels, history.by_post(stored + new))
-    reel_rows = [r for r in rows if r['kind'] == 'reel' and r.get('skip_vs_usual') is not None]
+    reel_rows = [r for r in rows if r['kind'] == 'reel' and r.get('skip_vs_usual') is not None
+                 and r.get('age_days', 0) >= SCORE_MIN_DAYS]
     if len(reel_rows) < 2:
         print(f'Only {len(reel_rows)} reel(s) with settled numbers; nothing to learn yet')
         return

@@ -5,11 +5,11 @@ Claude sessions can read them, and a daily post never depends on a database bein
   rules.json              the writer's rules with their status (trial, kept, retired) and evidence
   experiments.json        the weekly test that is running and the ones that finished
   ideas.json              topics viewers asked for in comments (no names, no quotes)
-  reports/YYYY-Www.md     every weekly report
+  reports/YYYY-MM-DD.md   every report (the learning loop runs daily by default, see LEARN_DAYS)
   learnings.md            generated from the active rules in rules.json; the writers read this file
 
-Only the weekly job (learn.py) writes these, so the three daily runs, which commit reels.json, never collide
-with it. Standard library only.
+Only the learning job (learn.py, learn.yml) writes these, so the daily reel runs, which commit reels.json, never
+collide with it. Standard library only.
 
 Usage: python history.py    prints what is stored: snapshots, posts, rules by status, the running test
 """
@@ -17,6 +17,7 @@ Usage: python history.py    prints what is stored: snapshots, posts, rules by st
 import json
 import sys
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -29,6 +30,8 @@ LEARNINGS = ROOT / 'learnings.md'
 
 # A post whose numbers were read at this age has settled; it is not fetched from Instagram again.
 SETTLED_DAYS = 28
+# A post is measured every day for its first week (to see how long it keeps getting views), then weekly.
+DAILY_DAYS = 7
 
 
 def read_json(path, default):
@@ -82,10 +85,22 @@ def settled(post_snapshots):
     return any(s.get('age_days', 0) >= SETTLED_DAYS for s in post_snapshots)
 
 
+def snapshot_due(post_snapshots, age_days, day):
+    """Whether to read a post's numbers today: never twice on one day, never after it settled, every day in its
+    first week, then once a week."""
+    if settled(post_snapshots) or any(s['date'] == day.isoformat() for s in post_snapshots):
+        return False
+    if age_days <= DAILY_DAYS + 1 or not post_snapshots:
+        return True
+    last = date.fromisoformat(post_snapshots[-1]['date'])
+    return (day - last).days >= 7
+
+
 def value_at(post_snapshots, name, days):
-    """A metric from the first snapshot taken at least `days` old (views grow with age; compare like with like)."""
+    """A metric from the first snapshot taken at `days` old or later (views grow with age; compare like with like). A
+    reading taken up to a quarter day early counts, so the daily run at a fixed hour still gives "day 1"."""
     for s in post_snapshots:
-        if s.get('age_days', 0) >= days and isinstance(s.get(name), (int, float)):
+        if s.get('age_days', 0) >= days - 0.25 and isinstance(s.get(name), (int, float)):
             return s[name]
     return None
 
@@ -146,14 +161,14 @@ def week_name(day):
 
 def save_report(day, text):
     REPORTS.mkdir(exist_ok=True)
-    path = REPORTS / f'{week_name(day)}.md'
+    path = REPORTS / f'{day.isoformat()}.md'
     path.write_text(text.rstrip() + '\n')
     return path
 
 
 def last_report(before):
-    """The newest saved report from an earlier week, or ''."""
-    older = sorted(p for p in REPORTS.glob('*.md') if p.stem < week_name(before)) if REPORTS.exists() else []
+    """The newest saved report from an earlier day, or ''."""
+    older = sorted(p for p in REPORTS.glob('*.md') if p.stem < before.isoformat()) if REPORTS.exists() else []
     return older[-1].read_text() if older else ''
 
 

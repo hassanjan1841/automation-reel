@@ -34,8 +34,8 @@ STALE means the code moved: update it.
 
 ## 3. CI parity
 
-CI (`tests.yml`) and the weekly `learn` job install only `requests pillow numpy`. A new top-level import that needs
-more breaks the weekly run on Sunday, silently until then. Check it the same way:
+CI (`tests.yml`) and the learning job (`learn.yml`) install only `requests pillow numpy`. A new top-level import that
+needs more breaks the next day's learning run, silently until then. Check it the same way:
 
 ```bash
 python3.12 -m venv /tmp/ci && /tmp/ci/bin/pip install -q requests pillow numpy
@@ -44,7 +44,7 @@ python3.12 -m venv /tmp/ci && /tmp/ci/bin/pip install -q requests pillow numpy
 
 For a new env var: the workflow must pass it (`env:` with `${{ vars.X }}`), and README and the skill must name it
 (`docs_check.py` checks the docs, not the workflow wiring). For a new file a job writes: the job's `git add` must
-include it; `test_learn.py` checks the weekly job's loop.
+include it; `test_learn.py` checks the learning job's loop.
 
 ## 4. Real end-to-end runs for what you touched
 
@@ -54,7 +54,7 @@ Never post for real. These use temp copies of the data files and fake Instagram 
 | --- | --- |
 | The writer, validation, the weekly test, prompts (`generate.py`, `trends.py`) | `.venv/bin/python tests/e2e_writer.py` (real Claude writes a reel per test option; each must be valid and follow it) |
 | Publishing, rendering, visuals, 3D (`publish.py`, `render.py`, `visuals.py`, `scene3d.py`, `qa.py`) | `.venv/bin/python tests/e2e_publish.py`, then with `--reject`, and once with `--real-review`; look at frames (below) |
-| The learning loop (`learn.py`, `history.py`) | `.venv/bin/python tests/e2e_learn.py 4` (four weeks, real Claude for rules, report, comment topics and covers) |
+| The learning loop (`learn.py`, `history.py`) | `.venv/bin/python tests/e2e_learn.py 10` (ten days of daily runs, real Claude for rules, report, comment topics and covers) |
 | The carousel | `DRY_RUN=true .venv/bin/python carousel.py` |
 | The voice | `.venv/bin/python test_voice.py --audio` and `--verify` |
 | A workflow | Actions > Daily reel > Run workflow with `dry_run` on; read the log and the artifact |
@@ -96,7 +96,7 @@ Read `git diff` as a reviewer who wants to reject it:
 - Secrets: no token printed; new error paths redacted.
 - Every file a workflow must commit is in its `git add`; every new env var reaches the job.
 - Failure paths: what happens when Claude, Instagram or the network fails halfway? The daily post must still go
-  out; the weekly job must still save what it measured.
+  out; the learning job must still save what it measured.
 - Docs updated in the same change (`docs_check.py` passes and the words are true).
 
 ## 7. Report

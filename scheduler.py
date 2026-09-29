@@ -6,17 +6,21 @@ so this decides what should be running right now and starts it with workflow_dis
   running, start one for that slot (it waits for the post time itself, or posts right away when late). A slot
   whose window has passed is skipped, never posted late on top of the next one.
   Weekly: on Sunday from 10:00 UTC, if no Weekly run has started today, start one (it posts the carousel).
+  Learning: on each day in LEARN_DAYS (every day by default) from 06:00 UTC, if no Learning run has started today,
+  start learn.yml.
 
 Safe to run as often as you like: it only starts what is missing, and publish.py itself never posts a slot twice.
 Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any outside trigger that dispatches
 scheduler.yml. Standard library only; uses the gh CLI.
 
-Env: GH_TOKEN (Actions write), GITHUB_REPOSITORY
+Env: GH_TOKEN (Actions write), GITHUB_REPOSITORY, LEARN_DAYS (days the learning loop runs: empty or "daily" for
+     every day, or day names such as "sun,wed")
 Usage: python scheduler.py          start whatever is due
        python scheduler.py --dry    only print the decision
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, time, timezone
@@ -27,6 +31,8 @@ QUEUE = ROOT / 'reels.json'
 # When each slot's run starts (UTC); the post times (12:00, 16:00, 20:00) are set in daily-reel.yml.
 SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
+LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by then
+DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 ACTIVE = ('queued', 'in_progress', 'waiting', 'requested', 'pending')
 MAX_ATTEMPTS = 2  # runs started in one slot's window; a slot that keeps failing is left for a person to look at
 
@@ -79,6 +85,21 @@ def due_weekly(now, weekly_runs_today):
     return now.weekday() == 6 and now.time() >= WEEKLY_START and not weekly_runs_today
 
 
+def learn_days(value):
+    """The weekdays (0 is Monday) the learning loop runs on, from LEARN_DAYS."""
+    names = [d.strip().lower()[:3] for d in (value or '').replace(' ', ',').split(',') if d.strip()]
+    if not names or names == ['dai']:
+        return set(range(7))
+    unknown = [n for n in names if n not in DAYS]
+    if unknown:
+        raise SystemExit(f'LEARN_DAYS has unknown days: {", ".join(unknown)} (use e.g. "daily" or "sun,wed")')
+    return {DAYS.index(n) for n in names}
+
+
+def due_learn(now, learn_runs_today, days):
+    return now.weekday() in days and now.time() >= LEARN_START and not learn_runs_today
+
+
 def gh(*args):
     return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
 
@@ -106,7 +127,13 @@ def main():
         print('Starting Weekly (the Sunday schedule did not run)')
         if not dry:
             gh('workflow', 'run', 'weekly.yml', '-f', 'post_carousel=true')
-    if not slot and not due_weekly(now, weekly_today):
+    learn_today = [r for r in runs('learn.yml') if r['createdAt'][:10] == now.date().isoformat()]
+    learn = due_learn(now, learn_today, learn_days(os.environ.get('LEARN_DAYS')))
+    if learn:
+        print('Starting Learning (today\'s analysis)')
+        if not dry:
+            gh('workflow', 'run', 'learn.yml')
+    if not slot and not due_weekly(now, weekly_today) and not learn:
         print('Nothing to start')
 
 
