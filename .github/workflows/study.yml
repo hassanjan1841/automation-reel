@@ -1,0 +1,106 @@
+name: Study videos
+
+# Deep study of other creators' short videos (study.py): download, measure (cuts, pace, speech), and Claude's
+# breakdown of what holds viewers and which patterns we could test. Only patterns are learned, never content.
+#   - Open an issue labelled "study" with video links (YouTube Shorts, TikTok, public links) or drop screen
+#     recordings into it (Instagram usually refuses downloads without a login: record the screen instead); the
+#     report is a comment on it.
+#   - Or Actions > Study videos > Run workflow: paste links, or a search (needs secret YOUTUBE_API_KEY) to study the
+#     Shorts that beat their channel most in the last 30 days.
+# Reports are saved in studies/ (one file per video, plus studies/index.jsonl).
+on:
+  issues:
+    types: [labeled]  # also fires when an issue is opened with the label
+  workflow_dispatch:
+    inputs:
+      videos:
+        description: 'Video links, separated by spaces'
+        required: false
+      search:
+        description: 'Or a search, e.g. "claude code tips" (the top outliers of the last 30 days)'
+        required: false
+      top:
+        description: 'How many search results to study'
+        required: false
+        default: '3'
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: study
+  cancel-in-progress: false
+
+jobs:
+  study:
+    # Issues only from the repo owner, so nobody else can make the job download things.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.label.name == 'study' && github.event.issue.user.login == github.repository_owner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install Python packages
+        run: pip install requests pillow numpy faster-whisper==1.2.1 yt-dlp
+
+      - name: Cache voice and speech-to-text models
+        uses: actions/cache@v6
+        with:
+          path: models
+          key: kokoro-v1.0-whisper-small.en
+
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Study
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          VIDEOS: ${{ inputs.videos }}
+          SEARCH: ${{ inputs.search }}
+          TOP: ${{ inputs.top }}
+        run: |
+          if [ "${{ github.event_name }}" = issues ]; then
+            python study.py --issue
+          elif [ -n "$SEARCH" ]; then
+            python study.py --search "$SEARCH" --top "${TOP:-3}"
+          else
+            read -ra links <<< "$VIDEOS"
+            python study.py "${links[@]}"
+          fi
+
+      - name: Post the report and save the studies
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f out/study.md ]; then
+            cat out/study.md >> "$GITHUB_STEP_SUMMARY"
+            if [ "${{ github.event_name }}" = issues ]; then
+              gh issue comment "${{ github.event.issue.number }}" --body-file out/study.md
+            else
+              gh issue create --title "Study $(date -u +%F)" --body-file out/study.md
+            fi
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ -e studies ]; then git add studies; fi
+          if git diff --cached --quiet; then echo 'No new studies'; exit 0; fi
+          git commit -m 'Studies'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

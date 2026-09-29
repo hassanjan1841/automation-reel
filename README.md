@@ -9,7 +9,8 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 - **Demo preview** (`demo-preview.yml`, run by hand): records one walkthrough or IDE demo on GitHub's machine and attaches the video, to try a demo before it goes into a reel.
 - **Insights** (`insights.yml`, run by hand): prints account stats and per-reel views, reach, skip rate, watch time, likes, comments, saves and shares, and attaches each reel's cover as an artifact named `thumbs`, sorted by skip rate.
 - **Scheduler** (`scheduler.yml`, every 10 minutes): `scheduler.py` starts any Daily reel slot, the day's Learning run or the Sunday Weekly run that GitHub's own schedule dropped. See [Reliable timing](#reliable-timing).
-- **Tests** (`tests.yml` on every push and pull request): `python test_learn.py`, the offline tests of the learning loop.
+- **Study videos** (`study.yml`, when you label an issue `study`, or run by hand): `study.py` studies other creators' short videos deeply to learn what holds viewers. See [Study other creators](#study-other-creators).
+- **Tests** (`tests.yml` on every push and pull request): `python test_learn.py`, the offline tests of the learning loop, and `python test_study.py`, the offline tests of the video study (with ffmpeg).
 - **Docs** (`docs-check.yml` on every push, `docs-sync.yml` on code pushes to `main` and Saturdays 09:00 UTC): keeps this README, `CLAUDE.md` and the project skill in step with the code. See [Docs](#docs).
 
 ## Files
@@ -24,6 +25,8 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `learn.py` | The learning loop (daily by default), see [Learning](#learning). |
 | `history.py` | Where the learning loop keeps its data, as files in the repo: `metrics/`, `rules.json`, `experiments.json`, `ideas.json`, `reports/`, and `learnings.md` generated from the rules. `python history.py` prints what is stored. |
 | `scheduler.py` | Starts any reel slot or Sunday Weekly run that GitHub's schedule dropped; safe to run any number of times. `python scheduler.py --dry` prints the decision. See [Reliable timing](#reliable-timing). |
+| `study.py` | Deep study of other creators' videos: downloads each one, measures cuts, pace, blank openings, loudness and speech, and has Claude break down what holds viewers and which patterns we could test. Saves `studies/<date>-<title>.md` and `studies/index.jsonl`. `python study.py <file or link>`, `--search "<topic>"`, or `--issue`. |
+| `test_study.py` | Offline tests of `study.py` on synthetic videos made with ffmpeg, with a fake Claude and YouTube. `python test_study.py`; CI runs it on every push. |
 | `test_learn.py` | Offline tests of the learning loop, including a six-week simulation against a fake Instagram. `python test_learn.py`; CI runs it on every push. |
 | `carousel.py` | The weekly cheat-sheet carousel: Claude writes it, slides are drawn in the reel style (code slides in the editor window), reviewed for readability and honesty, posted as an Instagram carousel with alt text. `DRY_RUN=true python carousel.py` renders to `out/carousel/`. |
 | `qa.py` | Visual review after rendering: Claude looks at one frame per slide and rejects visuals that are irrelevant, unreadable or broken (cookie banner, error page). `publish.py` then renders the point's next visual choice, or its text. `python qa.py 3` renders reel 3 and prints the review. |
@@ -96,6 +99,21 @@ Only the learning job writes these files, so it never collides with the daily po
 
 Run it by hand any time: Actions → **Weekly** → **Run workflow**. A manual run refreshes the token and runs the learning loop; it posts the carousel only if you tick `post_carousel`.
 
+## Study other creators
+
+`study.py` downloads a short video, measures it with code and has Claude break it down, so you learn *why* someone's reels work, not only that they do. Only patterns are learned: never their script, wording, visuals or ideas.
+
+- **Measured** (ffmpeg, numpy, Whisper): length, cuts and "beats" (moments the picture changes noticeably) per 10 seconds, the first cut, how much of the time something moves, whether it opens on a blank frame, loudness every half second, when speech starts, words per second, words in the first 3 seconds, the longest pause.
+- **Claude's breakdown**, from the key frames (0, 0.5, 1, 2 and 3 seconds and every cut), those numbers and the timed transcript: the first second, the hook (said, on screen, its type), the structure second by second, pacing, why it works, **what we could test** (each with how it would look in our reels and a test idea), and **not for us** (patterns that break your hard rules: faces, music, anything invented, Reddit, copying).
+- **Saved** to `studies/<date>-<title>.md`, one line per video in `studies/index.jsonl`, so studies add up over time.
+
+Three ways to use it:
+1. **An issue**: open an issue with the label `study`, paste video links (YouTube Shorts, TikTok, other public links) and/or drag screen recordings into it. The report arrives as a comment. Instagram usually refuses downloads without a login, so for Instagram reels record the screen and drop the recording in. Only your own issues start it.
+2. **Run by hand**: Actions → **Study videos** → **Run workflow**, with links, or a search like `claude code tips` (uses `YOUTUBE_API_KEY`): it finds the Shorts of the last 30 days that got the most views compared with their channel's size (views per subscriber, at least 10,000 views) and studies the top ones (`top`, default 3). The report goes into a new issue "Study <date>".
+3. **Locally**: `python study.py <file or link> [...]`, `python study.py --search "claude code tips" --top 3`.
+
+Downloading uses yt-dlp for public videos only, never a login. Platforms' terms may not allow downloading: keep it to studying, never repost anything. Videos are deleted after each run.
+
 ## Reliable timing
 
 GitHub drops many scheduled runs when it is busy: in the first days the Daily reel's three crons fired only twice in three days, and a 15-minute cron fired about three times in half a day. So posting never depends on one cron firing:
@@ -122,7 +140,7 @@ Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the
 
 `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY` (Google Cloud, restricted to YouTube Data API v3), `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, valid 1 year), `GH_PAT` (fine-grained, this repo only, **Secrets: read and write**; used to save the refreshed token).
 
-Optional repo variables or env: `POST_AT_UTC` (reel 1's post time, default `12:00`; reel 2 posts at `16:00`, reel 3 at `20:00`), `SLOT` (`2` or `3` for the later reels, set by their crons; a manual run has a `slot` choice), `REEL_FORMAT` (forces reel 3's format: `news`, `trick`, `versus` or `series`), `FORCE_POST` (`true` posts even if this slot's reel already went out today; normally a second run for the same slot does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED` (default `1.0`; `1.1` felt rushed), `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `LEARN_DAYS` (days the learning loop runs: empty or `daily`, or e.g. `sun,wed`), `EXPERIMENT` (`off` stops the weekly test; a test's name forces it, for trying it out), `CLAUDE_MODEL` (model for the trend editor, fact-check and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`).
+Optional repo variables or env: `POST_AT_UTC` (reel 1's post time, default `12:00`; reel 2 posts at `16:00`, reel 3 at `20:00`), `SLOT` (`2` or `3` for the later reels, set by their crons; a manual run has a `slot` choice), `REEL_FORMAT` (forces reel 3's format: `news`, `trick`, `versus` or `series`), `FORCE_POST` (`true` posts even if this slot's reel already went out today; normally a second run for the same slot does nothing), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED` (default `1.0`; `1.1` felt rushed), `FISH_MODEL`, `TRENDING` (see above), `THREE_D` (`on` or `off` forces 3D for the day; default random; a manual Daily reel run also has a `three_d` choice), `THREE_D_CHANCE` (share of days 3D is allowed, default `0.5`), `LEARN_DAYS` (days the learning loop runs: empty or `daily`, or e.g. `sun,wed`), `EXPERIMENT` (`off` stops the weekly test; a test's name forces it, for trying it out), `CLAUDE_MODEL` (model for the trend editor, fact-check, video study and docs sync; defaults to `MODEL` in `generate.py`), `GRAPH_VERSION` (Instagram Graph API version, default `v25.0`). The study workflow also passes `GH_TOKEN` (its own token, to fetch videos attached to the issue) and `ISSUE_BODY` (the issue's text, where `study.py --issue` finds the links).
 
 ## Local setup
 

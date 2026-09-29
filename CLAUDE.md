@@ -9,7 +9,8 @@ Daily Instagram Reel pipeline for @hassanjan.k. Python 3.12 + ffmpeg, run by Git
   stories, numbers or quotes, nothing of anyone else's presented as his); never Reddit; no faces or animals in visuals (3D scenes too: `scene3d.ANIMAL_LOGOS` blocks mascot logos).
 - `reels.json` is live state that the daily workflow commits to. Edit it only when the task is about reels, and run `generate.py --check` after.
 - The learning loop's files (`metrics/`, `rules.json`, `experiments.json`, `ideas.json`, `reports/`, `learnings.md`) are live state the learning job (learn.yml, daily by default) writes. `learnings.md` is generated from `rules.json`; change a rule there, and only when the task is about rules.
-- Verify every change with the `verify` skill (`.claude/skills/verify/SKILL.md`): the fast checks always (`test_learn.py`, `generate.py --check`, `docs_check.py`), and the real end-to-end runs it lists for the parts you touched.
+- `study.py` (study.yml) studies other creators' videos for patterns only: never copy their content, and keep its prompt's split into adoptable vs breaks-the-hard-rules. `studies/` is written by that workflow.
+- Verify every change with the `verify` skill (`.claude/skills/verify/SKILL.md`): the fast checks always (`test_learn.py`, `test_study.py`, `generate.py --check`, `docs_check.py`), and the real end-to-end runs it lists for the parts you touched.
 
 ## Docs stay in the same change as the code
 
