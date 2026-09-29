@@ -72,7 +72,24 @@ jobs:
           curl -fsSL https://claude.ai/install.sh | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Download diagnostic (temporary)
+        if: inputs.videos == 'diagnose'
+        run: |
+          url=https://www.youtube.com/shorts/CauIQYnn_Aw
+          try() { echo "=== $1"; shift; timeout 120 "$@" --simulate -f 'bv*[height<=1920]+ba/b' --print '%(id)s %(format_id)s %(height)s' "$url" 2>&1 | tail -3; }
+          try "stable default" yt-dlp
+          for c in tv_simply tv web_embedded mweb ios android_vr web_safari; do try "client $c" yt-dlp --extractor-args "youtube:player_client=$c"; done
+          pip install -q -U --pre "yt-dlp[default]"
+          try "nightly default" yt-dlp
+          pip install -q bgutil-ytdlp-pot-provider
+          docker run -d --name pot -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider >/dev/null && sleep 8
+          try "nightly + PO token server" yt-dlp
+          for c in mweb web_embedded tv; do try "PO + client $c" yt-dlp --extractor-args "youtube:player_client=$c"; done
+          echo "=== thumbnail"; curl -s -o /dev/null -w '%{http_code}\n' https://i.ytimg.com/vi/CauIQYnn_Aw/hqdefault.jpg
+          exit 1
+
       - name: Study
+        if: inputs.videos != 'diagnose'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
