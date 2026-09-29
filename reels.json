@@ -691,5 +691,89 @@
     ],
     "slot": 1,
     "seconds": 21.2
+  },
+  {
+    "id": 37,
+    "style": "dark",
+    "kicker": "POV #1",
+    "hook": "Every client swears it's *just one* tiny change",
+    "points": [
+      {
+        "title": "Quick fix request",
+        "body": "Client asks for a tiny tweak",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "Just a tiny change, should be quick right"
+              },
+              {
+                "from": "me",
+                "text": "Sure, what is it"
+              },
+              {
+                "from": "client",
+                "text": "Make it look like Amazon but simpler"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Scope creeps in",
+        "body": "Small ask turns into a rebuild",
+        "visual": [
+          {
+            "type": "tweet",
+            "text": "Every quick fix request has at least three hidden features waiting inside it."
+          }
+        ]
+      },
+      {
+        "title": "Invoice conversation dread",
+        "body": "Nobody wants to send that invoice",
+        "visual": [
+          {
+            "type": "tweet",
+            "text": "The scariest sentence in freelancing: so how much extra will this cost"
+          }
+        ]
+      }
+    ],
+    "cta": "What's your worst *scope creep* story?",
+    "caption": "Every freelancer's favorite lie: it's just a small change\nTag a dev who's heard this before\nWhat's the worst quick fix you got asked for?👇",
+    "hashtags": [
+      "#freelancedev",
+      "#devlife",
+      "#clientwork",
+      "#scopecreep"
+    ],
+    "voiceover": [
+      "[grinning, punchy] They always say it's a five minute fix.",
+      "[knowing] You already know that message is never actually quick.",
+      "[exasperated] (break) Then somehow the ask turns into three new features.",
+      "[deadpan] And nobody wants to type out that final invoice.",
+      "[warm, curious] So what's the smallest ask that blew up on you."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "relatable",
+    "series": "POV",
+    "episode": 1,
+    "posted_at": "2026-09-29T16:00:44+00:00",
+    "media_id": "18009559832979050",
+    "shown": [
+      "text",
+      "chat",
+      "tweet",
+      "tweet",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 16.7
   }
 ]
