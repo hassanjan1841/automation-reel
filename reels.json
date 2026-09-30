@@ -1073,5 +1073,97 @@
     ],
     "slot": 2,
     "seconds": 17.3
+  },
+  {
+    "id": 41,
+    "style": "dark",
+    "kicker": "Patch now",
+    "hook": "Your Next js dev server leaks *source code*",
+    "points": [
+      {
+        "title": "Image optimization SSRF bug",
+        "body": "Allow-listed remote URLs hit private IPs",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-cjq9-62q9-8jv4",
+            "find": "Server-Side Request Forgery"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm install next@16.3.8"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Self-hosted cache poisoning",
+        "body": "SSG/ISR pages can serve wrong content",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676",
+            "find": "Cache poisoning"
+          }
+        ]
+      },
+      {
+        "title": "Dev server MCP leak",
+        "body": "Malicious site reads code, paths, logs",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-39w2-rjm5-chcv",
+            "find": "Model Context Protocol"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm install next@16.3.8"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *PATCH* for the fix commands",
+    "dm_keyword": "PATCH",
+    "dm_guide": "Next.js patched 7 bugs in the September 2026 security release (v16.3.8 / v15.5.27). Update now:\nnpm install next@16.3.8   (Next 16.3)\nnpm install next@15.5.27  (Next 15.5)\nHighlights: SSRF in Image Optimization, cache poisoning on self-hosted SSG/ISR pages, and an info leak in next dev's MCP endpoint (exposes source code snippets, file paths and logs to any site you visit while the dev server runs). Full advisory: https://nextjs.org/blog/september-2026-security-release",
+    "caption": "Next.js September 2026 security release\nSeven bugs patched, one leaks source code straight from your dev server\nHave you updated yet? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#vercel",
+      "#webdev",
+      "#cybersecurity"
+    ],
+    "voiceover": [
+      "[alarmed, fast] Your Next js dev server might leak your code.",
+      "[serious, fast] One bug tricks your image loader into hitting private networks.",
+      "[urgent] Another can poison self-hosted page caches with the wrong content.",
+      "[tense] Worst bug, the dev server's M C P endpoint (break) [urgent] can expose code and paths to any site you visit.",
+      "[warm, curious] Comment patch and get the upgrade guide."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://nextjs.org/blog/september-2026-security-release",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-cjq9-62q9-8jv4",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-39w2-rjm5-chcv"
+    ],
+    "posted_at": "2026-09-30T20:00:50+00:00",
+    "media_id": "18139437865621805",
+    "shown": [
+      "text",
+      "screenshot",
+      "screenshot",
+      "screenshot",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 22.6
   }
 ]
