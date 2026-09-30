@@ -973,5 +973,105 @@
     ],
     "slot": 1,
     "seconds": 19.3
+  },
+  {
+    "id": 40,
+    "style": "light",
+    "kicker": "Client vs Me #2",
+    "hook": "Which client phrase should make you *nervous*?",
+    "hook_word": "nervous",
+    "points": [
+      {
+        "title": "Unlimited revisions",
+        "body": "No scope, no finish line",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "So this includes unlimited revisions right?"
+              },
+              {
+                "from": "me",
+                "text": "Let's define what unlimited actually means"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pay after launch",
+        "body": "You carry all the risk",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "I'll pay you once the site is live"
+              },
+              {
+                "from": "me",
+                "text": "We need a signed contract first then"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One small add-on",
+        "body": "Feature creep in disguise",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "Can you also just add one small thing"
+              },
+              {
+                "from": "me",
+                "text": "Sure, I'll scope that as new work"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which *red flag* have you heard?",
+    "caption": "Freelance client red flags in chat messages\nEvery freelancer has heard at least one of these\nWhich one have you heard before? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancing",
+      "#clientwork",
+      "#redflags",
+      "#webdevelopment"
+    ],
+    "voiceover": [
+      "[exasperated] Some client phrases should make every freelancer nervous.",
+      "[knowing] Without a revision limit, the project just never actually ends.",
+      "[serious, fast] Holding payment until launch shifts all the risk onto you.",
+      "[deadpan] And one small add on is never just one thing.",
+      "[warm, curious] Which one of these have you heard before?"
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Client vs Me",
+    "episode": 2,
+    "posted_at": "2026-09-30T16:00:47+00:00",
+    "media_id": "18635766520024580",
+    "shown": [
+      "word",
+      "chat",
+      "chat",
+      "chat",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 17.3
   }
 ]
