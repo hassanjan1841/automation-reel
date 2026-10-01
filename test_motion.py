@@ -1,6 +1,7 @@
-"""Tests for motion.py: the code-morph token plan, and a real render of every animation template in headless
-Chromium (transparent frames, a sane length, a settle frame inside it, sounds the sound kit knows, nothing left
-outside the box), plus the frame-0 rule for the two that may sit under a hook.
+"""Tests for motion.py: the code-morph token plan, each template reads only fields its spec has, and a real render
+of every animation template in headless Chromium (transparent frames, a sane length, a settle frame inside it, sounds
+the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
+readable labels on the light theme.
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -20,6 +21,8 @@ from unittest import mock
 
 import numpy as np
 from PIL import Image
+
+import re
 
 import motion
 import render
@@ -50,6 +53,17 @@ class MorphPlan(unittest.TestCase):
         self.assertEqual(''.join(t for t, _ in lines[1]), '    y = 1')
 
 
+class Fields(unittest.TestCase):
+    def test_templates_read_only_fields_their_spec_has(self):
+        # The race once printed "Source: undefined" on every reel: it read S.head_host, prepare() sets source_host.
+        starts = [(m.start(), m.group(1)) for m in re.finditer(r'^T\.(\w+) = ', motion.PAGE, re.M)
+                  if m.group(1) in motion.TYPES]
+        for i, (at, kind) in enumerate(starts):
+            body = motion.PAGE[at:starts[i + 1][0] if i + 1 < len(starts) else len(motion.PAGE)]
+            spec = motion.prepare(dict(motion.EXAMPLES[kind]), 980)
+            self.assertEqual(set(re.findall(r'\bS\.(\w+)', body)) - set(spec), set(), kind)
+
+
 class Render(unittest.TestCase):
     """Every template rendered for real, once, at a small size."""
 
@@ -70,6 +84,7 @@ class Render(unittest.TestCase):
         cls.out = {}
         for kind in motion.TYPES:
             cls.out[kind] = motion.render_motion(motion.EXAMPLES[kind], render.THEMES['dark'], (980, 900))
+        cls.light = motion.render_motion(motion.EXAMPLES['race'], render.THEMES['light'], (980, 900))
 
     @classmethod
     def tearDownClass(cls):
@@ -106,6 +121,13 @@ class Render(unittest.TestCase):
             changed = max((np.abs(np.asarray(Image.open(f), dtype=np.int16) - first).max(axis=2) > 40).mean()
                           for f in frames[start::8])
             self.assertGreater(changed, 0.002, kind)
+
+    def test_text_on_the_background_follows_the_theme(self):
+        # Labels drawn straight on a light reel must be dark ink; they were near-white and vanished (2026-10-01).
+        folder, _ = self.light
+        last = np.asarray(Image.open(sorted(folder.glob('*.png'))[-1]).convert('RGBA'), dtype=np.int16)
+        ink = (last[..., 3] > 160) & (last[..., :3].max(axis=2) < 70)
+        self.assertGreater(ink.mean(), 0.002)
 
     def test_hook_proofs_are_whole_at_settle(self):
         # morph and stepper may sit under a hook from frame 0: at their settle frame the code is already there.
