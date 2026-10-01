@@ -1,7 +1,8 @@
-"""Print Instagram insights for the account and every recent reel, straight from the Instagram API.
+"""Print Instagram insights for the account and every recent reel, straight from the Instagram API, and save
+each reel's thumbnail to out/thumbs/<skip rate>-<date>-<id>.jpg (insights.yml uploads them).
 
 Env: IG_TOKEN
-Usage: python insights.py [limit]
+Usage: python insights.py [limit]   limit: how many recent posts (default 60, at most 100)
 """
 
 import os
@@ -13,7 +14,7 @@ import requests
 
 THUMBS = Path('out/thumbs')
 
-GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
+GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 REEL_METRICS = ['views', 'reach', 'reels_skip_rate', 'ig_reels_avg_watch_time', 'likes', 'comments', 'saved',
                 'shares', 'total_interactions']
 

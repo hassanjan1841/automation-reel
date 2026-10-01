@@ -3,7 +3,6 @@
 Env: IG_TOKEN, GH_TOKEN (a PAT allowed to write repo secrets), GITHUB_REPOSITORY
 """
 
-import json
 import os
 import subprocess
 import sys

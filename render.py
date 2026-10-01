@@ -1,13 +1,13 @@
 """Render a reel from reels.json into a 1080x1920 MP4.
 
 Usage:
-  python render.py <id>        render out/reel-<id>.mp4
-  python render.py --fonts     download fonts only
+  python render.py <id>        render out/reel-<id>.mp4 without a voice (sound effects only, so no captions and no
+                               hook_visual)
+  python render.py --fonts     download the Poppins fonts (JetBrains Mono is fetched on first use)
 """
 
 import json
 import math
-import os
 import re
 import subprocess
 import sys
@@ -331,7 +331,8 @@ def build_slides(reel, voice=None):
                                    TEXT_W, room, leading=1.08)
     block_h = len(lines) * line_h
     top = text_top + (room - block_h) // 2 - (0 if captions or room == HOOK_TEXT_H else 60)
-    # Revealed before frame 0, so frame 0 shows every word; one click on frame 0 starts the sound at once.
+    # Revealed before frame 0, so frame 0 shows every word. Without a voice the click on frame 0 starts the sound at
+    # once; with one, clicks are muted and the voice starts at VOICE_LEAD.
     first = -(anim + step * 0.8 * words_in(reel['hook'])) - 0.02
     end = add_words(s, lines, fnt, size, line_h, top, first, theme, step=step * 0.8, anim=anim)
     s.clicks = [0.0]

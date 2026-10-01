@@ -1,21 +1,25 @@
 """The learning loop: measure how every post did, judge the writer's rules and the running test, and turn what
 the numbers show into rules the daily writer follows (learnings.md) plus a report for the creator. It runs every
 day by default (learn.yml, started by scheduler.py; repo variable LEARN_DAYS picks the days, e.g. "sun,wed").
+The 06:30 backup cron run (GITHUB_EVENT_NAME=schedule) skips days outside LEARN_DAYS and days that already have
+their report (backup_skip); a run started by hand or by the Scheduler always runs.
 
 Each run:
   1. measure    reads each post's Instagram numbers every day for its first week, then weekly until they settle
                 (history.snapshot_due), and appends them to metrics/ (history.py); keyword comments and comment
                 topics are read too; the daily readings show how long a reel keeps getting views
   2. score      every reel against the account's usual (median) skip rate and share of the reel watched, by
-                pillar, series, visual, 3D, slot and test option; views are compared at the same age (7 days)
+                pillar, series, visual, hook word, 3D, hook type, opening (proof or text), slot and test option; views are compared at the same age (7 days)
   3. judge      rules on trial for 2 weeks are compared with the reels before them: kept, retired or still on trial;
-                the running test is concluded once each option has enough reels, and the next test starts
+                the running test is concluded once each option has enough reels (or ends after 3 weeks without
+                a verdict), and the next test starts
   4. write      Claude proposes new rules; each must cite groups of at least MIN_EVIDENCE reels that differ
                 clearly, and never touch the creator's hard rules, or it is dropped
-  5. report     reports/<week>.md and out/report.md (the workflow opens a GitHub issue with it)
+  5. report     reports/YYYY-MM-DD.md and out/report.md (the workflow adds it as a comment on this week's
+                "Reel reports" issue, opening that issue if there is none)
 
 Env: IG_TOKEN, CLAUDE_CODE_OAUTH_TOKEN (write-up, comment topics and the look at the covers), CLAUDE_MODEL,
-     GRAPH_VERSION, EXPERIMENT=off (no test running)
+     GRAPH_VERSION, EXPERIMENT=off (no test running), LEARN_DAYS (the days a backup cron run may learn)
 Usage: python learn.py            one run of the loop
 """
 
@@ -38,7 +42,7 @@ import history
 import render
 import scheduler
 
-GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
+GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 REPORT = render.OUT_DIR / 'report.md'
 CAROUSELS = render.ROOT / 'carousels.json'
 # One request per metric: one unsupported metric fails the whole request. follows and profile_visits are read when
@@ -402,7 +406,7 @@ def check_new_rules(proposed, summary, rules, today):
 
 def claude(prompt, system, schema, tools=(), folder=None, timeout=600):
     tool_args = ['--tools', *tools, '--allowedTools', *tools] if tools else ['--tools', '']
-    proc = subprocess.run(['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
+    proc = subprocess.run(['claude', '-p', prompt, '--model', (os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5'),
                            '--system-prompt', system, *tool_args, *(['--add-dir', str(folder)] if folder else []),
                            '--setting-sources', '', '--no-session-persistence',
                            '--output-format', 'json', '--json-schema', json.dumps(schema)],
@@ -488,14 +492,14 @@ kept being shown by Instagram.
 The creator's hard rules come first; never suggest breaking them: no faces, people or animals on screen (no
 talking head), no music (sound effects and the AI voiceover only), halal and honest content (no invented results,
 stories or numbers), never Reddit. The reels are faceless: text slides, code, diffs, terminals, screenshots, screen
-recordings, chats, quotes and 3D scenes, so only suggest formats from that list.
+recordings, quotes, 2D animations and 3D scenes, so only suggest formats from that list.
 The writer's own instructions are included: never propose what it already does or something its checks forbid.
 
 Return:
 - new_rules: at most 3 instructions the writer can follow while writing a reel (hook, words, structure, visuals,
   topics), each tied to the averages by group: one sentence of at most 30 words, stating only what the numbers
   show, no guessed reasons. Never about posting times, slots or settings: those belong in decision. For each, "evidence" names the groups it rests on:
-  {"field": one of pillar, series, visuals, hook_word, three_d, test; "better": the group that did better;
+  {"field": one of pillar, series, visuals, hook_word, three_d, hook_type, opening, test; "better": the group that did better;
   "worse": the group it beat}. A rule without two groups of at least 5 reels that clearly differ is thrown away,
   so return none rather than guess. Not a rule that already exists.
 - summary: a short, friendly summary for the creator in plain words: what worked, what did not, what the test
@@ -627,7 +631,24 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
     return '\n\n'.join(parts) + '\n'
 
 
+def backup_skip(today):
+    """Why a scheduled (backup cron) run should not learn today, or None. The Scheduler starts the day's run on the
+    days in LEARN_DAYS; the 06:30 cron only covers for it, so it skips other days and a day that already has its
+    report (one comment a day, not two). A run started by hand or by the Scheduler always runs."""
+    if os.environ.get('GITHUB_EVENT_NAME') != 'schedule':
+        return None
+    if today.weekday() not in scheduler.learn_days(os.environ.get('LEARN_DAYS')):
+        return 'not a learning day (LEARN_DAYS)'
+    if (history.REPORTS / f'{today.isoformat()}.md').exists():
+        return "today's report already exists"
+    return None
+
+
 def main():
+    reason = backup_skip(utcnow().date())
+    if reason:
+        print(f'Backup run skipped: {reason}')
+        return
     token = os.environ.get('IG_TOKEN', '').strip()
     if not token:
         raise SystemExit('Missing env var IG_TOKEN')

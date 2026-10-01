@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   learning-loop:
-    # Offline tests of the learning loop (test_learn.py). Only the packages the weekly learn job installs, so a
+    # Offline tests of the learning loop (test_learn.py). Only the packages the learning job (learn.yml) installs, so a
     # new import that job lacks fails here first.
     runs-on: ubuntu-latest
     timeout-minutes: 10

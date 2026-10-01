@@ -9,7 +9,9 @@ name: Study videos
 #     Shorts that beat their channel most in the last 30 days.
 #   - Every Sunday from 08:00 UTC on its own (study.py --auto: its own topics and watchlist, then a digest of what
 #     keeps coming back); scheduler.py starts it when GitHub drops the cron.
-# Reports are saved in studies/ (one file per video, plus studies/index.jsonl).
+# Reports are saved in studies/ (one file per video, plus studies/index.jsonl; the Sunday run also writes
+# studies/<date>-digest.md and the watchlist studies/channels.json). A run not started from an issue posts its
+# report as a new "Study <date>" issue.
 on:
   schedule:
     - cron: '0 8 * * 0' # Sundays 08:00 UTC

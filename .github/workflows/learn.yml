@@ -2,8 +2,9 @@ name: Learning
 
 # The learning loop (learn.py): measure every post, judge the rules and the running test, write rules for the writer
 # (rules.json -> learnings.md) and a report. Runs daily by default: scheduler.py starts it (GitHub drops many cron
-# runs), on the days in repo variable LEARN_DAYS; the cron below is only a backup. The data files are only
-# written here (see history.py).
+# runs), on the days in repo variable LEARN_DAYS; the cron below is only a backup, and learn.py skips it (backup_skip) on
+# days outside LEARN_DAYS and on days that already have their report. The data files are only written here (see
+# history.py).
 on:
   schedule:
     - cron: '30 6 * * *'
@@ -40,6 +41,7 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
+          LEARN_DAYS: ${{ vars.LEARN_DAYS }}
         run: python learn.py
 
       - name: Save the rules and send the report

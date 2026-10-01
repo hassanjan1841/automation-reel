@@ -1,7 +1,7 @@
 """Stop hook: before Claude ends a turn, make sure uncommitted code changes came with doc updates.
 
-Blocks the stop (once per distinct set of changes) when docs_check.py fails, or when scripts or
-workflows changed but README.md, CLAUDE.md and the skill did not.
+Blocks the stop (once per distinct set of changes) when docs_check.py fails, or when scripts (tests
+included) or workflows changed but none of README.md, CLAUDE.md or the skill did.
 """
 
 import hashlib

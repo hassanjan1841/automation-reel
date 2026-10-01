@@ -13,7 +13,7 @@ and report exactly what ran. Load the `automation-reel` skill first for how the 
 ```bash
 .venv/bin/python test_learn.py            # learning loop, the weekly test, writer and publish records
 .venv/bin/python test_study.py            # study.py on synthetic videos (needs ffmpeg on PATH, else those tests skip)
-E2E_CHROMIUM=<chrome> .venv/bin/python test_motion.py   # every animation rendered for real (a few minutes)
+E2E_CHROMIUM=<chrome> .venv/bin/python test_motion.py   # every animation rendered for real (a few minutes; skips without playwright)
 .venv/bin/python generate.py --check      # every reel in reels.json still valid
 python3 docs_check.py                     # docs match the code
 .venv/bin/python test_voice.py            # pronunciation rules (text only)
@@ -29,14 +29,15 @@ and say which it was.
 .venv/bin/python tests/mutants.py
 ```
 
-It breaks the code one known way at a time in a throwaway copy and expects `test_learn.py` (for `study.py`, `test_study.py`) to fail each time.
+It breaks the code one known way at a time in a throwaway copy and expects `test_learn.py` (for `study.py` `test_study.py`, for `motion.py` `test_motion.py`) to fail each time.
 For every new behaviour you add, add a mutant to `tests/mutants.py` (the exact code, what to break it into, a
 label). A mutant that survives means a behaviour no test protects: write the test, then rerun. A mutant marked
 STALE means the code moved: update it.
 
 ## 3. CI parity
 
-CI (`tests.yml`) and the learning job (`learn.yml`) install only `requests pillow numpy`. A new top-level import that
+The `learning-loop` job of `tests.yml` and the learning job (`learn.yml`) install only `requests pillow numpy` (the
+`study` job adds ffmpeg; the `motion` job adds pygments, playwright, Chromium and the fonts). A new top-level import that
 needs more breaks the next day's learning run, silently until then. Check it the same way:
 
 ```bash
@@ -55,9 +56,9 @@ Never post for real. These use temp copies of the data files and fake Instagram 
 | You changed | Run |
 | --- | --- |
 | The writer, validation, the weekly test, prompts (`generate.py`, `trends.py`) | `.venv/bin/python tests/e2e_writer.py` (real Claude writes a reel per test option; each must be valid and follow it) |
-| Publishing, rendering, visuals, 3D (`publish.py`, `render.py`, `visuals.py`, `scene3d.py`, `qa.py`) | `.venv/bin/python tests/e2e_publish.py`, then with `--reject`, and once with `--real-review`; look at frames (below) |
+| Publishing, rendering, visuals, 3D (`publish.py`, `render.py`, `visuals.py`, `scene3d.py`, `qa.py`) | `.venv/bin/python tests/e2e_publish.py`, then with `--reject`, and once with `--real-review`; look at frames (below). It covers the hook proof, an animation, a screenshot and the reject path; its 3D diagram is only a fallback, so for 3D also run `python scene3d.py '<json>'` or a reel whose first choice is 3D |
 | The learning loop (`learn.py`, `history.py`) | `.venv/bin/python tests/e2e_learn.py 10` (ten days of daily runs, real Claude for rules, report, comment topics and covers) |
-| The video study (`study.py`) | `.venv/bin/python study.py <an mp4, e.g. a dry-run render in out/>` with `STUDIES` pointed at a temp folder, or Actions > Study videos with one link; read the whole report: every section filled, measured numbers plausible, nothing in "What we could test" breaks a hard rule |
+| The video study (`study.py`) | `.venv/bin/python study.py <an mp4, e.g. a dry-run render in out/>` then discard what it wrote (`git checkout studies; git clean -fd studies`), or Actions > Study videos with one link; read the whole report: every section filled, measured numbers plausible, nothing in "What we could test" breaks a hard rule |
 | The animations (`motion.py`) | `test_motion.py`, then `python motion.py <type>` for each template you touched and look at its frames (nothing cut at the edges, labels readable at phone size, one change at a time); then `tests/e2e_publish.py`, which puts one in a reel |
 | The carousel | `DRY_RUN=true .venv/bin/python carousel.py` |
 | The voice | `.venv/bin/python test_voice.py --audio` and `--verify` |

@@ -1,18 +1,25 @@
-"""Render the next unposted reel and publish it to Instagram.
+"""Write today's reel (or take one queued by hand), render it, have Claude review the frames, wait for POST_AT_UTC
+and publish it to Instagram.
 
 Env:
   IG_TOKEN              Instagram User access token (Instagram API with Instagram Login)
   SUPABASE_URL          https://<ref>.supabase.co
   SUPABASE_SERVICE_KEY  legacy service_role key (JWT), used for Storage uploads
   DRY_RUN=true          render only, post nothing
-  TRENDING=off          skip the trend scan and always write an evergreen reel for today's pillar
+  TRENDING=off          reel 3 never uses news (no trend scan; another format instead)
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
   FORCE_POST=true       post even if this slot's reel already went out today (UTC); without it a slot never posts twice
   SLOT                  1 (default: a how-to), 2 (the evening reel: relatable, another series) or 3 (news, a trick,
                         X vs Y or the beginner series, picked at random per day; see generate.slot3_format)
-  CLAUDE_CODE_OAUTH_TOKEN, YOUTUBE_API_KEY   used by the trend scan, see trends.py
-  VOICE_ENGINE, VOICE, VOICE_PITCH, FISH_API_KEY   voiceover settings, see voice.py; VOICE=none for sound effects only
+  CLAUDE_CODE_OAUTH_TOKEN   the writer, hook judge, frame review and trend scan (Claude Code CLI)
+  YOUTUBE_API_KEY       the trend scan, see trends.py
+  CLAUDE_MODEL          optional model for the frame review and the trend scan (the writer uses generate.MODEL)
+  THREE_D=on|off, THREE_D_CHANCE   3D today, see generate.three_d_today (default: random, chance 0.5)
+  EXPERIMENT            off stops the running test; a test name forces it, see generate.experiment_today
+  VOICE_ENGINE, VOICE, VOICE_SPEED, VOICE_PITCH, FISH_API_KEY, FISH_MODEL   voiceover settings, see voice.py;
+                        VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
+An empty variable (an unset repo variable in the workflow) means the default.
 """
 
 import json
@@ -30,7 +37,7 @@ import scheduler
 import trends
 import voice
 
-GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
+GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 BUCKET = 'reels'
 POLL_EVERY, POLL_LIMIT = 10, 600
 

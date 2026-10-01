@@ -1,10 +1,10 @@
 """Mutation check for the offline tests: break the code on purpose, one known way at a time, in a throwaway copy of
-the repo, and make sure test_learn.py (test_study.py for study.py) fails for every one. A mutant that survives is a
-behaviour no test protects.
+the repo, and make sure test_learn.py (test_study.py for study.py, test_motion.py for motion.py) fails for every
+one. A mutant that survives is a behaviour no test protects. fonts/ is copied too: test_motion.py renders with it.
 
 Add a mutant here for every new behaviour a change introduces (the exact old text, what to break it into, a label).
 
-Usage: .venv/bin/python tests/mutants.py     exit 1 if any mutant survives
+Usage: .venv/bin/python tests/mutants.py     exit 1 if any mutant survives or no longer matches the code (STALE)
 """
 
 import shutil
@@ -32,7 +32,7 @@ MUTANTS = [
      "            'late_views': None}", 'views curve lost'),
     ('scheduler.py', "    return now.weekday() in days and now.time() >= LEARN_START and not learn_runs_today",
      "    return now.time() >= LEARN_START and not learn_runs_today", 'LEARN_DAYS ignored'),
-    ('scheduler.py', "            gh('workflow', 'run', 'learn.yml')", "            pass", 'learning never started'),
+    ('scheduler.py', "            start('learn.yml')", "            pass", 'learning never started'),
     ('learn.py', "    if skip >= CLEAR_SKIP or", "    if skip >= -CLEAR_SKIP or", 'any difference counts as clear'),
     ('learn.py', "                if b['reels'] < MIN_EVIDENCE or w['reels'] < MIN_EVIDENCE:\n                    continue\n", "",
      'no minimum evidence for new rules'),
@@ -77,6 +77,12 @@ MUTANTS = [
     ('generate.py', "        args = re.split(r'[.,:]\\s|[.,:]$', m.group(1))[0]", "        args = m.group(1)",
      'prose after an install command checked as packages'),
     ('generate.py', "        if SEND_OFFER.search(said):", "        if False:", 'an offer to send with nothing to send'),
+    ('.github/workflows/daily-reel.yml', "if: always() && steps.publish.outputs.posted == 'true'",
+     "if: steps.publish.outputs.posted == 'true'", 'a failed test after posting loses the record'),
+    ('learn.py', "    if today.weekday() not in scheduler.learn_days(os.environ.get('LEARN_DAYS')):",
+     "    if False:", 'the backup cron ignores LEARN_DAYS'),
+    ('learn.py', "    if (history.REPORTS / f'{today.isoformat()}.md').exists():", "    if False:",
+     'the backup cron reports twice a day'),
     ('generate.py', "            errors += motion_errors(i, v)", "            pass", 'animation data unchecked'),
     ('generate.py', "    if firsts > 1:", "    if firsts > 9:", 'several animations in one reel'),
     ('generate.py', "if c.get('type') in MOTION and not any(", "if False and not any(", 'an animation without a backup'),
@@ -121,9 +127,14 @@ MUTANTS = [
     ('study.py', "    found = keep\n", "", 'off-topic videos studied'),
     ('study.py', "        if p['channel_id'] not in on_topic:\n            watch.pop(p['channel_id'], None)\n", "",
      'off-topic channels stay watched'),
-    ('scheduler.py', "            gh('workflow', 'run', 'study.yml', '-f', 'auto=true')", "            pass",
+    ('scheduler.py', "            start('study.yml', '-f', 'auto=true')", "            pass",
      'the Sunday study never started'),
     ('scheduler.py', "if r.get('event') != 'issues']", "]", 'an issue run skips the Sunday study'),
+    ('scheduler.py', "    except subprocess.CalledProcessError as e:\n", "    except OSError as e:\n",
+     'a disabled Daily reel stops the other checks'),
+    ('trends.py', "{os.environ.get('GRAPH_VERSION') or 'v25.0'}", "v25.0", 'the trend scan ignores GRAPH_VERSION'),
+    ('qa.py', "(os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5')", "os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5')",
+     'an unset CLAUDE_MODEL variable runs an empty model'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
@@ -135,7 +146,7 @@ def main():
     for path, old, new, label in MUTANTS:
         with tempfile.TemporaryDirectory() as tmp:
             copy = Path(tmp) / 'repo'
-            shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns('.venv*', 'out', 'models', 'fonts', '.git', '__pycache__'))
+            shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns('.venv*', 'out', 'models', '.git', '__pycache__'))
             f = copy / path
             text = f.read_text()
             if text.count(old) != 1:

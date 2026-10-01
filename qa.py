@@ -1,8 +1,11 @@
 """Look at a rendered reel the way a viewer would: Claude reviews one frame per slide.
 
 A visual (code, terminal, screenshot) that is irrelevant, unreadable or broken (cookie banner, login wall,
-error page, blank page) is reported so publish.py can re-render that slide as text. Other problems are
-returned as warnings.
+error page, blank page) is reported so publish.py re-renders that slide with the point's next visual choice (or as text); a rejected hook
+proof is dropped. A dishonest claim (honest=false) stops the post. The frame-0 and payoff checks and other problems
+are returned as warnings.
+
+Env: CLAUDE_MODEL (optional, defaults to claude-sonnet-5)
 
 Usage: python qa.py <id>   renders reel <id> with its voice and prints the review
 """
@@ -139,7 +142,7 @@ def review(video, reel, slides, voiceover=None):
         whole = (f"\n\nFrame 0 (the first frame): {zero}\nPromised payoff: {reel.get('payoff') or 'not stated'}")
         prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked + whole
         proc = subprocess.run(
-            ['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
+            ['claude', '-p', prompt, '--model', (os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5'),
              '--system-prompt', SYSTEM, '--tools', 'Read', 'WebFetch', '--allowedTools', 'Read', 'WebFetch',
              '--add-dir', tmp,
              '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',

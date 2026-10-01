@@ -2,7 +2,8 @@
 in the reels' editorial style (code slides use the same editor window), reviewed like reels, and posted to
 Instagram as a carousel with alt text on every image. Posted carousels are recorded in carousels.json.
 
-Env: IG_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY, CLAUDE_CODE_OAUTH_TOKEN; DRY_RUN=true renders only.
+Env: IG_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY, CLAUDE_CODE_OAUTH_TOKEN; DRY_RUN=true renders only;
+CLAUDE_MODEL (optional, the slide review), GRAPH_VERSION (optional, defaults to v25.0).
 Usage: python carousel.py
 """
 
@@ -287,7 +288,7 @@ def review_once(paths):
                              'problems': {'type': 'array', 'items': {'type': 'string'}}}}
     prompt = ('Open each slide image with the Read tool. Is every slide readable on a phone, with no text cut off or '
               'overlapping, and honest (no invented results, numbers or stories)?\n' + '\n'.join(map(str, paths)))
-    proc = subprocess.run(['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
+    proc = subprocess.run(['claude', '-p', prompt, '--model', (os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5'),
                            '--tools', 'Read', '--allowedTools', 'Read', '--add-dir', str(OUT), '--setting-sources', '',
                            '--no-session-persistence', '--output-format', 'json', '--json-schema', json.dumps(schema)],
                           capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL)

@@ -3,7 +3,8 @@ so this decides what should be running right now and starts it with workflow_dis
 
   Daily reel: each slot owns a window from its start (11:07, 15:07, 19:07 UTC) to the next slot's start (or
   midnight). Inside a slot's window, if that slot has not posted today and no Daily reel run is queued or
-  running, start one for that slot (it waits for the post time itself, or posts right away when late). A slot
+  running, start one for that slot (it waits for the post time itself, or posts right away when late), unless
+  MAX_ATTEMPTS runs were already started in this window (a slot that keeps failing is left for a person). A slot
   whose window has passed is skipped, never posted late on top of the next one.
   Weekly: on Sunday from 10:00 UTC, if no Weekly run has started today, start one (it posts the carousel).
   Learning: on each day in LEARN_DAYS (every day by default) from 06:00 UTC, if no Learning run has started today,
@@ -12,6 +13,7 @@ so this decides what should be running right now and starts it with workflow_dis
   study.yml with auto (the weekly study of other creators; runs from "study" issues do not count).
 
 Safe to run as often as you like: it only starts what is missing, and publish.py itself never posts a slot twice.
+A dispatch GitHub refuses (a workflow disabled to pause it) is printed and the other checks still run.
 Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any outside trigger that dispatches
 scheduler.yml. Standard library only; uses the gh CLI.
 
@@ -112,6 +114,15 @@ def gh(*args):
     return subprocess.run(['gh', *args], capture_output=True, text=True, check=True).stdout
 
 
+def start(workflow, *inputs):
+    """Dispatch a workflow. A refused dispatch (say the workflow is disabled to pause it) is printed, not raised, so
+    the checks after it still run."""
+    try:
+        gh('workflow', 'run', workflow, *inputs)
+    except subprocess.CalledProcessError as e:
+        print(f'Could not start {workflow}: {e.stderr.strip()[-300:]}')
+
+
 def runs(workflow):
     """Recent runs of a workflow: [{'status', 'createdAt', 'event'}]."""
     return json.loads(gh('run', 'list', '--workflow', workflow, '--limit', '20', '--json', 'status,createdAt,event'))
@@ -129,25 +140,25 @@ def main():
     if slot:
         print(f'Starting Daily reel for slot {slot}')
         if not dry:
-            gh('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', f'slot={slot}')
+            start('daily-reel.yml', '-f', 'dry_run=false', '-f', f'slot={slot}')
     weekly_today = [r for r in runs('weekly.yml') if r['createdAt'][:10] == now.date().isoformat()]
     if due_weekly(now, weekly_today):
         print('Starting Weekly (the Sunday schedule did not run)')
         if not dry:
-            gh('workflow', 'run', 'weekly.yml', '-f', 'post_carousel=true')
+            start('weekly.yml', '-f', 'post_carousel=true')
     learn_today = [r for r in runs('learn.yml') if r['createdAt'][:10] == now.date().isoformat()]
     learn = due_learn(now, learn_today, learn_days(os.environ.get('LEARN_DAYS')))
     if learn:
         print('Starting Learning (today\'s analysis)')
         if not dry:
-            gh('workflow', 'run', 'learn.yml')
+            start('learn.yml')
     study_today = [r for r in runs('study.yml') if r['createdAt'][:10] == now.date().isoformat()] \
         if now.weekday() == 6 else []
     study = due_study(now, study_today)
     if study:
         print('Starting the weekly study of other creators')
         if not dry:
-            gh('workflow', 'run', 'study.yml', '-f', 'auto=true')
+            start('study.yml', '-f', 'auto=true')
     if not slot and not due_weekly(now, weekly_today) and not learn and not study:
         print('Nothing to start')
 

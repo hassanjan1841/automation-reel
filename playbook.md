@@ -2,8 +2,8 @@
 
 What makes a reel worth watching, researched on 2026-10-01: Instagram's and TikTok's own guidance, studies of
 millions of short videos, and learning research. Our first reels lost 80 to 92% of viewers in 3 seconds (a
-normal reel loses about 60%). The writer (`generate.py`), the hook judge (`generate.pick_hook`) and the frame
-review (`qa.py`) all read this file, so a rule changed here changes all three.
+normal reel loses about 60%). The writers (`generate.py`, and `trends.py` for news), the hook judge
+(`generate.pick_hook`) and the frame review (`qa.py`) all read this file, so a rule changed here changes all of them.
 
 ## 1. The reel gives one useful thing
 
@@ -29,7 +29,8 @@ In the first second a viewer must know four things:
 4. What is still missing? One thing held back that the reel delivers within seconds.
 
 Rules:
-- Frame 0 already shows the whole hook and its visual. Nothing fades in from an empty screen.
+- Frame 0 already shows the whole hook and its visual (with a voiceover; VOICE=none renders the hook alone).
+  Nothing fades in from an empty screen.
 - One promise said three ways: on screen a 3 to 6 word phrase (people glance at a feed, they do not read
   sentences); spoken, one sentence of about 9 to 14 words; the visual is the evidence. Same promise, not the
   same words.
@@ -58,8 +59,8 @@ Hook mistakes that make people swipe:
 
 ## 3. The script
 
-- 0 to 2 s: the problem or result on screen with the on-screen hook. 2 to 5 s: the spoken hook.
-  5 to 15 s: one concrete worked example. Last seconds: the exact fix or command, then a closing line that
+- From frame 0: the problem or result on screen with the on-screen hook, and the spoken hook starting at once
+  (about 0.25 s in). Then to about 15 s: one concrete worked example. Last seconds: the exact fix or command, then a closing line that
   links back to the hook, so a replay feels natural.
 - Each voiceover line adds what the screen does not say: the why, what breaks, the result.
 - At most one new term, explained the moment it appears.
@@ -72,13 +73,15 @@ Hook mistakes that make people swipe:
   Instagram shows "majority text" reels less.
 - Little text, never sentences: hook 3 to 6 words, titles 3, captions 3 words at a time, and modest type
   sizes so the screen does not shout. The voice carries the sentences.
-- Code: at most about 10 lines, big type (it is what people read), the one line that matters highlighted (`highlight`); the voice names
+- Code: at most 12 lines (10 in an animation), fewer is better, big type (it is what people read), the one line that matters highlighted (`highlight`); the voice names
   it at that moment.
 - The headline never repeats the spoken sentence word for word (saying the same thing in two places makes it
   harder to follow, not easier).
-- Keep key content inside the safe zone: clear of the top 14%, the bottom 30% and the right edge.
+- Keep key content inside the safe zone the renderer uses (percent of the 1920 px height): content from about
+  15% down to 75% (67% when captions run), captions in the 69 to 77% band, nothing in the bottom 23%, and 8%
+  side margins so the right-hand buttons cover nothing.
 - Something changes every 1.5 to 3 seconds (a highlight, a zoom, a new line); no slide holds a still frame.
-- Captions show 3 to 6 words at a time in the lower band, high contrast.
+- Captions show up to 3 words at a time in the lower band, high contrast.
 - At most one animation per reel (motion.py), on the point where movement explains better than a still: one change
   at a time with a short hold, the active part glowing and the rest dimmed, values that are true.
 - No invented chats or posts presented as real. No faces, no animals, no music.

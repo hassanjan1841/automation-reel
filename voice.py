@@ -4,7 +4,8 @@ Usage: python voice.py <id> [voice]   renders out/reel-<id>-<voice>.mp4
 
 Env:
   VOICE_ENGINE   fish or kokoro (default fish when FISH_API_KEY is set, else kokoro)
-  VOICE          Fish voice reference id or Kokoro voice name (default ThatMob / am_michael)
+  VOICE          read by publish.py (here pass [voice]): Fish voice reference id or Kokoro voice name
+                 (default ThatMob / am_michael)
   VOICE_PITCH    semitones to shift the voice (default 0; shifting sounds robotic, pick a deeper voice instead)
   VOICE_SPEED    speaking speed (default 1.0, about 2.6 words a second; 1.1 felt rushed)
   FISH_API_KEY   Fish Audio API key
@@ -19,7 +20,6 @@ import re
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import numpy as np
 import requests

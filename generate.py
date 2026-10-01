@@ -4,12 +4,16 @@ Reels are normally written on the day by publish.py (generate.today). This scrip
 
 Usage:
   python generate.py --force    queue 14 reels by hand (they are posted before any freshly written reel)
-  python generate.py --check    validate reels.json and exit
+  python generate.py --check    validate reels.json and exit (posted reels are held only to the rules they were
+                                written under; duplicate hooks fail)
   python generate.py --voiceover  write the spoken script for unposted reels that have none
   python generate.py --cues     add delivery cues to queued spoken scripts, keeping every word
+  python generate.py --cues --redo  re-cue every queued spoken script
   python generate.py --visuals  pick code, terminal or screenshot visuals for queued reels that have none
 
 Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
+Env (also read when publish.py writes the day's reel): SLOT (1, 2 or 3), THREE_D=on|off, THREE_D_CHANCE,
+EXPERIMENT=off|<name>; REEL_FORMAT forces reel 3's format (local only: no workflow passes it).
 """
 
 import difflib
@@ -1200,7 +1204,7 @@ def generate(reels, count, dates=None, context=None, test=None):
 
 
 def learned():
-    """The weekly rules from learn.py, or an empty string before there are any."""
+    """The learned rules from learn.py, or an empty string before there are any."""
     path = render.ROOT / 'learnings.md'
     return path.read_text().strip() if path.exists() else ''
 

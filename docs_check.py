@@ -7,7 +7,7 @@ Checks README.md, CLAUDE.md and the project skill against the scripts and workfl
   - every `module.name` the docs mention still exists in that module, and every .py path exists
   - every `python <script>.py --flag` in the docs names a real script and a flag its code handles
   - every entry point in the skill's file table is defined in that file
-  - every scheduled workflow's UTC time appears in README.md
+  - every fixed-time cron's UTC time appears in README.md (not every-N-minutes crons)
 
 Usage: python docs_check.py     prints the problems, exit 1 if any
 """

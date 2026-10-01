@@ -2,8 +2,9 @@
 Chromium (transparent frames, a sane length, a settle frame inside it, sounds the sound kit knows, nothing left
 outside the box), plus the frame-0 rule for the two that may sit under a hook.
 
-Needs playwright with Chromium, pygments and ffmpeg (CI installs them in the "motion" job). E2E_CHROMIUM=<path>
-overrides the browser, as in tests/e2e_publish.py.
+Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
+CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
+browser, as in tests/e2e_publish.py.
 
 Usage: python test_motion.py        exit 1 on any failure
        python test_motion.py -v     one line per test

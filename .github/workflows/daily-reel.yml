@@ -16,12 +16,12 @@ on:
         type: boolean
         default: true
       slot:
-        description: Which reel of the day (2 is the evening reel)
+        description: Which reel of the day (1 how-to at 12:00, 2 evening reel at 16:00, 3 at 20:00 UTC)
         type: choice
         options: ['1', '2', '3']
         default: '1'
       three_d:
-        description: 3D today (random follows THREE_D_CHANCE)
+        description: '3D today (random: repo variable THREE_D, else THREE_D_CHANCE)'
         type: choice
         options: [random, 'on', 'off']
         default: random
@@ -88,6 +88,7 @@ jobs:
           VOICE: ${{ vars.VOICE }}
           VOICE_ENGINE: ${{ vars.VOICE_ENGINE }}
           VOICE_SPEED: ${{ vars.VOICE_SPEED }}
+          VOICE_PITCH: ${{ vars.VOICE_PITCH }}
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
           FORCE_POST: ${{ vars.FORCE_POST }}
@@ -98,6 +99,8 @@ jobs:
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python publish.py
 
@@ -116,7 +119,9 @@ jobs:
           retention-days: 14
 
       - name: Commit queue
-        if: steps.publish.outputs.posted == 'true'
+        # always(): once a reel is posted it must be recorded even if a later step failed (the pronunciation test),
+        # or the Scheduler would see the slot as unposted and post it again.
+        if: always() && steps.publish.outputs.posted == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

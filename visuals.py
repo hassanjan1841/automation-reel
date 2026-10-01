@@ -23,8 +23,6 @@ fit); the slide then falls back to its body text.
 import hashlib
 import math
 import subprocess
-import re
-import textwrap
 import urllib.request
 
 import numpy as np

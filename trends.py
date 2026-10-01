@@ -217,7 +217,7 @@ def performance():
     token = os.environ.get('IG_TOKEN')
     if not token:
         return []
-    base = 'https://graph.instagram.com/v25.0'
+    base = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
     try:
         media = get(f'{base}/me/media', params={'fields': 'id,caption,media_type,timestamp', 'limit': 20,
                                                  'access_token': token}).json().get('data', [])
@@ -296,7 +296,7 @@ Verification is mandatory:
 
 def claude(prompt, system, schema, model=None):
     proc = subprocess.run(
-        ['claude', '-p', prompt, '--model', model or os.environ.get('CLAUDE_MODEL', generate.MODEL),
+        ['claude', '-p', prompt, '--model', model or (os.environ.get('CLAUDE_MODEL') or generate.MODEL),
          '--system-prompt', system, '--tools', 'WebSearch', 'WebFetch', '--allowedTools', 'WebSearch', 'WebFetch',
          '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
          '--json-schema', json.dumps(schema)],
