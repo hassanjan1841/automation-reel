@@ -1165,5 +1165,130 @@
     ],
     "slot": 3,
     "seconds": 22.6
+  },
+  {
+    "id": 42,
+    "style": "light",
+    "payoff": "A 15-line Next.js API route that verifies the Stripe signature, then flips a Supabase user's plan to pro the moment checkout.session.completed fires",
+    "kicker": "Build smart #1",
+    "hook": "Your checkout *never* grants access",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "diff",
+      "language": "ts",
+      "title": "route.ts",
+      "before": "export async function POST() {\n  return new Response(\"ok\")\n}",
+      "after": "export async function POST(req) {\n  const event = verifyEvent(req)\n  if (event.type ===\n    \"checkout.session.completed\") {\n    await setPlan(event, \"pro\")\n  }\n  return new Response(\"ok\")\n}"
+    },
+    "alternatives": [
+      {
+        "hook": "One *webhook* unlocks paid access",
+        "spoken": "[fired up] This one route turns a Stripe payment (break) [confident] into instant access.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Empty route becomes *paid* access",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] This blank Next.js route turns (break) [confident] into instant Pro access after checkout."
+      },
+      {
+        "hook": "Most webhooks skip *signature* checks",
+        "hook_type": "mistake",
+        "spoken": "[fired up] Most devs forget to verify the Stripe signature first."
+      }
+    ],
+    "points": [
+      {
+        "title": "Verify the signature",
+        "body": "Stripe signs every webhook event",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "route.ts",
+            "code": "const body = await req.text()\nconst sig = req.headers.get(\n  \"stripe-signature\"\n)\nconst event =\n  stripe.webhooks.constructEvent(\n    body, sig, secret\n  )",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Update the user",
+        "body": "Checkout event flips plan to pro",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "route.ts",
+            "code": "if (event.type ===\n  \"checkout.session.completed\") {\n  const s = event.data.object\n  await supabase\n    .from(\"users\")\n    .update({ plan: \"pro\" })\n    .eq(\"id\", s.client_reference_id)\n}",
+            "highlight": [
+              6,
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Confirm it worked",
+        "body": "Query Supabase right after payment",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "check.sql",
+            "code": "select plan from users\nwhere id = 'cus_123';\n-- expect: pro",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *WEBHOOK* for the full route",
+    "dm_keyword": "WEBHOOK",
+    "dm_guide": "Here's the Stripe to Supabase webhook flow: 1) npm install stripe @supabase/supabase-js. 2) Create app/api/hook/route.ts, read the raw body, then verify with stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET). 3) When event.type is checkout.session.completed, run supabase.from('users').update({plan:'pro'}).eq('id', session.client_reference_id). 4) Test locally: stripe listen --forward-to localhost:3000/api/hook, then stripe trigger checkout.session.completed. Docs: https://stripe.com/docs/webhooks and https://supabase.com/docs/reference/javascript/update",
+    "caption": "Stripe webhook to Supabase in Next.js\nTurn a payment into instant access with one route file\nWhat feature would you automate first? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#stripe",
+      "#supabase",
+      "#webhook"
+    ],
+    "voiceover": [
+      "[exasperated] Your Stripe checkout succeeds, (break) [serious] but your app never grants real access.",
+      "[serious, fast] Stripe signs the event. (break) [knowing] Skip it and anyone can fake payments.",
+      "[excited] Once verified, (break) [confident and fast] one line flips the user to pro.",
+      "[amused] Don't trust the dashboard, (break) [confident] query Supabase and watch the plan change.",
+      "[warm, curious] Comment WEBHOOK and I'll send you the full route."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "saas",
+    "series": "Build smart",
+    "episode": 1,
+    "posted_at": "2026-10-01T12:00:41+00:00",
+    "media_id": "18160572448497575",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is text-only (\"Your checkout never grants access\") with no code, diff or screenshot proof on screen, so it's a text-only hook with nothing to look at."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The route is split into two separate snippets (verify signature, update user) and never shown assembled as one complete 15-line file, so there's nothing to screenshot as the whole promised route."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.8
   }
 ]
