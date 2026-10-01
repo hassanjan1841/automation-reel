@@ -1025,7 +1025,8 @@ class PlaybookTest(Sandbox):
     def test_alternatives_fit_the_word_budget(self):
         long = copy.deepcopy(VALID)
         long['voiceover'][3] = '[punchy] The fix is small and quick. [warm] Delete that cached key on every single write.'
-        self.assertEqual(generate.validate(long), [])  # 53 words, line 1 has 10
+        long['alternatives'][0]['spoken'] = '[urgent] You saved the profile, [exasperated] the cache shows the old one.'
+        self.assertEqual(generate.validate(long), [])  # 53 words, line 1 has 10, every alternative fits
         long['alternatives'][1]['spoken'] = ('[fired up] One delete call after every single write, [confident] and '
                                              'stale reads are gone for good.')  # 14 words: 57 in total
         self.assertIn('alternative 2 spoken line would take the voiceover outside', ' '.join(generate.validate(long)))
