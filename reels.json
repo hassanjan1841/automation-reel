@@ -1439,5 +1439,131 @@
     ],
     "slot": 2,
     "seconds": 25.1
+  },
+  {
+    "id": 44,
+    "style": "dark",
+    "payoff": "Drizzle writes schema and queries in plain TypeScript with zero generate step, while Prisma needs a schema file, a generate step, and a query engine binary shipped with every deploy.",
+    "kicker": "X vs Y #1",
+    "hook": "Prisma *hides* your SQL",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "language": "ts",
+      "title": "users.ts",
+      "code": "await prisma.user.findMany({\n  where: { email: { contains: 'x' } }\n});",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Prisma ships a *hidden* binary",
+        "hook_type": "mistake",
+        "spoken": "[fired up] Prisma quietly adds a query engine binary. [urgent] Every single deploy carries it."
+      },
+      {
+        "hook": "Drizzle *skips* the generate step",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Drizzle skips the generate step entirely. [confident] Straight SQL, straight away."
+      },
+      {
+        "hook": "One ORM adds *deploy* weight",
+        "hook_type": "problem",
+        "spoken": "[fired up] Pick the wrong ORM and your deploys get heavier. [exasperated] That is the tradeoff."
+      }
+    ],
+    "points": [
+      {
+        "title": "Schema in TS",
+        "body": "Plain TypeScript schema, no extra file",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "schema.ts",
+            "code": "export const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  email: text('email').notNull(),\n});",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Query style",
+        "body": "Queries read like real SQL here",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "query.ts",
+            "code": "await db.select().from(users)\n  .where(like(users.email, '%x%'));",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Deploy weight",
+        "body": "Prisma ships a binary, Drizzle skips it",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "bash",
+            "title": "deploy.sh",
+            "before": "npx prisma generate\nnpx prisma migrate dev\n# ships engine binary",
+            "after": "npx drizzle-kit push\n# no binary, just SQL"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *ORM* for the full setup",
+    "dm_keyword": "ORM",
+    "dm_guide": "Here's the quick decision guide. Drizzle: install drizzle-orm and your db driver, define tables with pgTable in plain TypeScript, run npx drizzle-kit push to sync, query with db.select().from(table). No generate step, no engine binary, great for serverless and edge. Docs: orm.drizzle.team. Prisma: install prisma and @prisma/client, define models in schema.prisma, run npx prisma generate then npx prisma migrate dev, query with prisma.model.findMany. Ships a query engine binary plus Prisma Studio. Docs: www.prisma.io/docs. Pick Drizzle for lightweight edge deploys, Prisma for built-in tooling and a GUI.",
+    "caption": "Prisma vs Drizzle: schema, queries, and deploy weight\nComment ORM and I'll send you the full setup guide\nWhich one fits your stack better? 👇",
+    "hashtags": [
+      "#prisma",
+      "#drizzle",
+      "#typescript",
+      "#nodejs",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[grinning, punchy] Prisma hides your SQL behind generated code. [deadpan] Drizzle writes it raw.",
+      "[confident and fast] Tables are plain TypeScript here. [quick tip] No extra schema file needed.",
+      "[energetic] Queries read like real SQL. [amused] Prisma stays abstract instead.",
+      "[serious, fast] Prisma ships a query engine binary. [urgent] Every single deploy carries it.",
+      "[warm, curious] Comment ORM and I will send the full setup. [teasing] Both tools, compared."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 1,
+    "posted_at": "2026-10-01T20:00:47+00:00",
+    "media_id": "18634791160054826",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only shows the query-style diff on screen; the plain-TypeScript schema (no pgTable code), the zero-generate-step claim, and the query engine binary are only narrated over text cards, not shown as real code to copy or screenshot."
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "code",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.9
   }
 ]
