@@ -1418,7 +1418,26 @@
       "https://en.wikipedia.org/wiki/Jev_(AI_model)",
       "https://www.tomshardware.com/tech-industry/artificial-intelligence/typesafe-ais-jev-offers-an-alternative-to-llms-that-claims-to-be-193x-faster-and-445x-cheaper-system-one-type-model-is-bespoke-for-probabilistic-decision-making"
     ],
-    "posted_at": null,
-    "media_id": null
+    "posted_at": "2026-10-01T16:00:43+00:00",
+    "media_id": "17904850692570966",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The code panel under the hook shows a chat model writing a full sentence (the 'before'), the opposite of the headline 'This AI never writes' — the actual proof (Jev's structured pick) isn't on screen yet, so the proof contradicts the hook at a glance."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "sequence",
+      "text",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 25.1
   }
 ]
