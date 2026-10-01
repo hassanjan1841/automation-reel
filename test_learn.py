@@ -24,6 +24,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+import numpy as np
+
 import dm
 import generate
 import history
@@ -38,12 +40,22 @@ ROOT = Path(__file__).resolve().parent
 # A reel that passes generate.validate: a statement hook, 49 spoken words.
 VALID = {
     'pillar': 'concept', 'series': 'Explained', 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
-    'hook': 'Why your *cache* keeps serving stale data',
+    'payoff': 'Delete the cached key on every write so readers never get the old row',
+    'hook': 'Your *cache* serves old data', 'hook_type': 'problem',
+    'hook_visual': {'type': 'code', 'language': 'ts', 'title': 'profile.ts',
+                    'code': "await db.update(user)\nconst u = await cache.get(key)\n// u is still the old user", 'highlight': [3]},
+    'alternatives': [
+        {'hook': 'Your *cache* hides every profile update', 'hook_type': 'mistake',
+         'spoken': '[urgent] You saved the new profile, [exasperated] but your cache still serves the old one.'},
+        {'hook': 'One line stops *stale* cache reads', 'hook_type': 'shortcut',
+         'spoken': '[fired up] One delete call after each write, [confident] and stale reads are gone.'},
+        {'hook': 'Old data after every *update*', 'hook_type': 'before_after',
+         'spoken': '[mock outraged] You update the row, [deadpan] the page still shows the old value.'}],
     'points': [
-        {'title': 'Reads hit cache first', 'body': 'The app asks the cache before the database.',
+        {'title': 'Reads hit cache', 'body': 'The app asks the cache before the database.',
          'visual': [{'type': 'code', 'language': 'ts', 'title': 'read.ts',
                      'code': 'const hit = await cache.get(key)\nif (hit) return hit', 'highlight': [1]}]},
-        {'title': 'Writes skip the cache', 'body': 'Updates go straight to the database only.',
+        {'title': 'Writes skip cache', 'body': 'Updates go straight to the database only.',
          'visual': [{'type': 'code', 'language': 'ts', 'title': 'write.ts',
                      'code': 'await db.update(user)\n// cache still has the old user', 'highlight': [2]}]},
         {'title': 'Delete the key', 'body': 'Clear the cached key on every write.',
@@ -58,7 +70,7 @@ VALID = {
                   '[punchy] The fix is small. [warm] Delete that key on every write.',
                   '[curious] So tell me, [grinning] do you clear keys or wait?'],
 }
-QUESTION_HOOK = 'Why does your *cache* serve stale data?'
+QUESTION_HOOK = 'Why is your *cache* stale?'
 
 
 class Sandbox(unittest.TestCase):
@@ -523,9 +535,15 @@ class MeasureTest(Sandbox):
 class ScoreTest(Sandbox):
     def test_looks(self):
         base = reel(1, datetime(2026, 9, 1, tzinfo=timezone.utc))
-        self.assertEqual(learn.looks(base), {'visuals': ['text'], 'hook_word': 'text only', 'three_d': 'flat'})
+        self.assertEqual(learn.looks(base), {'visuals': ['text'], 'hook_word': 'text only', 'three_d': 'flat',
+                                             'hook_type': 'untagged', 'opening': 'text'})
         self.assertEqual(learn.looks({**base, 'shown': ['word', 'diagram', 'terminal', 'text', 'text']}),
-                         {'visuals': ['diagram', 'terminal'], 'hook_word': '3D word', 'three_d': '3D'})
+                         {'visuals': ['diagram', 'terminal'], 'hook_word': '3D word', 'three_d': '3D',
+                          'hook_type': 'untagged', 'opening': 'text'})
+        # The playbook's opening: a proof under the hook from frame 0, tagged with the hook's type.
+        proof = learn.looks({**base, 'hook_type': 'mistake', 'shown': ['diff', 'code', 'text', 'text', 'text']})
+        self.assertEqual((proof['opening'], proof['hook_type'], proof['visuals']), ('proof', 'mistake', ['code']))
+        self.assertEqual(learn.looks({**base, 'hook_visual': {'type': 'code'}})['opening'], 'proof')
         fell_back = {**base, 'hook_word': 'RLS', 'shown': ['text', 'code', 'text', 'text', 'text']}
         fell_back['points'][0]['visual'] = [{'type': 'diagram'}, {'type': 'code'}]
         self.assertEqual(learn.looks(fell_back)['three_d'], 'flat')
@@ -979,6 +997,101 @@ class ReportTest(Sandbox):
         self.assertIn('| Watch time (average) | 3.2s |', text)
         self.assertIn('watched 3.1s', text)
         self.assertNotIn('of it)', text)
+
+
+class PlaybookTest(Sandbox):
+    """The playbook's rules (playbook.md): one payoff, a short hook with its proof from frame 0, the strongest of
+    four hooks, no invented chats or posts, and the frame review of frame 0."""
+
+    def test_validate_holds_new_reels_to_the_playbook(self):
+        self.assertEqual(generate.validate(VALID), [])
+        broken = {**VALID, 'payoff': '', 'hook_type': 'clickbait', 'hook_visual': {'type': 'terminal', 'commands': ['ls']},
+                  'alternatives': VALID['alternatives'][:2], 'hook': 'Why your *cache* keeps serving stale data'}
+        errors = ' | '.join(generate.validate(broken))
+        for part in ('payoff', 'hook_type', 'hook_visual', 'alternatives', 'hook has 7 words, needs 3 to 6'):
+            self.assertIn(part, errors)
+        chat = copy.deepcopy(VALID)
+        chat['points'][0]['visual'] = [{'type': 'chat', 'messages': [{'from': 'client', 'text': 'quick fix?'},
+                                                                     {'from': 'me', 'text': 'sure'}]}]
+        self.assertIn('no invented posts or conversations', ' '.join(generate.validate(chat)))
+        self.assertIn('max 3', ' '.join(generate.validate({**VALID, 'points': [{**VALID['points'][0],
+                      'title': 'Reads hit the cache'}] + VALID['points'][1:]})))
+
+    def test_posted_reels_keep_passing_the_check(self):
+        old = {k: v for k, v in VALID.items() if k not in ('payoff', 'hook_type', 'hook_visual', 'alternatives')}
+        old = {**old, 'id': 1, 'posted_at': '2026-09-01T12:00:00+00:00', 'hook': 'Why your *cache* keeps serving stale data'}
+        render.QUEUE.write_text(json.dumps([old]))
+        with mock.patch.object(render, 'QUEUE', render.QUEUE), mock.patch.object(sys, 'argv', ['generate.py', '--check']), \
+                contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit) as done:
+                generate.main()
+        self.assertEqual(done.exception.code, 0)
+
+    def judged(self, verdict, returncode=0):
+        out = SimpleNamespace(returncode=returncode, stdout=json.dumps({'structured_output': verdict}), stderr='')
+        with mock.patch.object(generate.subprocess, 'run', return_value=out) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            picked = generate.pick_hook(copy.deepcopy(VALID))
+        return picked, run
+
+    def test_judge_swaps_in_the_strongest_hook(self):
+        picked, run = self.judged({'scores': [5, 6, 9, 4], 'best': 3, 'why': 'shows the fix'})
+        self.assertEqual(picked['hook'], VALID['alternatives'][1]['hook'])
+        self.assertEqual(picked['hook_type'], 'shortcut')
+        self.assertEqual(picked['voiceover'][0], VALID['alternatives'][1]['spoken'])
+        self.assertEqual(picked['voiceover'][1:], VALID['voiceover'][1:])
+        self.assertIn(VALID['hook'], [a['hook'] for a in picked['alternatives']])  # the writer's hook is kept as one
+        self.assertEqual(generate.validate(picked), [])
+        prompt = run.call_args[0][0][2]
+        self.assertIn(VALID['payoff'], prompt)
+        self.assertIn('hook_visual', prompt)
+
+    def test_judge_keeps_the_writers_hook_when_it_cannot_help(self):
+        self.assertEqual(self.judged({'scores': [9, 1, 1, 1], 'best': 1, 'why': ''})[0]['hook'], VALID['hook'])
+        self.assertEqual(self.judged({'scores': [], 'best': 7, 'why': ''})[0]['hook'], VALID['hook'])  # out of range
+        self.assertEqual(self.judged(None)[0]['hook'], VALID['hook'])                                  # no answer
+        bad = copy.deepcopy(VALID)
+        bad['alternatives'][0]['hook'] = 'A hook that is far too long for the screen'
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'scores': [1, 9, 1, 1], 'best': 2,
+                                                                                    'why': ''}}), stderr='')
+        with mock.patch.object(generate.subprocess, 'run', return_value=out), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(generate.pick_hook(bad)['hook'], VALID['hook'])  # a pick that breaks the rules is refused
+
+    def test_frame_zero_shows_the_whole_hook_and_its_proof(self):
+        from voice import Voiceover
+        words = [[(w, 0.1 + i * 0.38, 0.43 + i * 0.38) for i, w in enumerate(l.split())] for l in VALID['voiceover']]
+        v = Voiceover([np.zeros(render.SR * 3, dtype=np.float32) for _ in VALID['voiceover']], words, continuous=True)
+        with mock.patch('visuals.Code.__init__', side_effect=lambda *a, **k: None), \
+                mock.patch('visuals.build', return_value=SimpleNamespace(settle=1.2, spec=None, w=900, x=60, y=800, h=300,
+                                                                       duration=0)) as build:
+            slides, _ = render.build_slides({**VALID, 'id': 1}, v)
+        hook = slides[0]
+        self.assertTrue(hook.ready)
+        self.assertEqual(hook.lead, 1.2)
+        self.assertEqual(build.call_args_list[0][0][0], VALID['hook_visual'])
+        words = [el for el in hook.elements if not el.grow]  # the underline still draws in: motion on frame 0
+        self.assertTrue(words and all(el.t0 + el.dur <= 0 for el in words))  # every word is in before frame 0
+        self.assertEqual(hook.clicks[0], 0.0)                                # and sound starts at once
+        self.assertFalse(slides[1].ready)
+
+    def test_review_drops_a_hook_proof_it_rejects(self):
+        reel = {**copy.deepcopy(VALID), 'id': 1}
+        slides = [SimpleNamespace(visual=SimpleNamespace(spec=reel['hook_visual']))] + \
+                 [SimpleNamespace(visual=SimpleNamespace(spec=p['visual'][0])) for p in reel['points']] + \
+                 [SimpleNamespace(visual=None)]
+        verdicts = [{'slides': [{'slide': 0, 'ok': True, 'visual_ok': False, 'honest': True, 'problem': 'unreadable'}],
+                     'first_frame': {'ok': False, 'problem': 'empty'}, 'payoff': {'ok': True, 'problem': ''}},
+                    {'slides': [], 'first_frame': {'ok': True, 'problem': ''}, 'payoff': {'ok': True, 'problem': ''}}]
+        rendered = []
+        with mock.patch.object(publish.qa, 'review', side_effect=verdicts), \
+                mock.patch.object(publish.render, 'render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v', slides)), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            publish.check_visuals(reel, None, 'v', slides)
+        self.assertEqual(len(rendered), 1)
+        self.assertNotIn('hook_visual', rendered[0])
+        self.assertEqual(rendered[0]['points'], reel['points'])
+        self.assertIn('Playbook warning (first frame): empty', out.getvalue())
+        self.assertEqual(reel['review']['first_frame'], {'ok': True, 'problem': ''})  # the last review is recorded
 
 
 class WorkflowTest(unittest.TestCase):

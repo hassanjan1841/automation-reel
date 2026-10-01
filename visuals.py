@@ -180,6 +180,12 @@ class Card:
     def layer(self, t):
         raise NotImplementedError
 
+    @property
+    def settle(self):
+        """Seconds until the card has landed and shows its content; a card that must be complete on its slide's
+        first frame (the hook's proof) is drawn from this point in its own timeline."""
+        return self.TILT
+
     def draw(self, frame, t, alpha, dy):
         if alpha <= 0.003:
             return
@@ -219,7 +225,7 @@ def code_image(code, language, title, w, max_h, marks=None, with_char_w=False):
     if len(lines) > MAX_CODE_LINES or max(len(l) for l in lines) > MAX_CODE_COLS:
         raise ValueError(f'code is {len(lines)} lines x {max(len(l) for l in lines)} columns, max '
                          f'{MAX_CODE_LINES} x {MAX_CODE_COLS}')
-    for size in range(42, 25, -2):
+    for size in range(54, 25, -2):  # short snippets get big type: code is what people read
         line_h = round(size * 1.55)
         if mono(size).getlength('M' * max(len(l) for l in lines)) <= w - 110 and 64 + 72 + line_h * len(lines) <= max_h:
             break
@@ -276,6 +282,11 @@ class Code(Card):
             self.circle = sketch_ellipse((x0, self.rows[i][0] + 4, x1, self.rows[i][1] - 4), seed=i + 7)
             done = self.START + self.STEP * len(self.rows) + 0.45
             self.sounds.append((done, 'scribble'))
+
+    @property
+    def settle(self):
+        # Every line in place; the highlight and the hand-drawn circle still arrive after, as motion on frame 0.
+        return max(self.TILT, self.START + self.STEP * len(self.rows))
 
     def layer(self, t):
         # The card is always full size (its shadow belongs to all of it); lines not typed yet are blank.

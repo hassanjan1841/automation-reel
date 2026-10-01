@@ -37,12 +37,15 @@ PILLARS = {
               'the real steps (walkthrough, ide recording or screenshots)', 'AI tool in 30s'),
     1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
                   '(diff or ide recording)', 'Dev mistake'),
-    2: ('relatable', 'Relatable dev life: a POV or meme-style reel most developers recognise, told with a post '
-                     'card or a POV chat; funny but kind, never mocking a real person', 'POV'),
-    3: ('freelance', 'Freelance life: a client situation as a POV chat, plus the lesson or the red flags to '
-                     'watch for', 'Client vs Me'),
+    2: ('relatable', 'Myth vs fact: a belief many developers hold that is wrong, proven wrong on screen with real '
+                     'code, a real recording or the official docs, then what to do instead', 'Myth vs fact'),
+    3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
+                     'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
+                     'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
+                     'A template, never an invented conversation', 'Freelance playbook'),
     4: ('concept', 'Tech concept explained simply, or myth vs fact about a tool or practice', 'Explained'),
-    5: ('relatable', 'Relatable dev humour or a ranking (tier list of tools or habits), with a clear opinion', 'POV'),
+    5: ('relatable', 'Ranked: three real tools or habits for one job, ranked with the real reason for each, shown '
+                     'with real code, docs or screenshots, and a clear verdict on which to pick', 'Ranked'),
     6: ('saas', 'Build X in one afternoon: one real feature with Next.js, Supabase or Stripe (auth, checkout, '
                 'a webhook, a dashboard) in a few clear steps; or SaaS validation, or a stack reveal', 'Build smart'),
 }
@@ -77,8 +80,9 @@ def validate(reel):
         errors.append('kicker must be a short label (max 3 words)')
 
     hook = reel.get('hook', '')
-    if not 5 <= words(hook) <= 8:
-        errors.append(f'hook has {words(hook)} words, needs 5 to 8')
+    # On screen people glance, they do not read: a short phrase; the spoken hook carries the full sentence.
+    if not 3 <= words(hook) <= 6:
+        errors.append(f'hook has {words(hook)} words, needs 3 to 6')
     if not highlights(hook):
         errors.append('hook needs at least one *highlighted* word with balanced asterisks')
 
@@ -88,8 +92,8 @@ def validate(reel):
     for i, p in enumerate(points, 1):
         title, body = p.get('title', ''), p.get('body', '')
         slide_text += [title, body]
-        if not title or words(title) > 4:
-            errors.append(f'point {i} title has {words(title)} words, max 4')
+        if not title or words(title) > 3:
+            errors.append(f'point {i} title has {words(title)} words, max 3')
         if not body or words(body) > 8:
             errors.append(f'point {i} body has {words(body)} words, max 8')
         if highlights(title) is None:
@@ -98,7 +102,38 @@ def validate(reel):
             errors.append(f'point {i} body must not use highlights')
         errors += visual_errors(i, p.get('visual'))
 
+    payoff = reel.get('payoff', '')
+    if not 10 <= len(payoff.strip()) <= 220:
+        errors.append('payoff must say in 10 to 220 characters the one exact thing the viewer gets')
+    if reel.get('hook_type') not in HOOK_TYPES:
+        errors.append(f"hook_type must be one of {', '.join(HOOK_TYPES)}")
+    hv = reel.get('hook_visual')
+    if not isinstance(hv, dict) or hv.get('type') not in HOOK_VISUALS:
+        errors.append(f"hook_visual must be one {', '.join(HOOK_VISUALS)} visual: the problem or result, shown from "
+                      'the first frame')
+    else:
+        errors += [e.replace('point hook', 'hook_visual') for e in visual_errors('hook', [hv])]
+    alts = reel.get('alternatives')
+    if not isinstance(alts, list) or len(alts) != 3:
+        errors.append('alternatives needs 3 other hooks, each {hook, spoken, hook_type}')
+    else:
+        for k, a in enumerate(alts, 1):
+            if not 3 <= words(a.get('hook', '')) <= 6 or not highlights(a.get('hook', '')) \
+                    or a.get('hook_type') not in HOOK_TYPES or not a.get('spoken', '').lstrip().startswith('['):
+                errors.append(f'alternative {k} needs a 3 to 6 word hook with a *highlight*, a spoken line starting '
+                              'with a [cue] and a hook_type')
+            elif words(strip_cues(a['spoken'])) > 14:
+                errors.append(f'alternative {k} spoken line has more than 14 words')
+            elif any(len(strip_cues(part).split()) > CUE_GAP for part in re.split(r'\[[^\]]*\]', a['spoken'])):
+                errors.append(f'alternative {k} spoken line runs more than {CUE_GAP} words without a fresh cue')
+    if any(v.get('type') in ('tweet', 'chat') for p in points
+           for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
+        errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
+                      'code, a template, docs or a recording')
+
     word = reel.get('hook_word')
+    if word is not None and hv:
+        errors.append('leave hook_word out: the hook slide shows hook_visual under the hook')
     if word is not None and (not re.fullmatch(r'[A-Za-z0-9.#+-]{2,10}', word)
                              or word.lower() not in re.sub(r'\*', '', hook).lower()):
         errors.append('hook_word must be one word from the hook, 2 to 10 letters')
@@ -200,13 +235,29 @@ def next_post_dates(reels, count):
     return [first + timedelta(days=queued + i) for i in range(count)]
 
 
+# Hook types from playbook.md; the writer names one and learn.py compares them.
+HOOK_TYPES = ('problem', 'before_after', 'shortcut', 'mistake', 'test', 'news')
+# What the hook slide shows under the hook from frame 0: the problem or the result itself (flat and complete at
+# once; a terminal types itself out and a recording or a 3D scene needs time to start).
+HOOK_VISUALS = ('code', 'diff', 'screenshot')
+PLAYBOOK = render.ROOT / 'playbook.md'
+
+
+def playbook():
+    """The researched rules for hooks, scripts and visuals (playbook.md), read by the writer, the hook judge and
+    the frame review."""
+    return PLAYBOOK.read_text().strip() if PLAYBOOK.exists() else ''
+
+
 NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
 SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
 
 
 # Reel 1 teaches, reel 2 is relatable; each rotates through its own series (indexes into PILLARS) by weekday,
-# so the two reels of a day are always different kinds. Client vs Me comes up most, as the creator asked.
+# so the two reels of a day are always different kinds. The freelance playbook comes up most (2026-10-01: the
+# relatable POV and client-chat skits were invented scenes with nothing to take away, and Instagram barely showed
+# them: 5 and 9 views).
 TEACH = (0, 1, 4, 6)
 RELATE = (3, 2, 3, 5)
 
@@ -347,7 +398,7 @@ QUOTE_PLATFORMS = ('X', 'Hacker News', 'GitHub', 'Bluesky', 'Threads', 'LinkedIn
 VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
-        'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'tweet', 'chat', 'screenshot', 'walkthrough',
+        'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'screenshot', 'walkthrough',
                                             'ide', 'quote', 'diagram', 'device', 'bars', 'logos']},
         'author': {'type': 'string'}, 'handle': {'type': 'string'}, 'platform': {'type': 'string'},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
@@ -588,9 +639,15 @@ SCHEMA = {
             'items': {
                 'type': 'object',
                 'properties': {
+                    'payoff': {'type': 'string'},
                     'kicker': {'type': 'string'},
                     'hook': {'type': 'string'},
-                    'hook_word': {'type': 'string'},
+                    'hook_type': {'type': 'string', 'enum': list(HOOK_TYPES)},
+                    'hook_visual': VISUAL_SCHEMA,
+                    'alternatives': {'type': 'array', 'items': {
+                        'type': 'object', 'additionalProperties': False, 'required': ['hook', 'spoken', 'hook_type'],
+                        'properties': {'hook': {'type': 'string'}, 'spoken': {'type': 'string'},
+                                       'hook_type': {'type': 'string', 'enum': list(HOOK_TYPES)}}}},
                     'points': {
                         'type': 'array',
                         'items': {
@@ -607,7 +664,8 @@ SCHEMA = {
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
                 },
-                'required': ['kicker', 'hook', 'points', 'cta', 'caption', 'hashtags', 'voiceover'],
+                'required': ['payoff', 'kicker', 'hook', 'hook_type', 'hook_visual', 'alternatives', 'points', 'cta',
+                             'caption', 'hashtags', 'voiceover'],
                 'additionalProperties': False,
             },
         },
@@ -618,18 +676,33 @@ SCHEMA = {
 
 SYSTEM = """You write short Instagram Reels scripts for @hassanjan.k, a freelance full-stack developer who posts daily dev and AI tips. Each reel is a set of editorial text slides: a hook, three points, and a call to action.
 
+Before anything else, follow the playbook at the end of these instructions: one useful thing per reel, the
+payoff written first, a hook that passes its four questions, and real things on screen.
+
 Field rules:
+- payoff: the one exact thing the viewer gets, written first (the command, the line of code, the setting, the
+  message template, the fix), e.g. "select('*, users(name)') loads posts and authors in one query instead of
+  one query per post". Everything else serves it; the three points are its steps (problem, fix, proof).
+- hook_type: which playbook hook type the hook is: problem, before_after, shortcut, mistake, test or news.
+- hook_visual: the proof under the hook from the very first frame: a code, diff or screenshot visual
+  showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
+  Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
+- alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
+  on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1, with its cues). A
+  reviewer picks the strongest of the four, so make every one good and honest.
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
-- hook: 5 to 8 words, one idea a viewer gets in a glance. Wrap the key word or two in *asterisks* to highlight
-  them in the accent color.
-- points: exactly 3. Each has a title (max 4 words, a headline label like "Check cache first", not a
+- hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
+  *public*", "Stale *cache* after every save"). The spoken line 1 carries the full sentence.
+  Wrap the key word or two in *asterisks* to highlight them in the accent color.
+- points: exactly 3. Each has a title (max 3 words, a label like "Delete the key", not a
   sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
   the voice carries the detail.
 - cta: a short question for the comments with exactly one *highlighted* word. With a dm_keyword it is instead the
   offer, e.g. "Comment *MCP* for the setup", with the keyword highlighted.
 - dm_keyword and dm_guide (comment-to-DM; people who comment the keyword get dm_guide as a private message):
-  give them to how-to, trick, versus and beginner reels that have something worth sending; leave them out of
-  relatable reels (POV, Client vs Me), which end with a question instead. dm_keyword: one short word in capitals
+  give them to how-to, trick, versus, beginner and freelance-playbook reels that have more worth sending (the
+  full steps, every template); leave them out of myth and ranked reels, which end with a question instead. The
+  reel itself always delivers its payoff; the guide is the extended version, never the payoff held back. dm_keyword: one short word in capitals
   (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
   written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
   characters, no invented facts. The reel only promises what dm_guide really contains.
@@ -643,7 +716,8 @@ Field rules:
 Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Never read the slide out. Say the same idea in different words and add what the slide leaves out: the why, a quick example, or what goes wrong if you ignore it.
 - Talk like a developer telling a friend something useful: contractions, "you", short sentences, a bit of personality. No announcer voice, no filler like "in this video" or "let's dive in".
-- Line 1 is the spoken hook and must grab in the first two seconds: a surprising claim, a sharp question or a tension. Max 12 words.
+- Line 1 is the spoken hook: the full promise in about 9 to 14 words, to "you", the same promise as the on-screen
+  hook in different words (the screen shows the short version).
 - Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
   over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
   must talk about its own point; never jump ahead to a later point.
@@ -663,12 +737,8 @@ that does not clearly show what is being said):
   mistake turns red and struck through, then the fix arrives in green. The best choice for any "stop doing X,
   do Y" point about code.
 - terminal: 1 to 6 real commands, max 40 characters each; they are typed out live.
-- tweet: a short post in the creator's own voice (10 to 200 characters, up to 6 lines), shown as a post card
-  with his name. Use it for a relatable one-liner, a hot take or a dev-life joke. No like or view counts.
-- chat: a "Client / Me" exchange of 2 to 5 short messages (max 60 characters each, "from": client or me),
-  shown as a chat with typing dots and labelled as a POV scene. Use it for freelance and client situations;
-  it should be recognisable and a little funny, and the voiceover treats it as a familiar situation, never as
-  something that happened to the creator. No real names.
+- No tweet or chat visuals: invented posts and conversations look fake and say nothing useful. For a freelance
+  situation, show the template itself as a code card (title like "reply.txt" or "clause.md", language "md").
 - screenshot: a public page that shows the point itself (a product screen, a pricing table, a setting, a docs
   heading) and "find": a short exact text on that page to scroll to and outline, like a heading or button
   label. Never a generic homepage, logo or login page. Docs pages often have small text, so always add a
@@ -690,8 +760,7 @@ that does not clearly show what is being said):
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
-- hook_word: one word from the hook (2 to 10 letters, e.g. "RLS", "Zod", "CORS") that spins in as 3D text
-  above the hook. Leave it out unless the word itself is the topic.
+- hook_word: not used any more; the hook slide shows hook_visual instead. Leave it out.
 - diagram: how something flows between parts, shown as 3D blocks with a glowing packet travelling along
   "flow". "nodes" (2 to 5: id, label max 12 characters, kind one of client, server, db, cache, queue,
   cloud, phone, lock), "edges" ({"from", "to"}), "flow" (1 to 8 hops like "app>api", in the order the
@@ -716,8 +785,8 @@ Delivery cues (the voice follows them; without fresh cues it starts strong and f
 - Keep the energy up. At most one low-energy cue ([calm], [soft], [quiet]) in the whole reel, and only as a contrast. Vary the cues; never repeat the same pattern on every line.
 
 What makes reels spread (learned from posts with thousands of comments and saves):
-- The hook promises one concrete result the viewer can get, often with a size: "in 2 minutes", "in one
-  afternoon", "with one line". Not a general tip; something they can do.
+- The hook promises one concrete result the viewer can get: "with one line", "before you deploy". Not a
+  general tip; something they can do, and the reel really does it on screen.
 - One tension beat in the voiceover: name the doubt the viewer has ("You might think this is slow...") or the
   point where people get stuck ("Most people stop right here"), then answer it. Once per reel, not every line.
 - For a how-to, show the real steps on screen (walkthrough, ide, screenshots, code) in the order they happen.
@@ -739,7 +808,11 @@ Honesty rules (the creator's hard line; deceptive marketing is not allowed even 
 - Technically accurate. If unsure about a detail, choose a different angle.
 - Plain English, short words, concrete and useful. No hype.
 - No emojis on the slides (kicker, hook, points, cta). Emojis are fine in the caption.
-- Every hook must be clearly different from the existing hooks provided."""
+- Every hook must be clearly different from the existing hooks provided.
+
+The playbook (researched rules for what makes people stay, save and send; follow it):
+
+""" + playbook()
 
 
 def ask_claude(plan, existing_hooks, feedback=None, context=None):
@@ -768,6 +841,63 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
     if result.get('is_error') or not result.get('structured_output'):
         raise ValueError(f"claude returned no structured output: {str(result.get('result'))[:300]}")
     return result['structured_output']['reels']
+
+
+HOOK_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['scores', 'best', 'why'],
+    'properties': {'scores': {'type': 'array', 'items': {'type': 'integer'}},
+                   'best': {'type': 'integer'}, 'why': {'type': 'string'}},
+}
+HOOK_JUDGE = """You judge hooks for an Instagram Reel by a faceless developer account, as a viewer scrolling fast.
+For each numbered hook, score 0 to 10 how well it passes the playbook's four questions in the first second:
+is this for me, what do I get or lose, can I see it (the hook_visual shown under it), and what is still missing
+that the reel delivers. Score 0 for any hook that promises more than the payoff and the points deliver, or that
+needs a term the viewer does not know yet. Prefer specific over clever. "best" is the number of the strongest
+hook; "why" says in one sentence what makes it stop the scroll.
+
+""" + playbook()
+MIN_HOOK_SCORE = 6
+
+
+def pick_hook(reel):
+    """The strongest of the writer's hook and its alternatives, judged by a second Claude against the playbook.
+    The chosen one replaces the hook, its type and voiceover line 1. Any failure keeps the writer's own hook."""
+    alts = reel.get('alternatives') or []
+    vo = reel.get('voiceover') or []
+    options = [{'hook': reel.get('hook', ''), 'spoken': vo[0] if vo else '', 'hook_type': reel.get('hook_type')}] + alts
+    if len(options) < 2:
+        return reel
+    listing = '\n'.join(f"{k}. on screen: {o['hook']} | spoken: {strip_cues(o['spoken'])} | type: {o['hook_type']}"
+                         for k, o in enumerate(options, 1))
+    prompt = (f"Payoff: {reel.get('payoff', '')}\nhook_visual: {json.dumps(reel.get('hook_visual'), ensure_ascii=False)}\n"
+              f"Points: {json.dumps([p.get('title') for p in reel.get('points', [])], ensure_ascii=False)}\n\n"
+              f"Hooks:\n{listing}")
+    try:
+        proc = subprocess.run(['claude', '-p', prompt, '--model', MODEL, '--system-prompt', HOOK_JUDGE, '--tools', '',
+                               '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+                               '--json-schema', json.dumps(HOOK_SCHEMA)],
+                              capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+        verdict = json.loads(proc.stdout).get('structured_output') or {}
+        best = int(verdict['best'])
+    except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as e:
+        print(f'Hook judge unavailable ({type(e).__name__}); keeping the writer\'s hook')
+        return reel
+    scores = verdict.get('scores') or []
+    print(f"Hook judge: {scores} -> {best}: {verdict.get('why', '')[:200]}")
+    if not 1 <= best <= len(options):
+        return reel
+    if scores and max(scores) < MIN_HOOK_SCORE:
+        print(f'  every hook scored below {MIN_HOOK_SCORE}; the best is used, the report will show it')
+    if best == 1:
+        return reel
+    chosen = options[best - 1]
+    swapped = {**reel, 'hook': chosen['hook'], 'hook_type': chosen['hook_type'], 'voiceover': [chosen['spoken']] + vo[1:],
+               'alternatives': [o for k, o in enumerate(options, 1) if k != best]}
+    errors = validate(swapped)
+    if errors:
+        print(f"  the judge's pick breaks the rules ({'; '.join(errors)[:200]}); keeping the writer's hook")
+        return reel
+    return swapped
 
 
 def tidy(reel):
@@ -909,6 +1039,7 @@ def append(reels, new):
         reels.append({
             'id': next_id, 'pillar': reel['pillar'], 'style': last_style, 'kicker': reel['kicker'].strip(),
             'hook': reel['hook'].strip(), **({'hook_word': reel['hook_word']} if reel.get('hook_word') else {}),
+            **{k: reel[k] for k in ('payoff', 'hook_type', 'hook_visual', 'alternatives') if reel.get(k)},
             'points': reel['points'], 'cta': reel['cta'].strip(),
             **{k: reel[k] for k in ('dm_keyword', 'dm_guide') if reel.get(k)},
             'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'],
@@ -1047,6 +1178,10 @@ def add_visuals(reels):
     return todo
 
 
+# Reels posted before the playbook (2026-10-01) have none of these.
+NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out')
+
+
 def main():
     reels = json.loads(render.QUEUE.read_text())
 
@@ -1075,7 +1210,8 @@ def main():
         # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
         bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
                                                                                    or 'hashtags' in e or 'hook has' in e or 'body has' in e
-                                                                                   or 'title has' in e))])
+                                                                                   or 'title has' in e
+                                                                                   or any(k in e for k in NEW_FIELDS)))])
                for r in reels]
         bad = [(i, e) for i, e in bad if e]
         dupes = len(reels) - len({norm(r['hook']) for r in reels})
