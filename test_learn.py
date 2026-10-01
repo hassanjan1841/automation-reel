@@ -1092,7 +1092,10 @@ class PlaybookTest(Sandbox):
         from voice import Voiceover
         words = [[(w, 0.1 + i * 0.38, 0.43 + i * 0.38) for i, w in enumerate(l.split())] for l in VALID['voiceover']]
         v = Voiceover([np.zeros(render.SR * 3, dtype=np.float32) for _ in VALID['voiceover']], words, continuous=True)
-        with mock.patch('visuals.Code.__init__', side_effect=lambda *a, **k: None), \
+        from PIL import ImageFont
+        # Pillow's built-in font: CI has no Poppins (fonts/ is downloaded at run time), and only timing is checked.
+        with mock.patch.object(render, 'font', lambda weight, size: ImageFont.load_default(size)), \
+                mock.patch('visuals.Code.__init__', side_effect=lambda *a, **k: None), \
                 mock.patch('visuals.build', return_value=SimpleNamespace(settle=1.2, spec=None, w=900, x=60, y=800, h=300,
                                                                        duration=0)) as build:
             slides, _ = render.build_slides({**VALID, 'id': 1}, v)
