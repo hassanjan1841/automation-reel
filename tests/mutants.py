@@ -74,6 +74,9 @@ MUTANTS = [
      '            if [ -e "$f" ]; then git add "$f"; fi\n          done',
      'for f in x; do\n            git add learnings.md rules.json experiments.json ideas.json metrics reports || true\n'
      '          done', 'git add is all or nothing'),
+    ('generate.py', "        args = re.split(r'[.,:]\\s|[.,:]$', m.group(1))[0]", "        args = m.group(1)",
+     'prose after an install command checked as packages'),
+    ('generate.py', "        if SEND_OFFER.search(said):", "        if False:", 'an offer to send with nothing to send'),
     ('generate.py', "    if not 3 <= words(hook) <= 6:", "    if not 3 <= words(hook) <= 9:", 'sentences on screen as hooks'),
     ('generate.py', "    if not isinstance(hv, dict) or hv.get('type') not in HOOK_VISUALS:", "    if False:",
      'no proof under the hook'),

@@ -455,7 +455,9 @@ def package_errors(text):
     wanted = []
     for m in INSTALL.finditer(text):
         kind = 'pypi' if m.group(0).startswith('pip') else 'npm'
-        words = [w for w in m.group(1).split() if not w.startswith('-')]
+        # The command ends where its sentence does ("npm i stripe. In your webhook..." names one package).
+        args = re.split(r'[.,:]\s|[.,:]$', m.group(1))[0]
+        words = [w for w in args.split() if not w.startswith('-')]
         # npx runs one package; the words after it are its own arguments.
         for w in words[:1] if m.group(0).startswith('npx') else words:
             if kind == 'npm':
@@ -486,11 +488,20 @@ def package_errors(text):
     return missing
 
 
+SEND_OFFER = re.compile(r"\b(I'?ll|I will|we'?ll)\s+(send|DM|message)\b|\bsent to (you|your DMs?)\b|\bin your DMs?\b",
+                        re.I)
+
+
 def dm_errors(post, offer):
     """A comment-to-DM offer must be deliverable: a keyword people can type, a guide that holds what the post
     promises, and the offer made where people see it (the cta or last slide, the voice and the caption)."""
     keyword, guide = post.get('dm_keyword'), post.get('dm_guide')
     if not keyword and not guide:
+        # Without a guide nothing can be sent, so nothing may be offered (a repair once dropped the guide and kept
+        # "Comment webhook and I will send the setup").
+        said = ' '.join([offer, post.get('caption', '')] + [strip_cues(l) for l in (post.get('voiceover') or [])[-1:]])
+        if SEND_OFFER.search(said):
+            return ['the reel offers to send something but has no dm_keyword and dm_guide; add both or drop the offer']
         return []
     if not keyword or not guide:
         return ['dm_keyword and dm_guide go together']

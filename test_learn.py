@@ -1017,6 +1017,23 @@ class PlaybookTest(Sandbox):
         self.assertIn('max 3', ' '.join(generate.validate({**VALID, 'points': [{**VALID['points'][0],
                       'title': 'Reads hit the cache'}] + VALID['points'][1:]})))
 
+    def test_an_offer_needs_something_to_send(self):
+        vo = VALID['voiceover'][:4] + ['[warm, curious] Comment webhook and I will send the setup.']
+        self.assertIn('no dm_keyword and dm_guide', ' '.join(generate.validate({**VALID, 'voiceover': vo})))
+        self.assertIn('no dm_keyword and dm_guide', ' '.join(generate.validate(
+            {**VALID, 'cta': 'Want the full *webhook* code sent to you?'})))
+        self.assertEqual(generate.validate(VALID), [])
+
+    def test_install_commands_end_with_their_sentence(self):
+        looked_up = []
+        def fake(req, timeout=10):
+            looked_up.append(req.full_url)
+        generate._registry.clear()
+        with mock.patch('urllib.request.urlopen', fake):
+            self.assertEqual(generate.package_errors('Run npm install stripe. In your webhook, read event.type.\n'
+                                                     'Then pip install requests, and Test it'), [])
+        self.assertEqual(looked_up, ['https://registry.npmjs.org/stripe', 'https://pypi.org/pypi/requests/json'])
+
     def test_posted_reels_keep_passing_the_check(self):
         old = {k: v for k, v in VALID.items() if k not in ('payoff', 'hook_type', 'hook_visual', 'alternatives')}
         old = {**old, 'id': 1, 'posted_at': '2026-09-01T12:00:00+00:00', 'hook': 'Why your *cache* keeps serving stale data'}
