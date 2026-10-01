@@ -128,6 +128,11 @@ def validate(reel):
                 errors.append(f'alternative {k} spoken line runs more than {CUE_GAP} words without a fresh cue')
             elif any('line 1 must open' in e for e in cue_errors([a['spoken']])):
                 errors.append(f'alternative {k} spoken line must open with a high-energy cue like [fired up]')
+            elif (reel.get('voiceover') or [None])[0] and not VO_MIN_WORDS <= vo_words(reel) \
+                    - words(strip_cues(reel['voiceover'][0])) \
+                    + words(strip_cues(a['spoken'])) <= VO_MAX_WORDS:
+                errors.append(f'alternative {k} spoken line would take the voiceover outside {VO_MIN_WORDS} to '
+                              f'{VO_MAX_WORDS} words; match the length of line 1')
     if any(v.get('type') in ('tweet', 'chat') for p in points
            for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
         errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
