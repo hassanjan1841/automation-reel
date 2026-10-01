@@ -688,7 +688,8 @@ Field rules:
   showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
-  on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1, with its cues). A
+  on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1 with the same rules: it
+  starts with a [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
   reviewer picks the strongest of the four, so make every one good and honest.
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
 - hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
