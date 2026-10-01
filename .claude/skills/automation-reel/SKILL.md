@@ -16,7 +16,7 @@ daily-reel.yml, three times a day  ->  publish.py
   slot 1: starts 11:07 UTC, posts at POST_AT_UTC 12:00 (5 PM Pakistan): the day's teaching series (generate.TEACH)
   slot 2: starts 15:07 UTC, posts at 16:00 (9 PM Pakistan): SLOT=2, practical (generate.RELATE: Freelance playbook, Myth vs fact, Ranked)
   slot 3: starts 19:07 UTC, posts at 20:00 (1 AM Pakistan): SLOT=3, generate.slot3_format picks news, trick,
-          versus or series at random per date (news only with a strong fact-checked story, else another);
+          versus, series or build at random per date (news only with a strong fact-checked story, else another);
           slot 1 teaches (generate.TEACH); only slot 3 runs the trend scan; each slot has its own 3D coin flip
   0. a reel added by hand (posted_at: null) is used as is; otherwise today's reel is written now:
   1. trends.performance()    recent reels' insights (views, skip rate, watch time...) steer what gets written
@@ -89,7 +89,7 @@ study.yml (Sun 08:00 UTC --auto, also started by scheduler.py; issue labelled "s
 tests.yml (every push except data-only ones: reels.json, metrics/, reports/; and PRs)
                                      test_learn.py   offline tests of the learning loop (requests, pillow, numpy only)
                                      test_study.py   offline tests of study.py (plus ffmpeg)
-                                     test_motion.py  renders every animation in Chromium
+                                     test_motion.py  renders every animation, the build visual and the closing card
 docs-check.yml (every push except reels.json-only ones, and PRs)  docs_check.py   fails if the docs drifted from the code
 docs-sync.yml (code push + Sat 09:00) docs_sync.py   Claude fixes the docs, opens a PR from docs-sync
 ```
@@ -101,10 +101,10 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | File | Role | Key entry points |
 | --- | --- | --- |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
-| `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `research_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `delete_upload`, `allow_type`, `publish_to_instagram`, `redact` |
+| `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `research_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `delete_upload`, `allow_type`, `publish_to_instagram`, `redact`, `paced` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `insights_of`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel`, `claude`, `SYSTEM`, `CHECK_SYSTEM`, `FEEDS`, `MIN_REACH`, `MAX_AGE` |
-| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `pick_hook`, `playbook`, `HOOK_TYPES`, `HOOK_VISUALS`, `MIN_HOOK_SCORE`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `EXPERIMENTS`, `experiment_today`, `experiment_note`, `experiment_errors`, `vo_words`, `asked`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS`, `MOTION`, `FLAT_VISUALS`, `motion_errors`, `motion_reel_errors`, `NEW_FIELDS`, `norm`, `similar`, `MODEL`, `HOOK_JUDGE`, `CUE_GAP`, `VO_MIN_WORDS`, `VO_MAX_WORDS`, `THREE_D_CHANCE`, `SCENES_3D`, `SLOT3_FORMATS`, `append` |
-| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip, 2D animation (`Motion`) | `build`, `Card`, `Motion`, `MOTION_TYPES`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
+| `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `pick_hook`, `playbook`, `HOOK_TYPES`, `HOOK_VISUALS`, `MIN_HOOK_SCORE`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `DM_PILLARS`, `pillar_errors`, `build_errors`, `BUILD_BLOCKED`, `reveal_errors`, `REVEAL_VISUALS`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `EXPERIMENTS`, `experiment_today`, `experiment_note`, `experiment_errors`, `vo_words`, `asked`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS`, `MOTION`, `FLAT_VISUALS`, `motion_errors`, `motion_reel_errors`, `NEW_FIELDS`, `norm`, `similar`, `MODEL`, `HOOK_JUDGE`, `CUE_GAP`, `VO_MIN_WORDS`, `VO_MAX_WORDS`, `THREE_D_CHANCE`, `SCENES_3D`, `SLOT3_FORMATS`, `append` |
+| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip, 2D animation (`Motion`) | `build`, `Card`, `Motion`, `MOTION_TYPES`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke`, `Build`, `build_shots`, `BUILDS`, `BUILD_BASE`, `BUILD_ROWS` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED`, `allowed`, `REEL_SHELL` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS`, `backup_skip`, `ranked`, `GROUP_FIELDS`, `CLEAR_SKIP`, `CLEAR_WATCHED`, `MAX_RULE_WORDS`, `MAX_NEW_RULES`, `MAX_ACTIVE_RULES`, `RULE_TRIAL_DAYS`, `RULE_GIVE_UP_DAYS`, `EXPERIMENT_MAX_DAYS`, `IDEA_DAYS` |
@@ -118,8 +118,8 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `title_slide`, `end_slide`, `review`, `review_once`, `post`, `SYSTEM`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources); and frame 0 and the payoff against the playbook | `review`, `frames`, `first_frame`, `SYSTEM`, `SCHEMA` |
 | `playbook.md` | The researched rules for hooks, scripts, visuals and sound; read by the writer, the hook judge and qa | data, read by `generate.playbook` |
-| `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL` |
-| `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard`, `heard_alone`, `BEAT`, `FINAL_TAKES`, `ask_respellings`, `align`, `by_line`, `transcribe`, `Voiceover` |
+| `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL`, `KEYWORD_SIZE`, `HOLD_TICK`, `GLIDE`, `exit_progress` |
+| `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard`, `heard_alone`, `BEAT`, `FINAL_TAKES`, `ask_respellings`, `align`, `by_line`, `transcribe`, `Voiceover`, `hold`, `tempo`, `HOLD`, `FAST_HOOK` |
 | `test_voice.py` | Pronunciation and voice-verifier regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN`, `STRAY`, `check_verifier` |
 | `pronounce.json` | Learned respellings per engine, word to spoken form | data, written by `voice.learn` |
 | `learnings.md` | The active rules, read by the writers (reels, news, carousel) | data, generated from `rules.json` by `history.save_rules` |
@@ -182,7 +182,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
   "payoff": "The exact thing the viewer gets", // written first; the points are its steps (playbook.md)
   "hook": "Three to six *words*",   // a phrase on screen; voiceover line 1 says the full sentence
   "hook_type": "mistake",           // problem|before_after|shortcut|mistake|test|news (generate.HOOK_TYPES)
-  "hook_visual": {"type": "diff", ...}, // code|diff|screenshot|morph|stepper under the hook, complete on frame 0 (HOOK_VISUALS)
+  "hook_visual": {"type": "diff", ...}, // code|diff|screenshot|morph|stepper|build under the hook, complete on frame 0 (HOOK_VISUALS)
   "alternatives": [{"hook": "...", "spoken": "[cue] ...", "hook_type": "problem"}], // 3; generate.pick_hook
   "review": {"first_frame": {"ok": true, "problem": ""}, "payoff": {...}}, // set by publish.check_visuals
   "hook_word": "RLS",               // older reels only, 3D days: one word of the hook as 3D text (not with hook_visual)
@@ -193,12 +193,15 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap (generate.MOTION, generate.motion_errors); on 3D
+                                    // race, xray, memory, outputmap, kinetic (generate.MOTION, generate.motion_errors);
+                                    // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
                                     // tweet and chat are no longer allowed -- see generate.SYSTEM and generate.visual_errors
   "cta": "A short question with one *highlighted* word?",
   "dm_keyword": "MCP", "dm_guide": "...", // optional comment-to-DM: capitals 3-10, guide 150-900 chars (generate.dm_errors)
+  "reveal": 3,                      // optional: the point whose first visual lands a result (generate.REVEAL_VISUALS)
+                                    // while the voice holds a silent beat (voice.hold, publish.paced)
   "caption": "Line one.\nLine two.\nA question to end on? 👇",
   "hashtags": ["#nextjs", "..."],   // 3-5, unique, ^#[A-Za-z0-9_]+$ (older posted reels have 8-12)
   "voiceover": ["..."],             // 5 spoken lines (hook, 3 points, cta); required on unposted reels
@@ -225,7 +228,7 @@ Rules enforced by `generate.validate` (the single source of truth, also run on C
 
 Content rules (in `generate.SYSTEM`): evergreen reels have no news, versions, prices or dates; no invented stories or stats; the honesty rules (no fake results, invented scenes framed as POV, "I tested" only with a real run, no one else's work as his own, hooks never promise more than the reel delivers). The voiceover adds to the slides (the why, an example, what goes wrong) instead of reading them, sounds like a developer talking to a friend, writes numbers as spoken, and its last line asks for a comment without saying "comment below" or "follow". Timely reels drop the evergreen rule but every claim must be backed by a fetched source.
 
-Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching series by weekday (`TEACH`: AI tool in 30s, Dev mistake, Explained, Build smart), reel 2 the practical ones (`RELATE`: Freelance playbook, Myth vs fact, Freelance playbook, Ranked; 2026-10-01 they replaced the invented client-chat and POV skits, which Instagram barely showed), reel 3 its day's format (`EXTRA_FORMATS`: Quick trick, X vs Y, Next.js from zero, or a news reel); the beginner series is given its earlier episodes to continue from. 3D is allowed on a random share of days (`generate.three_d_today`, seeded by the date, plus the slot for slots 2 and 3, so reruns agree, `THREE_D_CHANCE` default 0.5, `THREE_D=on|off` forces it); both writers are told via `three_d_note`, and `publish.todays_reel` strips 3D (`generate.strip_3d`) on other days. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
+Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching series by weekday (`TEACH`: AI tool in 30s, Dev mistake, Explained, Build smart), reel 2 the practical ones (`RELATE`: Freelance playbook, Myth vs fact, Freelance playbook, Ranked; 2026-10-01 they replaced the invented client-chat and POV skits, which Instagram barely showed), reel 3 its day's format (`EXTRA_FORMATS`: Quick trick, X vs Y, Next.js from zero, Build it live, or a news reel); the beginner series is given its earlier episodes to continue from. 3D is allowed on a random share of days (`generate.three_d_today`, seeded by the date, plus the slot for slots 2 and 3, so reruns agree, `THREE_D_CHANCE` default 0.5, `THREE_D=on|off` forces it); both writers are told via `three_d_note`, and `publish.todays_reel` strips 3D (`generate.strip_3d`) on other days. Real-post quotes are allowed at most once in six days (`trends.quotes_allowed`), and the caption credits every quoted author (`publish.credits`).
 
 ## Common tasks
 
@@ -246,7 +249,7 @@ Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching s
 ## Secrets and variables
 
 Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`.
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: news, trick, versus, series or build), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
@@ -259,7 +262,7 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - The voice verifier (`voice.verify`, used by `clean_take` (and so `say_checked`), `say_whole`, `report`) listens to every take four ways, because each alone missed a real fault: with the script as a hint (names; respelled via `learn`), without it (an everyday word said badly, like "Check" heard as "you correct"; the hint hides these), each burst of sound alone (`islands` + `heard_alone`: a burst with no script word is a stray sound, like the "uhh" Fish invented after a long pause), and the bursts' words together. Faults cost a retake (up to `FINAL_TAKES`); stray sounds left in the best take are cut to silence (`mute`, never into a word) and verified again; a line still unclear is recorded alone and swapped in; a whole voiceover still not clean is recorded once more. `clips.verdict` ('clean' or what is unclear) is printed as "Voice check" in the daily log. The beat between slides is silence added in `split` (`BEAT`), never a Fish `(long-break)`; `say_whole` joins the lines with a short `(break)`. `test_voice.py --verify` replays the recorded "uhh" (`tests/stray-uhh.wav`) and fails if the verifier misses it or the cut damages a word.
 - Writer rules learned from posts with thousands of comments (2026-09-28): the hook promises one concrete result ("in 2 minutes", "one afternoon"), one doubt or tension beat per voiceover ("You might think...", "Most people stop right here"), how-tos show the real steps. Slot 1 rotates `TEACH` by weekday % 4: Mon/Fri AI how-tos with a real result (Claude, MCP, automations), Tue/Sat Dev mistake, Wed/Sun Explained, Thu "Build X in one afternoon". Topic filter in `generate.SYSTEM` and `carousel.SYSTEM`: no gambling, betting, interest-based lending, adult content or deceptive tools.
 - Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
-- Comment-to-DM (2026-09-28, learned from posts with more comments than likes): how-to, trick, versus, beginner and freelance-playbook reels (not myth or ranked), and every carousel, carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done; it sends at most `dm.GUIDE_LIMIT` (1000) characters of the guide.
+- Comment-to-DM (2026-09-28, learned from posts with more comments than likes; widened 2026-10-01): every format in `generate.DM_PILLARS` (AI, dev mistake, build smart, freelance playbook, trick, versus, beginner, build it live; not myth, ranked or explained), and every carousel, carry `dm_keyword`; `generate.pillar_errors` (run by `generate.generate` and its repair, which know the day's pillar) enforces it, and the offer names a concrete freebie ("Comment CODE for the code"). Carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then shows the keyword big in the hook's style (`render.KEYWORD_SIZE`, bold accent with a marker stroke) and says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done; it sends at most `dm.GUIDE_LIMIT` (1000) characters of the guide.
 - GitHub drops scheduled runs (2026-09-28: the Daily reel's crons fired twice in three days, none on the 28th).
   `scheduler.py` fills the gaps: each slot owns a window from its start to the next slot's start, and a missing
   slot is started once its window opens if nothing is running (at most `MAX_ATTEMPTS` tries); a passed window is
@@ -285,6 +288,28 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
   skipped. The camera's frame-0 zoom-out is 3% (10% cropped the hook's edges). A terminal is not allowed as a hook
   visual because it types itself out from empty. `learn.looks` adds `hook_type` and `opening` (proof or text),
   both in `GROUP_FIELDS` and `RULE_FIELDS` and named as evidence fields in `learn.SYSTEM`.
+- Study-driven formats (2026-10-01, from three studied reels in `studies/`, 14k to 48k likes; the two with thousands of
+  comments both offered a file or tool for a keyword):
+  - `visuals.Build`: the real page (`build_shots`: Chromium with scripts off and every request blocked, cached in
+    `out/builds/`) above the CSS typed in stage by stage; each stage's preview swaps in with a pop, the stage pace
+    shrinks to fit a short slide (`Build.step`), and its settle shows the plain page and its HTML, so it may be a
+    hook proof. Stages are padded to the same lines and width so the code size never jumps, and the panel title
+    names the step (`style.css, step 2 of 3`): the first real review rejected both builds when the panel showed
+    only the newest stage, so `qa.SYSTEM` says to judge a build by its page. It ends on `Build.closing`: a shorter
+    window on the finished page above every step's CSS together (`FINAL` seconds; skipped when the slide is too
+    short, `final_at`), which is why all stages together are max 8 lines. `generate.build_errors`
+    keeps html and stages to 4 lines of 40 and rejects anything that could load or run (`BUILD_BLOCKED`).
+  - `reveal` (`generate.reveal_errors`): `publish.paced` calls `voice.hold`, which adds `voice.HOLD` seconds of
+    silence before that point's line and shifts its word times; `Voiceover.holds` reaches `Slide.hold`, and
+    `render.build_audio` plays soft ticks every `HOLD_TICK` in the gap and a pop as the voice returns.
+  - `hook_pace` test (`generate.EXPERIMENTS`, next after `hook_style`): "dense" line 1 of 12 to 14 words, played
+    `voice.FAST_HOOK` times faster by `voice.tempo` (ffmpeg atempo, same pitch); "relaxed" at most 10 words.
+  - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences, and a
+    slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
+  - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
+    layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
+  - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
+    `RULE_FIELDS`.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or
   "text only") and `three_d` ("3D" or "flat"). It reads `shown`, because the queue keeps rejected choices and
   `visuals.build` falls back to text when a scene fails, so a first choice is not proof it was on screen; reels posted

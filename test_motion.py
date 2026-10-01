@@ -1,7 +1,7 @@
 """Tests for motion.py: the code-morph token plan, each template reads only fields its spec has, and a real render
 of every animation template in headless Chromium (transparent frames, a sane length, a settle frame inside it, sounds
 the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
-readable labels on the light theme.
+readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword.
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -137,6 +137,50 @@ class Render(unittest.TestCase):
             at = np.asarray(Image.open(frames[round(meta['settle'] * motion.FPS)]).convert('RGBA'))[..., 3]
             end = np.asarray(Image.open(frames[-1]).convert('RGBA'))[..., 3]
             self.assertGreater((at > 0).mean(), 0.7 * (end > 0).mean(), kind)
+
+
+class Cards(unittest.TestCase):
+    """The build visual (the real page drawn while its CSS is typed in) and the closing card's keyword."""
+    BUILD = {'type': 'build', 'title': 'button.css', 'html': '<button class="buy">Buy now</button>',
+             'stages': ['.buy {\n  padding: 18px 44px;\n  border: 0;\n}', '.buy {\n  background: #4f46e5;\n  color: #fff;\n}']}
+
+    def test_build_draws_each_stage_for_real(self):
+        import importlib.util
+        if not importlib.util.find_spec('playwright'):
+            self.skipTest('playwright is not installed')
+        import visuals
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(visuals, 'BUILDS', Path(tmp)):
+            card = visuals.build(self.BUILD, render.THEMES['dark'], (90, 600, 900, 700))
+            self.assertIsInstance(card, visuals.Build)
+            card.duration = 5.0
+            plain, styled, done = card.shots
+            # Each stage changes what the browser draws; the finished button is the brand colour.
+            self.assertGreater(np.abs(styled - plain).mean(), 0.5)
+            self.assertGreater(np.abs(done - styled).mean(), 0.5)
+            self.assertTrue((np.abs(done - np.array([0x4f, 0x46, 0xe5])).sum(axis=2) < 30).any())
+            first, last = card.layer(card.settle)[0], card.layer(card.final_at() - 0.05)[0]
+            page = slice(card.bar, card.preview_h - 3)  # above the accent line between page and code
+            self.assertLess(np.abs(first[page] - plain[:-3]).mean(), 1)
+            # Frame 0 of a hook: the plain page and its markup, no CSS typed yet.
+            html = card.codes[0][0]
+            self.assertLess(np.abs(first[card.preview_h:card.preview_h + len(html)] - html[:card.h - card.preview_h]).mean(), 1)
+            self.assertLess(np.abs(last[page] - done[:-3]).mean(), 1)
+            self.assertEqual([k for _, k in card.sounds].count('pop'), 2)
+            # It ends on the finished page above all of its CSS, to screenshot; a short slide skips that view.
+            self.assertLess(np.abs(card.layer(4.9)[0] - card.final).mean(), 1)
+            card.duration = 3.0
+            self.assertIsNone(card.final_at())
+
+    def test_the_closing_card_shows_the_keyword(self):
+        import voice
+        reel = {'style': 'dark', 'kicker': 'Dev tip', 'hook': 'Your *cache* serves old data',
+                'points': [{'title': 'Reads hit cache', 'body': 'Reads go to the cache.'}] * 3,
+                'cta': 'Comment *REDIS* for the code', 'dm_keyword': 'REDIS'}
+        clips = voice.Voiceover([np.zeros(render.SR, np.float32)] * 5, [[('w', 0.1, 0.3)]] * 5, True)
+        slides, _ = render.build_slides(reel, clips)
+        without, _ = render.build_slides({k: v for k, v in reel.items() if k != 'dm_keyword'}, clips)
+        biggest = lambda s: max(e.mask.shape[0] for e in s.elements)
+        self.assertGreater(biggest(slides[-1]), biggest(without[-1]) * 1.5)
 
 
 if __name__ == '__main__':

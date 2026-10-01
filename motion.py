@@ -21,6 +21,7 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   xray       a zoom into one part to show what is inside                        nodes, focus, inside
   memory     variables pointing at objects; references move, orphans dim       refs, objects, reassign
   outputmap  a real command's output lines lift out into a diagram              command, output
+  kinetic    the takeaway in big type, word by word, the key word underlined     lines, tag
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -36,7 +37,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap')
+         'memory', 'outputmap', 'kinetic')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -498,7 +499,38 @@ T.outputmap = () => {
   END = Math.max(END, t + out.length * 0.1 + 1.4);
 };
 
-Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
+T.kinetic = () => {
+  // The takeaway in big type: words rise in one by one out of a soft blur, the key word in the accent with a marker
+  // stroke drawn under it, then an optional tag. Calm and on one colour, like a motion designer's title card.
+  const parsed = S.lines.map(l => { const out = []; let hl = false;
+    l.split(/(\*)/).forEach(part => { if (part === '*') { hl = !hl; return; }
+      part.split(/\s+/).filter(Boolean).forEach(w => out.push([w, hl])); }); return out; });
+  let size = Math.min(132, Math.floor(H / (parsed.length * 1.2 + (S.tag ? 1.1 : 0))));
+  const measure = (w, sz) => { const e = txt(L2, 0, 0, w, sz, {'font-weight': 700}); const n = e.getComputedTextLength();
+    e.remove(); return n; };
+  const width = (ws, sz) => ws.reduce((n, [w]) => n + measure(w, sz), 0) + sz * 0.28 * (ws.length - 1);
+  while (size > 40 && Math.max(...parsed.map(ws => width(ws, size))) > W - 20) size -= 4;
+  const lh = size * 1.18, marks = []; let t = 0.15;
+  parsed.forEach((ws, li) => { let x = (W - width(ws, size)) / 2; const y = li * lh + size;
+    ws.forEach(([w, hl]) => { const e = txt(L2, x, y, w, size, {'font-weight': 700, fill: hl ? C.accent : C.ink, opacity: 0, filter: 'url(#soft)'});
+      const wd = e.getComputedTextLength(), t0 = t;
+      at(t0, 0.55, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5));
+        e.setAttribute('transform', `translate(0 ${(1 - p) * size * 0.32})`);
+        if (raw > 0.5) e.removeAttribute('filter'); }, E.spring);
+      snd(t0, hl ? 'pop' : 'tick');
+      if (hl) marks.push(line(`M${x} ${y + size * 0.16} Q${x + wd / 2} ${y + size * 0.22} ${x + wd} ${y + size * 0.14}`,
+        {stroke: C.accent, 'stroke-width': Math.max(6, size * 0.07), opacity: 0.85}));
+      x += wd + size * 0.28; t += 0.13; });
+    t += 0.12; });
+  // Every word is in place; the marker under the key word draws last, as the emphasis, then the tag.
+  SETTLE = t + 0.15;
+  marks.forEach(u => draw(u, t + 0.2, 0.45)); if (marks.length) snd(t + 0.2, 'scribble');
+  if (S.tag) { const tg = pill(L2, W / 2, parsed.length * lh + size * 0.55, S.tag, Math.round(size * 0.26));
+    pop(tg.g, t + 0.6, W / 2, tg.cy, 0.45); snd(t + 0.6, 'pop'); }
+  END = Math.max(END, t + 2.2);
+};
+
+Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
   // reel), scaling down only when needed, and centre the layout both ways.
@@ -578,7 +610,8 @@ def prepare(spec, w):
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
-    for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside'):
+    for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
+                'lines'):
         spec.setdefault(key, [])
     return spec
 
@@ -678,6 +711,7 @@ EXAMPLES = {
                'reassign': [{'name': 'b', 'to': 'o2'}, {'name': 'a', 'to': 'null'}]},
     'outputmap': {'type': 'outputmap', 'command': 'git branch',
                   'output': ['* main', '  feature/login', '  fix/cache']},
+    'kinetic': {'type': 'kinetic', 'lines': ['Delete the key', 'on every *write*'], 'tag': 'Key step'},
 }
 
 

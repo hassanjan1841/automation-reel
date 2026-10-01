@@ -12,6 +12,8 @@ A point may carry one of:
   {"type": "walkthrough", ...} or {"type": "ide", ...}   a real screen recording, see demos.py
   {"type": "diagram" | "device" | "bars" | "logos", ...}   a 3D scene, see scene3d.py
   {"type": "stepper" | "flow" | "morph" | "git" | ..., ...}  a 2D explainer animation, see motion.py
+  {"type": "build", "html": "<button>Buy</button>", "stages": ["button{padding:16px 32px}", "..."]}
+                                          the page drawn live while its CSS is typed in, one stage at a time
   {"type": "screenshot", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
    "find": "Enable Row Level Security"}   scrolled to that text, a cursor glides over and clicks it, spotlit
 
@@ -21,6 +23,7 @@ fit); the slide then falls back to its body text.
 """
 
 import hashlib
+import json
 import math
 import subprocess
 import urllib.request
@@ -714,7 +717,7 @@ class Scene:
 
 SCENES_3D = ('diagram', 'device', 'bars', 'logos', 'word')
 MOTION_TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-                'memory', 'outputmap')  # motion.TYPES, kept here so importing visuals does not import motion
+                'memory', 'outputmap', 'kinetic')  # motion.TYPES, kept here so importing visuals does not import motion
 
 
 class Motion:
@@ -757,6 +760,174 @@ class Motion:
             self.index, self.cached = i, (a[..., :3], a[..., 3] / 255.0)
         rgb, mask = self.cached
         render.blend(frame, rgb, mask, alpha, self.x, self.y + dy)
+
+
+# ---------- build it live ----------
+
+BUILDS = render.OUT_DIR / 'builds'
+BUILD_ROWS = 4
+BUILD_BASE = ('html,body{margin:0;min-height:100vh}body{display:flex;align-items:center;justify-content:center;'
+              'font-family:Poppins,sans-serif;background:#fff}')
+
+
+def build_shots(html, stages, size):
+    """The real page after each CSS stage: [html alone, + stage 1, + stages 1 and 2, ...], rendered in Chromium with
+    scripts off and every request blocked, so only the given markup and CSS can draw. Cached per input and size."""
+    import motion
+    w, h = size
+    key = hashlib.sha1(json.dumps([html, stages, size, BUILD_BASE]).encode()).hexdigest()[:16]
+    folder = BUILDS / key
+    paths = [folder / f'{k}.png' for k in range(len(stages) + 1)]
+    if all(p.exists() for p in paths):
+        return [Image.open(p).convert('RGB') for p in paths]
+    from playwright.sync_api import sync_playwright
+    folder.mkdir(parents=True, exist_ok=True)
+    fonts = motion.font_css()
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page(viewport={'width': w // 2, 'height': h // 2}, device_scale_factor=2,
+                                    java_script_enabled=False)
+            page.route('**/*', lambda route: route.abort())
+            for k, path in enumerate(paths):
+                css = '\n'.join(stages[:k])
+                page.set_content(f'<!doctype html><html><head><meta charset="utf-8"><style>{fonts}{BUILD_BASE}'
+                                 f'</style><style>{css}</style></head><body>{html}</body></html>')
+                page.screenshot(path=str(path))
+        finally:
+            browser.close()
+    shots = [Image.open(p).convert('RGB') for p in paths]
+    if np.asarray(shots[-1].convert('L'), dtype=np.float32).std() < 4:
+        raise RuntimeError('the built page is blank')
+    return shots
+
+
+class Build(Card):
+    """Watch it get built: a live preview of real HTML on top, the CSS typed in below one stage at a time, and the
+    preview updating to what the browser really draws after each stage. Frame 0 (its settle) shows the plain page
+    and its markup, the "before"; it ends on the finished page above all of its CSS at once, to screenshot."""
+    START, TYPE, HOLD, MIN_STAGE, STAGE = 0.9, 0.55, 1.2, 0.8, 1.5  # START after the card's settle (TILT)
+    FINAL = 1.6               # time the closing view (finished page + all the CSS) needs to be read
+
+    def __init__(self, visual, box, accent):
+        box = widen(box)
+        x, y, w, h = box
+        stages = [s.rstrip('\n') for s in visual.get('stages', [])]
+        codes = [visual['html'].rstrip('\n')] + stages
+        rows = max(len(c.split('\n')) for c in codes)
+        if rows > BUILD_ROWS:
+            raise ValueError(f'build code is {rows} lines, max {BUILD_ROWS} per stage')
+        code_h = min(round(h * 0.52), 140 + 46 * rows)
+        bar = 56
+        preview_h = h - code_h
+        if preview_h - bar < 200:
+            raise ValueError('not enough room for the preview')
+        super().__init__(x, y, w, h)
+        shots = build_shots(visual['html'], stages, (w, preview_h - bar))
+        self.shots = [np.asarray(s.resize((w, preview_h - bar), Image.LANCZOS), dtype=np.float32) for s in shots]
+        chrome = Image.new('RGB', (w, bar), '#E9EBF0')
+        d = ImageDraw.Draw(chrome)
+        for i, c in enumerate(DOTS):
+            d.ellipse((24 + i * 30, bar // 2 - 9, 42 + i * 30, bar // 2 + 9), fill=c)
+        d.rounded_rectangle((140, 12, w - 30, bar - 12), radius=16, fill='#FFFFFF')
+        d.text((166, bar / 2), 'localhost:3000', font=render.font('Regular', 24), fill='#5B6170', anchor='lm')
+        self.chrome, self.bar, self.preview_h = np.asarray(chrome, dtype=np.float32), bar, preview_h
+        title = visual.get('title') or 'style.css'
+        # Every stage padded to the same lines and width, so the type size does not jump between stages.
+        cols = max(len(l) for c in codes for l in c.split('\n'))
+        self.codes = []
+        for k, code in enumerate(codes):
+            lines = code.split('\n')
+            padded = '\n'.join([lines[0].ljust(cols)] + lines[1:] + [''] * (rows - len(lines)))
+            # The panel shows one stage at a time; the title says which, since earlier ones live only in the page.
+            label = 'index.html' if k == 0 else f'{title}, step {k} of {len(stages)}'
+            img, rows_k = code_image(padded, 'html' if k == 0 else 'css', label, w, code_h)
+            self.codes.append((np.asarray(img, dtype=np.float32), rows_k[:len(lines)]))
+        self.accent = accent
+        self.final = self.closing(stages, title, w, h, bar)
+
+    def closing(self, stages, title, w, h, bar):
+        """The last view: a shorter window on the finished page (its centre; the page centres its content) above
+        every CSS step together. None when they do not fit at a readable size; the build then holds its last step."""
+        top = max(bar + 100, round(h * 0.26))  # 8 lines of code still fit under it in a hook-sized card
+        try:
+            img, _ = code_image('\n'.join(stages), 'css', f'{title}, all steps', w, h - top)
+        except ValueError:
+            return None
+        out = np.empty((h, w, 3), dtype=np.float32)
+        out[:] = BG
+        out[:bar] = self.chrome
+        page, view = self.shots[-1], top - bar
+        cut = (len(page) - view) // 2
+        out[bar:top] = page[cut:cut + view]
+        out[top - 3:top] = self.accent
+        code = np.asarray(img, dtype=np.float32)[:h - top]
+        out[top:top + len(code)] = code
+        return out
+
+    def step(self):
+        """Seconds per stage: its natural pace, faster only when the slide is too short to finish and hold."""
+        n = len(self.shots) - 1
+        spare = self.duration - self.START - self.HOLD - (self.FINAL if self.final is not None else 0)
+        return max(self.MIN_STAGE, min(self.STAGE, spare / n))
+
+    def final_at(self):
+        """When the closing view fades in, or None when the slide is too short to read it."""
+        if self.final is None:
+            return None
+        at = self.times()[-1] + self.TYPE + 0.5
+        return at if at + self.FINAL - 0.4 <= self.duration else None
+
+    def times(self):
+        """When each CSS stage starts typing; its preview swaps in TYPE seconds later."""
+        return [self.START + k * self.step() for k in range(len(self.shots) - 1)]
+
+    @property
+    def sounds(self):
+        out = []
+        for k, t0 in enumerate(self.times(), 1):
+            rows = self.codes[k][1]
+            out += [(t0 + self.TYPE * i / len(rows), 'key') for i in range(len(rows))]
+            out.append((t0 + self.TYPE, 'pop'))
+        if self.final_at() is not None:
+            out.append((self.final_at(), 'swish'))
+        return out
+
+    @sounds.setter
+    def sounds(self, _):
+        pass  # Card.__init__ sets a fixed list; here they follow the slide's length
+
+    @property
+    def settle(self):
+        return self.TILT
+
+    def layer(self, t):
+        rgb = np.empty((self.h, self.w, 3), dtype=np.float32)
+        rgb[:] = BG
+        rgb[:self.bar] = self.chrome
+        starts = self.times()
+        k = sum(1 for t0 in starts if t >= t0)
+        shot = self.shots[0]
+        if k:
+            q = render.ease_out(min(1.0, max(0.0, (t - starts[k - 1] - self.TYPE) / 0.3)))
+            shot = self.shots[k - 1] * (1 - q) + self.shots[k] * q
+        rgb[self.bar:self.preview_h] = shot
+        img, rows = self.codes[k]
+        top = self.preview_h
+        code = img[:min(img.shape[0], self.h - top)]
+        if k:
+            typed = int((t - starts[k - 1]) / self.TYPE * len(rows)) + 1
+            if typed < len(rows):
+                code = code.copy()
+                code[rows[max(typed, 0)][0]:rows[-1][1]] = BG
+        rgb[top:top + len(code)] = code
+        # A thin accent line marks where the page ends and the code begins.
+        rgb[top - 3:top] = self.accent
+        at = self.final_at()
+        if at is not None and t >= at:
+            q = render.ease_out(min(1.0, (t - at) / 0.35))
+            rgb = rgb * (1 - q) + self.final * q
+        return rgb, self.mask
 
 
 # ---------- screenshot ----------
@@ -942,6 +1113,8 @@ def build(visual, theme, box):
             return Scene(visual, theme, widen(box))
         if kind in MOTION_TYPES:
             return Motion(visual, theme, widen(box))
+        if kind == 'build':
+            return Build(visual, box, render.rgb(theme['accent']))
         if kind == 'screenshot':
             if not visual.get('find'):
                 raise ValueError('a screenshot needs the text to show ("find")')

@@ -235,18 +235,18 @@ class ExperimentTest(Sandbox):
         fixed = {**copy.deepcopy(VALID), 'hook': QUESTION_HOOK}
         out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [fixed]}}), stderr='')
         with mock.patch.object(generate, 'ask_claude', ask), mock.patch.object(generate.subprocess, 'run', return_value=out) as run:
-            new = generate.generate([], 1, dates=[date(2026, 10, 5)], test={'name': 'hook_style', 'arm': 'question'})
+            new = generate.generate([], 1, dates=[date(2026, 10, 7)], test={'name': 'hook_style', 'arm': 'question'})
         self.assertEqual(len(new), 1)
         self.assertEqual(new[0]['test'], {'name': 'hook_style', 'arm': 'question'})
         self.assertEqual(new[0]['hook'], QUESTION_HOOK)
         self.assertEqual(run.call_count, 1)  # one repair round
         self.assertIn('the hook must end with', run.call_args[0][0][2])
         with mock.patch.object(generate, 'ask_claude', ask), mock.patch.object(generate.subprocess, 'run') as run:
-            new = generate.generate([], 1, dates=[date(2026, 10, 5)], test={'name': 'hook_style', 'arm': 'statement'})
+            new = generate.generate([], 1, dates=[date(2026, 10, 7)], test={'name': 'hook_style', 'arm': 'statement'})
         self.assertEqual(new[0]['test']['arm'], 'statement')
         run.assert_not_called()
         with mock.patch.object(generate, 'ask_claude', ask):
-            self.assertNotIn('test', generate.generate([], 1, dates=[date(2026, 10, 5)])[0])
+            self.assertNotIn('test', generate.generate([], 1, dates=[date(2026, 10, 7)])[0])
 
     def test_today_tells_the_writer(self):
         self.start('hook_style')
@@ -535,11 +535,15 @@ class MeasureTest(Sandbox):
 class ScoreTest(Sandbox):
     def test_looks(self):
         base = reel(1, datetime(2026, 9, 1, tzinfo=timezone.utc))
+        plain = {'reveal': 'no beat', 'offer': 'question'}
         self.assertEqual(learn.looks(base), {'visuals': ['text'], 'hook_word': 'text only', 'three_d': 'flat',
-                                             'hook_type': 'untagged', 'opening': 'text'})
+                                             'hook_type': 'untagged', 'opening': 'text', **plain})
         self.assertEqual(learn.looks({**base, 'shown': ['word', 'diagram', 'terminal', 'text', 'text']}),
                          {'visuals': ['diagram', 'terminal'], 'hook_word': '3D word', 'three_d': '3D',
-                          'hook_type': 'untagged', 'opening': 'text'})
+                          'hook_type': 'untagged', 'opening': 'text', **plain})
+        held = learn.looks({**base, 'reveal': 2, 'dm_keyword': 'CODE', 'shown': ['build', 'code', 'build', 'text', 'text']})
+        self.assertEqual((held['reveal'], held['offer'], held['opening'], held['visuals']),
+                         ('held beat', 'freebie', 'proof', ['build', 'code']))
         # The playbook's opening: a proof under the hook from frame 0, tagged with the hook's type.
         proof = learn.looks({**base, 'hook_type': 'mistake', 'shown': ['diff', 'code', 'text', 'text', 'text']})
         self.assertEqual((proof['opening'], proof['hook_type'], proof['visuals']), ('proof', 'mistake', ['code']))
@@ -691,7 +695,7 @@ class JudgeTest(Sandbox):
         self.assertIn('question won', exp['done'][0]['result'])
         self.assertEqual(rules[0]['status'], 'kept')
         self.assertEqual(rules[0]['text'], generate.EXPERIMENTS['hook_style']['question'][0])
-        self.assertEqual(exp['active']['name'], 'length')
+        self.assertEqual(exp['active']['name'], 'hook_pace')
 
     def test_experiment_statement_wins_or_ties_or_times_out(self):
         rules = []
@@ -1185,6 +1189,108 @@ class PlaybookTest(Sandbox):
         self.assertEqual(reel['review']['first_frame'], {'ok': True, 'problem': ''})  # the last review is recorded
 
 
+class ReelFormatTest(Sandbox):
+    """What the study of creators with thousands of comments added (2026-10-01): a build visual (the page drawn while
+    its CSS is typed), a held beat before a result, a freebie on every how-to, and the hook_pace test."""
+    BUILD = {'type': 'build', 'title': 'button.css', 'html': '<button class="buy">Buy now</button>',
+             'stages': ['.buy {\n  padding: 18px 44px;\n}', '.buy {\n  background: #4f46e5;\n  color: #fff;\n}']}
+
+    def freebie(self):
+        reel = copy.deepcopy(VALID)
+        reel.update(dm_keyword='REDIS', cta='Comment *REDIS* for the code',
+                    dm_guide='The fix in full: after every write, delete the cached key so the next read misses and '
+                             'loads the fresh row. In Redis that is one DEL call with the same key you read from, '
+                             'e.g. user colon 42. Do it after the database write succeeds, never before.',
+                    caption=VALID['caption'].rsplit('\n', 1)[0] + '\nComment REDIS for the code 👇')
+        reel['voiceover'][-1] = '[grinning] Comment REDIS and [warm] I will send you the code.'
+        return reel
+
+    def test_build_visual_rules(self):
+        self.assertEqual(generate.build_errors(1, self.BUILD), [])
+        self.assertEqual(generate.validate({**VALID, 'hook_visual': self.BUILD}), [])
+        for bad in ({'stages': ['a{}']}, {'html': ''}, {'stages': ['a{\n}\n\n\n\n']},
+                    {'html': '<img src=x onerror=alert(1)>'}, {'stages': ['a{background:url(https://x.io/a.png)}', 'b{}']},
+                    {'html': '<script>fetch(1)</script>'}, {'stages': ['@import "x.css";', 'b{}']},
+                    {'stages': ['a{\nb\nc\n}', 'd{\ne\nf\n}', 'g{}']}):
+            self.assertTrue(generate.build_errors(1, {**self.BUILD, **bad}), bad)
+
+    def test_reveal_needs_a_result_to_watch(self):
+        self.assertEqual(generate.validate({**VALID, 'reveal': 3}), [])  # point 3 types a real command
+        self.assertIn('must open on a visual that finishes', ' '.join(generate.validate({**VALID, 'reveal': 1})))
+        self.assertIn('number of a point', ' '.join(generate.validate({**VALID, 'reveal': 4})))
+
+    def test_howtos_offer_a_freebie_and_build_reels_show_a_build(self):
+        self.assertIn('freebie', ' '.join(generate.pillar_errors(VALID, 'devtip')))
+        self.assertEqual(generate.pillar_errors(VALID, 'concept'), [])
+        self.assertEqual(generate.validate(self.freebie()), [])
+        self.assertEqual(generate.pillar_errors(self.freebie(), 'devtip'), [])
+        self.assertIn('build visual', ' '.join(generate.pillar_errors(self.freebie(), 'build')))
+        self.assertEqual(generate.pillar_errors({**self.freebie(), 'hook_visual': self.BUILD}, 'build'), [])
+        self.assertIn('build', generate.SLOT3_FORMATS)
+
+    def test_generate_repairs_a_missing_freebie(self):
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [self.freebie()]}}),
+                              stderr='')
+        with mock.patch.object(generate, 'ask_claude', lambda *a: [copy.deepcopy(VALID)]), \
+                mock.patch.object(generate.subprocess, 'run', return_value=out) as run:
+            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # a Tuesday: Dev mistake
+        self.assertEqual((len(new), new[0]['dm_keyword'], new[0]['pillar']), (1, 'REDIS', 'devtip'))
+        self.assertIn('freebie', run.call_args[0][0][2])
+
+    def test_hook_pace_test(self):
+        dense = {**VALID, 'test': {'name': 'hook_pace', 'arm': 'dense'}}
+        self.assertIn('12 to 14', ' '.join(generate.validate(dense)))
+        line = '[fired up] Users update a profile, [puzzled] and the app still shows the old one.'
+        self.assertEqual(generate.experiment_errors({**dense, 'voiceover': [line] + VALID['voiceover'][1:]}), [])
+        self.assertEqual(generate.validate({**VALID, 'test': {'name': 'hook_pace', 'arm': 'relaxed'}}), [])
+
+    def test_paced_holds_the_reveal_and_speeds_the_dense_hook(self):
+        import voice
+        sr = render.SR
+        clips = voice.Voiceover([np.ones(sr, np.float32), np.ones(sr, np.float32), np.ones(sr // 2, np.float32)],
+                                [[('a', 0.1, 0.3)], [('b', 0.0, 0.2)], [('c', 0.0, 0.1)]], True)
+        held = publish.paced({'reveal': 1}, clips)
+        self.assertEqual((len(held[1]), held.words[1], held.holds), (sr + int(voice.HOLD * sr), [('b', voice.HOLD, voice.HOLD + 0.2)], {1: voice.HOLD}))
+        self.assertTrue(np.all(held[1][:int(voice.HOLD * sr)] == 0))
+        with mock.patch.object(voice, 'tempo', side_effect=lambda v, i, f: (i, f)) as tempo:
+            self.assertEqual(publish.paced({'test': {'name': 'hook_pace', 'arm': 'dense'}}, clips), (0, voice.FAST_HOOK))
+            publish.paced({'test': {'name': 'hook_pace', 'arm': 'relaxed'}}, clips)
+        self.assertEqual(tempo.call_count, 1)
+
+    def test_tempo_plays_faster_at_the_same_pitch(self):
+        import shutil
+        import voice
+        if not shutil.which('ffmpeg'):
+            self.skipTest('ffmpeg is not installed')
+        sr = render.SR
+        tone = np.sin(2 * np.pi * 440 * np.arange(sr) / sr).astype(np.float32) * 0.5
+        fast = voice.tempo(voice.Voiceover([tone], [[('a', 0.2, 0.8)]], True), 0, 1.25)
+        self.assertAlmostEqual(len(fast[0]) / sr, 0.8, delta=0.03)
+        self.assertAlmostEqual(fast.words[0][0][2], 0.64)
+        spectrum = np.abs(np.fft.rfft(fast[0]))
+        self.assertAlmostEqual(np.argmax(spectrum) * sr / len(fast[0]), 440, delta=8)
+
+    def test_slides_cross_fade(self):
+        # The old slide is still leaving when the next one arrives: no empty frame between them.
+        self.assertEqual(render.exit_progress(9.0, 10.0), 0)
+        self.assertTrue(0 < render.exit_progress(10.0, 10.0) < 1)
+        self.assertEqual(render.exit_progress(10.0 + render.GLIDE, 10.0), 1)
+
+    def test_slide_changes_glide_and_the_held_beat_ticks(self):
+        slides = [render.Slide('hook', 0, 3), render.Slide('point', 3, 7, hold=0.9), render.Slide('cta', 7, 10)]
+        cam = render.Camera(slides)
+        self.assertFalse(any(abs(at - s.start) < 0.01 for at, _ in cam.punches for s in slides[1:]))
+        wav = self.tmp / 'a.wav'
+        render.build_audio(slides, wav)
+        import wave
+        with wave.open(str(wav)) as w:
+            audio = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)
+        sr = render.SR
+        quiet = slides[1].start + render.VOICE_LEAD
+        ticks = audio[int((quiet + 0.1) * sr):int((quiet + 0.8) * sr)]
+        self.assertGreater(np.abs(ticks).max(), 0)
+
+
 class MotionTest(Sandbox):
     """The writer's side of the 2D animations (motion.py): each type's data is checked, a reel has at most one
     animation and always a flat backup after it, and the card plays at the animation's own pace."""
@@ -1200,7 +1306,7 @@ class MotionTest(Sandbox):
                   'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
                   'states': {'moves': [{'event': 'go', 'to': 'nowhere'}]}, 'race': {'source': 'http://x'},
                   'xray': {'focus': 'nothing'}, 'memory': {'reassign': [{'name': 'zz', 'to': 'null'}]},
-                  'outputmap': {'output': ['only one line']}}
+                  'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

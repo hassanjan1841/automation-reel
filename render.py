@@ -41,11 +41,14 @@ TEXT_W = W - 2 * MARGIN
 WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
+# A slide's exit runs this far into the next slide, so the two cross-fade and no frame between them is empty.
+GLIDE = 0.15
 VOICE_LEAD = 0.25
 VOICE_TAIL = 0.7          # after the last word; a long still ending is where viewers leave
 LOOP = 0.4
 MIN_SLIDE, MAX_SLIDE = 3.0, 6.0
 MIN_TOTAL, MAX_TOTAL = 15.0, 25.0
+KEYWORD_SIZE = 150
 
 THEMES = {
     'light': {'bg': '#F3EEE4', 'ink': '#141821', 'muted': '#5B6170', 'accent': '#E8472E'},
@@ -189,6 +192,7 @@ class Slide:
     visual: object = None
     ready: bool = False        # the visual is complete from the slide's first frame (the hook's proof)
     lead: float = 0.0          # how far into its own timeline the visual starts (its settle time when ready)
+    hold: float = 0.0          # seconds the voice holds silent at the start while the visual lands (voice.hold)
 
 
 def ease_out(p):
@@ -379,16 +383,25 @@ def build_slides(reel, voice=None):
         s.need = body_t + 0.5 + 0.2 * words_in(point['body']) + 0.6
         slides.append(s)
 
-    # CTA
+    # CTA. With a comment-to-DM offer the keyword closes the reel big, in the hook's own style (bold, accent, marker
+    # stroke), so the one word to type is the last thing on screen.
     s = Slide('cta')
     q_fnt, q_size, q_lines, q_lh = fit(parse_highlights(reel['cta']), 'Bold', 76, 48, TEXT_W, 520, leading=1.1)
     cb_size, fl_size = 52, 38
     follow = f'Follow {HANDLE} for daily dev + AI tips'
     fl_lines = len(wrap(parse_highlights(follow), font('Regular', fl_size), TEXT_W))
-    group_h = len(q_lines) * q_lh + 56 + round(cb_size * 1.3) + 22 + fl_lines * round(fl_size * 1.35)
+    keyword = reel.get('dm_keyword')
+    if keyword:
+        k_fnt, k_size, k_lines, k_lh = fit(parse_highlights(f'*{keyword}*'), 'Bold', KEYWORD_SIZE, 72, TEXT_W, 220,
+                                           leading=1.0)
+    k_h = len(k_lines) * k_lh + 40 if keyword else 0
+    group_h = len(q_lines) * q_lh + 56 + k_h + round(cb_size * 1.3) + 22 + fl_lines * round(fl_size * 1.35)
     top = CONTENT_TOP + (bottom - CONTENT_TOP - group_h) // 2 - (0 if captions else 40)
     end = add_words(s, q_lines, q_fnt, q_size, q_lh, top, start, theme, step=step, anim=anim)
     y = top + len(q_lines) * q_lh + 56
+    if keyword:
+        end = add_words(s, k_lines, k_fnt, k_size, k_lh, y, end + 0.1, theme, step=step, anim=anim)
+        y += k_h
     prompt = "I'll send it to your DMs" if reel.get('dm_keyword') else 'Comment below'
     y += add_block(s, prompt, 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
     add_block(s, follow, 'Regular', fl_size, 'muted', y, end + 0.5, theme, max_h=160)
@@ -415,6 +428,8 @@ def build_slides(reel, voice=None):
         # Speech sets the pace: each slide stays up until its line is finished.
         durs = [max(d, VOICE_LEAD + len(clip) / SR + 0.45 + EXIT) for d, clip in zip(durs, voice)]
 
+    for i, s in enumerate(slides):
+        s.hold = getattr(voice, 'holds', {}).get(i, 0.0)
     t = 0.0
     for s, d in zip(slides, durs):
         s.start, s.end = t, t + d
@@ -458,14 +473,19 @@ def composite(frame, el, a, x, y, mask=None):
     region += (el.color - region) * m
 
 
+def exit_progress(t, end):
+    """0 until a slide starts leaving, 1 once it is gone (GLIDE seconds after its end, under the next slide's entry)."""
+    return min(1.0, max(0.0, (t - (end - EXIT + GLIDE)) / EXIT))
+
+
 def draw_element(frame, el, t):
-    if t < max(el.t0, el.slide[0]) or t >= el.slide[1]:
+    if t < max(el.t0, el.slide[0]) or t >= el.slide[1] + GLIDE:
         return
     lin = min(1.0, (t - el.t0) / el.dur)
     p = ease_out(lin)
     a = el.alpha * (p if not el.grow else 1.0)
     dy = (1 - back_out(lin)) * el.rise
-    q = min(1.0, max(0.0, (t - (el.slide[1] - EXIT)) / EXIT))
+    q = exit_progress(t, el.slide[1])
     if q > 0:
         e = ease_in(q)
         a *= 1 - e
@@ -651,8 +671,8 @@ def speech_beats(slides, voice):
 
 class Camera:
     """Moves the slide content like a filmed shot so nothing is ever frozen: a slow breathing zoom and drift,
-    a zoom punch at every slide change and on every spoken sentence (or every PUNCH_EVERY seconds without a
-    voice; varied strength, so the rhythm never feels mechanical), a focus push into each point's visual (show,
+    a zoom punch on every spoken sentence (or every PUNCH_EVERY seconds without a voice; varied strength, so the
+    rhythm never feels mechanical; slide changes glide instead), a focus push into each point's visual (show,
     focus, release: something changes every one to two seconds), a short shake on the hook and the call to
     action, and a zoom-out reveal at frame 0.
     Chrome (progress bars, kicker) and captions are drawn after the camera, so they stay put like real UI."""
@@ -665,9 +685,9 @@ class Camera:
     def __init__(self, slides, seed=11, beats=()):
         rng = np.random.default_rng(seed)
         self.punches = []
-        for i, s in enumerate(slides):
-            if i:
-                self.punches.append((s.start, 0.06 + rng.uniform(0, 0.025)))
+        for s in slides:
+            # Slide changes glide (the old slide lifts out, the next one rises in); punches stay inside a slide, on
+            # the spoken sentences, so sections flow like one sequence instead of jumping.
             mine = [b for b in beats if s.start + 0.8 < b < s.end - 0.8]
             if not beats:
                 t = s.start + self.PUNCH_EVERY
@@ -801,12 +821,12 @@ def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
         t = f / FPS
         frame = bg.copy()
         for s in slides:
-            if s.start <= t < s.end:
+            if s.start <= t < s.end + GLIDE:
                 if s.visual:
                     # The hook's proof is already in place on frame 0; point visuals arrive with a short pop.
                     lin = 1.0 if s.ready else min(1.0, max(0.0, (t - s.start - 0.05) / 0.35))
                     p = ease_out(lin)
-                    q = ease_in(min(1.0, max(0.0, (t - (s.end - EXIT)) / EXIT)))
+                    q = ease_in(exit_progress(t, s.end))
                     s.visual.draw(frame, t - s.start + s.lead, p * (1 - q), round((1 - back_out(lin)) * 40 - q * 70))
                 for el in s.elements:
                     draw_element(frame, el, t)
@@ -888,6 +908,7 @@ def sound_kit(rng):
     }
 
 
+HOLD_TICK = 0.16
 SOUND_GAIN = {'key': 0.035, 'tick': 0.03, 'pop': 0.06, 'click': 0.07, 'swish': 0.05, 'air': 0.022, 'thud': 0.11,
               'scribble': 0.03}
 
@@ -947,6 +968,15 @@ def build_audio(slides, path, voice=None):
             at -= s.lead  # a visual already in place at frame 0 skips the sounds of its entrance
             if 0 <= at and s.start + at < s.end - EXIT:
                 place(kit[kind](), s.start + at, SOUND_GAIN[kind])
+    # A held beat (voice.hold): soft ticks like a clock while the result lands, then a pop as the voice comes back.
+    for i, s in enumerate(slides):
+        if s.hold:
+            quiet = s.start + (0.0 if getattr(voice, 'continuous', False) and i else VOICE_LEAD)
+            at = quiet + 0.12
+            while at < quiet + s.hold - 0.15:
+                place(kit['tick'](), at, SOUND_GAIN['tick'] * 1.6)
+                at += HOLD_TICK
+            place(kit['pop'](), quiet + s.hold - 0.08, SOUND_GAIN['pop'] * 1.4)
     if getattr(voice, 'continuous', False):
         peak = max(np.max(np.abs(clip)) for clip in voice) or 1.0
         at = VOICE_LEAD
