@@ -48,6 +48,9 @@ text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font
 const P = window.PARAMS, S = P.spec, W = P.w, H = P.h;
 const C = {panel: '#1E2230', bar: '#161A25', text: '#E6E9F2', dim: '#8A91A5', line: 'rgba(230,233,242,0.18)',
   green: '#3FB950', red: '#E5534B', amber: '#E3A33B', accent: P.accent};
+// Text and lines drawn straight on the reel's background follow its theme (dark panels keep C.text and C.dim).
+const rgba = (hex, a) => `rgba(${[1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(',')},${a})`;
+Object.assign(C, {ink: P.ink, mute: P.muted, guide: rgba(P.ink, 0.22), track: rgba(P.ink, 0.08)});
 const NS = 'http://www.w3.org/2000/svg', svg = document.getElementById('stage');
 svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 function mk(tag, a = {}, parent = svg) { const e = document.createElementNS(NS, tag);
@@ -111,7 +114,7 @@ function exits(a, b) { const dx = b.cx - a.cx, dy = b.cy - a.cy;
   const clip = (n, sx, sy) => { const k = Math.min(Math.abs((n.w / 2 + 10) / (sx || 1e-9)), Math.abs((n.h / 2 + 10) / (sy || 1e-9)));
     return [n.cx + sx * k, n.cy + sy * k]; };
   return [...clip(a, dx, dy), ...clip(b, -dx, -dy)]; }
-function line(d, a = {}) { const p = mk('path', {d, fill: 'none', stroke: C.line, 'stroke-width': 4, 'stroke-linecap': 'round', ...a}, L0);
+function line(d, a = {}) { const p = mk('path', {d, fill: 'none', stroke: C.guide, 'stroke-width': 4, 'stroke-linecap': 'round', ...a}, L0);
   const len = p.getTotalLength(); p.setAttribute('stroke-dasharray', len); p.setAttribute('stroke-dashoffset', len);
   return {p, len}; }
 function draw(l, t, d = 0.45) { at(t, d, p => l.p.setAttribute('stroke-dashoffset', l.len * (1 - p)), E.inout); }
@@ -268,12 +271,12 @@ T.git = () => {
   const extra = S.op === 'none' ? 0 : (S.op === 'merge' ? 1 : cs.filter(c => c.branch === S.head).length);
   const slots = cs.length + extra, laneGap = Math.min(220, (H - 160) / Math.max(1, lanes.length - 1 || 1));
   const x0 = 170, dx = Math.min(150, (W - x0 - 60) / Math.max(1, slots - 1)), ly = b => 90 + lanes.indexOf(b) * laneGap;
-  lanes.forEach((b, i) => { const l = line(`M${x0 - 30} ${ly(b)} L${W - 20} ${ly(b)}`, {stroke: 'rgba(230,233,242,0.10)', 'stroke-width': 3});
-    draw(l, 0.05 + i * 0.1, 0.5); const lab = txt(L2, 0, ly(b) + 10, b, 28, {fill: C.dim, opacity: 0}); fit(lab, x0 - 50); fade(lab, 0.1 + i * 0.1); });
+  lanes.forEach((b, i) => { const l = line(`M${x0 - 30} ${ly(b)} L${W - 20} ${ly(b)}`, {stroke: C.track, 'stroke-width': 3});
+    draw(l, 0.05 + i * 0.1, 0.5); const lab = txt(L2, 0, ly(b) + 10, b, 28, {fill: C.mute, opacity: 0}); fit(lab, x0 - 50); fade(lab, 0.1 + i * 0.1); });
   const pos = {}, last = {}, laneCol = b => [C.accent, '#58A6FF', C.amber, C.green][lanes.indexOf(b) % 4];
   const dot = (x, y, color, label, t, ghost = false, parent = L1) => { const g = mk('g', {opacity: 0}, parent);
     mk('circle', {cx: x, cy: y, r: 22, fill: C.panel, stroke: color, 'stroke-width': 6, ...(ghost ? {'stroke-dasharray': '6 6'} : {})}, g);
-    if (label) fit(txt(g, x, y - 38, label, 24, {'text-anchor': 'middle', class: 'mono', fill: ghost ? C.dim : C.text, 'font-weight': 500}), dx * 1.6);
+    if (label) fit(txt(g, x, y - 38, label, 24, {'text-anchor': 'middle', class: 'mono', fill: ghost ? C.mute : C.ink, 'font-weight': 500}), dx * 1.6);
     pop(g, t, x, y, 0.45); return g; };
   const link = (a, b, t, color) => { const l = line(a[1] === b[1] ? `M${a[0] + 24} ${a[1]} L${b[0] - 24} ${b[1]}`
       : `M${a[0]} ${a[1] + (b[1] > a[1] ? 24 : -24)} C${a[0]} ${b[1]} ${a[0]} ${b[1]} ${b[0] - 24} ${b[1]}`, {stroke: color, 'stroke-width': 5}); draw(l, t, 0.35); return l; };
@@ -341,10 +344,10 @@ T.structure = () => {
     fit(txt(g, w / 2, h / 2 + 13, v, 36, {'text-anchor': 'middle', class: 'mono'}), w - 20);
     g.setAttribute('transform', `translate(${x} ${y - 40})`); at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2));
       g.setAttribute('transform', `translate(${x} ${lerp(y - 40, y, p)})`); }, E.spring);
-    const idx = vertical ? null : txt(L2, x + w / 2, y + h + 40, String(i), 24, {'text-anchor': 'middle', fill: C.dim, opacity: 0});
+    const idx = vertical ? null : txt(L2, x + w / 2, y + h + 40, String(i), 24, {'text-anchor': 'middle', fill: C.mute, opacity: 0});
     if (idx) fade(idx, t + 0.1, 0.3); return {g, x, y, w, h, idx}; };
   items.forEach((v, i) => cells.push(make(v, i, 0.1 + i * 0.08)));
-  const label = txt(L2, vertical ? W / 2 + 190 : (W - rowW) / 2, vertical ? H - 60 : H / 2 - cell / 2 - 40, {stack: 'top ↑', queue: 'front', array: ''}[kind] || '', 26, {fill: C.dim, opacity: 0});
+  const label = txt(L2, vertical ? W / 2 + 190 : (W - rowW) / 2, vertical ? H - 60 : H / 2 - cell / 2 - 40, {stack: 'top ↑', queue: 'front', array: ''}[kind] || '', 26, {fill: C.mute, opacity: 0});
   fade(label, 0.4); SETTLE = 0.3 + items.length * 0.08; let t = SETTLE + 0.6;
   const relayout = (from, t) => cells.forEach((c, i) => { if (i < from) return; const [x, y] = place(i);
     moveTo(c.g, t, 0.45, c.x, c.y, x, y); if (c.idx) { const e = c.idx, ox = c.x; at(t, 0.45, p => e.setAttribute('x', lerp(ox + c.w / 2, x + c.w / 2, p)), E.spring);
@@ -387,7 +390,7 @@ T.sequence = () => {
     const x1 = xs[a] + (b > a ? 8 : -8), x2 = xs[b] + (b > a ? -8 : 8), color = c.fail ? C.red : C.accent;
     const l = line(`M${x1} ${y} L${x2} ${y}`, {stroke: color, 'stroke-width': 5}); draw(l, t, 0.45);
     const head = arrowHead(x1, y, x2, y, color); fade(head, t + 0.4, 0.1);
-    const lab = txt(L2, (x1 + x2) / 2, y - 18, c.label, 32, {'text-anchor': 'middle', opacity: 0, fill: c.fail ? C.red : C.text}); fit(lab, Math.abs(x2 - x1) - 10);
+    const lab = txt(L2, (x1 + x2) / 2, y - 18, c.label, 32, {'text-anchor': 'middle', opacity: 0, fill: c.fail ? C.red : C.ink}); fit(lab, Math.abs(x2 - x1) - 10);
     fade(lab, t + 0.2, 0.35); snd(t, c.fail ? 'thud' : 'swish');
     if (c.fail) { const xg = txt(L2, x2 + (b > a ? -40 : 40), y + 12, '×', 44, {'text-anchor': 'middle', fill: C.red, opacity: 0}); fade(xg, t + 0.45, 0.2);
       at(t + 0.45, 0.35, (p, raw) => xg.setAttribute('transform', `translate(${8 * Math.sin(raw * Math.PI * 6) * (1 - raw)} 0)`), E.lin); }
@@ -416,17 +419,19 @@ T.states = () => {
 T.race = () => {
   const bars = S.bars, max = Math.max(...bars.map(b => b.value)), n = bars.length;
   const labW = 230, rowH = Math.min(140, (H - 150) / n), bh = rowH * 0.56, x0 = labW + 20, maxW = W - x0 - 150;
-  if (S.title) { const tt = txt(L2, 0, 40, S.title, 34, {opacity: 0}); fit(tt, W); fade(tt, 0); }
+  if (S.title) { const tt = txt(L2, 0, 40, S.title, 34, {fill: C.ink, opacity: 0}); fit(tt, W); fade(tt, 0); }
   bars.forEach((b, i) => { const y = 80 + i * rowH, w = Math.max(6, maxW * b.value / max);
-    const lab = txt(L2, labW, y + bh / 2 + 11, b.label, 30, {'text-anchor': 'end', opacity: 0}); fit(lab, labW - 10); fade(lab, 0.1 + i * 0.08);
-    mk('rect', {x: x0, y, width: maxW, height: bh, rx: bh / 2, fill: 'rgba(230,233,242,0.06)'}, L0);
+    const lab = txt(L2, labW, y + bh / 2 + 11, b.label, 30, {'text-anchor': 'end', fill: C.ink, opacity: 0}); fit(lab, labW - 10); fade(lab, 0.1 + i * 0.08);
+    mk('rect', {x: x0, y, width: maxW, height: bh, rx: bh / 2, fill: C.track}, L0);
     const r = mk('rect', {x: x0, y, width: 0, height: bh, rx: bh / 2, fill: i === 0 ? C.accent : '#58A6FF'}, L1);
-    const v = txt(L2, x0 + 14, y + bh / 2 + 11, '', 30, {class: 'mono', opacity: 0});
     const dec = (String(b.value).split('.')[1] || '').length, t = 0.5 + i * 0.15;
+    // The final value is set up front (hidden) so the layout fit makes room for it at the end of the longest bar.
+    const v = txt(L2, x0 + w + 14, y + bh / 2 + 11, b.value.toFixed(dec) + (S.unit ? ' ' + S.unit : ''), 30,
+                  {class: 'mono', fill: C.ink, opacity: 0});
     at(t, 1.1, (p, raw) => { r.setAttribute('width', Math.max(bh, w * p)); v.setAttribute('x', x0 + Math.max(bh, w * p) + 14);
       v.textContent = (b.value * p).toFixed(dec) + (S.unit ? ' ' + S.unit : ''); v.setAttribute('opacity', Math.min(1, raw * 3)); });
     snd(t, 'tick'); });
-  const src = txt(L2, 0, 80 + n * rowH + 30, 'Source: ' + S.head_host, 22, {fill: C.dim, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
+  const src = txt(L2, 0, 80 + n * rowH + 30, 'Source: ' + S.source_host, 22, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
   SETTLE = 0.4; sweep(x0, 80, maxW, n * rowH - (rowH - bh), 2.2); END = Math.max(END, 3.6);
 };
 
@@ -451,7 +456,7 @@ T.xray = () => {
 
 T.memory = () => {
   const vars = S.refs.map(r => r.name), objs = S.objects, colW = W * 0.36, rowH = Math.min(120, (H - 90) / Math.max(vars.length, objs.length));
-  txt(L2, 0, 34, 'Stack', 28, {fill: C.dim, 'font-weight': 500}); txt(L2, W - colW, 34, 'Heap', 28, {fill: C.dim, 'font-weight': 500});
+  txt(L2, 0, 34, 'Stack', 28, {fill: C.mute, 'font-weight': 500}); txt(L2, W - colW, 34, 'Heap', 28, {fill: C.mute, 'font-weight': 500});
   const V = {}, O = {}; vars.forEach((v, i) => { V[v] = node(0, 60 + i * rowH, colW, rowH - 24, v, 32); V[v].t.setAttribute('class', 'mono'); pop(V[v].g, 0.05 + i * 0.08, colW / 2, 60 + i * rowH); });
   objs.forEach((o, i) => { O[o.id] = node(W - colW, 60 + i * rowH, colW, rowH - 24, o.label, 28); pop(O[o.id].g, 0.2 + i * 0.08, W - colW / 2, 60 + i * rowH); });
   const curve = (a, b) => { const x1 = a.x + a.w + 8, y1 = a.cy, x2 = b.x - 14, y2 = b.cy; return `M${x1} ${y1} C${x1 + 160} ${y1} ${x2 - 160} ${y2} ${x2} ${y2}`; };
@@ -463,10 +468,10 @@ T.memory = () => {
     if (a) { const oldD = a.l.p.getAttribute('d'); void oldD; at(t, 0.35, (p, raw) => { a.l.p.setAttribute('stroke-dashoffset', a.l.len * p); a.tip.setAttribute('opacity', 1 - raw); }, E.inout); }
     if (O[r.to]) { const l = line(curve(V0, O[r.to]), {stroke: C.accent, 'stroke-width': 4}); draw(l, t + 0.35, 0.45);
       const tip = mk('circle', {r: 7, fill: C.accent, opacity: 0, cx: O[r.to].x - 10, cy: O[r.to].cy}, L3); fade(tip, t + 0.75, 0.1); arrows[r.name] = {l, tip}; }
-    else { const nl = txt(L2, V0.x + V0.w + 30, V0.cy + 11, 'null', 30, {class: 'mono', fill: C.dim, opacity: 0}); fade(nl, t + 0.4, 0.3); delete arrows[r.name]; }
+    else { const nl = txt(L2, V0.x + V0.w + 30, V0.cy + 11, 'null', 30, {class: 'mono', fill: C.mute, opacity: 0}); fade(nl, t + 0.4, 0.3); delete arrows[r.name]; }
     snd(t, 'swish'); refs[r.name] = r.to; glow(V0, t + 0.9, 0, 0.25);
     objs.forEach(o => { if (!Object.values(refs).includes(o.id) && !O[o.id].gone) { O[o.id].gone = 1; dim(O[o.id].g, t + 0.8, 0.3, 0.4);
-        O[o.id].r.setAttribute('stroke-dasharray', '10 8'); const u = txt(L2, O[o.id].cx, O[o.id].y + O[o.id].h + 26, 'unreachable', 22, {'text-anchor': 'middle', fill: C.dim, opacity: 0}); fade(u, t + 0.9, 0.3); snd(t + 0.9, 'tick'); } });
+        O[o.id].r.setAttribute('stroke-dasharray', '10 8'); const u = txt(L2, O[o.id].cx, O[o.id].y + O[o.id].h + 26, 'unreachable', 22, {'text-anchor': 'middle', fill: C.mute, opacity: 0}); fade(u, t + 0.9, 0.3); snd(t + 0.9, 'tick'); } });
     t += 1.3; });
   END = Math.max(END, t + 0.6);
 };
@@ -592,13 +597,14 @@ def render_motion(spec, theme, size):
     """Transparent RGBA frames of an animation at its natural length, and its META {duration, settle, sounds}.
     Cached per spec, theme, size and page."""
     w, h = size
-    key = hashlib.sha1(json.dumps({'spec': spec, 'accent': theme['accent'], 'size': size,
+    key = hashlib.sha1(json.dumps({'spec': spec, 'accent': theme['accent'], 'ink': theme['ink'], 'size': size,
                                    'page': hashlib.sha1(PAGE.encode()).hexdigest()}, sort_keys=True).encode()).hexdigest()[:16]
     folder = FRAMES / key
     meta_path = folder / 'meta.json'
     if meta_path.exists() and any(folder.glob('*.png')):
         return folder, json.loads(meta_path.read_text())
-    params = {'spec': prepare(spec, w), 'w': w, 'h': h, 'accent': theme['accent'], 'max': MAX_SECONDS}
+    params = {'spec': prepare(spec, w), 'w': w, 'h': h, 'accent': theme['accent'], 'ink': theme['ink'],
+              'muted': theme['muted'], 'max': MAX_SECONDS}
     html = PAGE.replace('<head>', '<head><style>' + font_css() + '</style><script>window.PARAMS = '
                         + json.dumps(params).replace('</', '<\\/') + ';</script>', 1)
     from playwright.sync_api import sync_playwright

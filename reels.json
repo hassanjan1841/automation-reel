@@ -1290,5 +1290,135 @@
     ],
     "slot": 1,
     "seconds": 20.8
+  },
+  {
+    "id": 43,
+    "pillar": "timely",
+    "style": "light",
+    "kicker": "AI news",
+    "payoff": "How Jev differs from a chat model (it picks a typed answer instead of writing) and when a decision model fits",
+    "hook": "This AI never *writes*",
+    "hook_type": "news",
+    "hook_visual": {
+      "type": "diff",
+      "language": "js",
+      "title": "same question",
+      "before": "// a chat model writes\n\"Looking at the order, I think\n a refund is probably fair...\"",
+      "after": "// Jev picks one of your options\n{ \"choice\": \"refund\" }\n// plus how sure it is"
+    },
+    "alternatives": [
+      {
+        "hook": "An AI with *no words*",
+        "spoken": "[excited] An ex OpenAI researcher built an AI (break) [amazed] that only picks answers.",
+        "hook_type": "news"
+      },
+      {
+        "hook": "Chatbots are *too slow*",
+        "spoken": "[urgent] Your app waits while a chatbot (break) [frustrated] writes words it never needed.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Stop parsing *AI text*",
+        "spoken": "[confident] A new model answers with a choice, (break) [excited] not a paragraph.",
+        "hook_type": "shortcut"
+      }
+    ],
+    "points": [
+      {
+        "title": "Word by word",
+        "body": "Chat models write one word at a time.",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "chat model",
+            "code": "// one word at a time\n\"Looking\"\n\"at\"\n\"the\" ...",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One step",
+        "body": "Jev returns one of your options.",
+        "visual": [
+          {
+            "type": "sequence",
+            "actors": [
+              "Chat model",
+              "Your app",
+              "Jev"
+            ],
+            "calls": [
+              {
+                "from": "Your app",
+                "to": "Chat model",
+                "label": "question"
+              },
+              {
+                "from": "Chat model",
+                "to": "Your app",
+                "label": "\"Looking\""
+              },
+              {
+                "from": "Chat model",
+                "to": "Your app",
+                "label": "\"at the\""
+              },
+              {
+                "from": "Chat model",
+                "to": "Your app",
+                "label": "\"order...\""
+              },
+              {
+                "from": "Your app",
+                "to": "Jev",
+                "label": "question"
+              },
+              {
+                "from": "Jev",
+                "to": "Your app",
+                "label": "refund"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "your options",
+            "code": "options = [\"refund\", \"deny\", \"ask\"]\n\n// Jev returns one of these,\n// with a confidence score",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Decide, not write",
+        "body": "Routing, flags, approvals. Not essays."
+      }
+    ],
+    "cta": "Would you let it *decide*?",
+    "caption": "Jev by TypeSafe AI: a model that picks answers instead of writing them\nSpeed claims are from TypeSafe's own tests, not independent ones yet\nWould you trust it with your app's decisions? 👇",
+    "hashtags": [
+      "#ai",
+      "#llm",
+      "#developers",
+      "#machinelearning"
+    ],
+    "voiceover": [
+      "[excited, fast] An ex OpenAI researcher built an AI (break) [amazed] that never writes.",
+      "[thoughtful] Chat models write word by word, (break) [intrigued] each waiting on the last.",
+      "[impressed] Jev picks one of your options, (break) [confident] in one step.",
+      "[serious] Think routing and approvals. (break) [surprised] Its makers claim, in their own tests, (break) [skeptical] a hundred ninety three times faster.",
+      "[warm, curious] Would you let it decide for you?"
+    ],
+    "sources": [
+      "https://en.wikipedia.org/wiki/Jev_(AI_model)",
+      "https://www.tomshardware.com/tech-industry/artificial-intelligence/typesafe-ais-jev-offers-an-alternative-to-llms-that-claims-to-be-193x-faster-and-445x-cheaper-system-one-type-model-is-bespoke-for-probabilistic-decision-making"
+    ],
+    "posted_at": null,
+    "media_id": null
   }
 ]

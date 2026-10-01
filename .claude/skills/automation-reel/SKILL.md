@@ -274,7 +274,11 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
   `visuals.Motion` plays at the animation's own pace and holds its last frame; only a slide shorter than the
   animation speeds it up (`speed`), and its `sounds` follow. The page reports `settle` (layout complete) so a hook
   proof is drawn from there. Test with `test_motion.py` (real renders; `E2E_CHROMIUM` in the sandbox) and look at
-  `python motion.py <type>` output; frames are cached in `out/motion/` by spec, theme accent, size and page source.
+  `python motion.py <type>` output; frames are cached in `out/motion/` by spec, theme accent and ink, size and page source. Text and
+  lines drawn straight on the reel's background use the theme's `ink`/`muted` (`C.ink`, `C.mute`, `C.guide`), not
+  the dark panels' `C.text`/`C.dim`, or they vanish on the light theme (2026-10-01: sequence labels, git ids and the
+  race were unreadable there; `test_motion.py` renders the race on light and checks every template reads only
+  fields its prepared spec has, after the race showed "Source: undefined").
 - Frame 0 (2026-10-01, playbook.md): the hook's words are revealed before frame 0 (`build_slides`; its click at 0 is audible
   only without a voice: with a voice the clicks are muted and the voice starts at `VOICE_LEAD` 0.25s) and its `hook_visual` is drawn from its `settle` time (`visuals.Card.settle`; a Code card
   once all lines are in, so only the circle still draws) with `Slide.ready`/`Slide.lead`; its entrance sounds are

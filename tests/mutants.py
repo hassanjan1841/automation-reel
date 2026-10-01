@@ -135,6 +135,8 @@ MUTANTS = [
     ('trends.py', "{os.environ.get('GRAPH_VERSION') or 'v25.0'}", "v25.0", 'the trend scan ignores GRAPH_VERSION'),
     ('qa.py', "(os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5')", "os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5')",
      'an unset CLAUDE_MODEL variable runs an empty model'),
+    ('motion.py', "'Source: ' + S.source_host", "'Source: ' + S.head_host", 'the race shows "Source: undefined"'),
+    ('motion.py', "Object.assign(C, {ink: P.ink,", "Object.assign(C, {ink: C.text,", 'labels vanish on the light theme'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
