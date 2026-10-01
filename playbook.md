@@ -79,6 +79,8 @@ Hook mistakes that make people swipe:
 - Keep key content inside the safe zone: clear of the top 14%, the bottom 30% and the right edge.
 - Something changes every 1.5 to 3 seconds (a highlight, a zoom, a new line); no slide holds a still frame.
 - Captions show 3 to 6 words at a time in the lower band, high contrast.
+- At most one animation per reel (motion.py), on the point where movement explains better than a still: one change
+  at a time with a short hold, the active part glowing and the rest dimmed, values that are true.
 - No invented chats or posts presented as real. No faces, no animals, no music.
 
 ## 5. Sound

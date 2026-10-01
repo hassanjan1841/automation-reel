@@ -13,6 +13,7 @@ and report exactly what ran. Load the `automation-reel` skill first for how the 
 ```bash
 .venv/bin/python test_learn.py            # learning loop, the weekly test, writer and publish records
 .venv/bin/python test_study.py            # study.py on synthetic videos (needs ffmpeg on PATH, else those tests skip)
+E2E_CHROMIUM=<chrome> .venv/bin/python test_motion.py   # every animation rendered for real (a few minutes)
 .venv/bin/python generate.py --check      # every reel in reels.json still valid
 python3 docs_check.py                     # docs match the code
 .venv/bin/python test_voice.py            # pronunciation rules (text only)
@@ -57,6 +58,7 @@ Never post for real. These use temp copies of the data files and fake Instagram 
 | Publishing, rendering, visuals, 3D (`publish.py`, `render.py`, `visuals.py`, `scene3d.py`, `qa.py`) | `.venv/bin/python tests/e2e_publish.py`, then with `--reject`, and once with `--real-review`; look at frames (below) |
 | The learning loop (`learn.py`, `history.py`) | `.venv/bin/python tests/e2e_learn.py 10` (ten days of daily runs, real Claude for rules, report, comment topics and covers) |
 | The video study (`study.py`) | `.venv/bin/python study.py <an mp4, e.g. a dry-run render in out/>` with `STUDIES` pointed at a temp folder, or Actions > Study videos with one link; read the whole report: every section filled, measured numbers plausible, nothing in "What we could test" breaks a hard rule |
+| The animations (`motion.py`) | `test_motion.py`, then `python motion.py <type>` for each template you touched and look at its frames (nothing cut at the edges, labels readable at phone size, one change at a time); then `tests/e2e_publish.py`, which puts one in a reel |
 | The carousel | `DRY_RUN=true .venv/bin/python carousel.py` |
 | The voice | `.venv/bin/python test_voice.py --audio` and `--verify` |
 | A workflow | Actions > Daily reel > Run workflow with `dry_run` on; read the log and the artifact |

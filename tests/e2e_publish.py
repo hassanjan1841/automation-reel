@@ -49,7 +49,12 @@ REEL = {
          'spoken': '[mock outraged] You update the row, [deadpan] the page still shows the old value.'}],
     'points': [
         {'title': 'Reads hit cache', 'body': 'The app asks the cache before the database.',
-         'visual': [{'type': 'diagram', 'nodes': [{'id': 'app', 'label': 'App', 'kind': 'client'},
+         'visual': [{'type': 'flow', 'nodes': [{'id': 'app', 'label': 'App', 'kind': 'client'},
+                                               {'id': 'cache', 'label': 'Cache', 'kind': 'cache'},
+                                               {'id': 'db', 'label': 'Database', 'kind': 'db'}],
+                     'hops': [{'from': 'app', 'to': 'cache', 'label': 'read'}, {'from': 'cache', 'to': 'db', 'label': 'miss'},
+                              {'from': 'db', 'to': 'cache', 'label': 'row'}, {'from': 'cache', 'to': 'app'}]},
+                    {'type': 'diagram', 'nodes': [{'id': 'app', 'label': 'App', 'kind': 'client'},
                                                   {'id': 'cache', 'label': 'Cache', 'kind': 'cache'},
                                                   {'id': 'db', 'label': 'Database', 'kind': 'db'}],
                      'edges': [{'from': 'app', 'to': 'cache'}, {'from': 'cache', 'to': 'db'}],
@@ -162,6 +167,7 @@ def main():
         'still valid': generate.validate(posted) == [],
         'queue keeps every choice': posted['points'] == reel['points'],
         'hook proof under the hook': reviews[0][0] == reel['hook_visual']['type'],
+        'animation on point 1': '--reject' in args or reviews[0][1] == 'flow',
         'review recorded': 'first_frame' in (posted.get('review') or {}),
         'reject path re-rendered': '--reject' not in args or (len(reviews) >= 2 and reviews[0][1] != reviews[1][1]),
     }

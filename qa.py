@@ -108,6 +108,22 @@ def review(video, reel, slides, voiceover=None):
                                                          for b in visual.get('bars', []))
                                  + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
                          'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
+                         'stepper': 'an animation stepping through code line by line with its variables changing '
+                                    '(check the values are what the code really does)',
+                         'flow': 'an animated request travelling between ' + ', '.join(n.get('label', '') for n in visual.get('nodes', [])),
+                         'morph': 'an animation turning the before code into the after code',
+                         'git': 'an animated git graph (' + visual.get('op', 'none') + ')',
+                         'eventloop': 'an animation of the JavaScript event loop (call stack, Web APIs, queues, console)',
+                         'structure': 'an animated ' + visual.get('structure', 'data structure') + ' changing step by step',
+                         'sequence': 'an animated sequence diagram between ' + ', '.join(visual.get('actors', [])),
+                         'states': 'an animated state machine: ' + ' -> '.join(visual.get('states', [])),
+                         'race': 'animated bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
+                                                               for b in visual.get('bars', []))
+                                 + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
+                         'xray': 'an animated zoom into ' + str(visual.get('focus')) + ' showing ' + ', '.join(visual.get('inside', [])),
+                         'memory': 'an animation of variables pointing at objects, references moving',
+                         'outputmap': 'the output of `' + visual.get('command', '') + '` lifting out into boxes '
+                                      '(check it is what that command really prints)',
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
