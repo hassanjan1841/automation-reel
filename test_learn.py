@@ -1017,6 +1017,11 @@ class PlaybookTest(Sandbox):
         self.assertIn('max 3', ' '.join(generate.validate({**VALID, 'points': [{**VALID['points'][0],
                       'title': 'Reads hit the cache'}] + VALID['points'][1:]})))
 
+    def test_alternatives_open_with_energy(self):
+        flat = copy.deepcopy(VALID)
+        flat['alternatives'][0]['spoken'] = '[deadpan] Your cache still serves the old profile.'
+        self.assertIn('alternative 1 spoken line must open with a high-energy cue', ' '.join(generate.validate(flat)))
+
     def test_an_offer_needs_something_to_send(self):
         vo = VALID['voiceover'][:4] + ['[warm, curious] Comment webhook and I will send the setup.']
         self.assertIn('no dm_keyword and dm_guide', ' '.join(generate.validate({**VALID, 'voiceover': vo})))

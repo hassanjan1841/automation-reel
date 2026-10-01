@@ -126,6 +126,8 @@ def validate(reel):
                 errors.append(f'alternative {k} spoken line has more than 14 words')
             elif any(len(strip_cues(part).split()) > CUE_GAP for part in re.split(r'\[[^\]]*\]', a['spoken'])):
                 errors.append(f'alternative {k} spoken line runs more than {CUE_GAP} words without a fresh cue')
+            elif any('line 1 must open' in e for e in cue_errors([a['spoken']])):
+                errors.append(f'alternative {k} spoken line must open with a high-energy cue like [fired up]')
     if any(v.get('type') in ('tweet', 'chat') for p in points
            for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
         errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
@@ -700,7 +702,7 @@ Field rules:
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
   on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1 with the same rules: it
-  starts with a [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
+  starts with a high-energy [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
   reviewer picks the strongest of the four, so make every one good and honest.
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
 - hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
