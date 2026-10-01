@@ -838,7 +838,9 @@ class Build(Card):
         for k, code in enumerate(codes):
             lines = code.split('\n')
             padded = '\n'.join([lines[0].ljust(cols)] + lines[1:] + [''] * (rows - len(lines)))
-            img, rows_k = code_image(padded, 'html' if k == 0 else 'css', 'index.html' if k == 0 else title, w, code_h)
+            # The panel shows one stage at a time; the title says which, since earlier ones live only in the page.
+            label = 'index.html' if k == 0 else f'{title}, step {k} of {len(stages)}'
+            img, rows_k = code_image(padded, 'html' if k == 0 else 'css', label, w, code_h)
             self.codes.append((np.asarray(img, dtype=np.float32), rows_k[:len(lines)]))
         self.accent = accent
 
