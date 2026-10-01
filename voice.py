@@ -382,6 +382,48 @@ class Voiceover(list):
     def __init__(self, clips, words, continuous):
         super().__init__(clips)
         self.words, self.continuous, self.verdict = words, continuous, 'not checked'
+        self.holds = {}  # clip index -> seconds of held silence at its start (hold)
+
+
+# The beat a reel's reveal point holds before its line, while the result finishes on screen.
+HOLD = 0.9
+# How much faster the hook line plays in the hook_pace test's "dense" option.
+FAST_HOOK = 1.15
+
+
+def _like(voice, clips, words):
+    out = Voiceover(clips, words, voice.continuous)
+    out.verdict, out.holds = voice.verdict, dict(voice.holds)
+    return out
+
+
+def hold(voice, line, seconds=HOLD):
+    """The same voiceover with `seconds` of silence before clip `line`'s first word, its word times shifted: the
+    slide's visual lands its result in the quiet, then the voice says it."""
+    clips, words = list(voice), list(voice.words)
+    clips[line] = np.concatenate([np.zeros(int(seconds * render.SR), dtype=clips[line].dtype), clips[line]])
+    words[line] = [(w, a + seconds, b + seconds) for w, a, b in words[line]]
+    out = _like(voice, clips, words)
+    out.holds[line] = out.holds.get(line, 0) + seconds
+    return out
+
+
+def tempo(voice, line, factor):
+    """The same voiceover with clip `line` played `factor` times faster at the same pitch (ffmpeg atempo)."""
+    import tempfile
+    from pathlib import Path
+    import soundfile as sf
+    clip = voice[line].astype(np.float32)
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dst = Path(tmp) / 'in.wav', Path(tmp) / 'out.wav'
+        sf.write(src, clip, render.SR)
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(src), '-filter:a', f'atempo={factor}', str(dst)],
+                       check=True, timeout=120)
+        fast, _ = sf.read(dst, dtype='float32')
+    clips, words = list(voice), list(voice.words)
+    clips[line] = fast.astype(voice[line].dtype)
+    words[line] = [(w, a / factor, b / factor) for w, a, b in words[line]]
+    return _like(voice, clips, words)
 
 
 def align(line, heard):

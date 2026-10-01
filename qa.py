@@ -42,7 +42,8 @@ second to be worth watching. For each slide you get one frame, the words spoken 
 what its visual is meant to show.
 
 Judge each frame:
-- visual_ok: the visual (code window, terminal or website screenshot) clearly shows something that matches
+- visual_ok: the visual (code window, terminal, website screenshot, animation, or a build: a live page above the
+  CSS being typed) clearly shows something that matches
   what is being said, is readable on a phone, and is not a cookie banner, login wall, error page, empty page,
   generic homepage or logo with nothing relevant. Use true when the slide has no visual.
 - ok: the whole frame looks professional: no text cut off, overlapping or running outside the frame, nothing

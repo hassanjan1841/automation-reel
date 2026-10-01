@@ -2,7 +2,8 @@
 the repo, and make sure test_learn.py (test_study.py for study.py, test_motion.py for motion.py) fails for every
 one. A mutant that survives is a behaviour no test protects. fonts/ is copied too: test_motion.py renders with it.
 
-Add a mutant here for every new behaviour a change introduces (the exact old text, what to break it into, a label).
+Add a mutant here for every new behaviour a change introduces (the exact old text, what to break it into, a label,
+and optionally the test file that must catch it when it is not the file's usual one).
 
 Usage: .venv/bin/python tests/mutants.py     exit 1 if any mutant survives or no longer matches the code (STALE)
 """
@@ -137,6 +138,23 @@ MUTANTS = [
      'an unset CLAUDE_MODEL variable runs an empty model'),
     ('motion.py', "'Source: ' + S.source_host", "'Source: ' + S.head_host", 'the race shows "Source: undefined"'),
     ('motion.py', "Object.assign(C, {ink: P.ink,", "Object.assign(C, {ink: C.text,", 'labels vanish on the light theme'),
+    ('generate.py', "    errors += reveal_errors(reel)\n", "", 'a reveal on a point with nothing to watch'),
+    ('generate.py', "    if any(BUILD_BLOCKED.search(c) for c in parts):", "    if False:", 'a build may load or run things'),
+    ('generate.py', "errs = validate(cand) + pillar_errors(cand, pillar)", "errs = validate(cand)", 'how-tos skip the freebie'),
+    ('generate.py', "    if pillar in DM_PILLARS and not reel.get('dm_keyword'):", "    if False:", 'no freebie required'),
+    ('voice.py', "    words[line] = [(w, a + seconds, b + seconds) for w, a, b in words[line]]",
+     "    words[line] = list(words[line])", 'captions run early after a held beat'),
+    ('publish.py', "    if reel.get('reveal'):\n        clips = voice.hold(", "    if False:\n        clips = voice.hold(",
+     'the reveal never holds'),
+    ('render.py', "            mine = [b for b in beats", "            self.punches.append((s.start, 0.07))\n            mine = [b for b in beats",
+     'slide changes jump again'),
+    ('render.py', "                place(kit['tick'](), at, SOUND_GAIN['tick'] * 1.6)", "                pass", 'the held beat is silent'),
+    ('learn.py', "'offer': 'freebie' if reel.get('dm_keyword') else 'question'}", "'offer': 'question'}", 'freebies not measured'),
+    ('render.py', "    if keyword:\n        end = add_words(s, k_lines", "    if False:\n        end = add_words(s, k_lines",
+     'the closing card hides the keyword', 'test_motion.py'),
+    ('visuals.py', "            shot = self.shots[k - 1] * (1 - q) + self.shots[k] * q", "            shot = self.shots[0]",
+     'the build preview never updates', 'test_motion.py'),
+    ('visuals.py', "STAGE = 0.9, 0.55,", "STAGE = 0.5, 0.55,", 'a build hook opens mid-typing', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
@@ -145,7 +163,7 @@ TESTS = {'study.py': 'test_study.py', 'motion.py': 'test_motion.py'}
 
 def main():
     survived = []
-    for path, old, new, label in MUTANTS:
+    for path, old, new, label, *test in MUTANTS:
         with tempfile.TemporaryDirectory() as tmp:
             copy = Path(tmp) / 'repo'
             shutil.copytree(ROOT, copy, ignore=shutil.ignore_patterns('.venv*', 'out', 'models', '.git', '__pycache__'))
@@ -156,7 +174,7 @@ def main():
                 survived.append(label)
                 continue
             f.write_text(text.replace(old, new))
-            proc = subprocess.run([sys.executable, TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=900)
+            proc = subprocess.run([sys.executable, test[0] if test else TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=900)
             caught = proc.returncode != 0
             print(f"{'caught  ' if caught else 'SURVIVED'} {label}")
             if not caught:

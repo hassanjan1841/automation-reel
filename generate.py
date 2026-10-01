@@ -138,6 +138,7 @@ def validate(reel):
                 errors.append(f'alternative {k} spoken line would take the voiceover outside {VO_MIN_WORDS} to '
                               f'{VO_MAX_WORDS} words; match the length of line 1')
     errors += motion_reel_errors(reel)
+    errors += reveal_errors(reel)
     if any(v.get('type') in ('tweet', 'chat') for p in points
            for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
         errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
@@ -251,7 +252,7 @@ def next_post_dates(reels, count):
 HOOK_TYPES = ('problem', 'before_after', 'shortcut', 'mistake', 'test', 'news')
 # What the hook slide shows under the hook from frame 0: the problem or the result itself (flat and complete at
 # once; a terminal types itself out and a recording or a 3D scene needs time to start).
-HOOK_VISUALS = ('code', 'diff', 'screenshot', 'morph', 'stepper')
+HOOK_VISUALS = ('code', 'diff', 'screenshot', 'morph', 'stepper', 'build')
 PLAYBOOK = render.ROOT / 'playbook.md'
 
 
@@ -264,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap')
+          'memory', 'outputmap', 'kinetic')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -363,6 +364,13 @@ def motion_errors(i, v):
         elif not 1 <= len(re_) <= 3 or any(r.get('name') not in names or (r.get('to') not in ids and r.get('to') != 'null')
                                             for r in re_):
             e.append(f'point {i} memory needs 1 to 3 reassignments of listed names to an object id or "null"')
+    elif kind == 'kinetic':
+        lines, tag = v.get('lines', []), v.get('tag')
+        if not 1 <= len(lines) <= 3 or any(not short(l, 20) or not 1 <= words(l) <= 4 or highlights(l) is None
+                                           for l in lines):
+            e.append(f'point {i} kinetic needs 1 to 3 lines of 1 to 4 words (max 20 characters, balanced *highlights*)')
+        elif tag is not None and not short(tag, 14):
+            e.append(f'point {i} kinetic tag is max 14 characters')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -382,6 +390,26 @@ def motion_reel_errors(reel):
     if firsts > 1:
         errors.append(f'{firsts} animations; use at most one per reel, where movement explains best')
     return errors
+
+
+# A point whose result finishes on screen while the voice holds a beat (voice.hold), then the voice lands the result.
+REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'ide', 'bars')
+
+
+def reveal_errors(reel):
+    """reveal: the point (1 to 3) whose first visual shows a result arriving (a command's output, a page being
+    built, bars growing), so the held beat has something to watch."""
+    at = reel.get('reveal')
+    if at is None:
+        return []
+    points = reel.get('points', [])
+    if not isinstance(at, int) or not 1 <= at <= len(points):
+        return ['reveal must be the number of a point (1 to 3)']
+    choices = points[at - 1].get('visual') or []
+    choices = choices if isinstance(choices, list) else [choices]
+    if not choices or choices[0].get('type') not in REVEAL_VISUALS:
+        return [f"reveal point {at} must open on a visual that finishes on screen ({', '.join(REVEAL_VISUALS)})"]
+    return []
 
 
 NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
@@ -407,8 +435,12 @@ EXTRA_FORMATS = {
                          'pick which; no invented benchmarks or prices', 'X vs Y'),
     'series': ('series', 'Beginner series "Next.js from zero": the next lesson after the episodes listed below, one '
                          'small concept a beginner can follow, with a code visual', 'Next.js from zero'),
+    'build': ('build', 'Build it live: one small UI piece (a button, a card, a toggle, a badge, a loader) going from '
+                       'plain HTML to a finished design in 2 to 4 CSS stages, as a build visual: the plain "before" '
+                       'under the hook, the finished look held at the end. Real CSS that works in any browser; the '
+                       'dm_guide holds the full code', 'Build it live'),
 }
-SLOT3_FORMATS = ('news', 'trick', 'versus', 'series')
+SLOT3_FORMATS = ('news', 'trick', 'versus', 'series', 'build')
 
 
 def slot():
@@ -464,6 +496,16 @@ EXPERIMENTS = {
                      lambda r: r.get('hook', '').strip().endswith('?'), 'the hook must end with "?" (a question)'),
         'statement': ('The hook is a bold statement, not a question: no "?" in it.',
                       lambda r: '?' not in r.get('hook', ''), 'the hook must be a statement with no "?"'),
+    },
+    'hook_pace': {
+        'dense': ('Voiceover line 1 is dense: 12 to 14 spoken words, the whole promise said fast (it is played a '
+                  'little faster too); the alternatives\' spoken lines are 12 to 14 words as well.',
+                  lambda r: 12 <= words(strip_cues((r.get('voiceover') or [''])[0])) <= 14,
+                  'voiceover line 1 must have 12 to 14 spoken words'),
+        'relaxed': ('Voiceover line 1 is short and relaxed: at most 10 spoken words; the alternatives\' spoken lines '
+                    'too.',
+                    lambda r: words(strip_cues((r.get('voiceover') or [''])[0])) <= 10,
+                    'voiceover line 1 must have at most 10 spoken words'),
     },
     'length': {
         'short': ('Keep the voiceover short: 40 to 46 words in total.',
@@ -534,7 +576,7 @@ VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
         'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'screenshot', 'walkthrough',
-                                            'ide', 'quote', 'diagram', 'device', 'bars', 'logos', *MOTION]},
+                                            'ide', 'quote', 'diagram', 'device', 'bars', 'logos', 'build', *MOTION]},
         'author': {'type': 'string'}, 'handle': {'type': 'string'}, 'platform': {'type': 'string'},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
@@ -607,6 +649,8 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'to'],
             'properties': {'name': {'type': 'string'}, 'to': {'type': 'string'}}}},
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
+        'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
+        'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -815,12 +859,32 @@ def visual_errors(i, visual):
                         errors.append(f'point {i} logos: {e}')
                     except OSError:
                         break  # offline: the render will fall back to the next choice if a slug is wrong
+        elif kind == 'build':
+            errors += build_errors(i, v)
         elif kind in MOTION:
             errors += motion_errors(i, v)
         else:
             errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough, '
-                          'ide, quote, diagram, device, bars, logos or an animation (' + ', '.join(MOTION) + ')')
+                          'ide, quote, diagram, device, bars, logos, build or an animation (' + ', '.join(MOTION) + ')')
     return errors
+
+
+# Nothing in a build may reach the network or run: the preview must show only what the given code draws.
+BUILD_BLOCKED = re.compile(r'<\s*(script|link|iframe|img|object|embed|video|audio|source|meta|base)\b|\bon\w+\s*=|'
+                           r'url\s*\(|@import|https?:|javascript:', re.I)
+
+
+def build_errors(i, v):
+    """A build: plain HTML and 2 to 4 CSS stages, each small enough to read as it is typed."""
+    html, stages = v.get('html', ''), v.get('stages', [])
+    parts = [html] + list(stages)
+    if not html.strip() or not 2 <= len(stages) <= 4 or any(not str(c).strip() for c in stages):
+        return [f'point {i} build needs "html" and 2 to 4 CSS "stages"']
+    if any(len(c.rstrip('\n').split('\n')) > 4 or max(len(l) for l in c.split('\n')) > 40 for c in parts):
+        return [f'point {i} build html and each stage are max 4 lines of 40 characters']
+    if any(BUILD_BLOCKED.search(c) for c in parts):
+        return [f'point {i} build uses plain HTML and CSS only: no scripts, links, images, url() or event handlers']
+    return []
 
 
 SCHEMA = {
@@ -852,6 +916,7 @@ SCHEMA = {
                     },
                     'cta': {'type': 'string'},
                     'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
+                    'reveal': {'type': 'integer'},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
@@ -876,7 +941,7 @@ Field rules:
   message template, the fix), e.g. "select('*, users(name)') loads posts and authors in one query instead of
   one query per post". Everything else serves it; the three points are its steps (problem, fix, proof).
 - hook_type: which playbook hook type the hook is: problem, before_after, shortcut, mistake, test or news.
-- hook_visual: the proof under the hook from the very first frame: a code, diff, screenshot, morph or stepper visual
+- hook_visual: the proof under the hook from the very first frame: a code, diff, screenshot, morph, stepper or build visual
   showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
@@ -887,18 +952,25 @@ Field rules:
 - hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
   *public*", "Stale *cache* after every save"). The spoken line 1 carries the full sentence.
   Wrap the key word or two in *asterisks* to highlight them in the accent color.
-- points: exactly 3. Each has a title (max 3 words, a label like "Delete the key", not a
+- points: exactly 3, and they escalate: point 1 names the thing, point 2 shows it working (a real result on
+  screen), point 3 is the strongest proof or the biggest example (the finished result, the before/after, the
+  real comparison). Never three points of equal weight. Each has a title (max 3 words, a label like "Delete the key", not a
   sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
   the voice carries the detail.
 - cta: a short question for the comments with exactly one *highlighted* word. With a dm_keyword it is instead the
   offer, e.g. "Comment *MCP* for the setup", with the keyword highlighted.
 - dm_keyword and dm_guide (comment-to-DM; people who comment the keyword get dm_guide as a private message):
-  give them to how-to, trick, versus, beginner and freelance-playbook reels that have more worth sending (the
-  full steps, every template); leave them out of myth and ranked reels, which end with a question instead. The
+  every how-to, build, trick, versus, beginner, dev-mistake, AI and freelance-playbook reel carries them, and the
+  offer names a concrete freebie: the code, the file, the template ("Comment *CODE* for the code"). Leave them
+  out of myth, ranked and explained reels, which end with a question instead. The
   reel itself always delivers its payoff; the guide is the extended version, never the payoff held back. dm_keyword: one short word in capitals
   (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
   written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
   characters, no invented facts. The reel only promises what dm_guide really contains.
+- reveal (optional): the number of the point (1 to 3) whose visual finishes a result on screen (a terminal or
+  outputmap printing it, a build reaching its finished look, race or bars growing, a stepper reaching its
+  output). The voice holds a short silent beat on that slide while the result lands, then its line says it.
+  Use it once, on the payoff point, only when there is a real result to watch.
 - caption: 2 to 3 short lines separated by newlines. The last line is a question ending with 👇.
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
   captions for topics more than hashtags, so fewer and precise beats many.
@@ -948,6 +1020,12 @@ that does not clearly show what is being said):
   Commands start with npm, npx, node, python, pip, git, curl..., with no pipes, redirects, ";" or "$". Use
   current, non-deprecated APIs. This is the strongest visual for "try this" dev tips and for honest "I tested
   it" reels, because it really runs. Add a code or diff choice after it as a backup.
+- build: watch it get built. "html" (plain markup, max 4 lines of 40 characters, a class to style) and
+  "stages" (2 to 4 CSS stages, each max 4 lines of 40 characters) and a "title" like "card.css". The real page
+  is drawn above the code: plain at first, then updated by the browser after each stage is typed. Plain HTML
+  and CSS only: no scripts, images, links, url() or web fonts (Poppins is available). The strongest choice for
+  any UI or CSS reel, and as hook_visual it shows the plain "before" on the first frame. Each stage must change
+  something you can see.
 - Only when nothing real can be shown (a pure opinion or habit), leave "visual" out; the slide then shows
   its body text.
 
@@ -979,6 +1057,10 @@ numbers only from a cited page.
   object id}), "objects" (1 to 4 {"id", "label"}), "reassign" (1 to 3 {"name", "to" object id or "null"}).
 - outputmap: a command and its exact output, whose lines lift out into boxes. "command", "output" (2 to 6 lines,
   exactly what that command prints for the setup shown).
+- kinetic: the takeaway in big type, revealed word by word on a calm stage with one accent colour. "lines" (1 to
+  3, each 1 to 4 words, max 20 characters, *highlight* the key word) and an optional "tag" (max 14 characters,
+  e.g. "Key step") as a small pill under it. Only for the one rule or principle a point leaves you with, never
+  for something that could be shown as real code or output.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
@@ -1131,10 +1213,12 @@ def tidy(reel):
     return reel
 
 
-def repair(reel, errors, rounds=2):
-    """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None."""
+def repair(reel, errors, rounds=2, extra=None):
+    """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None.
+    extra(reel) adds checks validate does not know (the day's format)."""
+    check = (lambda r: validate(r) + extra(r)) if extra else validate
     reel = tidy(reel)
-    errors = validate(reel)
+    errors = check(reel)
     for _ in range(rounds):
         if not errors:
             return reel
@@ -1154,9 +1238,27 @@ def repair(reel, errors, rounds=2):
         if not fixed:
             continue
         reel = tidy({**reel, **fixed[0]})
-        errors = validate(reel)
+        errors = check(reel)
         print(f"  repair: {'fixed' if not errors else '; '.join(errors)}")
     return None if errors else reel
+
+
+# How-tos carry a comment-to-DM freebie: the creators who get thousands of comments all offer the real file or tool.
+# Myth, ranked and explained reels end on a question instead.
+DM_PILLARS = ('ai', 'devtip', 'saas', 'freelance', 'trick', 'versus', 'series', 'build')
+
+
+def pillar_errors(reel, pillar):
+    """Rules that depend on the day's format: a how-to offers its freebie, a build reel shows a build."""
+    errors = []
+    if pillar in DM_PILLARS and not reel.get('dm_keyword'):
+        errors.append('this format offers a freebie: add dm_keyword and a dm_guide with the full code or template, '
+                      'and make the cta "Comment *KEYWORD* for the code"')
+    if pillar == 'build':
+        firsts = [reel.get('hook_visual') or {}] + [(p.get('visual') or [{}])[0] for p in reel.get('points', [])]
+        if not any(v.get('type') == 'build' for v in firsts):
+            errors.append('a Build it live reel shows a build visual (as hook_visual or a point\'s first choice)')
+    return errors
 
 
 def generate(reels, count, dates=None, context=None, test=None):
@@ -1180,10 +1282,10 @@ def generate(reels, count, dates=None, context=None, test=None):
         for slot, cand in zip(todo, candidates):
             date, (pillar, _) = slot
             cand = tidy({**cand, **({'test': test} if test else {})})
-            errs = validate(cand)
+            errs = validate(cand) + pillar_errors(cand, pillar)
             if errs and norm(cand.get('hook', '')) not in seen:
                 print(f"Repairing {cand.get('hook', '?')!r}: {'; '.join(errs)}")
-                fixed = repair(cand, errs)
+                fixed = repair(cand, errs, extra=lambda r: pillar_errors(r, pillar))
                 if fixed:
                     cand, errs = fixed, []
             if norm(cand.get('hook', '')) in seen:
@@ -1263,7 +1365,7 @@ def append(reels, new):
             'hook': reel['hook'].strip(), **({'hook_word': reel['hook_word']} if reel.get('hook_word') else {}),
             **{k: reel[k] for k in ('payoff', 'hook_type', 'hook_visual', 'alternatives') if reel.get(k)},
             'points': reel['points'], 'cta': reel['cta'].strip(),
-            **{k: reel[k] for k in ('dm_keyword', 'dm_guide') if reel.get(k)},
+            **{k: reel[k] for k in ('dm_keyword', 'dm_guide', 'reveal') if reel.get(k)},
             'caption': reel['caption'].strip(), 'hashtags': reel['hashtags'],
             'voiceover': [l.strip() for l in reel['voiceover']], 'posted_at': None, 'media_id': None,
         })

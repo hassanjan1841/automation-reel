@@ -303,6 +303,16 @@ def new_entry(reels, reel):
             **reel, 'posted_at': None, 'media_id': None}
 
 
+def paced(reel, clips):
+    """The recorded voice timed for the reel: its reveal point holds a silent beat while the result lands, and the
+    hook_pace test's "dense" option plays the hook line faster."""
+    if reel.get('test') == {'name': 'hook_pace', 'arm': 'dense'}:
+        clips = voice.tempo(clips, 0, voice.FAST_HOOK)
+    if reel.get('reveal'):
+        clips = voice.hold(clips, reel['reveal'])
+    return clips
+
+
 def make_video(reel):
     """Voice, render and review one reel. Raises Dishonest if the review finds an untrue claim."""
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
@@ -310,6 +320,7 @@ def make_video(reel):
     clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     if clips is not None:
         print(f'Voice check: {clips.verdict}')
+        clips = paced(reel, clips)
     path, slides = render.render_reel(reel, voice=clips)
     return check_visuals(reel, clips, path, slides)
 

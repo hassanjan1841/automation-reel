@@ -19,6 +19,12 @@ normal reel loses about 60%). The writers (`generate.py`, and `trends.py` for ne
   caption, so people save it.
 - Reels people send to a friend are surprising ("this is wrong and here is proof") or a pain they share; reels
   people save are exact steps they will need again. Aim for one of the two on purpose.
+- Watching something get built holds people (2026-10-01 study: a CSS login card built from a plain form, 47,800
+  likes, held uncut for 7 seconds at the end): the plain "before" on frame 0, the change happening on screen, the
+  finished result held long enough to screenshot. For UI and CSS use the build visual.
+- How-tos end with a concrete freebie: "Comment CODE for the code". The two studied reels with thousands of
+  comments (2,365 and 3,271) both offered the real file or tool for a keyword; ours offered a question and got
+  none. The reel still delivers its payoff; the freebie is the full file.
 
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 
@@ -65,6 +71,10 @@ Hook mistakes that make people swipe:
 - Each voiceover line adds what the screen does not say: the why, what breaks, the result.
 - At most one new term, explained the moment it appears.
 - About 2.6 spoken words a second, complete sentences, no filler.
+- The three points escalate: what it is, then it working (a real result on screen), then the strongest proof or
+  biggest example. Never three equal points.
+- A held beat before the result (reveal): the voice goes quiet for about a second while the output prints or the
+  page finishes, then says the result. Once per reel, only on a real result.
 - One short ask at the very end, after the payoff. Never hold the payoff back for a comment.
 
 ## 4. What is on screen
@@ -84,10 +94,16 @@ Hook mistakes that make people swipe:
 - Captions show up to 3 words at a time in the lower band, high contrast.
 - At most one animation per reel (motion.py), on the point where movement explains better than a still: one change
   at a time with a short hold, the active part glowing and the rest dimmed, values that are true.
+- One accent colour, calm moves: sections glide into each other (no jump on a slide change), and the camera
+  punches only on spoken sentences. A takeaway can be big kinetic type (2 to 4 words a line, the key word in the
+  accent), never a paragraph.
+- The closing card repeats the hook's style and puts the comment keyword big on screen, so the one word to type
+  is the last thing people see.
 - No invented chats or posts presented as real. No faces, no animals, no music.
 
 ## 5. Sound
 
 - Sound starts at once: the voice or a short effect under the first word, never silence on frame 0.
-- Effects only where they mean something (a key tap on a line, a whoosh between slides), always well under the
-  voice. No music.
+- Effects only where they mean something (a key tap on a line, a whoosh between slides, a pop when a preview
+  updates, soft ticks during a held beat), always well under the voice. No music: the studied reels timed their
+  cuts to music, we time them to the voice and to these effects instead.
