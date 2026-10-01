@@ -182,10 +182,33 @@ def week_topics(day, n=AUTO_TOPICS):
     return [TOPICS[(week * n + i) % len(TOPICS)] for i in range(n)]
 
 
+RELEVANCE_SYSTEM = """You sort short videos for a faceless developer account (AI tools, coding, building apps and SaaS, dev
+careers and freelancing). From titles and channel names only, list the numbers of the videos on those topics.
+Leave out gaming, pranks, general entertainment, gadgets, trading or money hype, and anything unclear."""
+RELEVANCE_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['relevant'],
+                    'properties': {'relevant': {'type': 'array', 'items': {'type': 'integer'}}}}
+
+
+def relevant(picks):
+    """The picks on the account's own ground (one Claude call on titles and channels). When Claude is unavailable
+    all are kept: the breakdown still says what is not for us."""
+    if not picks:
+        return []
+    listing = '\n'.join(f"[{i}] {p['title']} (channel: {p['channel']})" for i, p in enumerate(picks, 1))
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            numbers = set(claude(listing, tmp, RELEVANCE_SYSTEM, RELEVANCE_SCHEMA)['relevant'])
+    except Exception as e:
+        print(f'  relevance check unavailable ({type(e).__name__}); keeping all')
+        return picks
+    return [p for i, p in enumerate(picks, 1) if i in numbers]
+
+
 def auto_picks(key, day, top=AUTO_TOP):
     """What the weekly study looks at, found on its own: the outliers of this week's topics and the new Shorts of the
-    watched channels that beat their own usual. Never a video studied before, at most one per channel. Channels
-    that had a big outlier (views 5x their subscribers or more) join the watchlist (studies/channels.json)."""
+    watched channels that beat their own usual, kept only when on the account's topics (study.relevant). Never a
+    video studied before, at most one per channel. Channels that had a big on-topic outlier (views 5x their
+    subscribers or more) join the watchlist (studies/channels.json); ones whose outliers are off-topic leave it."""
     done, found = studied(), []
     for topic in week_topics(day):
         for p in search(topic, 5, key):
@@ -196,6 +219,12 @@ def auto_picks(key, day, top=AUTO_TOP):
             found += channel_outliers(channel_id, key)
         except Exception as e:  # one channel gone or private must not stop the week
             print(f'  channel {channel_id} skipped: {type(e).__name__}')
+    keep = relevant(found)
+    on_topic = {p['channel_id'] for p in keep}
+    for p in found:  # a watched channel whose outliers are off-topic leaves the watchlist
+        if p['channel_id'] not in on_topic:
+            watch.pop(p['channel_id'], None)
+    found = keep
     for p in found:
         if p['why'].startswith('search') and p['outlier'] >= 5 and p['channel_id'] not in watch:
             watch[p['channel_id']] = {'title': p['channel'], 'added': day.isoformat(), 'outlier': p['outlier']}

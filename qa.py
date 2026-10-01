@@ -16,9 +16,19 @@ from pathlib import Path
 import render
 from voice import strip_cues
 
+
+def generate_playbook():
+    import generate
+    return generate.playbook()
+
 SCHEMA = {
-    'type': 'object', 'additionalProperties': False, 'required': ['slides'],
-    'properties': {'slides': {'type': 'array', 'items': {
+    'type': 'object', 'additionalProperties': False, 'required': ['slides', 'first_frame', 'payoff'],
+    'properties': {
+        'first_frame': {'type': 'object', 'additionalProperties': False, 'required': ['ok', 'problem'],
+                        'properties': {'ok': {'type': 'boolean'}, 'problem': {'type': 'string'}}},
+        'payoff': {'type': 'object', 'additionalProperties': False, 'required': ['ok', 'problem'],
+                   'properties': {'ok': {'type': 'boolean'}, 'problem': {'type': 'string'}}},
+        'slides': {'type': 'array', 'items': {
         'type': 'object', 'additionalProperties': False, 'required': ['slide', 'ok', 'visual_ok', 'honest', 'problem'],
         'properties': {'slide': {'type': 'integer'}, 'ok': {'type': 'boolean'}, 'visual_ok': {'type': 'boolean'},
                        'honest': {'type': 'boolean'}, 'problem': {'type': 'string'}}}}},
@@ -40,7 +50,23 @@ Judge each frame:
   sources support are honest even if dramatic. A visual that does not match what is said is not dishonest:
   mark visual_ok false instead. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.
-Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false."""
+Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false.
+
+Then judge the reel as a whole, by the playbook below:
+- first_frame: the very first frame (frame 0) is what the feed shows before anyone decides to stay. ok only if
+  the whole hook is readable at a glance (a short phrase, not a sentence), its proof (the code, diff or screenshot
+  under it) is already there and readable, and the frame is not mostly empty. problem: what to fix, or "".
+- payoff: ok only if the reel really shows the promised payoff on screen (given below), clearly enough to copy or
+  screenshot, and does not hold it back for a comment. problem: what is missing, or "".
+
+""" + generate_playbook()
+
+
+def first_frame(video, folder):
+    path = Path(folder) / 'frame-0.png'
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(video), '-frames:v', '1', '-vf', 'scale=540:-1', str(path)],
+                   check=True)
+    return path
 
 
 def frames(video, slides, folder):
@@ -57,7 +83,8 @@ def frames(video, slides, folder):
 
 
 def review(video, reel, slides, voiceover=None):
-    """[{slide, ok, visual_ok, problem}] for every slide; slide 0 is the hook, 1 to 3 the points, 4 the CTA."""
+    """{'slides': [{slide, ok, visual_ok, honest, problem}] (slide 0 is the hook, 1 to 3 the points, 4 the CTA),
+    'first_frame': {ok, problem}, 'payoff': {ok, problem}}."""
     spoken = [strip_cues(l) for l in (voiceover or reel.get('voiceover') or [''] * len(slides))]
     with tempfile.TemporaryDirectory() as tmp:
         paths = frames(video, slides, tmp)
@@ -92,7 +119,9 @@ def review(video, reel, slides, voiceover=None):
             checked += (f"\n\nPeople who comment {reel.get('dm_keyword')} are sent this guide by DM. honest is false for "
                         'the CTA slide if the reel promises more than this guide holds, or if the guide states '
                         f"something untrue:\n{reel['dm_guide']}")
-        prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked
+        zero = first_frame(video, tmp)
+        whole = (f"\n\nFrame 0 (the first frame): {zero}\nPromised payoff: {reel.get('payoff') or 'not stated'}")
+        prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked + whole
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
              '--system-prompt', SYSTEM, '--tools', 'Read', 'WebFetch', '--allowedTools', 'Read', 'WebFetch',
@@ -104,7 +133,8 @@ def review(video, reel, slides, voiceover=None):
     if proc.returncode != 0:
         raise RuntimeError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-300:]}')
     out = json.loads(proc.stdout).get('structured_output') or {}
-    return out.get('slides', [])
+    return {'slides': out.get('slides', []), 'first_frame': out.get('first_frame') or {},
+            'payoff': out.get('payoff') or {}}
 
 
 def main():
@@ -113,8 +143,7 @@ def main():
     reel = render.load_reel(sys.argv[1])
     clips = voice.synthesize(voice.script(reel))
     path, slides = render.render_reel(reel, voice=clips)
-    for r in review(path, reel, slides):
-        print(r)
+    print(json.dumps(review(path, reel, slides), indent=1))
 
 
 if __name__ == '__main__':

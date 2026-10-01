@@ -63,10 +63,10 @@ IDEA_DAYS = 14              # comments on posts from the last two weeks become t
 # The creator's hard rules live in the writer's prompt; a learned rule may never touch them.
 HARD_RULES = re.compile(r'\b(music|songs?|soundtrack|melod\w*|reddit|faces?|talking head|animals?|mascots?|fake|'
                         r'invent\w*|made.up|comment below|follow (me|us|for))\b', re.I)
-GROUP_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'slot', 'test')
+GROUP_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'hook_type', 'opening', 'slot', 'test')
 # What the writer controls. A rule rests only on these; the slot (posting time) is a setting for the creator's
 # decision, not something the writer can act on.
-RULE_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'test')
+RULE_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'hook_type', 'opening', 'test')
 
 
 def redact(error, token):
@@ -132,18 +132,23 @@ def measure(reels, carousels, token, stored):
 # ---------- 2. score ----------
 
 def looks(reel):
-    """The reel's visual types, whether its hook word spun in as 3D text, and whether it had any 3D at all. Uses
-    what was actually shown (publish.shown) when recorded; older reels fall back to each point's first choice."""
+    """The reel's visual types, whether its hook word spun in as 3D text, whether it had any 3D at all, its hook
+    type (playbook.md) and its opening: "proof" when a code, diff or screenshot sat under the hook from frame 0,
+    else "text". Uses what was actually shown (publish.shown) when recorded; older reels fall back to each
+    point's first choice."""
     shown = reel.get('shown')
     if shown:
         visuals = sorted({t for t in shown[1:1 + len(reel['points'])] if t != 'text'})
         hook_3d = shown[0] == 'word'
+        opening = 'proof' if shown[0] in generate.HOOK_VISUALS else 'text'
     else:
         visuals = sorted({v['type'] for p in reel['points'] for v in (p.get('visual') or [])[:1]})
         hook_3d = bool(reel.get('hook_word'))
+        opening = 'proof' if reel.get('hook_visual') else 'text'
     three_d = hook_3d or any(v in generate.SCENES_3D for v in visuals)
     return {'visuals': visuals or ['text'], 'hook_word': '3D word' if hook_3d else 'text only',
-            'three_d': '3D' if three_d else 'flat'}
+            'three_d': '3D' if three_d else 'flat', 'hook_type': reel.get('hook_type') or 'untagged',
+            'opening': opening}
 
 
 def slot_of(reel):
@@ -510,6 +515,7 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['new_rul
 
 def write_up(rows, summary, rules, test, ideas, openings, last):
     keep = ('id', 'kind', 'hook', 'title', 'posted_at', 'pillar', 'series', 'visuals', 'hook_word', 'three_d',
+            'hook_type', 'opening',
             'slot', 'test', 'seconds', 'age_days', 'views_1d', 'views_3d', 'views_7d', 'late_views', 'reels_skip_rate', 'skip_vs_usual', 'watched_share',
             'watched_vs_usual', 'saved', 'shares', 'dm_asks', 'follows', 'profile_visits')
     prompt = ('Per-post results:\n' + json.dumps([{k: r[k] for k in keep if r.get(k) is not None} for r in rows],

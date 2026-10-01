@@ -178,25 +178,36 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     shown = reel
     for _ in range(rounds):
         try:
-            results = qa.review(path, shown, slides)
+            verdict = qa.review(path, shown, slides)
+            results = verdict['slides']
         except Exception as e:  # without a review, keep only visuals we draw ourselves; a page could be anything
             print(f'Visual review unavailable ({type(e).__name__}: {redact(str(e))[:200]}); dropping screenshots')
+            verdict = {}
             results = [{'slide': i, 'ok': True, 'visual_ok': False, 'problem': 'not reviewed'}
                        for i, s in enumerate(slides) if s.visual and s.visual.spec.get('type') == 'screenshot']
+        # The playbook checks (frame 0 and the payoff) are recorded and printed; they never cost the day's post.
+        for part in ('first_frame', 'payoff'):
+            if verdict.get(part):
+                reel.setdefault('review', {})[part] = verdict[part]
+                if not verdict[part].get('ok'):
+                    print(f"Playbook warning ({part.replace('_', ' ')}): {verdict[part].get('problem', '')}")
         dishonest = [r for r in results if r.get('honest') is False]
         if dishonest:
             # Honesty is a hard line: better no post today than a misleading one.
             raise Dishonest('the review found a dishonest claim: '
                              + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in dishonest))
-        rejected = {}
+        rejected, drop_proof = {}, False
         for r in results:
             i = r['slide']
-            if 1 <= i <= len(shown['points']) and slides[i].visual and not r['visual_ok']:
+            if i == 0 and shown.get('hook_visual') and slides[0].visual and not r['visual_ok']:
+                drop_proof = True  # the hook stands alone rather than over a proof that does not show it
+                print(f"Hook visual rejected: {r['problem']}")
+            elif 1 <= i <= len(shown['points']) and slides[i].visual and not r['visual_ok']:
                 rejected[i - 1] = slides[i].visual.spec
                 print(f"Visual on slide {i} rejected: {r['problem']}")
             elif not r['ok']:
                 print(f"Warning, slide {i}: {r['problem']}")
-        if not rejected:
+        if not rejected and not drop_proof:
             print(f'Review passed: honest, {sum(bool(s.visual) for s in slides)} visuals fine')
             break
         # Rendered without the rejected choices; the queue keeps them so they can be fixed by hand.
@@ -207,7 +218,7 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             if i in rejected:
                 choices = [c for c in choices if c != rejected[i]]
             points.append({**{k: v for k, v in point.items() if k != 'visual'}, **({'visual': choices} if choices else {})})
-        shown = {**shown, 'points': points}
+        shown = {**({k: v for k, v in shown.items() if k != 'hook_visual'} if drop_proof else shown), 'points': points}
         path, slides = render.render_reel(shown, voice=clips)
     return path, slides
 
@@ -229,8 +240,11 @@ def credits(reel):
 # ---------- today's reel ----------
 
 def todays_reel(reels):
-    """Today's reel, with 3D removed on a day it is not allowed (the writer is told, this is the safety net)."""
+    """Today's reel, with 3D removed on a day it is not allowed (the writer is told, this is the safety net), and
+    the strongest of its hooks (generate.pick_hook) on a freshly written one."""
     reel = research_reel(reels)
+    if reel.get('alternatives'):
+        reel = generate.pick_hook(reel)
     return reel if generate.three_d_today() else generate.strip_3d(reel)
 
 
@@ -321,6 +335,7 @@ def main():
         print(f'{e}\nWriting an evergreen reel instead')
         reels.remove(reel)
         tip = generate.today(reels, [])
+        tip = generate.pick_hook(tip) if tip and tip.get('alternatives') else tip
         tip = tip if not tip or generate.three_d_today() else generate.strip_3d(tip)
         if not tip:
             raise SystemExit('ERROR: could not write a replacement reel today.')

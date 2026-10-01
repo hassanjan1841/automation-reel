@@ -36,9 +36,19 @@ import voice  # noqa: E402
 
 REEL = {
     'pillar': 'concept', 'series': 'Explained', 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
-    'hook': 'Why your *cache* keeps serving stale data', 'hook_word': 'cache',
+    'payoff': 'Delete the cached key on every write so readers never get the old row',
+    'hook': 'Your *cache* serves old data', 'hook_type': 'problem',
+    'hook_visual': {'type': 'diff', 'language': 'ts', 'title': 'save.ts',
+                    'before': 'await db.update(user)\n// cache keeps the old user', 'after': 'await db.update(user)\nawait cache.del(key)'},
+    'alternatives': [
+        {'hook': 'Your *cache* hides every profile update', 'hook_type': 'mistake',
+         'spoken': '[urgent] You saved the new profile, [exasperated] but your cache still serves the old one.'},
+        {'hook': 'One line stops *stale* cache reads', 'hook_type': 'shortcut',
+         'spoken': '[fired up] One delete call after each write, [confident] and stale reads are gone.'},
+        {'hook': 'Old data after every *update*', 'hook_type': 'before_after',
+         'spoken': '[mock outraged] You update the row, [deadpan] the page still shows the old value.'}],
     'points': [
-        {'title': 'Reads hit cache first', 'body': 'The app asks the cache before the database.',
+        {'title': 'Reads hit cache', 'body': 'The app asks the cache before the database.',
          'visual': [{'type': 'diagram', 'nodes': [{'id': 'app', 'label': 'App', 'kind': 'client'},
                                                   {'id': 'cache', 'label': 'Cache', 'kind': 'cache'},
                                                   {'id': 'db', 'label': 'Database', 'kind': 'db'}],
@@ -46,7 +56,7 @@ REEL = {
                      'flow': ['app>cache', 'cache>db', 'db>cache', 'cache>app']},
                     {'type': 'code', 'language': 'ts', 'title': 'read.ts',
                      'code': 'const hit = await cache.get(key)\nif (hit) return hit', 'highlight': [1]}]},
-        {'title': 'Writes skip the cache', 'body': 'Updates go straight to the database only.',
+        {'title': 'Writes skip cache', 'body': 'Updates go straight to the database only.',
          'visual': [{'type': 'code', 'language': 'ts', 'title': 'write.ts',
                      'code': 'await db.update(user)\n// cache still has the old user', 'highlight': [2]}]},
         {'title': 'Delete the key', 'body': 'Clear the cached key on every write.',
@@ -123,7 +133,7 @@ def main():
         out = [{'slide': i, 'ok': True, 'visual_ok': True, 'honest': True, 'problem': ''} for i in range(len(slides))]
         if '--reject' in args and len(reviews) == 1 and types[1]:
             out[1].update(visual_ok=False, problem='e2e: reject the first point visual')
-        return out
+        return {'slides': out, 'first_frame': {'ok': True, 'problem': ''}, 'payoff': {'ok': True, 'problem': ''}}
 
     patches = [mock.patch.object(render, 'QUEUE', queue), mock.patch.object(qa, 'review', review),
                mock.patch.object(publish, 'upload', lambda path, name, *a, **k: f'https://example.invalid/{name}'),
@@ -151,6 +161,8 @@ def main():
         'test kept': posted.get('test') == reel.get('test'),
         'still valid': generate.validate(posted) == [],
         'queue keeps every choice': posted['points'] == reel['points'],
+        'hook proof under the hook': reviews[0][0] == reel['hook_visual']['type'],
+        'review recorded': 'first_frame' in (posted.get('review') or {}),
         'reject path re-rendered': '--reject' not in args or (len(reviews) >= 2 and reviews[0][1] != reviews[1][1]),
     }
     print(json.dumps({k: posted.get(k) for k in ('shown', 'slot', 'seconds', 'test')}))

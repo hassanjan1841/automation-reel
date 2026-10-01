@@ -34,6 +34,7 @@ SAFE_TOP, SAFE_BOTTOM, MARGIN = 140, 1450, 90
 CONTENT_TOP, CONTENT_BOTTOM = 300, 1430
 POINT_BOTTOM = 1060
 HOOK_WORD_H = 420
+HOOK_TEXT_H = 340          # the hook's text band when a hook_visual fills the space below it
 CAPTION_TOP, CAPTION_BOTTOM = 1330, 1470
 TEXT_W = W - 2 * MARGIN
 
@@ -41,7 +42,7 @@ WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
 VOICE_LEAD = 0.25
-VOICE_TAIL = 1.2
+VOICE_TAIL = 0.7          # after the last word; a long still ending is where viewers leave
 LOOP = 0.4
 MIN_SLIDE, MAX_SLIDE = 3.0, 6.0
 MIN_TOTAL, MAX_TOTAL = 15.0, 25.0
@@ -186,6 +187,8 @@ class Slide:
     elements: list = field(default_factory=list)
     clicks: list = field(default_factory=list)
     visual: object = None
+    ready: bool = False        # the visual is complete from the slide's first frame (the hook's proof)
+    lead: float = 0.0          # how far into its own timeline the visual starts (its settle time when ready)
 
 
 def ease_out(p):
@@ -303,10 +306,19 @@ def build_slides(reel, voice=None):
     bottom = CAPTION_TOP - 40 if captions else CONTENT_BOTTOM
     start, step, anim = (0.0, 0.03, 0.22) if captions else (0.3, WORD_STEP, WORD_ANIM)
 
-    # Hook: with a voice it is already on its way in at frame 0, so the very first frame is never empty.
+    # Hook: the whole hook is already on screen at frame 0 (the feed shows that frame before anyone decides), with
+    # its proof (hook_visual: the problem or the result) under it, also complete from frame 0 (playbook.md).
     s = Slide('hook')
     text_top = CONTENT_TOP
-    if captions and reel.get('hook_word'):
+    proof = reel.get('hook_visual') if captions else None
+    if proof:
+        import visuals
+        hook_box = (MARGIN, CONTENT_TOP + HOOK_TEXT_H + 30, TEXT_W, bottom - CONTENT_TOP - HOOK_TEXT_H - 30)
+        s.visual = visuals.build(proof, theme, hook_box)
+        if s.visual:
+            s.visual.spec = proof
+            s.ready, s.lead = True, s.visual.settle
+    if not s.visual and captions and reel.get('hook_word'):
         import visuals
         # The key word spins in above the hook in 3D; the hook text takes the space below it.
         s.visual = visuals.build({'type': 'word', 'text': reel['hook_word']}, theme,
@@ -314,10 +326,15 @@ def build_slides(reel, voice=None):
         if s.visual:
             s.visual.spec = {'type': 'word', 'text': reel['hook_word']}
             text_top = CONTENT_TOP - 60 + HOOK_WORD_H
-    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 128, 60, TEXT_W, bottom - text_top, leading=1.08)
+    room = HOOK_TEXT_H if s.ready else bottom - text_top
+    fnt, size, lines, line_h = fit(parse_highlights(reel['hook']), 'Bold', 92 if room == HOOK_TEXT_H else 112, 56,
+                                   TEXT_W, room, leading=1.08)
     block_h = len(lines) * line_h
-    top = text_top + (bottom - text_top - block_h) // 2 - (0 if captions else 60)
-    end = add_words(s, lines, fnt, size, line_h, top, -0.12 if captions else start, theme, step=step * 0.8, anim=anim)
+    top = text_top + (room - block_h) // 2 - (0 if captions or room == HOOK_TEXT_H else 60)
+    # Revealed before frame 0, so frame 0 shows every word; one click on frame 0 starts the sound at once.
+    first = -(anim + step * 0.8 * words_in(reel['hook'])) - 0.02
+    end = add_words(s, lines, fnt, size, line_h, top, first, theme, step=step * 0.8, anim=anim)
+    s.clicks = [0.0]
     s.need = end + WORD_ANIM + 1.2 + 0.18 * words_in(reel['hook'])
     slides.append(s)
 
@@ -331,7 +348,7 @@ def build_slides(reel, voice=None):
             s.elements.append(El(big, rgb(theme['ink']), W - 50 - big.shape[1] + big_pad, SAFE_BOTTOM - 10 - big_asc,
                                  0.05, dur=0.7, rise=40, alpha=0.06))
 
-        t_fnt, t_size, t_lines, t_lh = fit(parse_highlights(point['title']), 'Bold', 88 if not visual else 72, 44,
+        t_fnt, t_size, t_lines, t_lh = fit(parse_highlights(point['title']), 'Bold', 76 if not visual else 60, 44,
                                            TEXT_W, 400 if not visual else 200, leading=1.12)
         b_fnt, b_size, b_lines, b_lh = fit(parse_highlights(point['body']), 'Regular', 48, 30, TEXT_W, 330, leading=1.38)
         circle_d, gap1, gap2 = (104, 44, 40) if not visual else (84, 28, 36)
@@ -363,7 +380,7 @@ def build_slides(reel, voice=None):
 
     # CTA
     s = Slide('cta')
-    q_fnt, q_size, q_lines, q_lh = fit(parse_highlights(reel['cta']), 'Bold', 92, 52, TEXT_W, 520, leading=1.1)
+    q_fnt, q_size, q_lines, q_lh = fit(parse_highlights(reel['cta']), 'Bold', 76, 48, TEXT_W, 520, leading=1.1)
     cb_size, fl_size = 52, 38
     follow = f'Follow {HANDLE} for daily dev + AI tips'
     fl_lines = len(wrap(parse_highlights(follow), font('Regular', fl_size), TEXT_W))
@@ -509,9 +526,9 @@ def blend(frame, img, mask, a, x, y):
 
 
 class Captions:
-    """Spoken words shown 2 or 3 at a time on a dark pill near the bottom, the word being said on an accent
+    """Spoken words shown up to 3 at a time on a dark pill near the bottom, the word being said on an accent
     highlight."""
-    SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 66, 3, 0.35, 34, 18
+    SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 56, 3, 0.35, 30, 15
     TEXT, BOX, BOX_ALPHA = rgb('#FFFFFF'), rgb('#101421'), 0.62
 
     def __init__(self, voice, slides, theme):
@@ -695,7 +712,8 @@ class Camera:
 
     def params(self, t):
         breathe = 0.009 * (0.5 - 0.5 * math.cos(2 * math.pi * t / 3.1))
-        reveal = 0.1 * (1 - ease_out(min(1.0, t / 0.6)))
+        # A small zoom-out on frame 0: motion from the first frame, never enough to crop the hook's edges.
+        reveal = 0.03 * (1 - ease_out(min(1.0, t / 0.6)))
         push, fx, fy = self.focus(t)
         scale = self.BASE + breathe + reveal + self.punch(t) + push
         # Zoom about the visual, drifting it a little toward the centre, instead of about the frame centre.
@@ -784,10 +802,11 @@ def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
         for s in slides:
             if s.start <= t < s.end:
                 if s.visual:
-                    lin = min(1.0, max(0.0, (t - s.start - 0.05) / 0.35))
+                    # The hook's proof is already in place on frame 0; point visuals arrive with a short pop.
+                    lin = 1.0 if s.ready else min(1.0, max(0.0, (t - s.start - 0.05) / 0.35))
                     p = ease_out(lin)
                     q = ease_in(min(1.0, max(0.0, (t - (s.end - EXIT)) / EXIT)))
-                    s.visual.draw(frame, t - s.start, p * (1 - q), round((1 - back_out(lin)) * 40 - q * 70))
+                    s.visual.draw(frame, t - s.start + s.lead, p * (1 - q), round((1 - back_out(lin)) * 40 - q * 70))
                 for el in s.elements:
                     draw_element(frame, el, t)
         frame = camera.shoot(frame, t) * vignette
@@ -924,7 +943,8 @@ def build_audio(slides, path, voice=None):
         place(kit['thud'](), at, SOUND_GAIN['thud'])
     for s in slides:
         for at, kind in getattr(s.visual, 'sounds', []):
-            if s.start + at < s.end - EXIT:
+            at -= s.lead  # a visual already in place at frame 0 skips the sounds of its entrance
+            if 0 <= at and s.start + at < s.end - EXIT:
                 place(kit[kind](), s.start + at, SOUND_GAIN[kind])
     if getattr(voice, 'continuous', False):
         peak = max(np.max(np.abs(clip)) for clip in voice) or 1.0
