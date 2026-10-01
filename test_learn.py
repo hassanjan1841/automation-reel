@@ -1017,6 +1017,12 @@ class PlaybookTest(Sandbox):
         self.assertIn('max 3', ' '.join(generate.validate({**VALID, 'points': [{**VALID['points'][0],
                       'title': 'Reads hit the cache'}] + VALID['points'][1:]})))
 
+    def test_alternatives_keep_fresh_cues(self):
+        faded = copy.deepcopy(VALID)
+        faded['alternatives'][0]['spoken'] = '[urgent] You saved the profile but the cache still shows the old one.'
+        self.assertIn('alternative 1 spoken line runs more than 10 words without a fresh cue',
+                      ' '.join(generate.validate(faded)))
+
     def test_alternatives_open_with_energy(self):
         flat = copy.deepcopy(VALID)
         flat['alternatives'][0]['spoken'] = '[deadpan] Your cache still serves the old profile.'
