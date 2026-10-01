@@ -1128,6 +1128,67 @@ class PlaybookTest(Sandbox):
         self.assertEqual(reel['review']['first_frame'], {'ok': True, 'problem': ''})  # the last review is recorded
 
 
+class MotionTest(Sandbox):
+    """The writer's side of the 2D animations (motion.py): each type's data is checked, a reel has at most one
+    animation and always a flat backup after it, and the card plays at the animation's own pace."""
+
+    def examples(self):
+        import motion
+        return copy.deepcopy(motion.EXAMPLES)
+
+    def test_every_example_is_valid_and_every_type_checks_something(self):
+        broken = {'stepper': {'trace': [{'line': 99, 'vars': []}]}, 'flow': {'hops': [{'from': 'app', 'to': 'nowhere'}]},
+                  'morph': {'after': 'same'}, 'git': {'head': 'nobranch'}, 'eventloop': {'cards': []},
+                  'structure': {'ops': [{'op': 'set', 'at': 'k', 'value': 'v'}]},
+                  'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
+                  'states': {'moves': [{'event': 'go', 'to': 'nowhere'}]}, 'race': {'source': 'http://x'},
+                  'xray': {'focus': 'nothing'}, 'memory': {'reassign': [{'name': 'zz', 'to': 'null'}]},
+                  'outputmap': {'output': ['only one line']}}
+        for kind, spec in self.examples().items():
+            self.assertEqual(generate.motion_errors(1, spec), [], kind)
+            if kind == 'morph':
+                spec['before'] = spec['after'] = 'same'
+            else:
+                spec.update(broken[kind])
+            self.assertTrue(generate.motion_errors(1, spec), kind)
+        self.assertEqual(set(broken), set(generate.MOTION))
+
+    def test_validate_checks_an_animation_in_a_reel(self):
+        bad = self.examples()['flow']
+        bad['hops'] = [{'from': 'app', 'to': 'nowhere'}]
+        reel = copy.deepcopy(VALID)
+        reel['points'][0]['visual'] = [bad, reel['points'][0]['visual'][0]]
+        self.assertIn('point 1 flow needs 1 to 6 hops', ' '.join(generate.validate(reel)))
+
+    def test_one_animation_per_reel_with_a_flat_backup(self):
+        ex = self.examples()
+        reel = copy.deepcopy(VALID)
+        reel['points'][0]['visual'] = [ex['flow'], reel['points'][0]['visual'][0]]
+        self.assertEqual(generate.validate(reel), [])
+        reel['points'][1]['visual'] = [ex['morph']]
+        errors = ' | '.join(generate.validate(reel))
+        self.assertIn('point 2 needs a code, diff, terminal or screenshot choice after its animation', errors)
+        self.assertIn('2 animations; use at most one per reel', errors)
+
+    def test_morph_and_stepper_can_be_the_hooks_proof(self):
+        ex = self.examples()
+        for kind in ('morph', 'stepper'):
+            self.assertEqual(generate.validate({**VALID, 'hook_visual': ex[kind]}), [], kind)
+        self.assertIn('hook_visual must be one', ' '.join(generate.validate({**VALID, 'hook_visual': ex['flow']})))
+
+    def test_card_plays_at_its_own_pace_and_speeds_up_only_when_short(self):
+        import visuals
+        card = visuals.Motion.__new__(visuals.Motion)
+        card.meta = {'duration': 6.0, 'settle': 0.5, 'sounds': [[1.0, 'pop'], [4.5, 'swish']]}
+        card.duration = 9.0
+        self.assertEqual(card.speed, 1.0)                       # a long slide: real pace, then it holds
+        self.assertEqual(card.sounds, [(1.0, 'pop'), (4.5, 'swish')])
+        card.duration = 3.3
+        self.assertEqual(card.speed, 2.0)                       # a short slide: twice as fast, sounds follow
+        self.assertEqual(card.sounds, [(0.5, 'pop'), (2.25, 'swish')])
+        self.assertEqual(card.settle, 0.5)
+
+
 class WorkflowTest(unittest.TestCase):
     def test_commit_step_stages_every_existing_file(self):
         """The learning job's `git add` loop: a missing file must not stop the others from being committed."""

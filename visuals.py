@@ -11,6 +11,7 @@ A point may carry one of:
                                                                           a real public post, credited, verbatim
   {"type": "walkthrough", ...} or {"type": "ide", ...}   a real screen recording, see demos.py
   {"type": "diagram" | "device" | "bars" | "logos", ...}   a 3D scene, see scene3d.py
+  {"type": "stepper" | "flow" | "morph" | "git" | ..., ...}  a 2D explainer animation, see motion.py
   {"type": "screenshot", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
    "find": "Enable Row Level Security"}   scrolled to that text, a cursor glides over and clicks it, spotlit
 
@@ -714,6 +715,50 @@ class Scene:
 
 
 SCENES_3D = ('diagram', 'device', 'bars', 'logos', 'word')
+MOTION_TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+                'memory', 'outputmap')  # motion.TYPES, kept here so importing visuals does not import motion
+
+
+class Motion:
+    """A 2D explainer animation from motion.py, floating on the reel background like a 3D scene. It plays at its own
+    pace from the slide's start and holds its last frame; only a slide too short for it speeds it up, so a spring
+    still settles and each step still gets its hold."""
+    TAIL = 0.3
+
+    def __init__(self, spec, theme, box):
+        import motion
+        x, y, w, h = box
+        self.x, self.y, self.w, self.h = x, y, w, h
+        folder, self.meta = motion.render_motion(spec, theme, (w, h))
+        self.frames = sorted(folder.glob('*.png'))
+        if not self.frames:
+            raise ValueError('animation rendered no frames')
+        self.duration = 4.0
+        self.index, self.cached = -1, None
+
+    @property
+    def settle(self):
+        """When its layout is complete: as the hook's proof it is drawn from here, so frame 0 shows it whole."""
+        return self.meta['settle']
+
+    @property
+    def speed(self):
+        return max(1.0, self.meta['duration'] / max(0.5, self.duration - self.TAIL))
+
+    @property
+    def sounds(self):
+        # The page knows when each thing lands; at the slide's pace the sounds land on those frames.
+        return [(t / self.speed, kind) for t, kind in self.meta['sounds']]
+
+    def draw(self, frame, t, alpha, dy):
+        if alpha <= 0.003:
+            return
+        i = min(len(self.frames) - 1, max(0, int(t * self.speed * render.FPS)))
+        if i != self.index:
+            a = np.asarray(Image.open(self.frames[i]).convert('RGBA'), dtype=np.float32)
+            self.index, self.cached = i, (a[..., :3], a[..., 3] / 255.0)
+        rgb, mask = self.cached
+        render.blend(frame, rgb, mask, alpha, self.x, self.y + dy)
 
 
 # ---------- screenshot ----------
@@ -897,6 +942,8 @@ def build(visual, theme, box):
             return recorded(visual, box)
         if kind in SCENES_3D:
             return Scene(visual, theme, widen(box))
+        if kind in MOTION_TYPES:
+            return Motion(visual, theme, widen(box))
         if kind == 'screenshot':
             if not visual.get('find'):
                 raise ValueError('a screenshot needs the text to show ("find")')

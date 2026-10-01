@@ -133,6 +133,7 @@ def validate(reel):
                     + words(strip_cues(a['spoken'])) <= VO_MAX_WORDS:
                 errors.append(f'alternative {k} spoken line would take the voiceover outside {VO_MIN_WORDS} to '
                               f'{VO_MAX_WORDS} words; match the length of line 1')
+    errors += motion_reel_errors(reel)
     if any(v.get('type') in ('tweet', 'chat') for p in points
            for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
         errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
@@ -246,7 +247,7 @@ def next_post_dates(reels, count):
 HOOK_TYPES = ('problem', 'before_after', 'shortcut', 'mistake', 'test', 'news')
 # What the hook slide shows under the hook from frame 0: the problem or the result itself (flat and complete at
 # once; a terminal types itself out and a recording or a 3D scene needs time to start).
-HOOK_VISUALS = ('code', 'diff', 'screenshot')
+HOOK_VISUALS = ('code', 'diff', 'screenshot', 'morph', 'stepper')
 PLAYBOOK = render.ROOT / 'playbook.md'
 
 
@@ -254,6 +255,129 @@ def playbook():
     """The researched rules for hooks, scripts and visuals (playbook.md), read by the writer, the hook judge and
     the frame review."""
     return PLAYBOOK.read_text().strip() if PLAYBOOK.exists() else ''
+
+
+# 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
+# after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
+MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+          'memory', 'outputmap')
+FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
+STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
+                 'map': ('set',)}
+
+
+def motion_errors(i, v):
+    """A 2D animation's data: small enough to read on a phone and consistent with itself."""
+    kind, e = v.get('type'), []
+    short = lambda s, n: isinstance(s, str) and 1 <= len(s.strip()) <= n
+    if kind == 'stepper':
+        lines = v.get('code', '').rstrip('\n').split('\n')
+        trace, names = v.get('trace', []), {x.get('name') for s in v.get('trace', []) for x in s.get('vars', [])}
+        if not v.get('code', '').strip() or not v.get('language') or len(lines) > 10 or max(len(l) for l in lines) > 34:
+            e.append(f'point {i} stepper needs code (max 10 lines of 34 characters) and a language')
+        elif not 2 <= len(trace) <= 6 or any(not 1 <= s.get('line', 0) <= len(lines) for s in trace):
+            e.append(f'point {i} stepper trace needs 2 to 6 steps, each on a line of the code')
+        elif len(names) > 4 or any(not short(x.get('name'), 10) or not short(x.get('value'), 16)
+                                   for s in trace for x in s.get('vars', [])) \
+                or any(s.get('out') is not None and not short(s['out'], 24) for s in trace):
+            e.append(f'point {i} stepper shows max 4 variables (names of 10, values of 16 characters), outputs of 24')
+    elif kind == 'flow':
+        ids = {n.get('id') for n in v.get('nodes', [])}
+        if not 2 <= len(v.get('nodes', [])) <= 5 or any(not short(n.get('label'), 12) for n in v.get('nodes', [])):
+            e.append(f'point {i} flow needs 2 to 5 nodes with labels of max 12 characters')
+        elif not 1 <= len(v.get('hops', [])) <= 6 or any(h.get('from') not in ids or h.get('to') not in ids
+                                                          or h.get('from') == h.get('to') for h in v.get('hops', [])):
+            e.append(f'point {i} flow needs 1 to 6 hops between different node ids')
+        elif any(h.get('label') is not None and not short(h['label'], 14) for h in v.get('hops', [])):
+            e.append(f'point {i} flow hop labels are max 14 characters')
+    elif kind == 'morph':
+        for part in ('before', 'after'):
+            lines = v.get(part, '').rstrip('\n').split('\n')
+            if not v.get(part, '').strip() or len(lines) > 10 or max(len(l) for l in lines) > 36:
+                e.append(f'point {i} morph needs "before" and "after", each max 10 lines of 36 characters')
+                break
+        else:
+            if v['before'].strip() == v['after'].strip() or not v.get('language'):
+                e.append(f'point {i} morph needs a language and a "before" that differs from "after"')
+    elif kind == 'git':
+        cs, branches = v.get('commits', []), [c.get('branch') for c in v.get('commits', [])]
+        if not 2 <= len(cs) <= 7 or any(not short(c.get('id'), 7) or not short(c.get('branch'), 14) for c in cs) \
+                or len(set(branches)) > 3:
+            e.append(f'point {i} git needs 2 to 7 commits (ids of 7, branch names of 14 characters) on max 3 branches')
+        elif v.get('op') not in ('merge', 'rebase', 'none'):
+            e.append(f'point {i} git op must be merge, rebase or none')
+        elif v['op'] != 'none' and (v.get('head') not in branches or not v.get('base') or v.get('head') == v.get('base')):
+            e.append(f'point {i} git {v["op"]} needs "head" (a branch with commits) and a different "base" branch')
+    elif kind == 'eventloop':
+        cards = v.get('cards', [])
+        if not 3 <= len(cards) <= 12 or any(not short(c.get('label'), 16) for c in cards):
+            e.append(f'point {i} eventloop needs 3 to 12 cards with labels of max 16 characters')
+    elif kind == 'structure':
+        shape, ops, items = v.get('structure'), v.get('ops', []), v.get('items', [])
+        if shape not in STRUCTURE_OPS:
+            e.append(f'point {i} structure must be array, stack, queue or map')
+        elif len(items) > 6 or any(not short(str(x), 14 if shape == 'map' else 8) for x in items):
+            e.append(f'point {i} structure starts with max 6 short items')
+        elif not 1 <= len(ops) <= 4 or any(o.get('op') not in STRUCTURE_OPS[shape] for o in ops):
+            e.append(f'point {i} structure needs 1 to 4 ops; a {shape} takes {", ".join(STRUCTURE_OPS[shape])}')
+        elif any(o.get('op') in ('push', 'insert', 'set') and not short(str(o.get('value', '')), 8) for o in ops) \
+                or any(o.get('op') in ('insert', 'remove') and not str(o.get('at', '')).isdigit() for o in ops) \
+                or any(o.get('op') == 'set' and not short(str(o.get('at', '')), 8) for o in ops):
+            e.append(f'point {i} structure ops need a short value, and insert/remove an index in "at" (set: a key)')
+    elif kind == 'sequence':
+        actors, calls = v.get('actors', []), v.get('calls', [])
+        if not 2 <= len(actors) <= 4 or any(not short(a, 12) for a in actors):
+            e.append(f'point {i} sequence needs 2 to 4 actors of max 12 characters')
+        elif not 1 <= len(calls) <= 6 or any(c.get('from') not in actors or c.get('to') not in actors
+                                              or c.get('from') == c.get('to') or not short(c.get('label'), 16) for c in calls):
+            e.append(f'point {i} sequence needs 1 to 6 calls between different actors, labels of max 16 characters')
+    elif kind == 'states':
+        states, moves = v.get('states', []), v.get('moves', [])
+        if not 2 <= len(states) <= 5 or any(not short(x, 12) for x in states):
+            e.append(f'point {i} states needs 2 to 5 states of max 12 characters')
+        elif not 1 <= len(moves) <= 5 or any(m.get('to') not in states or not short(m.get('event'), 12) for m in moves):
+            e.append(f'point {i} states needs 1 to 5 moves to listed states, events of max 12 characters')
+    elif kind == 'race':
+        bars = v.get('bars', [])
+        if not 2 <= len(bars) <= 5 or any(not short(b.get('label'), 12) or not b.get('value', 0) > 0 for b in bars):
+            e.append(f'point {i} race needs 2 to 5 bars with short labels and positive values')
+        if not v.get('source', '').startswith('https://'):
+            e.append(f'point {i} race needs "source": the https page the numbers come from')
+    elif kind == 'xray':
+        ids = [n.get('id') for n in v.get('nodes', [])]
+        if not 1 <= len(ids) <= 4 or any(not short(n.get('label'), 12) for n in v.get('nodes', [])):
+            e.append(f'point {i} xray needs 1 to 4 nodes with labels of max 12 characters')
+        elif v.get('focus') not in ids or not 2 <= len(v.get('inside', [])) <= 5 \
+                or any(not short(x, 16) for x in v.get('inside', [])):
+            e.append(f'point {i} xray needs "focus" (a node id) and 2 to 5 "inside" parts of max 16 characters')
+    elif kind == 'memory':
+        refs, objs, re_ = v.get('refs', []), v.get('objects', []), v.get('reassign', [])
+        ids, names = {o.get('id') for o in objs}, {r.get('name') for r in refs}
+        if not 1 <= len(refs) <= 4 or not 1 <= len(objs) <= 4 or any(not short(r.get('name'), 8) for r in refs) \
+                or any(not short(o.get('label'), 18) for o in objs) or any(r.get('to') not in ids for r in refs):
+            e.append(f'point {i} memory needs 1 to 4 refs (names of 8) to 1 to 4 objects (labels of 18 characters)')
+        elif not 1 <= len(re_) <= 3 or any(r.get('name') not in names or (r.get('to') not in ids and r.get('to') != 'null')
+                                            for r in re_):
+            e.append(f'point {i} memory needs 1 to 3 reassignments of listed names to an object id or "null"')
+    elif kind == 'outputmap':
+        out = v.get('output', [])
+        if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
+            e.append(f'point {i} outputmap needs a command (max 34 characters) and 2 to 6 output lines of max 34')
+    return e
+
+
+def motion_reel_errors(reel):
+    """One animation per reel at most, and a flat choice after it, so a failed render still shows the point."""
+    errors, firsts = [], 0
+    for i, p in enumerate(reel.get('points', []), 1):
+        choices = p.get('visual') if isinstance(p.get('visual'), list) else [p['visual']] if p.get('visual') else []
+        for k, c in enumerate(choices):
+            if c.get('type') in MOTION and not any(d.get('type') in FLAT_VISUALS for d in choices[k + 1:]):
+                errors.append(f'point {i} needs a code, diff, terminal or screenshot choice after its animation')
+        firsts += bool(choices) and choices[0].get('type') in MOTION
+    if firsts > 1:
+        errors.append(f'{firsts} animations; use at most one per reel, where movement explains best')
+    return errors
 
 
 NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
@@ -406,7 +530,7 @@ VISUAL_SCHEMA = {
     'type': 'object', 'additionalProperties': False, 'required': ['type'],
     'properties': {
         'type': {'type': 'string', 'enum': ['code', 'diff', 'terminal', 'screenshot', 'walkthrough',
-                                            'ide', 'quote', 'diagram', 'device', 'bars', 'logos']},
+                                            'ide', 'quote', 'diagram', 'device', 'bars', 'logos', *MOTION]},
         'author': {'type': 'string'}, 'handle': {'type': 'string'}, 'platform': {'type': 'string'},
         'language': {'type': 'string'}, 'title': {'type': 'string'}, 'code': {'type': 'string'},
         'highlight': {'type': 'array', 'items': {'type': 'integer'}},
@@ -435,6 +559,50 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['label', 'value'],
             'properties': {'label': {'type': 'string'}, 'value': {'type': 'number'}}}},
         'items': {'type': 'array', 'items': {'type': 'string'}},
+        # 2D animations (motion.py)
+        'trace': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['line', 'vars'],
+            'properties': {'line': {'type': 'integer'}, 'out': {'type': 'string'},
+                           'vars': {'type': 'array', 'items': {
+                               'type': 'object', 'additionalProperties': False, 'required': ['name', 'value'],
+                               'properties': {'name': {'type': 'string'}, 'value': {'type': 'string'}}}}}}},
+        'hops': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'to'],
+            'properties': {'from': {'type': 'string'}, 'to': {'type': 'string'}, 'label': {'type': 'string'}}}},
+        'commits': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['id', 'branch'],
+            'properties': {'id': {'type': 'string'}, 'branch': {'type': 'string'}}}},
+        'op': {'type': 'string', 'enum': ['merge', 'rebase', 'none']},
+        'head': {'type': 'string'}, 'base': {'type': 'string'},
+        'cards': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'lane'],
+            'properties': {'label': {'type': 'string'},
+                           'lane': {'type': 'string', 'enum': ['stack', 'apis', 'micro', 'macro', 'log', 'done']}}}},
+        'structure': {'type': 'string', 'enum': ['array', 'stack', 'queue', 'map']},
+        'ops': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['op'],
+            'properties': {'op': {'type': 'string', 'enum': ['push', 'pop', 'insert', 'remove', 'set']},
+                           'value': {'type': 'string'}, 'at': {'type': 'string'}}}},
+        'actors': {'type': 'array', 'items': {'type': 'string'}},
+        'calls': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'to', 'label'],
+            'properties': {'from': {'type': 'string'}, 'to': {'type': 'string'}, 'label': {'type': 'string'},
+                           'fail': {'type': 'boolean'}}}},
+        'states': {'type': 'array', 'items': {'type': 'string'}},
+        'moves': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['event', 'to'],
+            'properties': {'event': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'focus': {'type': 'string'}, 'inside': {'type': 'array', 'items': {'type': 'string'}},
+        'refs': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['name', 'to'],
+            'properties': {'name': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'objects': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['id', 'label'],
+            'properties': {'id': {'type': 'string'}, 'label': {'type': 'string'}}}},
+        'reassign': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['name', 'to'],
+            'properties': {'name': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -643,9 +811,11 @@ def visual_errors(i, visual):
                         errors.append(f'point {i} logos: {e}')
                     except OSError:
                         break  # offline: the render will fall back to the next choice if a slug is wrong
+        elif kind in MOTION:
+            errors += motion_errors(i, v)
         else:
             errors.append(f'point {i} visual type must be code, diff, terminal, tweet, chat, screenshot, walkthrough, '
-                          'ide, quote, diagram, device, bars or logos')
+                          'ide, quote, diagram, device, bars, logos or an animation (' + ', '.join(MOTION) + ')')
     return errors
 
 
@@ -702,7 +872,7 @@ Field rules:
   message template, the fix), e.g. "select('*, users(name)') loads posts and authors in one query instead of
   one query per post". Everything else serves it; the three points are its steps (problem, fix, proof).
 - hook_type: which playbook hook type the hook is: problem, before_after, shortcut, mistake, test or news.
-- hook_visual: the proof under the hook from the very first frame: a code, diff or screenshot visual
+- hook_visual: the proof under the hook from the very first frame: a code, diff, screenshot, morph or stepper visual
   showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
@@ -776,6 +946,35 @@ that does not clearly show what is being said):
   it" reels, because it really runs. Add a code or diff choice after it as a backup.
 - Only when nothing real can be shown (a pure opinion or habit), leave "visual" out; the slide then shows
   its body text.
+
+Animations (2D explainer motion, premium and calm; at most one per reel, on the point where movement explains
+better than a still picture; always add a code, diff, terminal or screenshot choice after it as a backup). Abstract
+shapes only, and every value they show must be true: what the code really prints, what the command really outputs,
+numbers only from a cited page.
+- stepper: the code runs line by line while a panel shows variables changing. "language", "code" (max 10 lines of 34
+  characters), "trace" (2 to 6 steps: "line" 1-based, "vars" [{"name", "value"}] after that line ran, optional "out"
+  what it prints). Best for closures, loops, async order, off-by-one bugs.
+- flow: a request travelling between parts. "nodes" (2 to 5, as for diagram), "hops" (1 to 6: "from", "to", optional
+  "label" of max 14 characters like "cache miss" or "GET /user"). Best for caching, auth, webhooks, "why it is slow".
+- morph: "before" code turns into "after"; unchanged tokens glide, removed fade red, added arrive green. "language",
+  "title", "before", "after" (each max 10 lines of 36). The best choice for a one-line fix or a refactor.
+- git: commits on branch lanes, then a merge or a rebase replay. "commits" (2 to 7 {"id" short hash, "branch"}, in
+  time order), "op" merge, rebase or none, "head" (the branch merged or rebased) and "base".
+- eventloop: cards moving between call stack, Web APIs, microtasks, task queue and console. "cards" in order, each
+  {"label", "lane"}: stack, apis, micro, macro, log (prints the label) or done (leaves). For JavaScript async order.
+- structure: an array, stack, queue or map changing. "structure", "items" (the start, max 6; map items "key: value"),
+  "ops" (1 to 4: push, pop, insert/remove with "at" an index, set with "at" a key and "value").
+- sequence: messages between parts over time. "actors" (2 to 4), "calls" (1 to 6 {"from", "to", "label", optional
+  "fail": true for a failed call}). For OAuth, webhooks with retries, handshakes.
+- states: a state machine walked event by event. "states" (2 to 5, the first is where it starts), "moves" (1 to 5
+  {"event", "to"}). For UI loading/error/success states, order status, connection states.
+- race: bars growing to real numbers from one cited page. "title", "unit", "bars" (2 to 5 {"label", "value"}),
+  "source" (its https url). Never estimate.
+- xray: zoom into one part to show what is inside. "nodes" (1 to 4), "focus" (a node id), "inside" (2 to 5 parts).
+- memory: variables pointing at objects; references move and orphaned objects dim. "refs" (1 to 4 {"name", "to"
+  object id}), "objects" (1 to 4 {"id", "label"}), "reassign" (1 to 3 {"name", "to" object id or "null"}).
+- outputmap: a command and its exact output, whose lines lift out into boxes. "command", "output" (2 to 6 lines,
+  exactly what that command prints for the setup shown).
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

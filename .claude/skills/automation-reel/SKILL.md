@@ -97,12 +97,14 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `allow_type`, `publish_to_instagram` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `insights_of`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel` |
 | `generate.py` | The writer and the validator; manual backfills | `today`, `generate`, `repair`, `tidy`, `validate`, `pick_hook`, `playbook`, `HOOK_TYPES`, `HOOK_VISUALS`, `MIN_HOOK_SCORE`, `visual_errors`, `cue_errors`, `series_label`, `learned`, `dm_errors`, `slot`, `pillar_for`, `slot3_format`, `TEACH`, `RELATE`, `EXTRA_FORMATS`, `package_errors`, `three_d_today`, `three_d_note`, `three_d_count`, `strip_3d`, `EXPERIMENTS`, `experiment_today`, `experiment_note`, `experiment_errors`, `vo_words`, `asked`, `add_voiceovers`, `add_cues`, `add_visuals`, `SYSTEM`, `SCHEMA`, `VISUAL_SCHEMA`, `QUOTE_PLATFORMS`, `PILLARS` |
-| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip | `build`, `Card`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
+| `visuals.py` | Floating cards (shadow, 3D tilt, sheen): code with a hand-drawn circle, diff, typed terminal, post card, POV chat, credited quote, targeted screenshot with cursor click, recorded demo clip, 2D animation (`Motion`) | `build`, `Card`, `Motion`, `MOTION_TYPES`, `Code`, `Diff`, `Terminal`, `Post`, `Quote`, `Chat`, `Screenshot`, `Clip`, `recorded`, `Scene`, `capture`, `code_image`, `sketch_ellipse`, `stroke` |
 | `demos.py` | Screencast recorder: website walkthroughs and live VS Code (openvscode-server, clean env, allowed commands) | `record`, `record_walkthrough`, `record_ide`, `Screencast`, `web_step`, `ide_step`, `IDE_SETTINGS`, `ALLOWED` |
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `ideas`, `save_report`, `last_report`, `SETTLED_DAYS` |
 | `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `SLOT_STARTS`, `LEARN_START`, `MAX_ATTEMPTS` |
+| `motion.py` | 2D explainer animations: SVG built by our own engine (eases, spring, seeked timeline, glow, one sweep) in headless Chromium, captured as transparent frames like scene3d; the page reports its length, `settle` frame and sound moments | `render_motion`, `prepare`, `tokens`, `words`, `morph_plan`, `PAGE`, `TYPES`, `EXAMPLES`, `MAX_SECONDS` |
+| `test_motion.py` | morph plan tests and a real render of every template (transparent, sized, settles, sounds, motion) | `MorphPlan`, `Render` |
 | `study.py` | Deep study of other creators' videos: download, measure, Claude breakdown into adoptable / not adoptable patterns; saved in studies/ | `sources_in`, `fetch`, `search`, `channel_outliers`, `relevant`, `auto_picks`, `week_topics`, `digest`, `TOPICS`, `probe`, `motion`, `measure`, `breakdown`, `empty_fields`, `report`, `save`, `study`, `main` |
 | `test_study.py` | Offline tests of study.py on synthetic ffmpeg videos, fake Claude and YouTube | `make_video`, `Measure`, `Breakdown`, `Main` |
 | `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
@@ -241,6 +243,15 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
   skipped, never stacked. `publish.main` skips a slot already posted today (`scheduler.posted_slots`), so any
   number of triggers is safe. Scheduler runs on a cron too; an outside trigger dispatching scheduler.yml is what
   makes timing reliable (README, "Reliable timing"). Keep `SLOT_STARTS` in step with daily-reel.yml's crons.
+- 2D animations (2026-10-01, `motion.py`): written by the writer like any visual (`generate.MOTION`, fields in
+  `VISUAL_SCHEMA`, limits in `generate.motion_errors`), at most one per reel and always with a flat backup choice
+  after it (`generate.motion_reel_errors`, `FLAT_VISUALS`); morph and stepper may be a `hook_visual`. Our own JS engine,
+  no CDN or library: each template builds all its SVG up front, the timeline is seeked per frame
+  (`window.renderAt`), and the layout is fitted inside a 36 px margin so soft shadows are never cut at the box edge.
+  `visuals.Motion` plays at the animation's own pace and holds its last frame; only a slide shorter than the
+  animation speeds it up (`speed`), and its `sounds` follow. The page reports `settle` (layout complete) so a hook
+  proof is drawn from there. Test with `test_motion.py` (real renders; `E2E_CHROMIUM` in the sandbox) and look at
+  `python motion.py <type>` output; frames are cached in `out/motion/` by spec, theme, size and page source.
 - Frame 0 (2026-10-01, playbook.md): the hook's words are revealed before frame 0 (`build_slides`, one click at 0 so
   sound starts at once) and its `hook_visual` is drawn from its `settle` time (`visuals.Card.settle`; a Code card
   once all lines are in, so only the circle still draws) with `Slide.ready`/`Slide.lead`; its entrance sounds are

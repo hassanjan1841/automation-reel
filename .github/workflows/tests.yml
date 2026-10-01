@@ -45,3 +45,24 @@ jobs:
       - run: pip install requests pillow numpy
 
       - run: python test_study.py -v
+
+  motion:
+    # Renders every animation template of motion.py for real in headless Chromium (test_motion.py).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install packages and the browser
+        run: |
+          pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)"
+          python -m playwright install --with-deps chromium
+
+      - name: Download fonts
+        run: python render.py --fonts
+
+      - run: python test_motion.py -v

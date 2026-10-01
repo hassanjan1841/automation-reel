@@ -77,6 +77,13 @@ MUTANTS = [
     ('generate.py', "        args = re.split(r'[.,:]\\s|[.,:]$', m.group(1))[0]", "        args = m.group(1)",
      'prose after an install command checked as packages'),
     ('generate.py', "        if SEND_OFFER.search(said):", "        if False:", 'an offer to send with nothing to send'),
+    ('generate.py', "            errors += motion_errors(i, v)", "            pass", 'animation data unchecked'),
+    ('generate.py', "    if firsts > 1:", "    if firsts > 9:", 'several animations in one reel'),
+    ('generate.py', "if c.get('type') in MOTION and not any(", "if False and not any(", 'an animation without a backup'),
+    ('visuals.py', "        return max(1.0, self.meta['duration'] / max(0.5, self.duration - self.TAIL))", "        return 1.0",
+     'an animation never fits a short slide'),
+    ('motion.py', "                matched_b.add(j)", "                pass", 'morph tokens appear twice'),
+    ('motion.py', "  const M = 36, bb = ROOT.getBBox()", "  const M = 0, bb = ROOT.getBBox()", 'shadows cut at the box edge'),
     ('generate.py', "    if not 3 <= words(hook) <= 6:", "    if not 3 <= words(hook) <= 9:", 'sentences on screen as hooks'),
     ('generate.py', "    if not isinstance(hv, dict) or hv.get('type') not in HOOK_VISUALS:", "    if False:",
      'no proof under the hook'),
@@ -120,7 +127,7 @@ MUTANTS = [
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
-TESTS = {'study.py': 'test_study.py'}
+TESTS = {'study.py': 'test_study.py', 'motion.py': 'test_motion.py'}
 
 
 def main():
