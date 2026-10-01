@@ -805,8 +805,9 @@ def build_shots(html, stages, size):
 class Build(Card):
     """Watch it get built: a live preview of real HTML on top, the CSS typed in below one stage at a time, and the
     preview updating to what the browser really draws after each stage. Frame 0 (its settle) shows the plain page
-    and its markup, the "before"; the finished design holds at the end."""
+    and its markup, the "before"; it ends on the finished page above all of its CSS at once, to screenshot."""
     START, TYPE, HOLD, MIN_STAGE, STAGE = 0.9, 0.55, 1.2, 0.8, 1.5  # START after the card's settle (TILT)
+    FINAL = 1.6               # time the closing view (finished page + all the CSS) needs to be read
 
     def __init__(self, visual, box, accent):
         box = widen(box)
@@ -843,11 +844,39 @@ class Build(Card):
             img, rows_k = code_image(padded, 'html' if k == 0 else 'css', label, w, code_h)
             self.codes.append((np.asarray(img, dtype=np.float32), rows_k[:len(lines)]))
         self.accent = accent
+        self.final = self.closing(stages, title, w, h, bar)
+
+    def closing(self, stages, title, w, h, bar):
+        """The last view: a shorter window on the finished page (its centre; the page centres its content) above
+        every CSS step together. None when they do not fit at a readable size; the build then holds its last step."""
+        top = max(bar + 100, round(h * 0.26))  # 8 lines of code still fit under it in a hook-sized card
+        try:
+            img, _ = code_image('\n'.join(stages), 'css', f'{title}, all steps', w, h - top)
+        except ValueError:
+            return None
+        out = np.empty((h, w, 3), dtype=np.float32)
+        out[:] = BG
+        out[:bar] = self.chrome
+        page, view = self.shots[-1], top - bar
+        cut = (len(page) - view) // 2
+        out[bar:top] = page[cut:cut + view]
+        out[top - 3:top] = self.accent
+        code = np.asarray(img, dtype=np.float32)[:h - top]
+        out[top:top + len(code)] = code
+        return out
 
     def step(self):
         """Seconds per stage: its natural pace, faster only when the slide is too short to finish and hold."""
         n = len(self.shots) - 1
-        return max(self.MIN_STAGE, min(self.STAGE, (self.duration - self.START - self.HOLD) / n))
+        spare = self.duration - self.START - self.HOLD - (self.FINAL if self.final is not None else 0)
+        return max(self.MIN_STAGE, min(self.STAGE, spare / n))
+
+    def final_at(self):
+        """When the closing view fades in, or None when the slide is too short to read it."""
+        if self.final is None:
+            return None
+        at = self.times()[-1] + self.TYPE + 0.5
+        return at if at + self.FINAL - 0.4 <= self.duration else None
 
     def times(self):
         """When each CSS stage starts typing; its preview swaps in TYPE seconds later."""
@@ -860,6 +889,8 @@ class Build(Card):
             rows = self.codes[k][1]
             out += [(t0 + self.TYPE * i / len(rows), 'key') for i in range(len(rows))]
             out.append((t0 + self.TYPE, 'pop'))
+        if self.final_at() is not None:
+            out.append((self.final_at(), 'swish'))
         return out
 
     @sounds.setter
@@ -892,6 +923,10 @@ class Build(Card):
         rgb[top:top + len(code)] = code
         # A thin accent line marks where the page ends and the code begins.
         rgb[top - 3:top] = self.accent
+        at = self.final_at()
+        if at is not None and t >= at:
+            q = render.ease_out(min(1.0, (t - at) / 0.35))
+            rgb = rgb * (1 - q) + self.final * q
         return rgb, self.mask
 
 

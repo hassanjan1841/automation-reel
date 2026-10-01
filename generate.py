@@ -882,6 +882,8 @@ def build_errors(i, v):
         return [f'point {i} build needs "html" and 2 to 4 CSS "stages"']
     if any(len(c.rstrip('\n').split('\n')) > 4 or max(len(l) for l in c.split('\n')) > 40 for c in parts):
         return [f'point {i} build html and each stage are max 4 lines of 40 characters']
+    if sum(len(str(c).rstrip('\n').split('\n')) for c in stages) > 8:
+        return [f'point {i} build stages together are max 8 lines: it ends on all of its CSS at once']
     if any(BUILD_BLOCKED.search(c) for c in parts):
         return [f'point {i} build uses plain HTML and CSS only: no scripts, links, images, url() or event handlers']
     return []
@@ -1021,7 +1023,8 @@ that does not clearly show what is being said):
   current, non-deprecated APIs. This is the strongest visual for "try this" dev tips and for honest "I tested
   it" reels, because it really runs. Add a code or diff choice after it as a backup.
 - build: watch it get built. "html" (plain markup, max 4 lines of 40 characters, a class to style) and
-  "stages" (2 to 4 CSS stages, each max 4 lines of 40 characters) and a "title" like "card.css". The real page
+  "stages" (2 to 4 CSS stages, each max 4 lines of 40 characters, all together max 8 lines) and a "title" like
+  "card.css". It ends on the finished page above all of its CSS at once, so people can screenshot the whole fix. The real page
   is drawn above the code: plain at first, then updated by the browser after each stage is typed. Plain HTML
   and CSS only: no scripts, images, links, url() or web fonts (Poppins is available). The strongest choice for
   any UI or CSS reel, and as hook_visual it shows the plain "before" on the first frame. Each stage must change

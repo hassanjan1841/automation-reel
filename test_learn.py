@@ -1210,7 +1210,8 @@ class ReelFormatTest(Sandbox):
         self.assertEqual(generate.validate({**VALID, 'hook_visual': self.BUILD}), [])
         for bad in ({'stages': ['a{}']}, {'html': ''}, {'stages': ['a{\n}\n\n\n\n']},
                     {'html': '<img src=x onerror=alert(1)>'}, {'stages': ['a{background:url(https://x.io/a.png)}', 'b{}']},
-                    {'html': '<script>fetch(1)</script>'}, {'stages': ['@import "x.css";', 'b{}']}):
+                    {'html': '<script>fetch(1)</script>'}, {'stages': ['@import "x.css";', 'b{}']},
+                    {'stages': ['a{\nb\nc\n}', 'd{\ne\nf\n}', 'g{}']}):
             self.assertTrue(generate.build_errors(1, {**self.BUILD, **bad}), bad)
 
     def test_reveal_needs_a_result_to_watch(self):
@@ -1268,6 +1269,12 @@ class ReelFormatTest(Sandbox):
         self.assertAlmostEqual(fast.words[0][0][2], 0.64)
         spectrum = np.abs(np.fft.rfft(fast[0]))
         self.assertAlmostEqual(np.argmax(spectrum) * sr / len(fast[0]), 440, delta=8)
+
+    def test_slides_cross_fade(self):
+        # The old slide is still leaving when the next one arrives: no empty frame between them.
+        self.assertEqual(render.exit_progress(9.0, 10.0), 0)
+        self.assertTrue(0 < render.exit_progress(10.0, 10.0) < 1)
+        self.assertEqual(render.exit_progress(10.0 + render.GLIDE, 10.0), 1)
 
     def test_slide_changes_glide_and_the_held_beat_ticks(self):
         slides = [render.Slide('hook', 0, 3), render.Slide('point', 3, 7, hold=0.9), render.Slide('cta', 7, 10)]

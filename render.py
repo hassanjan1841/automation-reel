@@ -41,6 +41,8 @@ TEXT_W = W - 2 * MARGIN
 WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
+# A slide's exit runs this far into the next slide, so the two cross-fade and no frame between them is empty.
+GLIDE = 0.15
 VOICE_LEAD = 0.25
 VOICE_TAIL = 0.7          # after the last word; a long still ending is where viewers leave
 LOOP = 0.4
@@ -471,14 +473,19 @@ def composite(frame, el, a, x, y, mask=None):
     region += (el.color - region) * m
 
 
+def exit_progress(t, end):
+    """0 until a slide starts leaving, 1 once it is gone (GLIDE seconds after its end, under the next slide's entry)."""
+    return min(1.0, max(0.0, (t - (end - EXIT + GLIDE)) / EXIT))
+
+
 def draw_element(frame, el, t):
-    if t < max(el.t0, el.slide[0]) or t >= el.slide[1]:
+    if t < max(el.t0, el.slide[0]) or t >= el.slide[1] + GLIDE:
         return
     lin = min(1.0, (t - el.t0) / el.dur)
     p = ease_out(lin)
     a = el.alpha * (p if not el.grow else 1.0)
     dy = (1 - back_out(lin)) * el.rise
-    q = min(1.0, max(0.0, (t - (el.slide[1] - EXIT)) / EXIT))
+    q = exit_progress(t, el.slide[1])
     if q > 0:
         e = ease_in(q)
         a *= 1 - e
@@ -814,12 +821,12 @@ def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
         t = f / FPS
         frame = bg.copy()
         for s in slides:
-            if s.start <= t < s.end:
+            if s.start <= t < s.end + GLIDE:
                 if s.visual:
                     # The hook's proof is already in place on frame 0; point visuals arrive with a short pop.
                     lin = 1.0 if s.ready else min(1.0, max(0.0, (t - s.start - 0.05) / 0.35))
                     p = ease_out(lin)
-                    q = ease_in(min(1.0, max(0.0, (t - (s.end - EXIT)) / EXIT)))
+                    q = ease_in(exit_progress(t, s.end))
                     s.visual.draw(frame, t - s.start + s.lead, p * (1 - q), round((1 - back_out(lin)) * 40 - q * 70))
                 for el in s.elements:
                     draw_element(frame, el, t)

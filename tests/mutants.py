@@ -155,6 +155,12 @@ MUTANTS = [
     ('visuals.py', "            shot = self.shots[k - 1] * (1 - q) + self.shots[k] * q", "            shot = self.shots[0]",
      'the build preview never updates', 'test_motion.py'),
     ('visuals.py', "STAGE = 0.9, 0.55,", "STAGE = 0.5, 0.55,", 'a build hook opens mid-typing', 'test_motion.py'),
+    ('visuals.py', "            rgb = rgb * (1 - q) + self.final * q", "            pass", 'a build never shows all its CSS',
+     'test_motion.py'),
+    ('render.py', "    return min(1.0, max(0.0, (t - (end - EXIT + GLIDE)) / EXIT))", "    return min(1.0, max(0.0, (t - (end - EXIT)) / EXIT))",
+     'an empty frame between slides'),
+    ('generate.py', "    if sum(len(str(c).rstrip('\\n').split('\\n')) for c in stages) > 8:", "    if False:",
+     'a build too long to show whole'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

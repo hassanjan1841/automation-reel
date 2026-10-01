@@ -158,7 +158,7 @@ class Cards(unittest.TestCase):
             self.assertGreater(np.abs(styled - plain).mean(), 0.5)
             self.assertGreater(np.abs(done - styled).mean(), 0.5)
             self.assertTrue((np.abs(done - np.array([0x4f, 0x46, 0xe5])).sum(axis=2) < 30).any())
-            first, last = card.layer(card.settle)[0], card.layer(4.9)[0]
+            first, last = card.layer(card.settle)[0], card.layer(card.final_at() - 0.05)[0]
             page = slice(card.bar, card.preview_h - 3)  # above the accent line between page and code
             self.assertLess(np.abs(first[page] - plain[:-3]).mean(), 1)
             # Frame 0 of a hook: the plain page and its markup, no CSS typed yet.
@@ -166,6 +166,10 @@ class Cards(unittest.TestCase):
             self.assertLess(np.abs(first[card.preview_h:card.preview_h + len(html)] - html[:card.h - card.preview_h]).mean(), 1)
             self.assertLess(np.abs(last[page] - done[:-3]).mean(), 1)
             self.assertEqual([k for _, k in card.sounds].count('pop'), 2)
+            # It ends on the finished page above all of its CSS, to screenshot; a short slide skips that view.
+            self.assertLess(np.abs(card.layer(4.9)[0] - card.final).mean(), 1)
+            card.duration = 3.0
+            self.assertIsNone(card.final_at())
 
     def test_the_closing_card_shows_the_keyword(self):
         import voice

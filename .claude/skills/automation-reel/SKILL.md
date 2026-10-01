@@ -118,7 +118,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `title_slide`, `end_slide`, `review`, `review_once`, `post`, `SYSTEM`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources); and frame 0 and the payoff against the playbook | `review`, `frames`, `first_frame`, `SYSTEM`, `SCHEMA` |
 | `playbook.md` | The researched rules for hooks, scripts, visuals and sound; read by the writer, the hook judge and qa | data, read by `generate.playbook` |
-| `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL`, `KEYWORD_SIZE`, `HOLD_TICK` |
+| `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL`, `KEYWORD_SIZE`, `HOLD_TICK`, `GLIDE`, `exit_progress` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard`, `heard_alone`, `BEAT`, `FINAL_TAKES`, `ask_respellings`, `align`, `by_line`, `transcribe`, `Voiceover`, `hold`, `tempo`, `HOLD`, `FAST_HOOK` |
 | `test_voice.py` | Pronunciation and voice-verifier regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN`, `STRAY`, `check_verifier` |
 | `pronounce.json` | Learned respellings per engine, word to spoken form | data, written by `voice.learn` |
@@ -293,14 +293,19 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
   - `visuals.Build`: the real page (`build_shots`: Chromium with scripts off and every request blocked, cached in
     `out/builds/`) above the CSS typed in stage by stage; each stage's preview swaps in with a pop, the stage pace
     shrinks to fit a short slide (`Build.step`), and its settle shows the plain page and its HTML, so it may be a
-    hook proof. Stages are padded to the same lines and width so the code size never jumps. `generate.build_errors`
+    hook proof. Stages are padded to the same lines and width so the code size never jumps, and the panel title
+    names the step (`style.css, step 2 of 3`): the first real review rejected both builds when the panel showed
+    only the newest stage, so `qa.SYSTEM` says to judge a build by its page. It ends on `Build.closing`: a shorter
+    window on the finished page above every step's CSS together (`FINAL` seconds; skipped when the slide is too
+    short, `final_at`), which is why all stages together are max 8 lines. `generate.build_errors`
     keeps html and stages to 4 lines of 40 and rejects anything that could load or run (`BUILD_BLOCKED`).
   - `reveal` (`generate.reveal_errors`): `publish.paced` calls `voice.hold`, which adds `voice.HOLD` seconds of
     silence before that point's line and shifts its word times; `Voiceover.holds` reaches `Slide.hold`, and
     `render.build_audio` plays soft ticks every `HOLD_TICK` in the gap and a pop as the voice returns.
   - `hook_pace` test (`generate.EXPERIMENTS`, next after `hook_style`): "dense" line 1 of 12 to 14 words, played
     `voice.FAST_HOOK` times faster by `voice.tempo` (ffmpeg atempo, same pitch); "relaxed" at most 10 words.
-  - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences.
+  - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences, and a
+    slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
