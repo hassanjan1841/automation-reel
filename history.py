@@ -1,7 +1,8 @@
 """Where the learning loop keeps what it knows, as plain files in the repo (no database): git gives the history,
 Claude sessions can read them, and a daily post never depends on a database being up.
 
-  metrics/YYYY-MM.jsonl   one line per post per weekly snapshot, only ever appended (month of the snapshot)
+  metrics/YYYY-MM.jsonl   one line per post per snapshot (daily in its first week, then weekly until 28 days), only
+                          ever appended (month of the snapshot)
   rules.json              the writer's rules with their status (trial, kept, retired) and evidence
   experiments.json        the weekly test that is running and the ones that finished
   ideas.json              topics viewers asked for in comments (no names, no quotes)
@@ -118,7 +119,7 @@ def active(all_rules):
 
 def learnings_text(all_rules):
     lines = [f"- {r['text']}" + (' (proven)' if r['status'] == 'kept' else '') for r in active(all_rules)]
-    return '# What holds our viewers (updated weekly by learn.py)\n\n' + '\n'.join(lines) + '\n'
+    return '# What holds our viewers (updated by learn.py)\n\n' + '\n'.join(lines) + '\n'
 
 
 def save_rules(all_rules):

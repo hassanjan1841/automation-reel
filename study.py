@@ -417,7 +417,7 @@ def ours():
 
 
 def claude(prompt, folder, system=SYSTEM, schema=SCHEMA):
-    proc = subprocess.run(['claude', '-p', prompt, '--model', os.environ.get('CLAUDE_MODEL', 'claude-sonnet-5'),
+    proc = subprocess.run(['claude', '-p', prompt, '--model', (os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5'),
                            '--system-prompt', system, '--tools', 'Read', '--allowedTools', 'Read', '--add-dir', str(folder),
                            '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
                            '--json-schema', json.dumps(schema)],

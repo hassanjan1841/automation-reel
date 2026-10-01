@@ -1,5 +1,6 @@
 """End-to-end run of the daily post with a real render: publish.main on a temp copy of reels.json with a test reel
-that has a 3D hook word, a 3D diagram and a screenshot, then checks what was recorded (shown, slot, seconds, test).
+that has a diff proof under the hook, a flow animation (a 3D diagram only as its fallback) and a screenshot, then
+checks the post record (shown, slot, seconds, test), the hook proof, the animation and the reject path.
 
 Real: rendering (Pillow, ffmpeg, three.js in Chromium), check_visuals, publish.main's bookkeeping, and with
 --real-review Claude's frame review. Faked: the upload and Instagram (never posts), and the voice unless --voice
@@ -8,7 +9,8 @@ Real: rendering (Pillow, ffmpeg, three.js in Chromium), check_visuals, publish.m
 Usage: .venv/bin/python tests/e2e_publish.py [--reject] [--real-review] [--voice] [--test name:arm]
   --reject        the (fake) review rejects the first point's visual once, so the re-render path runs
   --real-review   Claude reviews the frames (needs the claude CLI)
-  --voice         the real voice (Fish or Kokoro, needs their key or model)
+  --voice         the real voice (Fish or Kokoro, needs their key or model; set VOICE to a real voice id or name,
+                  else the engine gets the name "e2e")
 Env for sandboxes without the CDN: E2E_THREE=<folder holding three@0.170.0> serves three.js locally,
 E2E_CHROMIUM=<path to chrome> overrides the browser Playwright launches.
 """

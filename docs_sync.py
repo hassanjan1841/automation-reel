@@ -24,9 +24,9 @@ import docs_check
 MODEL = os.environ.get('CLAUDE_MODEL') or re.search(
     r"^MODEL = '([^']+)'", (docs_check.ROOT / 'generate.py').read_text(), re.M).group(1)
 DOC_PATHS = [str(p.relative_to(docs_check.ROOT)) for p in docs_check.DOCS]
-# The bots commit content, not code the docs describe: reels.json daily, the learning loop's files weekly.
+# The bots commit content, not code the docs describe: reels.json daily, the learning loop's files and studies/ by their jobs.
 CONTENT = ['reels.json', 'carousels.json', 'pronounce.json', 'learnings.md', 'rules.json', 'experiments.json',
-           'ideas.json', 'metrics', 'reports']
+           'ideas.json', 'metrics', 'reports', 'studies']
 CODE_PATHSPEC = ['.'] + [f':(exclude){p}' for p in CONTENT + DOC_PATHS]
 MAX_DIFF = 60_000
 ATTEMPTS = 2

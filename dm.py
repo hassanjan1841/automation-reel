@@ -6,9 +6,9 @@ Posts are the reels (reels.json) and carousels (carousels.json) that have a dm_k
 the last PRIVATE_REPLY_DAYS days (Instagram only allows a private reply to a comment for 7 days).
 
 Env: IG_TOKEN (needs instagram_business_manage_comments and instagram_business_manage_messages); DRY_RUN=true
-prints what it would send and sends nothing.
+prints what it would send and sends nothing; GRAPH_VERSION (optional, defaults to v25.0).
 Usage: python dm.py            answer new keyword comments
-       python dm.py --check    only check the token can read comments and send messages
+       python dm.py --check    only check the token can read comments and read conversations (messaging access)
 """
 
 import json
@@ -21,7 +21,7 @@ import requests
 
 import render
 
-GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION', 'v25.0')}"
+GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 PRIVATE_REPLY_DAYS = 7
 PUBLIC_REPLY = 'Sent you a DM 📩'
 GUIDE_LIMIT = 1000  # Instagram's text message limit; one private reply per comment, so the guide fits in one

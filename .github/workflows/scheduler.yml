@@ -1,8 +1,8 @@
 name: Scheduler
 
-# GitHub drops many scheduled runs, so the Daily reel and Weekly crons alone do not post reliably. This starts
-# whatever is due and missing (see scheduler.py). It is safe to run at any time and any number of times, so an
-# outside trigger can also dispatch it (see README, "Reliable timing").
+# GitHub drops many scheduled runs, so the Daily reel, Weekly, Learning and Study crons alone do not run reliably.
+# This starts whatever is due and missing (see scheduler.py). It is safe to run at any time and any number of
+# times, so an outside trigger can also dispatch it (see README, "Reliable timing").
 on:
   schedule:
     - cron: '*/10 * * * *'

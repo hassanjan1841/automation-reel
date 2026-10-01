@@ -1,7 +1,7 @@
 """Offline tests for the learning loop and what feeds it: history.py storage, the weekly test in generate.py, the
 news writer's use of it, trends.performance's fallback, what publish.py records, the catch-up scheduler and the
 never-post-a-slot-twice rule, every step of learn.py, the
-weekly workflow's commit step, and a six-week simulation of the whole loop against a fake Instagram and a fake
+learning workflow's (learn.yml) commit step, and a six-week simulation of the whole loop against a fake Instagram and a fake
 Claude. No network, no Claude, no Instagram; runs with only requests, pillow and numpy installed (like CI).
 
 Usage: python test_learn.py        runs everything, exit 1 on any failure
@@ -139,7 +139,7 @@ class HistoryTest(Sandbox):
         history.save_rules(rules)
         self.assertEqual(json.loads((self.tmp / 'rules.json').read_text()), rules)
         text = (self.tmp / 'learnings.md').read_text()
-        self.assertEqual(text, '# What holds our viewers (updated weekly by learn.py)\n\n- B (proven)\n- A\n')
+        self.assertEqual(text, '# What holds our viewers (updated by learn.py)\n\n- B (proven)\n- A\n')
         self.assertEqual(generate.learned.__doc__ is not None, True)
 
     def test_import_current_learnings(self):
@@ -846,6 +846,32 @@ def run(created, status='completed'):
     return {'status': status, 'createdAt': created.strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 
+class BackupRunTest(Sandbox):
+    """The learning job's 06:30 cron is only a backup for the Scheduler."""
+
+    def skip(self, event, days='', report=False, day=date(2026, 10, 4)):  # a Sunday
+        if report:
+            history.save_report(day, '# Reel report')
+        with mock.patch.dict(os.environ, {'GITHUB_EVENT_NAME': event, 'LEARN_DAYS': days}):
+            return learn.backup_skip(day)
+
+    def test_backup_cron_respects_learn_days_and_runs_once(self):
+        self.assertIsNone(self.skip('schedule'))                          # daily, nothing yet: it runs
+        self.assertIsNone(self.skip('schedule', 'sun,wed'))                # a learning day
+        self.assertIn('LEARN_DAYS', self.skip('schedule', 'mon,wed'))      # not a learning day
+        self.assertIn('already', self.skip('schedule', report=True))      # the Scheduler's run already reported
+
+    def test_runs_started_on_purpose_always_run(self):
+        self.assertIsNone(self.skip('workflow_dispatch', 'mon', report=True))
+
+    def test_main_stops_before_needing_a_token(self):
+        with mock.patch.dict(os.environ, {'GITHUB_EVENT_NAME': 'schedule', 'LEARN_DAYS': 'mon', 'IG_TOKEN': ''}), \
+                mock.patch.object(learn, 'utcnow', return_value=datetime(2026, 10, 4, 6, 30, tzinfo=timezone.utc)), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            learn.main()
+        self.assertIn('Backup run skipped', out.getvalue())
+
+
 class SchedulerTest(Sandbox):
     def posted(self, when, slot=None):
         return {'id': 1, 'posted_at': when.isoformat(), **({'slot': slot} if slot else {})}
@@ -931,6 +957,31 @@ class SchedulerTest(Sandbox):
         started = self.run_scheduler(at(8, 20, sunday), [], [], [], studied=[])
         self.assertEqual(started, [('workflow', 'run', 'study.yml', '-f', 'auto=true')])
         self.assertEqual(self.run_scheduler(at(8, 20, sunday), [], [], [], studied=[run(at(8, 2, sunday))]), [])
+
+    def test_a_refused_dispatch_does_not_stop_the_other_checks(self):
+        # Pausing the Daily reel (disabling it) makes its dispatch fail; the Sunday Weekly must still start.
+        sunday = date(2026, 10, 4)
+        calls = []
+
+        def gh(*args):
+            calls.append(args)
+            if args[:3] == ('workflow', 'run', 'daily-reel.yml'):
+                raise subprocess.CalledProcessError(1, 'gh', stderr='workflow is disabled')
+            return json.dumps([]) if args[:2] == ('run', 'list') else ''
+
+        class Now(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return at(11, 30, sunday)
+        render.QUEUE.write_text('[]')
+        os.environ['LEARN_DAYS'] = 'mon'
+        with mock.patch.object(scheduler, 'QUEUE', render.QUEUE), mock.patch.object(scheduler, 'gh', gh), \
+                mock.patch.object(scheduler, 'datetime', Now), mock.patch.object(sys, 'argv', ['scheduler.py']), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            scheduler.main()
+        started = [c[2] for c in calls if c[:2] == ('workflow', 'run')]
+        self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml'])
+        self.assertIn('Could not start daily-reel.yml: workflow is disabled', out.getvalue())
 
     def test_learn_days(self):
         self.assertEqual(scheduler.learn_days(''), set(range(7)))
@@ -1196,6 +1247,33 @@ class MotionTest(Sandbox):
 
 
 class WorkflowTest(unittest.TestCase):
+    def test_the_readme_example_reel_is_valid(self):
+        # Someone copies it to add a reel by hand: it must pass today's rules, not the ones it was written under.
+        text = (ROOT / 'README.md').read_text()
+        block = re.search(r'## Add a reel by hand.*?```json\n(.*?)```', text, re.S)
+        self.assertIsNotNone(block, 'README lost its "Add a reel by hand" example')
+        self.assertEqual(generate.validate(json.loads(block.group(1))), [])
+
+    def test_empty_repo_variables_mean_the_default(self):
+        # Workflows pass ${{ vars.X }}, which is an empty string when the variable is not set.
+        for name in ('carousel.py', 'learn.py', 'qa.py', 'study.py', 'trends.py', 'dm.py', 'insights.py', 'publish.py'):
+            text = (ROOT / name).read_text()
+            self.assertNotRegex(text, r"environ\.get\('(CLAUDE_MODEL|GRAPH_VERSION)', ", name)
+        self.assertNotIn('graph.instagram.com/v', (ROOT / 'trends.py').read_text())
+        daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
+        for var in ('VOICE_PITCH', 'CLAUDE_MODEL', 'GRAPH_VERSION'):
+            self.assertIn(f'{var}: ${{{{ vars.{var} }}}}', daily)
+
+    def test_a_posted_reel_is_always_recorded(self):
+        """Once posted, reels.json is committed even if a later step (the pronunciation test) fails; otherwise the
+        Scheduler sees the slot as unposted and posts it again."""
+        text = (ROOT / '.github/workflows/daily-reel.yml').read_text()
+        step = text[text.index('- name: Commit queue'):]
+        self.assertIn("if: always() && steps.publish.outputs.posted == 'true'", step.split('run:')[0])
+
+    def test_learning_job_gets_learn_days(self):
+        self.assertIn('LEARN_DAYS: ${{ vars.LEARN_DAYS }}', (ROOT / '.github/workflows/learn.yml').read_text())
+
     def test_commit_step_stages_every_existing_file(self):
         """The learning job's `git add` loop: a missing file must not stop the others from being committed."""
         text = (ROOT / '.github/workflows/learn.yml').read_text()
