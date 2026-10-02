@@ -1724,5 +1724,156 @@
     ],
     "slot": 1,
     "seconds": 22.4
+  },
+  {
+    "id": 46,
+    "style": "dark",
+    "payoff": "The exact line to send when a client asks for extra work: \"Happy to add that — it's outside our original scope, so I'll quote it first.\"",
+    "kicker": "Freelance playbook #1",
+    "hook": "What's the reply to *scope creep*?",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "md",
+      "title": "reply.txt",
+      "before": "Sure, I'll add that now.\n(scope creep, unpaid)",
+      "after": "Happy to add that —\nI'll quote it first."
+    },
+    "alternatives": [
+      {
+        "hook": "What's costing you *free work*?",
+        "hook_type": "problem",
+        "spoken": "[exasperated] What's silently draining your income? (break) [knowing] One small ask at a time."
+      },
+      {
+        "hook": "Why do you *still* work free?",
+        "hook_type": "mistake",
+        "spoken": "[mock outraged] Why are you still doing extra work? (break) [wry] Without ever sending a quote."
+      },
+      {
+        "hook": "What *one line* changes everything?",
+        "hook_type": "before_after",
+        "spoken": "[fired up] What happens the moment you start quoting changes? (break) [confident] Instead of just absorbing them."
+      }
+    ],
+    "points": [
+      {
+        "title": "Spot the ask",
+        "body": "extra work outside the original quote",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "signs.txt",
+            "code": "// scope creep sounds like\n\"can you also add...\"\n\"one more small thing\"\n\"while you're in there...\"",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Send this line",
+        "body": "ask for a quote first",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "reply.txt",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "reply.txt"
+              },
+              {
+                "do": "type",
+                "file": "reply.txt",
+                "text": "Happy to add that —\nit's outside our original scope,\nso I'll send a quick quote\nbefore I start on it."
+              },
+              {
+                "do": "save"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "reply.txt",
+            "code": "Happy to add that —\nit's outside our original scope,\nso I'll send a quick quote\nbefore I start on it.",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Lock it in",
+        "body": "add it as a contract clause",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "contract.md",
+            "code": "## Change Requests\nAny request outside this scope\nis quoted and approved first —\nnot done for free.",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *SCOPE* for the template",
+    "dm_keyword": "SCOPE",
+    "dm_guide": "Here's the message to send when a client asks for extra work: \"Happy to add that — it's outside our original scope, so I'll send a quick quote before I start on it.\" Add this clause to your contract or proposal too: \"Change Requests: Any work outside this scope is quoted and approved before I start it.\" Use both together so new asks never turn into unpaid work.",
+    "caption": "Freelance scope creep message template\nThe exact line to send when a client adds extra work\nWhat do you say when scope creeps? 👇",
+    "hashtags": [
+      "#freelance",
+      "#scopecreep",
+      "#clientmanagement",
+      "#freelancedeveloper"
+    ],
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Here's the exact line to send. (break) [quick] The moment a client adds scope.",
+      "[knowing] You know the feeling. (break) [wary] 'One thing' that's really new work.",
+      "[confident and fast] Send this instead. (break) [steady] Flag it's outside scope, then quote first.",
+      "[serious, fast] Put that line in your contract. (break) [firm] So it's never a fight again.",
+      "[warm, curious] Comment SCOPE. (break) [grinning] I'll send the full message and contract line."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 1,
+    "posted_at": "2026-10-02T16:01:19+00:00",
+    "media_id": "17909304171309792",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the question text with the bottom half of the frame empty — no proof or visual evidence is shown yet, so the hook has nothing to look at."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "ide",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 23.6
   }
 ]
