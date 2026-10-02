@@ -1875,5 +1875,141 @@
     ],
     "slot": 2,
     "seconds": 23.6
+  },
+  {
+    "id": 47,
+    "style": "light",
+    "payoff": "A plain div becomes a shadowed, hoverable pricing card using box-shadow, border-radius and one hover transform — no extra markup needed.",
+    "kicker": "Build it live #1",
+    "hook": "What makes a card *float*?",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "build",
+      "title": "card.css",
+      "html": "<div class=\"card\">\n  <h3>Pricing</h3>\n  <p>Simple plan</p>\n</div>",
+      "stages": [
+        ".card{background:#fff;\npadding:24px;border-radius:12px}",
+        ".card{box-shadow:0 8px 24px #0003}\n.card{border:1px solid #eee}",
+        ".card h3{color:#111;margin:0 0 8px}\n.card p{color:#666;font-size:14px}\n.card{transition:.2s}\n.card:hover{transform:translateY(-4px)}"
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your card looks *flat*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Right now your pricing card looks completely flat, (break) [serious] with zero depth or shadow."
+      },
+      {
+        "hook": "Flat *div*, missed shadow",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] You're skipping box-shadow and border-radius, (break) [deadpan] so your card still looks like a plain div."
+      },
+      {
+        "hook": "One *hover* line, big change",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Add one hover line and your flat card instantly lifts, (break) [confident and fast] off the page."
+      }
+    ],
+    "points": [
+      {
+        "title": "Plain markup",
+        "body": "Just a div with text inside",
+        "visual": [
+          {
+            "type": "code",
+            "language": "html",
+            "title": "card.html",
+            "code": "<div class=\"card\">\n  <h3>Pricing</h3>\n  <p>Simple plan</p>\n</div>",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Shadow & radius",
+        "body": "Shadow and radius added via CSS",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "css",
+            "title": "card.css",
+            "before": "/* no styles yet */",
+            "after": ".card{background:#fff;padding:24px;\nborder-radius:12px}\n.card{box-shadow:0 8px 24px #0003}\n.card{border:1px solid #eee}"
+          }
+        ]
+      },
+      {
+        "title": "Hover lift",
+        "body": "Card lifts up on hover now",
+        "visual": [
+          {
+            "type": "build",
+            "title": "card.css",
+            "html": "<div class=\"card\">\n  <h3>Pricing</h3>\n  <p>Simple plan</p>\n</div>",
+            "stages": [
+              ".card{background:#fff;\npadding:24px;border-radius:12px}",
+              ".card{box-shadow:0 8px 24px #0003}\n.card{border:1px solid #eee}",
+              ".card h3{color:#111;margin:0 0 8px}\n.card p{color:#666;font-size:14px}\n.card{transition:.2s}\n.card:hover{transform:translateY(-4px)}"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "css",
+            "title": "card.css (final)",
+            "code": ".card{background:#fff}\n.card{padding:24px;border-radius:12px}\n.card{box-shadow:0 8px 24px #0003}\n.card{border:1px solid #eee}\n.card{transition:.2s}\n.card h3{color:#111;margin:0 0 8px}\n.card p{color:#666;font-size:14px}\n.card:hover{transform:translateY(-4px)}",
+            "highlight": [
+              8
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *CARD* for the code",
+    "dm_keyword": "CARD",
+    "dm_guide": "Here's the full pricing card code.\n\nHTML:\n<div class=\"card\"><h3>Pricing</h3><p>Simple plan</p></div>\n\nCSS:\n.card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);border:1px solid #eee;transition:.2s}\n.card h3{color:#111;margin:0 0 8px}\n.card p{color:#666;font-size:14px}\n.card:hover{transform:translateY(-4px)}\n\nPaste both into any project. No build tools or extra classes needed.",
+    "caption": "CSS card hover lift effect with box-shadow and border-radius\nScreenshot-ready code in three small steps.\nWhat UI piece should I build next? 👇",
+    "hashtags": [
+      "#css",
+      "#frontend",
+      "#webdev",
+      "#uidesign"
+    ],
+    "voiceover": [
+      "[intrigued, fast] What actually makes a flat card lift and float?",
+      "[knowing] Right now it's just a plain, unstyled div.",
+      "[confident] Add padding, radius and a soft shadow next.",
+      "[excited] Then one hover rule lifts it right off the page.",
+      "[warm, inviting] Comment card and I'll send the full CSS file."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "build",
+    "series": "Build it live",
+    "episode": 1,
+    "posted_at": "2026-10-02T20:01:15+00:00",
+    "media_id": "18120793591937747",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is text-only (headline plus a caption badge) with no code or screenshot proof of the hook on screen, violating the 'no text-only first frame' rule."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The full CSS is shown and readable, but the actual rendered card (the shadow and the hover lift) is never shown on screen — only code, no live preview of the transformation the hook promises."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "diff",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.5
   }
 ]
