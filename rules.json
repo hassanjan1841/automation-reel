@@ -78,5 +78,15 @@
     "evidence": "written before rules were tracked",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 9,
+    "text": "Reels tagged hook_style: question averaged a worse skip rate than reels run with no test (skip_vs_usual +4.1 vs -0.7, 5 reels each).",
+    "since": "2026-10-02",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "test none (5 reels) beat hook_style: question (5 reels): skip rate +4.8 points",
+    "verdict": "",
+    "checked": ""
   }
 ]
