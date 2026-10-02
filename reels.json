@@ -1565,5 +1565,164 @@
     ],
     "slot": 3,
     "seconds": 21.9
+  },
+  {
+    "id": 45,
+    "style": "light",
+    "payoff": "A SKILL.md file dropped in .claude/skills/ makes Claude Code apply your exact workflow automatically, no re-typing instructions every chat.",
+    "kicker": "AI tool in 30s #2",
+    "hook": "Why do you *retype* that prompt?",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "title": "SKILL.md",
+      "language": "md",
+      "code": "---\nname: pr-summary\ndescription: summarize a PR diff\n---\nRead the diff, then write 3 lines:\nwhat changed, why, and risk level.",
+      "highlight": [
+        2,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Teach *Claude Code* new skills?",
+        "spoken": "[fired up] Ever wonder how you teach Claude Code a new skill?",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "One prompt *vs* one skill file",
+        "hook_type": "before_after",
+        "spoken": "[confident and fast] Watch a PR summary shrink from a paragraph (break) [upbeat] down to one line."
+      },
+      {
+        "hook": "You're *wasting* every new chat",
+        "hook_type": "mistake",
+        "spoken": "[fired up] You're wasting every new chat retyping the same instructions (break) [knowing] Claude could just remember them."
+      }
+    ],
+    "points": [
+      {
+        "title": "Create the skill",
+        "body": "One file, one folder, done",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": ".claude/skills/pr-summary/SKILL.md",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": ".claude/skills/pr-summary/SKILL.md"
+              },
+              {
+                "do": "type",
+                "text": "---\nname: pr-summary\ndescription: summarize a PR diff\n---\nRead the diff, then write 3 lines:\nwhat changed, why, and risk level."
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "ls .claude/skills"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "SKILL.md",
+            "language": "md",
+            "code": "---\nname: pr-summary\ndescription: summarize a PR diff\n---\nRead the diff, then write 3 lines:\nwhat changed, why, and risk level.",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Claude finds it",
+        "body": "Scans the skills folder itself",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "ls .claude/skills/pr-summary",
+            "output": [
+              "SKILL.md",
+              "name: pr-summary",
+              "description: summarize a PR diff"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "ls .claude/skills/pr-summary"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Stop repeating prompts",
+        "body": "Ask once, skill handles format",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "prompt.md",
+            "language": "md",
+            "before": "Summarize this diff in 3 lines:\nwhat changed, why, risk level,\nmatch our usual PR format...\n(paste diff + style guide again)",
+            "after": "Summarize this diff.\n(skill handles the format)"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *SKILL* for the file template",
+    "caption": "Claude Code skills using a SKILL.md file\nTeach it your workflow once, it remembers every time\nWhat repetitive prompt would you turn into a skill? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aiagents",
+      "#devtools",
+      "#automation"
+    ],
+    "dm_keyword": "SKILL",
+    "dm_guide": "Here's the Claude Code skills setup: 1) In your project, create a folder .claude/skills/your-skill-name. 2) Inside it add a SKILL.md file with YAML frontmatter: name and description fields, then plain instructions below for what to do and how to format the output. 3) Save it. Claude Code scans .claude/skills automatically and applies the skill when your request matches, so you stop repeating instructions in every chat. 4) Add skills to ~/.claude/skills instead to use them across all your projects. Official docs: https://docs.claude.com/en/docs/claude-code/skills",
+    "reveal": 2,
+    "voiceover": [
+      "[exasperated] Why do you keep pasting the same instructions (break) [annoyed] into every single Claude chat?",
+      "[confident] You drop one SKILL.md file into a skills folder.",
+      "[quick] Claude Code scans that folder automatically, no setup needed.",
+      "[confident and fast] Now you just ask once, (break) [satisfied] it handles the format every time.",
+      "[warm, curious] Comment SKILL and I'll send you the file."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 2,
+    "posted_at": "2026-10-02T12:00:40+00:00",
+    "media_id": "18102880007358841",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The file is shown, but the reel never shows Claude actually applying the skill automatically (no 'ask once' chat or output) — the automation half of the payoff is only claimed in text, not demonstrated."
+      }
+    },
+    "shown": [
+      "code",
+      "ide",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 22.4
   }
 ]
