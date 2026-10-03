@@ -2,11 +2,8 @@
 __pycache__/
 out/
 fonts/
-temp_auto_push.bat
 .env
 models/
 voice_ref/
 .venv-cb/
 logins/
-.gitignore
-branch_structure.json
