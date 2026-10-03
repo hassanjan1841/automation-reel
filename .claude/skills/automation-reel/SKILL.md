@@ -383,6 +383,9 @@ Automation around it:
 - With fewer than 2 scored reels a run saves nothing (no rules, test or report).
 - Claude failures never lose the week: numbers, rule verdicts and the test still save, and the report says the
   write-up was unavailable. Test with `test_learn.py`; the `verify` skill has the full procedure.
+- Claude's structured text can carry over its own tool-call markup (a real run once ended a summary with
+  `</summary></invoke>`): `learn.clean` (`STRAY_MARKUP`) strips any stray `<summary>`, `<decision>`, `<new_rules>`,
+  `<invoke>`, `<parameter>` or `<function_calls>` tag before the summary and decision reach the report.
 
 ## Before calling a change done
 
