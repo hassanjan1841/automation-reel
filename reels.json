@@ -2136,5 +2136,138 @@
     ],
     "slot": 2,
     "seconds": 21.7
+  },
+  {
+    "id": 49,
+    "style": "light",
+    "payoff": "git stash instantly clears your uncommitted changes so you can switch branches clean, then git stash pop brings every change back exactly as it was",
+    "kicker": "Quick trick #3",
+    "hook": "Messy tree, then *instantly* clean",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "git status",
+      "language": "bash",
+      "before": "modified: app.js\nmodified: utils.js",
+      "after": "git stash\nworking tree clean"
+    },
+    "alternatives": [
+      {
+        "hook": "*git stash* saves your mess",
+        "spoken": "[fired up] One git command saves messy changes before you switch tasks.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Messy git status *stalls* everything",
+        "spoken": "[exasperated] Dirty git status before switching branches (break) [urgent] wastes real dev time.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Stop *committing* half-finished code",
+        "spoken": "[fired up] Committing half-finished code just to switch tasks is a mistake.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Dirty git tree",
+        "body": "Uncommitted changes block switching branches now",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git status"
+            ],
+            "output": [
+              "On branch main",
+              "modified: app.js",
+              "modified: utils.js"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One stash command",
+        "body": "git stash clears it instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git stash",
+              "git status"
+            ],
+            "output": [
+              "Saved working directory and index state",
+              "nothing to commit, working tree clean"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pop it back",
+        "body": "git stash pop restores everything exactly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git stash pop",
+              "git status"
+            ],
+            "output": [
+              "Dropped stash@{0}",
+              "modified: app.js",
+              "modified: utils.js"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *STASH* for the full guide",
+    "dm_keyword": "STASH",
+    "dm_guide": "Here's the git stash workflow: 1) Run git stash to save all uncommitted changes and get a clean tree. 2) Switch branches, pull, or do whatever you needed to. 3) Run git stash pop to bring your changes back exactly where you left them. Need untracked files too? Use git stash -u. Want to name it? git stash push -m your-message. See all saved stashes with git stash list, and apply an older one with git stash apply stash@{1}. Docs: https://git-scm.com/docs/git-stash",
+    "caption": "Git stash command for switching branches fast\nStop committing half-finished code just to change tasks\nWhat slows down your git workflow the most? 👇",
+    "hashtags": [
+      "#git",
+      "#gitstash",
+      "#devtips",
+      "#commandline",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[grinning] Watch messy git tree turn instantly (break) [excited] clean with one command.",
+      "[exasperated] Your git status is dirty and you need (break) [urgent] another branch now.",
+      "[confident and fast] Type git stash and that mess disappears, tree instantly clean.",
+      "[excited] Run git stash pop (break) [satisfied] and every change comes right back, nothing lost.",
+      "[warm, curious] Comment stash and I will send you the full (break) [grinning] git workflow guide."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 3,
+    "posted_at": "2026-10-04T20:00:50+00:00",
+    "media_id": "17985089385094731",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the hook text ('Messy tree, then instantly clean') with no actual proof under it (no code, diff, or terminal); the only proof element (a decorative 'command' pill) hasn't even appeared yet at frame 0."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows a real terminal running git stash / git stash pop; the whole payoff is asserted through text cards and a decorative pill, so there's nothing a viewer could actually copy or screenshot as proof."
+      }
+    },
+    "shown": [
+      "text",
+      "text",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 24.4
   }
 ]
