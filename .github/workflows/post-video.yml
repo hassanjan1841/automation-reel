@@ -18,6 +18,10 @@ on:
         description: Check only, do not post
         type: boolean
         default: true
+      voiceover:
+        description: Instead of posting, record this lines file (one line each) as a voiceover artifact, e.g. extras/chai-reel-voice.txt
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -41,7 +45,46 @@ jobs:
       - name: Install Python packages
         run: pip install -r requirements.txt
 
+      - name: Install ffmpeg
+        if: inputs.voiceover != ''
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Cache voice and speech-to-text models
+        if: inputs.voiceover != ''
+        uses: actions/cache@v6
+        with:
+          path: models
+          key: kokoro-v1.0-whisper-small.en
+
+      - name: Install Claude Code
+        # the listen-back check asks Claude for respellings of a misheard word
+        if: inputs.voiceover != ''
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Record voiceover
+        if: inputs.voiceover != ''
+        env:
+          LINES: ${{ inputs.voiceover }}
+          VOICE: ${{ vars.VOICE }}
+          VOICE_ENGINE: ${{ vars.VOICE_ENGINE }}
+          VOICE_SPEED: ${{ vars.VOICE_SPEED }}
+          VOICE_PITCH: ${{ vars.VOICE_PITCH }}
+          FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
+          FISH_MODEL: ${{ vars.FISH_MODEL }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python post_video.py --voice "$LINES"
+
+      - name: Upload voiceover
+        if: inputs.voiceover != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: voiceover-${{ github.run_number }}
+          path: out/voice
+
       - name: Post
+        if: inputs.voiceover == ''
         id: post
         env:
           DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}

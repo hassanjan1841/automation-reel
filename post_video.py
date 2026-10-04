@@ -1,14 +1,19 @@
 """Post a ready-made video as a Reel, outside the daily pipeline: a one-off like a project showcase that was edited
-elsewhere. It does not write, voice, render or review anything; it uploads the file, publishes it with the caption
-and cover, deletes the upload and records the post in extras.json. A video already recorded there with a media id
+elsewhere. It does not write, render or review anything; it uploads the file, publishes it with the caption and
+cover, deletes the upload and records the post in extras.json (--voice records a voiceover for such a video first). A video already recorded there with a media id
 is never posted twice (FORCE_POST=true overrides).
 
 Usage: python post_video.py <video.mp4> <caption.txt> [cover.jpg]
+       python post_video.py --voice <lines.txt>   records a voiceover for such a video with the daily reels'
+           voice (voice.synthesize: one take, checked by listening back), one line per line of the file, into
+           out/voice/line-<n>.wav plus out/voice/voice.json (each line's words with their times, and the verdict),
+           for the video's editor to mix in and caption
 
 Env:
   IG_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY, GRAPH_VERSION   as in publish.py
   DRY_RUN=true          check the files and print the caption, post nothing
   FORCE_POST=true       post even if extras.json already has this video
+  VOICE_ENGINE, VOICE, VOICE_SPEED, VOICE_PITCH, FISH_API_KEY, FISH_MODEL   for --voice, as in voice.py
 """
 
 import json
@@ -28,7 +33,28 @@ def load():
     return json.loads(LOG.read_text()) if LOG.exists() else []
 
 
+def record_voice(lines_file):
+    import soundfile
+
+    import render
+    import voice
+    lines = [l.strip() for l in Path(lines_file).read_text().splitlines() if l.strip()]
+    clips = voice.synthesize(lines, os.environ.get('VOICE') or None)
+    out = Path(__file__).parent / 'out' / 'voice'
+    out.mkdir(parents=True, exist_ok=True)
+    info = {'verdict': clips.verdict, 'continuous': clips.continuous, 'sample_rate': render.SR, 'lines': []}
+    for i, (line, clip) in enumerate(zip(lines, clips)):
+        soundfile.write(out / f'line-{i + 1}.wav', clip, render.SR)
+        info['lines'].append({'text': voice.strip_cues(line), 'file': f'line-{i + 1}.wav',
+                              'seconds': round(len(clip) / render.SR, 3),
+                              'words': [[w, round(a, 3), round(b, 3)] for w, a, b in clips.words[i]]})
+    (out / 'voice.json').write_text(json.dumps(info, indent=2) + '\n')
+    print(f'Voiceover: {len(lines)} lines, {sum(l["seconds"] for l in info["lines"]):.1f} s, {clips.verdict}')
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == '--voice':
+        return record_voice(sys.argv[2])
     if len(sys.argv) < 3:
         sys.exit(__doc__)
     video, caption_file = Path(sys.argv[1]), Path(sys.argv[2])

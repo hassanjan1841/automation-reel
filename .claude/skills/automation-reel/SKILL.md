@@ -71,6 +71,7 @@ insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs ar
 
 post-video.yml (manual)  post_video.py <video> <caption file> [cover]   posts a ready-made video from extras/ as a Reel
                      (upload, publish, delete upload), recorded in extras.json; never twice without FORCE_POST
+                     post_video.py --voice <lines>: records a voiceover (voice.synthesize) to out/voice/ instead, as an artifact
 
 scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
                      posted, nothing running, at most 2 tries), the day's Learning run (LEARN_DAYS) or a missed
@@ -103,7 +104,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 
 | File | Role | Key entry points |
 | --- | --- | --- |
-| `post_video.py` | One-off: post a ready-made video as a Reel, recorded in extras.json | `main`, `load`, `LOG`, `MAX_CAPTION` |
+| `post_video.py` | One-off: post a ready-made video as a Reel, recorded in extras.json | `main`, `load`, `record_voice`, `LOG`, `MAX_CAPTION` |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `research_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `delete_upload`, `allow_type`, `publish_to_instagram`, `redact`, `paced` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `insights_of`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel`, `claude`, `SYSTEM`, `CHECK_SYSTEM`, `FEEDS`, `MIN_REACH`, `MAX_AGE` |

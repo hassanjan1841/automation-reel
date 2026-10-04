@@ -1,0 +1,7 @@
+[grinning, punchy] This cat jumps when your tests pass, and hisses when they fail.
+It started as a free 3D cat model.
+I gave it a skeleton in Blender.
+Then I animated seventeen moves by hand.
+Its paws stay planted, so nothing slides.
+Then I packed it into terminal cells.
+Now it lives above my prompt, and it even gets the zoomies.
