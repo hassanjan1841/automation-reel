@@ -1,0 +1,14 @@
+I put a cat in my terminal 🐈
+
+Chai sits above my Claude Code prompt and reacts to my work: a happy jump when tests pass, a hiss at errors, zoomies on /pet run, a nap when I go idle.
+
+How it's built:
+1. A free 3D cat model from Sketchfab
+2. Rigged and posed in Blender with Python
+3. 17 moves animated by hand, all flowing into each other
+4. Paws checked against the floor so they never slide
+5. Rendered and packed into 28 x 6 terminal cells
+
+Credits: cat model "An Animated Cat" by Evil_Katz (CC BY 4.0, Sketchfab). Cat sounds by kerzoven (CC0, OpenGameArt). Walk and gallop keyed from AI4Animation motion capture (CC BY-NC 4.0).
+
+#claudecode #blender #coding #devlife #terminal #3danimation #programming
