@@ -1,0 +1,68 @@
+name: Post a video
+
+# Posts a ready-made video from the repo as a Reel (a one-off made elsewhere), recorded in extras.json.
+on:
+  workflow_dispatch:
+    inputs:
+      video:
+        description: Path of the mp4 in the repo, e.g. extras/chai-reel.mp4
+        required: true
+      caption:
+        description: Path of the caption text file, e.g. extras/chai-reel.txt
+        required: true
+      cover:
+        description: Path of a jpg cover (optional)
+        required: false
+        default: ''
+      dry_run:
+        description: Check only, do not post
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reels-queue
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Post
+        id: post
+        env:
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+          FORCE_POST: ${{ vars.FORCE_POST }}
+          VIDEO: ${{ inputs.video }}
+          CAPTION: ${{ inputs.caption }}
+          COVER: ${{ inputs.cover }}
+        run: python post_video.py "$VIDEO" "$CAPTION" "$COVER"
+
+      - name: Commit record
+        if: always() && steps.post.outputs.posted == 'true'
+        env:
+          VIDEO: ${{ inputs.video }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add extras.json
+          git commit -m "Posted extra video $VIDEO"
+          git pull --rebase origin ${{ github.ref_name }}
+          git push
