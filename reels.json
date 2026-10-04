@@ -2011,5 +2011,130 @@
     ],
     "slot": 3,
     "seconds": 20.5
+  },
+  {
+    "id": 48,
+    "style": "dark",
+    "payoff": "Add 'Unpaid balances accrue a 5% late fee, compounding weekly after the due date' to your contract's payment terms so clients pay on time without you chasing them.",
+    "kicker": "Freelance playbook #2",
+    "hook": "What stops *late payments*?",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "title": "invoice.txt",
+      "language": "txt",
+      "code": "Invoice #004\nClient: Acme Co\nAmount due: $2,000\nTerms: Net 7",
+      "highlight": [
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Why do clients *ignore* due dates?",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Ever notice clients ignoring your invoice due date? (break) [confident] One clause fixes that."
+      },
+      {
+        "hook": "What changes with *late fees*?",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Picture two invoices, one ignored. [sharp] One that grows five percent weekly."
+      },
+      {
+        "hook": "What line makes clients *pay faster*?",
+        "hook_type": "shortcut",
+        "spoken": "[confident and fast] Want clients to pay faster? [sharp] Add one line to your contract."
+      }
+    ],
+    "points": [
+      {
+        "title": "No late penalty",
+        "body": "Plain due dates give clients no urgency",
+        "visual": [
+          {
+            "type": "code",
+            "title": "contract.md",
+            "language": "md",
+            "code": "Payment Terms\nInvoice due within 7 days\nof delivery.",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add the clause",
+        "body": "One late fee line in writing",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "contract.md",
+            "language": "md",
+            "before": "Payment Terms\nInvoice due within 7 days\nof delivery.",
+            "after": "Payment Terms\nInvoice due within 7 days.\nUnpaid balances accrue a 5%\nlate fee, compounding weekly\nafter the due date."
+          }
+        ]
+      },
+      {
+        "title": "Now it's enforceable",
+        "body": "Late balances grow automatically each week",
+        "visual": [
+          {
+            "type": "code",
+            "title": "invoice.txt",
+            "language": "txt",
+            "code": "Invoice #004\nAmount due: $2,000\nDue: Oct 11\nAfter due: +5% weekly\nDay 8: $2,000 -> $2,100",
+            "highlight": [
+              4,
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *LATEFEE* for the clause",
+    "dm_keyword": "LATEFEE",
+    "dm_guide": "Here's the clause: add this to your contract's Payment Terms section: 'Invoices are due within 7 days of delivery. Unpaid balances accrue a 5% late fee, compounding weekly after the due date.' Put it right under your payment terms, before signatures. State it again on the invoice itself so it's never a surprise. This one line gives clients a real reason to pay on time, and gives you grounds to charge more if they don't.",
+    "caption": "Freelance invoice late fee clause for client contracts\nComment LATEFEE and I'll send the exact wording.\nWhat's in your contract for late payers?👇",
+    "hashtags": [
+      "#freelance",
+      "#webdevelopment",
+      "#contract",
+      "#invoicing"
+    ],
+    "voiceover": [
+      "[fired up] This one line stops clients from paying you late.",
+      "[exasperated] No late fee means zero reason to pay fast.",
+      "[confident and fast] Add one clause: unpaid invoices get hit. [sharp] Five percent, every week.",
+      "[confident] Now it's in writing: pay late, and the invoice grows.",
+      "[warm, curious] Comment LATEFEE and I'll send you the clause. [teasing] Just copy and paste."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 2,
+    "posted_at": "2026-10-04T18:52:41+00:00",
+    "media_id": "18343779298252859",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Hook is a vague topic question ('What stops late payments?') with no code, diff, or screenshot proof visible, only a text badge — the reel's promised payoff is nowhere on screen."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "diff",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 21.7
   }
 ]
