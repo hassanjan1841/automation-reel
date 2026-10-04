@@ -11,6 +11,9 @@ so this decides what should be running right now and starts it with workflow_dis
   start learn.yml.
   Study: on Sunday from 08:00 UTC, if no scheduled or hand-started Study videos run has started today, start
   study.yml with auto (the weekly study of other creators; runs from "study" issues do not count).
+  Ready-made video: an extras.json entry with a post_at time and no media_id is started with post-video.yml from
+  EXTRA_LEAD before that time (post_video.py waits for the minute itself), while no Post a video run is active,
+  at most MAX_ATTEMPTS times, and not when more than EXTRA_LATE late.
 
 Safe to run as often as you like: it only starts what is missing, and publish.py itself never posts a slot twice.
 A dispatch GitHub refuses (a workflow disabled to pause it) is printed and the other checks still run.
@@ -27,11 +30,14 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 QUEUE = ROOT / 'reels.json'
+EXTRAS = ROOT / 'extras.json'
+EXTRA_LEAD = timedelta(minutes=15)  # a queued ready-made video starts this early; post_video.py waits for post_at
+EXTRA_LATE = timedelta(hours=6)     # one this far past its time is left for a person
 # When each slot's run starts (UTC); the post times (12:00, 16:00, 20:00) are set in daily-reel.yml.
 SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
@@ -84,6 +90,31 @@ def due_reel(now, reels, daily_runs):
         print(f'Slot {slot} was already tried {MAX_ATTEMPTS} times in its window; not starting it again')
         return None
     return slot
+
+
+def waiting_extras(now, extras):
+    """Queued ready-made videos whose start time has come and that are not too late."""
+    out = []
+    for e in extras:
+        if e.get('media_id') or not e.get('post_at'):
+            continue
+        at = datetime.fromisoformat(e['post_at'])
+        if at - EXTRA_LEAD <= now <= at + EXTRA_LATE:
+            out.append(e)
+    return out
+
+
+def due_extra(now, extras, post_runs):
+    """The queued ready-made video to start now, or None."""
+    waiting = waiting_extras(now, extras)
+    if not waiting or any(r['status'] in ACTIVE for r in post_runs):
+        return None
+    e = waiting[0]
+    opened = datetime.fromisoformat(e['post_at']) - EXTRA_LEAD
+    if sum(1 for r in post_runs if datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= opened) >= MAX_ATTEMPTS:
+        print(f"{e['video']} was already tried {MAX_ATTEMPTS} times; not starting it again")
+        return None
+    return e
 
 
 def due_weekly(now, weekly_runs_today):
@@ -159,7 +190,14 @@ def main():
         print('Starting the weekly study of other creators')
         if not dry:
             start('study.yml', '-f', 'auto=true')
-    if not slot and not due_weekly(now, weekly_today) and not learn and not study:
+    extras = json.loads(EXTRAS.read_text()) if EXTRAS.exists() else []
+    extra = due_extra(now, extras, runs('post-video.yml')) if waiting_extras(now, extras) else None
+    if extra:
+        print(f"Starting Post a video for {extra['video']} (post at {extra['post_at']})")
+        if not dry:
+            start('post-video.yml', '-f', f"video={extra['video']}", '-f', f"caption={extra['caption_file']}",
+                  '-f', f"cover={extra.get('cover', '')}", '-f', 'dry_run=false')
+    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra:
         print('Nothing to start')
 
 

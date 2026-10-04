@@ -72,6 +72,8 @@ insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs ar
 post-video.yml (manual)  post_video.py <video> <caption file> [cover]   posts a ready-made video from extras/ as a Reel
                      (upload, publish, delete upload), recorded in extras.json; never twice without FORCE_POST
                      post_video.py --voice <lines>: records a voiceover (voice.synthesize) to out/voice/ instead, as an artifact
+                     queued: an extras.json entry with post_at and media_id null is started by scheduler.due_extra
+                     (EXTRA_LEAD before post_at, not past EXTRA_LATE); post_video.py waits up to MAX_WAIT for the minute
 
 scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
                      posted, nothing running, at most 2 tries), the day's Learning run (LEARN_DAYS) or a missed
@@ -104,7 +106,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 
 | File | Role | Key entry points |
 | --- | --- | --- |
-| `post_video.py` | One-off: post a ready-made video as a Reel, recorded in extras.json | `main`, `load`, `record_voice`, `LOG`, `MAX_CAPTION` |
+| `post_video.py` | One-off: post a ready-made video as a Reel, recorded in extras.json | `main`, `load`, `record_voice`, `LOG`, `MAX_CAPTION`, `MAX_WAIT` |
 | `reels.json` | Record of posted reels; one added by hand with posted_at null is posted next | list of reel objects |
 | `publish.py` | Orchestrates one daily post | `main`, `todays_reel`, `research_reel`, `new_entry`, `make_video`, `check_visuals`, `Dishonest`, `shown`, `credits`, `wait_for_post_time`, `upload`, `delete_upload`, `allow_type`, `publish_to_instagram`, `redact`, `paced` |
 | `trends.py` | Scrape + news editor + fact-checker | `collect`, `performance`, `insights_of`, `pick`, `quotes_allowed`, `fact_check`, `timely_reel`, `claude`, `SYSTEM`, `CHECK_SYSTEM`, `FEEDS`, `MIN_REACH`, `MAX_AGE` |
@@ -114,7 +116,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `scene3d.py` | three.js 3D moments rendered frame by frame in headless Chromium (transparent PNG frames for reels, mp4 from the CLI) | `render_scene`, `device_image`, `brand`, `slug_of`, `PAGE`, `ANIMAL_LOGOS` |
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS`, `backup_skip`, `ranked`, `GROUP_FIELDS`, `CLEAR_SKIP`, `CLEAR_WATCHED`, `MAX_RULE_WORDS`, `MAX_NEW_RULES`, `MAX_ACTIVE_RULES`, `RULE_TRIAL_DAYS`, `RULE_GIVE_UP_DAYS`, `EXPERIMENT_MAX_DAYS`, `IDEA_DAYS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `save_experiments`, `ideas`, `save_ideas`, `learnings_text`, `key`, `save_report`, `last_report`, `SETTLED_DAYS` |
-| `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `start`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `due_study`, `SLOT_STARTS`, `WEEKLY_START`, `STUDY_START`, `LEARN_START`, `MAX_ATTEMPTS` |
+| `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `start`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `due_study`, `SLOT_STARTS`, `WEEKLY_START`, `STUDY_START`, `LEARN_START`, `MAX_ATTEMPTS`, `due_extra`, `waiting_extras`, `EXTRA_LEAD`, `EXTRA_LATE` |
 | `motion.py` | 2D explainer animations: SVG built by our own engine (eases, spring, seeked timeline, glow, one sweep) in headless Chromium, captured as transparent frames like scene3d; the page reports its length, `settle` frame and sound moments | `render_motion`, `prepare`, `tokens`, `words`, `morph_plan`, `PAGE`, `TYPES`, `EXAMPLES`, `MAX_SECONDS`, `FRAMES` |
 | `test_motion.py` | morph plan tests and a real render of every template (transparent, sized, settles, sounds, motion) | `MorphPlan`, `Render` |
 | `study.py` | Deep study of other creators' videos: download, measure, Claude breakdown into adoptable / not adoptable patterns; saved in studies/ | `sources_in`, `fetch`, `search`, `channel_outliers`, `relevant`, `auto_picks`, `week_topics`, `digest`, `TOPICS`, `probe`, `motion`, `measure`, `breakdown`, `empty_fields`, `report`, `save`, `study`, `studied`, `ours`, `main`, `CHANNELS`, `MAX_CHANNELS` |

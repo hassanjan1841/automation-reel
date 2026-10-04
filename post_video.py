@@ -1,6 +1,8 @@
 """Post a ready-made video as a Reel, outside the daily pipeline: a one-off like a project showcase that was edited
 elsewhere. It does not write, render or review anything; it uploads the file, publishes it with the caption and
-cover, deletes the upload and records the post in extras.json (--voice records a voiceover for such a video first). A video already recorded there with a media id
+cover, deletes the upload and records the post in extras.json (--voice records a voiceover for such a video first).
+To post at a set time, add an entry to extras.json with video, caption_file, cover (optional), post_at (ISO time
+with offset) and media_id null: scheduler.py starts post-video.yml shortly before, and this waits for the minute. A video already recorded there with a media id
 is never posted twice (FORCE_POST=true overrides).
 
 Usage: python post_video.py <video.mp4> <caption.txt> [cover.jpg]
@@ -27,6 +29,7 @@ import publish
 
 LOG = Path(__file__).parent / 'extras.json'
 MAX_CAPTION = 2200  # Instagram's caption limit
+MAX_WAIT = 30 * 60  # longest wait for a queued post_at; the Scheduler starts the run about 15 minutes before
 
 
 def load():
@@ -78,6 +81,12 @@ def main():
         print('DRY_RUN: not posting')
         publish.output('posted', 'false')
         return
+    queued = next((e for e in log if e['video'] == str(video) and not e.get('media_id') and e.get('post_at')), None)
+    if queued:
+        wait = (datetime.fromisoformat(queued['post_at']) - datetime.now(timezone.utc)).total_seconds()
+        if 0 < wait <= MAX_WAIT:
+            print(f"Waiting {wait / 60:.0f} min for {queued['post_at']}", flush=True)
+            time.sleep(wait)
 
     stamp = int(time.time())
     name = f'extra-{video.stem}-{stamp}.mp4'
@@ -90,8 +99,12 @@ def main():
         publish.delete_upload(name)
         if cover_name:
             publish.delete_upload(cover_name)
-    log.append({'video': str(video), 'caption': caption, 'media_id': media_id,
-                'posted_at': datetime.now(timezone.utc).isoformat(timespec='seconds')})
+    record = {'video': str(video), 'caption': caption, 'media_id': media_id,
+              'posted_at': datetime.now(timezone.utc).isoformat(timespec='seconds')}
+    if queued:
+        queued.update(record)
+    else:
+        log.append(record)
     LOG.write_text(json.dumps(log, indent=2, ensure_ascii=False) + '\n')
     print(f'Posted {video} as {media_id}')
     publish.output('posted', 'true')

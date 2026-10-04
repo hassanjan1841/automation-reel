@@ -904,6 +904,17 @@ class SchedulerTest(Sandbox):
         self.assertEqual(scheduler.due_reel(at(19, 30), slot1, [run(at(15, 10)), run(at(15, 30))]), 3)  # next slot
         self.assertIsNone(scheduler.due_reel(at(19, 30), slot1 + [self.posted(at(20, 0), slot=3)], []))
 
+    def test_due_extra(self):
+        queued = [{'video': 'extras/a.mp4', 'caption_file': 'extras/a.txt', 'post_at': at(13, 0).isoformat(),
+                   'media_id': None}]
+        self.assertIsNone(scheduler.due_extra(at(12, 40), queued, []))                    # not yet
+        self.assertEqual(scheduler.due_extra(at(12, 46), queued, []), queued[0])          # 15 minutes before
+        self.assertIsNone(scheduler.due_extra(at(12, 50), queued, [run(at(12, 46), 'in_progress')]))
+        self.assertEqual(scheduler.due_extra(at(13, 20), queued, [run(at(12, 46))]), queued[0])  # one failed try
+        self.assertIsNone(scheduler.due_extra(at(13, 30), queued, [run(at(12, 46)), run(at(13, 20))]))
+        self.assertIsNone(scheduler.due_extra(at(19, 30), queued, []))                    # too late
+        self.assertIsNone(scheduler.due_extra(at(13, 0), [{**queued[0], 'media_id': '1'}], []))  # posted
+
     def test_due_weekly(self):
         sunday = date(2026, 10, 4)
         self.assertTrue(scheduler.due_weekly(at(10, 30, sunday), []))
