@@ -2269,5 +2269,170 @@
     ],
     "slot": 3,
     "seconds": 24.4
+  },
+  {
+    "id": 50,
+    "style": "dark",
+    "payoff": "A SKILL.md file at .claude/skills/test-first/SKILL.md that makes Claude Code write and run a test before it ever says a task is done.",
+    "kicker": "AI tool in 30s #3",
+    "hook": "Does Claude Code *test* itself?",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "diff",
+      "title": "Claude workflow",
+      "language": "md",
+      "before": "// without a skill\nClaude writes the function\nClaude replies: done\nNo test is run",
+      "after": "// with a test-first skill\nClaude writes the function\nClaude writes a test\nRuns it, then replies: done"
+    },
+    "alternatives": [
+      {
+        "hook": "Claude *skips* testing by default",
+        "hook_type": "problem",
+        "spoken": "[fired up] Claude Code never checks if its own code actually works."
+      },
+      {
+        "hook": "No tests, *then* always tested",
+        "hook_type": "before_after",
+        "spoken": "[urgent] Watch Claude Code skip tests, then test every task."
+      },
+      {
+        "hook": "You *never* told Claude to test",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] You never told Claude Code to test its own work."
+      }
+    ],
+    "points": [
+      {
+        "title": "Skips the test",
+        "body": "Claude finishes code without testing it",
+        "visual": [
+          {
+            "type": "code",
+            "title": "slugify.js",
+            "language": "js",
+            "code": "export function slugify(s) {\n  return s.toLowerCase()\n    .replace(/\\s+/g, '-');\n}\n// Claude: done. No test written.",
+            "highlight": [
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add skill file",
+        "body": "One file makes testing mandatory",
+        "visual": [
+          {
+            "type": "code",
+            "title": "SKILL.md",
+            "language": "md",
+            "code": "---\nname: test-first\ndescription: test before done\n---\nBefore finishing any task:\n1. Write a test\n2. Run the test suite\n3. Fix failing tests",
+            "highlight": [
+              5,
+              6,
+              7,
+              8
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Test runs, passes",
+        "body": "Proof it works before you ship",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "slugify.js",
+                "content": "export function slugify(s) {\n  return s\n    .toLowerCase()\n    .trim()\n    .replace(/\\s+/g, '-');\n}"
+              },
+              {
+                "name": "slugify.test.js",
+                "content": ""
+              }
+            ],
+            "setup": [
+              "npm init -y",
+              "npm i -D vitest"
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "slugify.test.js"
+              },
+              {
+                "do": "type",
+                "file": "slugify.test.js",
+                "text": "import { expect, test } from \"vitest\";\nimport { slugify } from \"./slugify\";\n\ntest(\"turns spaces into dashes\", () => {\n  expect(slugify(\"Hello World\")).toBe(\"hello-world\");\n});"
+              },
+              {
+                "do": "save",
+                "file": "slugify.test.js"
+              },
+              {
+                "do": "run",
+                "command": "npx vitest run"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "slugify.test.js",
+            "language": "js",
+            "code": "test(\"turns spaces into dashes\", () => {\n  expect(slugify(\"Hello World\"))\n    .toBe(\"hello-world\");\n});",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *SKILL* for the file",
+    "dm_keyword": "SKILL",
+    "dm_guide": "Here is the test-first skill setup. In your project, create .claude/skills/test-first/SKILL.md. Add this frontmatter: name: test-first, description: test before finishing. Below it write: Before marking any task done, write a test for the new code, run the test suite, and fix any failing tests. Claude Code loads skills automatically from that folder. Full docs: https://docs.anthropic.com/en/docs/claude-code/skills",
+    "caption": "Claude Code skills using a SKILL.md file\nThis one makes Claude test its own code before saying done\nWhat's the first skill you'd build for Claude? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aitools",
+      "#devtips",
+      "#automation"
+    ],
+    "voiceover": [
+      "[fired up] Does Claude Code actually test the code it writes?",
+      "[exasperated] Normally it just finishes and calls it done.",
+      "[grinning, punchy] One skill file changes that completely.",
+      "[confident and fast] Now Claude writes a real test file for this function. (break) [quiet] It runs the test live... (break) [excited] and passes right away, no edits needed.",
+      "[warm, curious] Comment skill and I will send the file."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 3,
+    "posted_at": "2026-10-05T12:01:25+00:00",
+    "media_id": "18494747908102543",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is hook text only with no code/diff/screenshot underneath as proof, and the hook is a closed yes/no question with an obvious default answer (no)."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "ide",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.1
   }
 ]
