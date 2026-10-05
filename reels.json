@@ -2580,5 +2580,169 @@
     ],
     "slot": 2,
     "seconds": 26.0
+  },
+  {
+    "id": 52,
+    "style": "dark",
+    "payoff": "In the Next.js App Router, creating app/about/page.tsx automatically creates the /about route — no router file, no config, the folder structure IS the routing.",
+    "kicker": "Next.js from zero #1",
+    "hook": "Where do your *routes* come from?",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "title": "your project folder",
+      "language": "bash",
+      "code": "app/\n  page.tsx\n  about/\n    page.tsx",
+      "highlight": [
+        1,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "One file, one *route*",
+        "spoken": "[fired up] Here's the shortcut: (break) [confident] one file in Next.js creates one whole route.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "No router file, then *this*",
+        "spoken": "[grinning, punchy] No router file, no config, (break) [amused] but every folder still becomes a route.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Stop looking for *router.js*",
+        "spoken": "[exasperated] Stop searching for a router file, (break) [deadpan] Next.js doesn't need one at all.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "No router file",
+        "body": "No routes config needed anywhere",
+        "visual": [
+          {
+            "type": "code",
+            "title": "your project (so far)",
+            "language": "bash",
+            "code": "app/\n  page.tsx\n  layout.tsx",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Folder becomes route",
+        "body": "One file creates one live route",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "app/about/page.tsx",
+                "content": ""
+              }
+            ],
+            "setup": [
+              "npx create-next-app@latest myapp --app"
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "app/about/page.tsx"
+              },
+              {
+                "do": "type",
+                "text": "export default function About() {\n  return <h1>About page</h1>;\n}"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "npm run dev"
+              },
+              {
+                "do": "wait",
+                "seconds": 2
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "app/about/page.tsx",
+            "language": "tsx",
+            "code": "export default function About() {\n  return <h1>About page</h1>;\n}",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Nesting just works",
+        "body": "Add a folder, get a nested route",
+        "visual": [
+          {
+            "type": "code",
+            "title": "folders become routes",
+            "language": "bash",
+            "code": "app/about/page.tsx -> /about\napp/about/team/page.tsx -> /about/team",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *ROUTES* for the full guide",
+    "caption": "Next.js App Router file-based routing explained\nComment ROUTES for the full guide\nWhat should lesson 2 cover? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#reactjs",
+      "#webdevelopment",
+      "#codingforbeginners"
+    ],
+    "dm_keyword": "ROUTES",
+    "dm_guide": "Here's the full breakdown: in the Next.js App Router, every app/.../page.tsx file becomes a route automatically. No router file needed. app/about/page.tsx gives you /about. Nest folders for nested routes, like app/about/team/page.tsx for /about/team. app/page.tsx alone is your home page. Official docs: https://nextjs.org/docs/app/building-your-application/routing",
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Ever wonder exactly where your Next.js routes come from?",
+      "[knowing] Unlike other frameworks, there's no router to configure.",
+      "[excited] Watch this: add one file inside the app folder, (break) [confident] save it, and that page instantly becomes a live route.",
+      "[confident and fast] Nest another folder, and the route nests too.",
+      "[warm, curious] Comment ROUTES and I'll send the guide."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 1,
+    "posted_at": "2026-10-05T20:00:45+00:00",
+    "media_id": "18632318278046927",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 22.8
   }
 ]
