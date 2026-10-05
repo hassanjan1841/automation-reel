@@ -10,6 +10,8 @@
     "caption_file": "extras/chai-reel-v2.txt",
     "cover": "extras/chai-reel-v2-cover.jpg",
     "post_at": "2026-10-05T18:00:00+05:00",
-    "media_id": null
+    "media_id": "18151517065545035",
+    "caption": "I put a cat in my terminal 🐈\n\nChai sits above my Claude Code prompt and reacts to my work: a happy jump when tests pass, a hiss at errors, zoomies on /pet run, a nap when I go idle.\n\nHow it's built:\n1. A free 3D cat model from Sketchfab\n2. Rigged and posed in Blender with Python\n3. 17 moves animated by hand, all flowing into each other\n4. Paws checked against the floor so they never slide\n5. Rendered and packed into 28 x 6 terminal cells\n\nCredits: cat model \"An Animated Cat\" by Evil_Katz (CC BY 4.0, Sketchfab). Cat sounds by kerzoven (CC0, OpenGameArt). Walk and gallop keyed from AI4Animation motion capture (CC BY-NC 4.0).\n\n#claudecode #blender #coding #devlife #terminal #3danimation #programming",
+    "posted_at": "2026-10-05T13:00:49+00:00"
   }
 ]
