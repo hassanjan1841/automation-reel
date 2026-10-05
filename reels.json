@@ -2434,5 +2434,151 @@
     ],
     "slot": 1,
     "seconds": 21.1
+  },
+  {
+    "id": 51,
+    "style": "light",
+    "payoff": "Add one line to every invoice: \"50% deposit due before work starts. Remaining 50% due within 7 days of delivery. Work pauses if unpaid.\" It gets you paid upfront and protects you if the client disappears after delivery.",
+    "kicker": "Freelance playbook #3",
+    "hook": "Missing this *invoice line*?",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "diff",
+      "language": "md",
+      "title": "invoice.txt",
+      "before": "Total due: $1,200\nPayment due on delivery.",
+      "after": "Total due: $1,200\n50% deposit before start.\nRemaining 50% due in 7 days.\nWork pauses if unpaid."
+    },
+    "alternatives": [
+      {
+        "hook": "What stops *client ghosting*?",
+        "spoken": "[urgent] Ever finish work and a client goes quiet (break) [knowing] on payment?",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "No deposit, then *paid upfront*?",
+        "spoken": "[fired up] What if one invoice line (break) [confident] guaranteed you got paid upfront?",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "One *line* for faster pay?",
+        "spoken": "[grinning, punchy] Want client payments locked in with just one invoice line?",
+        "hook_type": "shortcut"
+      }
+    ],
+    "points": [
+      {
+        "title": "The risk",
+        "body": "No deposit, no leverage",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "invoice-before.txt",
+            "code": "Total due: $1,200\nPayment due on delivery\n(No deposit, no late fee)",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The clause",
+        "body": "One line, paid upfront",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "invoice.txt",
+                "content": "Project: Website redesign\nTotal due: $1,200\nPayment due on delivery."
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "invoice.txt"
+              },
+              {
+                "do": "type",
+                "text": "50% deposit due before work starts.\nRemaining 50% due within 7 days\nof delivery. Work pauses if unpaid."
+              },
+              {
+                "do": "save"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "invoice.txt",
+            "code": "50% deposit due before work starts.\nRemaining 50% due within 7 days\nof delivery. Work pauses if unpaid.",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The proof",
+        "body": "Deposit paid, final protected",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "md",
+            "title": "invoice.txt",
+            "before": "Project: Website redesign\nTotal: $1,200\nDue on delivery",
+            "after": "Project: Website redesign\nDeposit (50%): $600 - paid\nFinal (50%): $600 - due in 7 days\nWork pauses if unpaid"
+          }
+        ]
+      }
+    ],
+    "reveal": 2,
+    "cta": "Comment *INVOICE* for the exact clause",
+    "dm_keyword": "INVOICE",
+    "dm_guide": "Here's the clause to add to every contract and invoice: Work starts after a 50% deposit. Remaining 50% is due within 7 days of delivery. If the final payment isn't made by then, work pauses and further work stops until paid in full. Add it to your contract and as a line item on your invoice. For a free editable contract template, check Bonsai's freelance contract templates at hellobonsai.com. To automate deposit and final payment requests, Stripe Invoicing supports split payments at stripe.com/invoicing.",
+    "caption": "Freelance deposit clause for client contracts\nComment INVOICE for the full clause and template\nWhat's your rule for getting paid upfront? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancedeveloper",
+      "#contracttemplate",
+      "#invoicing",
+      "#clientmanagement"
+    ],
+    "voiceover": [
+      "[exasperated] Is your invoice missing the one line (break) [serious] that stops ghosting?",
+      "[serious, fast] No deposit means no leverage once the job's done.",
+      "[confident and fast] Add one line to the invoice before you start. (break) [steady] Half now, half due within seven days of delivery.",
+      "[excited] Say work pauses if final half goes unpaid.",
+      "[warm, curious] Comment INVOICE and I'll send the exact clause (break) [confident] to copy."
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "question"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 3,
+    "posted_at": "2026-10-05T16:00:52+00:00",
+    "media_id": "18142314544589037",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "ide",
+      "diff",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 26.0
   }
 ]
