@@ -129,6 +129,10 @@ def review(video, reel, slides, voiceover=None):
                          'memory': 'an animation of variables pointing at objects, references moving',
                          'outputmap': 'the output of `' + visual.get('command', '') + '` lifting out into boxes '
                                       '(check it is what that command really prints)',
+                         'board': 'an animated task board for the goal "' + str(visual.get('goal')) + '" (check the tasks '
+                                  'are what that workflow really does)',
+                         'blueprint': 'an animated schematic of ' + ', '.join(p.get('label', '') for p in visual.get('parts', []))
+                                      + ' with callouts (check the parts and links are real)',
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'

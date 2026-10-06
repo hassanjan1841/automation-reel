@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, board, blueprint (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -315,6 +315,9 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
+  - `board` and `blueprint` (motion.py): a typed goal with task cards moving To do, Doing, Done and a ring; outline
+    parts that draw in with callouts whose text resolves from a seeded scramble. `board` captions use Instrument Serif
+    (OFL), fetched by `render.ensure_fonts` and embedded by `motion.font_css`.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
     `RULE_FIELDS`.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or

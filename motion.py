@@ -22,6 +22,8 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   memory     variables pointing at objects; references move, orphans dim       refs, objects, reassign
   outputmap  a real command's output lines lift out into a diagram              command, output
   kinetic    the takeaway in big type, word by word, the key word underlined     lines, tag
+  board      a goal typed, task cards moving To do, Doing, Done, a ring          goal, tasks, captions
+  blueprint  outline parts drawing in, links, then scrambled-text callouts        parts, links, callouts
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -37,14 +39,14 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic')
+         'memory', 'outputmap', 'kinetic', 'board', 'blueprint')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}
-text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}
+text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}.serif{font-family:'Instrument Serif'}
 </style></head><body><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg><script>
 const P = window.PARAMS, S = P.spec, W = P.w, H = P.h;
 const C = {panel: '#1E2230', bar: '#161A25', text: '#E6E9F2', dim: '#8A91A5', line: 'rgba(230,233,242,0.18)',
@@ -530,7 +532,127 @@ T.kinetic = () => {
   END = Math.max(END, t + 2.2);
 };
 
-Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
+T.board = () => {
+  // A goal typed into an input bar, task cards dropping into To do, then walking to Doing and Done while a ring fills.
+  const N = S.tasks.length, CREAM = '#F7F1E3', INK = '#1B1F2A', SUB = '#6B6F7B', EDGE = 'rgba(20,24,33,0.16)';
+  const cp = (g, x, y, w, h) => panel(g, x, y, w, h, {fill: CREAM, stroke: EDGE});
+  const bar = mk('g', {opacity: 0}, L1); cp(bar, 0, 0, W, 88);
+  txt(bar, 34, 56, '>', 34, {class: 'mono', fill: C.accent});
+  const goal = txt(bar, 76, 55, '', 32, {class: 'mono', fill: INK, 'font-weight': 500, 'xml:space': 'preserve'});
+  const caret = mk('rect', {x: 76, y: 24, width: 4, height: 40, fill: C.accent, opacity: 0}, bar);
+  pop(bar, 0, W / 2, 44, 0.45);
+  const t0 = 0.5, per = 0.03, n = S.goal.length, typed = t0 + n * per;
+  fade(caret, t0 - 0.1, 0.1);
+  at(t0, n * per, p => { const k = Math.round(p * n); goal.textContent = S.goal.slice(0, k); caret.setAttribute('x', 76 + k * 19.2); }, E.lin);
+  at(typed, 0.9, p => caret.setAttribute('opacity', p < 0.8 ? (Math.floor(p * 6) % 2 ? 0 : 1) : 0), E.lin);
+  for (let i = 1; i < n; i += 3) snd(t0 + i * per, 'key');
+  const gap = 18, colW = (W - 2 * gap) / 3, cw = colW - 28, ch = 96, y0 = 108, colH = 52 + N * (ch + 14) + 14;
+  const cols = mk('g', {opacity: 0, filter: 'url(#soft)'}, L0);
+  ['To do', 'Doing', 'Done'].forEach((h, i) => { const x = i * (colW + gap);
+    mk('rect', {x, y: y0, width: colW, height: colH, rx: 22, fill: C.track, stroke: C.guide, 'stroke-width': 2}, cols);
+    txt(cols, x + 24, y0 + 36, h.toUpperCase(), 22, {fill: C.mute, 'letter-spacing': 3}); });
+  at(0.25, 0.5, (p, raw) => { cols.setAttribute('opacity', Math.min(1, raw * 2.2)); if (raw > 0.5) cols.removeAttribute('filter'); }, E.out);
+  const slot = (col, row) => [col * (colW + gap) + 14, y0 + 52 + row * (ch + 14) + 6];
+  const width = (s, sz) => { const e = txt(L2, 0, 0, s, sz); const m = e.getComputedTextLength(); e.remove(); return m; };
+  const wrap = s => { let lines = [s], size = 26; const ws = s.split(' ');
+    if (width(s, size) > cw - 84 && ws.length > 1) { let best = Infinity;
+      for (let k = 1; k < ws.length; k++) { const a = ws.slice(0, k).join(' '), b = ws.slice(k).join(' '), m = Math.max(width(a, size), width(b, size));
+        if (m < best) { best = m; lines = [a, b]; } } }
+    while (size > 18 && Math.max(...lines.map(l => width(l, size))) > cw - 84) size -= 2;
+    return {lines, size}; };
+  const cards = S.tasks.map((label, i) => {
+    const g = mk('g', {opacity: 0}, L1), halo = mk('rect', {x: -4, y: -4, width: cw + 8, height: ch + 8, rx: 26, fill: 'none',
+      stroke: C.accent, 'stroke-width': 6, opacity: 0, filter: 'url(#glow)'}, g);
+    cp(g, 0, 0, cw, ch);
+    const ring = mk('rect', {x: -2, y: -2, width: cw + 4, height: ch + 4, rx: 24, fill: 'none', stroke: C.accent, 'stroke-width': 4, opacity: 0}, g);
+    mk('circle', {cx: 38, cy: ch / 2, r: 15, fill: 'none', stroke: SUB, 'stroke-width': 3}, g);
+    const fill = mk('circle', {cx: 38, cy: ch / 2, r: 15, fill: C.accent, opacity: 0}, g);
+    const tick = mk('path', {d: `M30 ${ch / 2 + 1} L36 ${ch / 2 + 7} L47 ${ch / 2 - 6}`, fill: 'none', stroke: '#fff', 'stroke-width': 4,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0}, g);
+    const tl = tick.getTotalLength(); tick.setAttribute('stroke-dasharray', tl); tick.setAttribute('stroke-dashoffset', tl);
+    const w = wrap(label);
+    w.lines.forEach((l, j) => txt(g, 68, ch / 2 + (j - (w.lines.length - 1) / 2) * w.size * 1.25 + w.size * 0.34, l, w.size, {fill: INK}));
+    return {g, halo, ring, fill, tick, tl}; });
+  const tCards = typed + 0.35, drop = 0.45;
+  cards.forEach((c, i) => { const t = tCards + i * drop, [x, y] = slot(0, i);
+    at(t, 0.25, (p, raw) => { c.g.setAttribute('opacity', Math.min(1, raw * 3)); c.g.setAttribute('transform', `translate(${x} ${y - (1 - p) * 80})`); }, E.out);
+    snd(t + 0.18, 'pop'); });
+  SETTLE = tCards + (N - 1) * drop + 0.25;
+  const ry = y0 + colH + 26, hasCap = S.captions.length > 0, rx = hasCap ? 0 : (W - 300) / 2, rcx = rx + 84, rcy = ry + 78, R = 46, circ = 2 * Math.PI * R;
+  const rg = mk('g', {opacity: 0}, L1); cp(rg, rx, ry, 300, 156);
+  mk('circle', {cx: rcx, cy: rcy, r: R, fill: 'none', stroke: 'rgba(20,24,33,0.12)', 'stroke-width': 14}, rg);
+  const arc = mk('circle', {cx: rcx, cy: rcy, r: R, fill: 'none', stroke: C.accent, 'stroke-width': 14, 'stroke-linecap': 'round',
+    'stroke-dasharray': circ, 'stroke-dashoffset': circ, transform: `rotate(-90 ${rcx} ${rcy})`}, rg);
+  const count = txt(rg, rcx, rcy + 11, `0/${N}`, 30, {fill: INK, 'font-weight': 700, 'text-anchor': 'middle'});
+  txt(rg, rx + 156, ry + 70, 'Tasks', 28, {fill: INK});
+  const status = txt(rg, rx + 156, ry + 106, 'Queued', 24, {fill: SUB, 'font-weight': 500});
+  pop(rg, tCards, rx + 150, ry + 78, 0.5);
+  const tWork = SETTLE + 0.4, step = 0.75, [dx, dy] = slot(1, 0);
+  set(tWork, () => { status.textContent = 'Running'; status.setAttribute('fill', C.accent); });
+  cards.forEach((c, i) => { const s = tWork + i * step, [x, y] = slot(0, i), [ex, ey] = slot(2, i);
+    moveTo(c.g, s, 0.4, x, y, dx, dy, E.out); fade(c.ring, s, 0.3); at(s, 0.3, p => c.halo.setAttribute('opacity', p * 0.7)); snd(s, 'tick');
+    moveTo(c.g, s + 0.65, 0.4, dx, dy, ex, ey, E.out); fade(c.ring, s + 0.65, 0.25, 1, 0);
+    at(s + 0.65, 0.25, p => c.halo.setAttribute('opacity', (1 - p) * 0.7));
+    fade(c.fill, s + 0.95, 0.2); fade(c.tick, s + 0.95, 0.05);
+    at(s + 0.95, 0.3, p => c.tick.setAttribute('stroke-dashoffset', c.tl * (1 - p)), E.out); snd(s + 0.95, 'pop');
+    at(s + 0.95, 0.4, (p) => { arc.setAttribute('stroke-dashoffset', circ * (1 - lerp(i / N, (i + 1) / N, p)));
+      count.textContent = `${p > 0.4 ? i + 1 : i}/${N}`; }, E.out); });
+  const done = tWork + (N - 1) * step + 0.95;
+  set(done + 0.4, () => { status.textContent = 'Done'; }); snd(done + 0.4, 'click');
+  const beats = {1: [tWork], 2: [tCards, done], 3: [tCards, tWork, done]}[S.captions.length] || [];
+  S.captions.forEach((s, j) => { const e = txt(L2, rx + 330, ry + 46 + j * 52, s, 44, {class: 'serif', 'font-weight': 400, fill: C.ink,
+      'font-style': j ? 'italic' : 'normal', opacity: 0, filter: 'url(#soft)'});
+    fit(e, W - 330); const by = +e.getAttribute('y');
+    at(beats[j], 0.4, (p, raw) => { e.setAttribute('opacity', p); e.setAttribute('y', by + (1 - p) * 10); if (raw > 0.5) e.removeAttribute('filter'); }, E.out); });
+  END = Math.max(END, done + 1.2);
+};
+
+T.blueprint = () => {
+  // A schematic on the reel background: outlines draw in, connectors follow, then callouts one at a time, their text
+  // resolving out of a seeded scramble. Parts take fixed spots by count, so connectors never cross a third part.
+  const parts = S.parts, N = parts.length, BW = 214, BH = 84;
+  const POS = {2: [[-250, -120], [250, 120]], 3: [[0, -190], [-270, 110], [270, 110]],
+    4: [[-270, -170], [270, -170], [-270, 150], [270, 150]], 5: [[0, -250], [-310, -60], [310, -60], [-190, 190], [190, 190]]}[N];
+  const byId = {}, SQ = 8, CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@';
+  const sq = (x, y, s, color, a = {}) => mk('rect', {x: x - s / 2, y: y - s / 2, width: s, height: s, fill: color, opacity: 0, ...a}, L2);
+  const outline = {stroke: C.ink, 'stroke-width': 3, 'stroke-linecap': 'butt', 'stroke-linejoin': 'miter', opacity: 0.9};
+  parts.forEach((p, i) => { const [cx, cy] = POS[i], x = cx - BW / 2, y = cy - BH / 2, t = 0.15 + i * 0.05;
+    const o = line(`M${x} ${y} H${x + BW} V${y + BH} H${x} Z`, outline), body = mk('rect', {x, y, width: BW, height: BH, fill: C.track, opacity: 0}, L0);
+    const lab = fit(txt(L2, cx, cy + 8, p.label, 22, {class: 'mono', 'font-weight': 500, fill: C.ink, 'text-anchor': 'middle', opacity: 0}), BW - 24);
+    const corners = [[x, y], [x + BW, y], [x + BW, y + BH], [x, y + BH]].map(([a, b]) => sq(a, b, SQ, C.ink));
+    draw(o, t, 0.7); fade(body, t + 0.5, 0.3); fade(lab, t + 0.55, 0.3); corners.forEach(c => fade(c, t + 0.6, 0.15));
+    byId[p.id] = {o, cx, cy, w: BW, h: BH, i}; });
+  snd(0.15, 'scribble');
+  const tl = 0.15 + (N - 1) * 0.05 + 0.7 + 0.15;
+  S.links.forEach((k, i) => { const a = byId[k.from], b = byId[k.to], [x1, y1, x2, y2] = exits(a, b), t = tl + i * 0.12;
+    const l = line(`M${x1} ${y1} L${x2} ${y2}`, {stroke: C.ink, 'stroke-width': 2.5, opacity: 0.7});
+    draw(l, t, 0.5); [[x1, y1], [x2, y2]].forEach(([x, y], j) => fade(sq(x, y, SQ - 2, C.ink), t + (j ? 0.45 : 0), 0.1));
+    snd(t, 'swish'); });
+  const tc = tl + (S.links.length - 1) * 0.12 + 0.5 + 0.3; SETTLE = tc - 0.3;
+  const half = Math.max(...POS.map(p => Math.abs(p[0]))) + BW / 2, step = 1.4, lh = 56;
+  let prev = null;
+  S.callouts.forEach((c, k) => { const p = byId[c.part], above = p.cy < 0 || (p.cy === 0 && p.i % 2 === 0), dir = above ? -1 : 1;
+    const sx = p.cx + (p.cx < 0 ? -50 : 50), ey = p.cy + dir * BH / 2, ty = ey + dir * lh, t = tc + k * step;
+    const lw = c.text.length * 24 * 0.6, lx = Math.max(-(half - lw / 2), Math.min(half - lw / 2, sx));
+    const l = line(`M${sx} ${ey} L${sx} ${ty}`, {stroke: C.ink, 'stroke-width': 2, 'stroke-linecap': 'butt'});
+    const end = sq(sx, ey, 10, C.ink), el = txt(L2, lx, ty + (above ? -14 : 34), '', 24, {class: 'mono', 'font-weight': 500, fill: C.ink,
+      'text-anchor': 'middle', opacity: 0});
+    const paint = (color, on) => { l.p.setAttribute('stroke', color); end.setAttribute('fill', color); el.setAttribute('fill', color);
+      p.o.p.setAttribute('stroke', on ? C.accent : C.ink); };
+    const pv = prev; if (pv) set(t, pv);
+    set(t, () => paint(C.accent, true));
+    const off = () => paint(C.ink, false); prev = off;
+    fade(end, t, 0.1); draw(l, t, 0.35); fade(el, t + 0.25, 0.05); snd(t, 'tick');
+    let seed = k * 977; for (const ch of c.text) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const mix = (a, b, d) => { let h = (a * 374761393 + b * 668265263 + d * 2147483647) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
+    at(t + 0.25, 0.4, p2 => { const n = c.text.length, res = Math.floor(p2 * n), st = Math.floor(p2 * 12);
+      el.textContent = p2 >= 1 ? c.text : [...c.text].map((ch, i) => i < res || ch === ' ' ? ch : CH[mix(seed, st, i) % CH.length]).join(''); }, E.lin);
+    snd(t + 0.3, 'key'); snd(t + 0.5, 'key'); });
+  END = Math.max(END, tc + (S.callouts.length - 1) * step + 1.8);
+};
+
+Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"'),
+  document.fonts.load('400 34px "Instrument Serif"'), document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
   // reel), scaling down only when needed, and centre the layout both ways.
@@ -611,7 +733,7 @@ def prepare(spec, w):
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines'):
+                'lines', 'tasks', 'captions', 'parts', 'links', 'callouts'):
         spec.setdefault(key, [])
     return spec
 
@@ -619,11 +741,14 @@ def prepare(spec, w):
 def font_css():
     import visuals
     visuals.mono(20)  # makes sure JetBrains Mono is downloaded
-    faces = [('Poppins', wt, render.FONT_DIR / f'Poppins-{name}.ttf') for wt, name in (('700', 'Bold'), ('600', 'SemiBold'),
-                                                                                      ('500', 'Regular'))]
-    faces.append(('JetBrains Mono', '500', visuals.MONO))
-    return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};src:url(data:font/ttf;base64,"
-                   f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, path in faces)
+    render.ensure_fonts()
+    faces = [('Poppins', wt, 'normal', render.FONT_DIR / f'Poppins-{name}.ttf') for wt, name in (('700', 'Bold'), ('600', 'SemiBold'),
+                                                                                                ('500', 'Regular'))]
+    faces.append(('JetBrains Mono', '500', 'normal', visuals.MONO))
+    faces += [('Instrument Serif', '400', style.lower(), render.FONT_DIR / f'InstrumentSerif-{style}.ttf')
+              for style in render.SERIF_STYLES]
+    return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};font-style:{fs};src:url(data:font/ttf;base64,"
+                   f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, fs, path in faces)
 
 
 def render_motion(spec, theme, size):
@@ -712,6 +837,15 @@ EXAMPLES = {
     'outputmap': {'type': 'outputmap', 'command': 'git branch',
                   'output': ['* main', '  feature/login', '  fix/cache']},
     'kinetic': {'type': 'kinetic', 'lines': ['Delete the key', 'on every *write*'], 'tag': 'Key step'},
+    'board': {'type': 'board', 'goal': 'Fix the flaky login test',
+              'tasks': ['Reproduce the failure', 'Find the race', 'Patch the test', 'Run the suite'],
+              'captions': ['Start from a goal.', 'Split it into small tasks.', 'Check each one off.']},
+    'blueprint': {'type': 'blueprint',
+                  'parts': [{'id': 'edge', 'label': 'Edge'}, {'id': 'api', 'label': 'API'}, {'id': 'queue', 'label': 'Queue'},
+                            {'id': 'db', 'label': 'Postgres'}, {'id': 'worker', 'label': 'Worker'}],
+                  'links': [{'from': 'edge', 'to': 'api'}, {'from': 'api', 'to': 'queue'}, {'from': 'api', 'to': 'db'},
+                            {'from': 'queue', 'to': 'worker'}, {'from': 'worker', 'to': 'db'}],
+                  'callouts': [{'part': 'queue', 'text': 'Retries on failure'}, {'part': 'db', 'text': 'Source of truth'}]},
 }
 
 
