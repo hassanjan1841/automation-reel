@@ -31,6 +31,8 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   blueprint  outline parts drawing in, links, then scrambled-text callouts        parts, links, callouts
   command    a terminal card types a command, then becomes its result panel     command, title, rows
   palette    a command list scrolls and lands on the pick, chips above it       prompt, items, pick, chips
+  statement  short lines rising in over a drifting gradient and glass panels   lines
+  quotes     real posts typed onto dark cards, then stacked into a pile         quotes
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -46,7 +48,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -84,7 +86,7 @@ const E = {
   spring: p => { if (p >= 1) return 1; const z = 0.82, w = 2 * Math.PI * 1.35, t = p * 1.6, wd = w * Math.sqrt(1 - z * z);
     return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + z * w / wd * Math.sin(wd * t)); },
 };
-const TW = [], SND = []; let SETTLE = 0, END = 0;
+const TW = [], SND = []; let SETTLE = 0, END = 0, FIT = null;  // FIT: what to fit into the box when ROOT holds clipped overflow
 function at(start, dur, fn, ease = E.out) { TW.push({start, dur, fn, ease}); END = Math.max(END, start + dur); }
 function set(t, fn) { at(t, 0, p => p && fn()); }
 function snd(t, kind) { SND.push([Math.round(t * 1000) / 1000, kind]); }
@@ -922,10 +924,119 @@ T.blueprint = () => {
 
 Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"'),
   document.fonts.load('400 34px "Instrument Serif"'), document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
+T.statement = () => {
+  // Short stacked statements on a soft card of drifting blurred blobs, with frosted glass panels floating over it.
+  // Each line rises out of a blur, held a beat before the next; the key word in the accent gets a marker stroke.
+  const cw = W - 72, ch = H - 72, defs = svg.querySelector('defs'), ink = '#141821', w = 2 * Math.PI * 0.08;
+  const G = mk('g', {}, L1);
+  const blur = (id, sd) => { const f = mk('filter', {id, x: '-30%', y: '-30%', width: '160%', height: '160%'}, defs);
+    return mk('feGaussianBlur', {stdDeviation: sd}, f); };
+  blur('stblob', 46); blur('stfrost', 110);
+  mk('clipPath', {id: 'stclip'}, defs).appendChild(mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 56}, svg));
+  FIT = mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 56, fill: '#F5F2FB', filter: 'url(#shadow)'}, G);
+  const hues = [[C.accent, 0.5, 0.25, 0.3], ['#B9C4FF', 0.8, 0.8, 0.28], ['#BFEBD8', 0.85, 0.2, 0.26], ['#FFD9C2', 0.2, 0.85, 0.3]];
+  const sets = [];
+  const blobs = (parent, filter) => { const g = mk('g', {filter: `url(#${filter})`}, parent);
+    sets.push(hues.map(([c, bx, by, r]) => ({e: mk('circle', {r: r * cw, fill: c, opacity: c === C.accent ? 0.42 : 0.8}, g), bx, by}))); };
+  const base = mk('svg', {width: cw, height: ch, overflow: 'hidden', 'clip-path': 'url(#stclip)'}, G); blobs(base, 'stblob');
+  const panels = [[0.5, 0.1, 0.4, 0.3, 0], [0.42, 0.62, 0.46, 0.26, 2.1]].map(([px, py, pw, ph, ph0], k) => {
+    const clip = mk('clipPath', {id: 'stp' + k}, defs), cr = mk('rect', {width: pw * cw, height: ph * ch, rx: 36}, clip);
+    blobs(mk('svg', {width: cw, height: ch, overflow: 'hidden', 'clip-path': `url(#stp${k})`}, G), 'stfrost');
+    const r = mk('rect', {width: pw * cw, height: ph * ch, rx: 36, fill: 'rgba(255,255,255,0.4)', stroke: 'rgba(255,255,255,0.8)', 'stroke-width': 2}, G);
+    return {r, cr, x: px * cw, y: py * ch, ph0}; });
+  const drift = t => { hues.forEach((_, j) => sets.forEach(s => { const b = s[j], a = 0.09 * cw;
+      b.e.setAttribute('cx', b.bx * cw + a * Math.cos(w * t + j * 1.7)); b.e.setAttribute('cy', b.by * ch + a * Math.sin(w * t + j * 2.3)); }));
+    panels.forEach(p => { const x = p.x + 0.03 * cw * Math.sin(w * t + p.ph0), y = p.y + 0.03 * ch * Math.cos(w * t + p.ph0);
+      for (const e of [p.r, p.cr]) { e.setAttribute('x', x); e.setAttribute('y', y); } }); };
+  drift(0);
+  const parsed = S.lines.map(l => l.split('*').map((s, i) => [s, i % 2 === 1]).filter(([s]) => s));
+  const left = cw * 0.08, avail = cw - left - cw * 0.05;
+  let size = Math.min(84, Math.floor(ch / (parsed.length * 1.25 + 1)));
+  const els = parsed.map(segs => { const e = mk('text', {x: left, y: 0, 'font-size': size, 'font-weight': 700, fill: ink, opacity: 0}, G);
+    segs.forEach(([s, hl]) => { const sp = mk('tspan', hl ? {fill: C.accent} : {}, e); sp.textContent = s; }); return e; });
+  while (size > 36 && Math.max(...els.map(e => e.getComputedTextLength())) > avail) { size -= 2; els.forEach(e => e.setAttribute('font-size', size)); }
+  const lh = size * 1.3, y0 = (ch - lh * els.length) / 2 + size * 0.95, marks = [];
+  els.forEach((e, i) => { const y = y0 + i * lh; e.setAttribute('y', y);
+    const g = blur('stline' + i, 8); e.setAttribute('filter', `url(#stline${i})`);
+    const t0 = 0.25 + i * 1.2;
+    at(t0, 0.3, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5)); e.setAttribute('transform', `translate(0 ${(1 - p) * 40})`);
+      g.setAttribute('stdDeviation', 8 * (1 - p)); if (raw >= 1) e.removeAttribute('filter'); });
+    snd(t0, 'swish');
+    [...e.querySelectorAll('tspan[fill]')].forEach(sp => { const n = sp.textContent.length;
+      const x1 = sp.getStartPositionOfChar(0).x, x2 = sp.getEndPositionOfChar(n - 1).x;
+      const m = mk('path', {d: `M${x1} ${y + size * 0.16} Q${(x1 + x2) / 2} ${y + size * 0.22} ${x2} ${y + size * 0.14}`, fill: 'none', stroke: C.accent,
+        'stroke-width': Math.max(6, size * 0.07), 'stroke-linecap': 'round', opacity: 0.85}, G);
+      const len = m.getTotalLength(); m.setAttribute('stroke-dasharray', len); m.setAttribute('stroke-dashoffset', len);
+      G.insertBefore(m, e); marks.push({m, len}); }); });
+  SETTLE = 0.25 + (els.length - 1) * 1.2 + 0.4;
+  marks.forEach(({m, len}) => at(SETTLE, 0.45, p => m.setAttribute('stroke-dashoffset', len * (1 - p)), E.inout));
+  if (marks.length) snd(SETTLE, 'scribble');
+  const total = SETTLE + 1.5; at(0, total, (p, raw) => drift(raw * total), E.lin);
+  END = Math.max(END, total);
+};
+
+T.quotes = () => {
+  // Real posts typed onto dark cards one after another (about 18 characters a second, faster only when the text would
+  // not fit the time), each card blur-sliding out as the next slides in; at the end the cards stack into a tilted pile.
+  const Q = S.quotes, n = Q.length, cw = W - 150, pad = 44, bodyW = cw - 2 * pad, defs = svg.querySelector('defs');
+  const total = Q.reduce((k, q) => k + q.text.length, 0), cps = Math.max(18, total / 6.5), IN = p => p * p * p;
+  const wrap = (text, sz) => { const probe = txt(L2, 0, 0, '', sz, {'font-weight': 500}); const out = [];
+    text.split('\n').forEach(par => { let cur = '';
+      par.split(/\s+/).filter(Boolean).forEach(word => { const trial = cur ? cur + ' ' + word : word; probe.textContent = trial;
+        if (cur && probe.getComputedTextLength() > bodyW) { out.push(cur); cur = word; } else cur = trial; });
+      out.push(cur); });
+    probe.remove(); return out; };
+  let size = 40, wrapped = Q.map(q => wrap(q.text, size));
+  while (size > 28 && Math.max(...wrapped.map(l => l.length)) > 8) { size -= 2; wrapped = Q.map(q => wrap(q.text, size)); }
+  const lh = Math.round(size * 1.4), head = 150, ch = head + 30 + lh * Math.max(...wrapped.map(l => l.length)) + 40;
+  const cx = cw / 2, cy = ch / 2;
+  const tf = (x, y, rot, s) => `translate(${x} ${y}) translate(${cx} ${cy}) rotate(${rot}) scale(${s}) translate(${-cx} ${-cy})`;
+  const rest = {x: 0, y: 0, rot: 0, s: 1, blur: 0, op: 1}, gone = {x: -cw * 0.9, y: 0, rot: 0, s: 1, blur: 12, op: 0};
+  const cards = Q.map((q, j) => {
+    const f = mk('filter', {id: 'qb' + j, x: '-30%', y: '-30%', width: '160%', height: '160%'}, defs), sd = mk('feGaussianBlur', {stdDeviation: 0}, f);
+    const g = mk('g', {opacity: 0, transform: tf(0, 0, 0, 1)}, L1);
+    mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 34, fill: '#161C28', stroke: '#2A3242', 'stroke-width': 2, filter: 'url(#shadow)'}, g);
+    const name = q.author.replace(/^@/, '');
+    mk('circle', {cx: pad + 36, cy: 50 + 36, r: 36, fill: '#232A38', stroke: C.accent, 'stroke-width': 2}, g);
+    txt(g, pad + 36, 50 + 36 + 11, name.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase(), 30, {'text-anchor': 'middle', fill: C.accent, 'font-weight': 700});
+    fit(txt(g, pad + 96, 50 + 30, name, 34), cw - pad * 2 - 96);
+    txt(g, pad + 96, 50 + 68, q.platform, 26, {fill: C.dim, 'font-weight': 500});
+    const rows = wrapped[j].map((l, i) => ({t: txt(g, pad, head + 30 + i * lh + size * 0.8, '', size, {'font-weight': 500, fill: '#E6E9F2'}), full: l}));
+    const caret = mk('rect', {x: pad, y: head + 30 + size * 0.05, width: 4, height: size * 1.05, rx: 2, fill: C.accent, opacity: 0}, g);
+    return {g, sd, rows, caret, q, len: rows.reduce((k, r) => k + r.full.length, 0)};
+  });
+  // Animate any of x, y, rot, scale, blur and opacity of a card between two states.
+  const move = (j, t, d, a, b, ease = E.out) => at(t, d, p => { const c = cards[j], v = k => lerp(a[k], b[k], p);
+    c.g.setAttribute('transform', tf(v('x'), v('y'), v('rot'), v('s'))); c.g.setAttribute('opacity', v('op'));
+    c.sd.setAttribute('stdDeviation', v('blur')); if (v('blur') > 0.05) c.g.setAttribute('filter', `url(#qb${j})`); else c.g.removeAttribute('filter'); }, ease);
+  let t = 0.1;
+  cards.forEach((c, j) => {
+    move(j, t, 0.45, j ? {...gone, x: cw * 0.7} : {...rest, y: 40, blur: 10, op: 0}, rest); snd(t, 'swish');
+    if (j === 0) SETTLE = t + 0.45;
+    const ts = t + 0.5, dur = c.len / cps, hold = 0.55;
+    at(ts, dur, p => { let left = Math.round(p * c.len), at_ = 0;
+      c.rows.forEach((r, i) => { const k = Math.min(left, r.full.length); r.t.textContent = r.full.slice(0, k); left -= k; if (k > 0) at_ = i; });
+      const r = c.rows[at_]; c.caret.setAttribute('x', pad + r.t.getComputedTextLength() + 4);
+      c.caret.setAttribute('y', head + 30 + at_ * lh + size * 0.05); }, E.lin);
+    at(ts, dur + hold, (p, raw) => { const tm = raw * (dur + hold);
+      c.caret.setAttribute('opacity', raw < 1 && (tm < dur || Math.floor(tm * 4) % 2 === 0) ? 1 : 0); }, E.lin);
+    for (let k = 3; k <= c.len; k += 3) snd(ts + k / cps, 'key');
+    t = ts + dur + hold;
+    if (j < n - 1) { move(j, t, 0.4, rest, gone, IN); t += 0.1; }
+  });
+  if (n > 1) {
+    const pile = j => ({x: (j - (n - 1)) * 16, y: (j - (n - 1)) * 14, rot: 2 + (j - (n - 1)) * 4, s: 0.88, blur: 0, op: 1});
+    const t1 = t + 0.1;
+    cards.forEach((c, j) => { move(j, t1 + (n - 1 - j) * 0.08, 0.6, j === n - 1 ? rest : {...gone, op: 0}, pile(j)); });
+    snd(t1, 'swish'); snd(t1 + 0.45, 'thud'); END = Math.max(END, t1 + 0.6 + (n - 1) * 0.08 + 0.6);
+  } else END = Math.max(END, t + 0.4);
+};
+
+Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
   // reel), scaling down only when needed, and centre the layout both ways.
-  const M = 36, bb = ROOT.getBBox(), k = Math.min(1, (W - 2 * M) / bb.width, (H - 2 * M) / bb.height);
+  const M = 36, bb = (FIT || ROOT).getBBox(), k = Math.min(1, (W - 2 * M) / bb.width, (H - 2 * M) / bb.height);
   ROOT.setAttribute('transform', `translate(${(W - bb.width * k) / 2 - bb.x * k} ${(H - bb.height * k) / 2 - bb.y * k}) scale(${k})`); window.META = {duration: Math.min(P.max, END + 0.4), settle: SETTLE, sounds: SND};
   window.renderAt(0); window.READY = true;
 }).catch(e => { window.ERROR = String(e); });
@@ -1100,7 +1211,7 @@ def prepare(spec, w):
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips'):
+                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes'):
         spec.setdefault(key, [])
     return spec
 
@@ -1230,6 +1341,13 @@ EXAMPLES = {
                 'rows': ['"name": "my-app"', '"version": "1.0.0"', '"main": "index.js"', '"license": "ISC"']},
     'palette': {'type': 'palette', 'prompt': 'npx shadcn add', 'pick': 'button', 'chips': ['Next.js', 'Vite', 'Remix', 'Astro'],
                 'items': ['accordion', 'alert', 'alert-dialog', 'avatar', 'badge', 'breadcrumb', 'button', 'calendar']},
+    'statement': {'type': 'statement', 'lines': ['Cache the *read*,', 'never the write.', 'Delete the key.']},
+    'quotes': {'type': 'quotes', 'quotes': [
+        {'author': 'Andrej Karpathy', 'platform': 'X', 'url': 'https://x.com/karpathy/status/1617979122625712128',
+         'text': 'The hottest new programming language is English'},
+        {'author': 'Andrej Karpathy', 'platform': 'X', 'url': 'https://x.com/karpathy/status/1886192184808149383',
+         'text': 'There\'s a new kind of coding I call "vibe coding", where you fully give in to the vibes, '
+                 'embrace exponentials, and forget that the code even exists.'}]},
 }
 
 

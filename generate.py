@@ -265,10 +265,21 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
+QUOTES_TOTAL = 200  # the quotes animation types its text on and must fit MAX_SECONDS
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
+
+
+def quote_errors(i, v, label='quote'):
+    """One real public post: author, a known platform, an https url and the exact text. Used by the quote visual
+    and by each quote of the quotes animation."""
+    if not 10 <= len(v.get('text', '')) <= 220 or not v.get('url', '').startswith('https://') \
+            or not v.get('author') or v.get('platform') not in QUOTE_PLATFORMS:
+        return [f'point {i} {label} needs author, platform ({", ".join(QUOTE_PLATFORMS)}), an https url '
+                'and the exact text (10 to 220 characters)']
+    return []
 
 
 def motion_errors(i, v):
@@ -429,6 +440,22 @@ def motion_errors(i, v):
             e.append(f'point {i} blueprint needs 1 to 6 links between two different listed part ids')
         elif not 1 <= len(calls) <= 3 or any(c.get('part') not in ids or not short(c.get('text'), 22) for c in calls):
             e.append(f'point {i} blueprint needs 1 to 3 callouts, each on a listed part id with text of max 22 characters')
+    elif kind == 'statement':
+        lines = v.get('lines', [])
+        if not 2 <= len(lines) <= 4 or any(not short(l, 22) or highlights(l) is None for l in lines):
+            e.append(f'point {i} statement needs 2 to 4 short lines (max 22 characters, balanced *highlights*)')
+    elif kind == 'quotes':
+        quotes = v.get('quotes', [])
+        if not 1 <= len(quotes) <= 3:
+            e.append(f'point {i} quotes needs 1 to 3 real posts')
+        elif any(not isinstance(q, dict) for q in quotes):
+            e.append(f'point {i} quotes are {{author, platform, url, text}} objects')
+        else:
+            for q in quotes:
+                e += quote_errors(i, q, 'quotes entry')
+            if not e and sum(len(q['text']) for q in quotes) > QUOTES_TOTAL:
+                e.append(f'point {i} quotes are typed on, so all the text together is max {QUOTES_TOTAL} characters; '
+                         'use fewer or shorter posts')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -749,6 +776,10 @@ VISUAL_SCHEMA = {
             'properties': {'part': {'type': 'string'}, 'text': {'type': 'string'}}}},
         'rows': {'type': 'array', 'items': {'type': 'string'}}, 'prompt': {'type': 'string'}, 'pick': {'type': 'string'},
         'chips': {'type': 'array', 'items': {'type': 'string'}},
+        'quotes': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['author', 'platform', 'url', 'text'],
+            'properties': {'author': {'type': 'string'}, 'platform': {'type': 'string'}, 'url': {'type': 'string'},
+                           'text': {'type': 'string'}}}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -889,10 +920,7 @@ def visual_errors(i, visual):
             if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
                 errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
         elif kind == 'quote':
-            if not 10 <= len(v.get('text', '')) <= 220 or not v.get('url', '').startswith('https://') \
-                    or not v.get('author') or v.get('platform') not in QUOTE_PLATFORMS:
-                errors.append(f'point {i} quote needs author, platform ({", ".join(QUOTE_PLATFORMS)}), an https url '
-                              'and the exact text (10 to 220 characters)')
+            errors += quote_errors(i, v)
         elif kind == 'walkthrough':
             steps = v.get('steps', [])
             if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 4:
@@ -1193,6 +1221,12 @@ numbers only from a cited page.
   characters, e.g. "/model" or "npx shadcn add"), "items" (4 to 12 real options of that tool, max 28 characters each),
   "pick" (one of items, not among the first 3) and optional "chips" (0 to 6 labels of max 12 characters, for example
   the frameworks it supports). Never invent options: every item must exist in that tool.
+- statement: short stacked statements on a soft moving gradient card, one line rising in at a time. "lines" (2 to
+  4, each max 22 characters, *highlight* the key word). For a punchy rule or a before/after claim in your own words.
+- quotes: 1 to 3 real public posts typed onto dark cards one after another, then stacked in a pile. "quotes" (1 to
+  3 {"author", "platform", "url", "text"}; same rules as the quote visual: a known platform, an https url, the exact
+  words of the post, 10 to 220 characters each and max 200 characters in total). Only on days real posts are
+  allowed, and only real posts you opened: never invent, reword or merge a quote. The caption credits each author.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
