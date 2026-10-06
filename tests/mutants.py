@@ -90,7 +90,7 @@ MUTANTS = [
     ('visuals.py', "        return max(1.0, self.meta['duration'] / max(0.5, self.duration - self.TAIL))", "        return 1.0",
      'an animation never fits a short slide'),
     ('motion.py', "                matched_b.add(j)", "                pass", 'morph tokens appear twice'),
-    ('motion.py', "  const M = 36, bb = ROOT.getBBox()", "  const M = 0, bb = ROOT.getBBox()", 'shadows cut at the box edge'),
+    ('motion.py', "  const M = 36, bb = (FIT || ROOT).getBBox()", "  const M = 0, bb = (FIT || ROOT).getBBox()", 'shadows cut at the box edge'),
     ('generate.py', "    if not 3 <= words(hook) <= 6:", "    if not 3 <= words(hook) <= 9:", 'sentences on screen as hooks'),
     ('generate.py', "    if not isinstance(hv, dict) or hv.get('type') not in HOOK_VISUALS:", "    if False:",
      'no proof under the hook'),

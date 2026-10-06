@@ -30,6 +30,16 @@ import render
 SOUNDS = {'key', 'tick', 'pop', 'click', 'swish', 'air', 'thud', 'scribble'}  # render.sound_kit
 
 
+class PaletteRules(unittest.TestCase):
+    def test_pick_must_be_a_real_item_that_scrolls_into_view(self):
+        import generate
+        ok = dict(motion.EXAMPLES['palette'])
+        self.assertEqual(generate.motion_errors(1, ok), [])
+        for bad in ({**ok, 'pick': 'not-a-component'}, {**ok, 'pick': ok['items'][0]}, {**ok, 'items': ok['items'][:3]},
+                    {**ok, 'chips': ['x'] * 7}):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+
+
 class Review(unittest.TestCase):
     def test_every_animation_is_described_to_the_reviewer(self):
         # New types once fell through to "a screenshot of", so the frame review judged them against the wrong thing.
