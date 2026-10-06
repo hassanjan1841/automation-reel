@@ -53,6 +53,17 @@ class MorphPlan(unittest.TestCase):
         self.assertEqual(''.join(t for t, _ in lines[1]), '    y = 1')
 
 
+class WallRules(unittest.TestCase):
+    def test_wall_validation(self):
+        import generate
+        ok = dict(motion.EXAMPLES['wall'])
+        self.assertEqual(generate.motion_errors(1, ok), [])
+        for bad in ({**ok, 'tiles': ['a', 'b']}, {**ok, 'tiles': ['x' * 15] * 3}, {**ok, 'stats': ok['stats'][:1]},
+                    {**ok, 'stats': [{'value': -1, 'label': 'x'}] * 2}, {**ok, 'stats': [{'value': 5, 'label': 'x', 'suffix': 'abcd'}] * 2},
+                    {**ok, 'stats': [{'value': '5', 'label': 'x'}] * 2}):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+
+
 class Fields(unittest.TestCase):
     def test_templates_read_only_fields_their_spec_has(self):
         # The race once printed "Source: undefined" on every reel: it read S.head_host, prepare() sets source_host.

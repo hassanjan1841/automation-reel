@@ -265,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic')
+          'memory', 'outputmap', 'kinetic', 'wall')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -371,6 +371,16 @@ def motion_errors(i, v):
             e.append(f'point {i} kinetic needs 1 to 3 lines of 1 to 4 words (max 20 characters, balanced *highlights*)')
         elif tag is not None and not short(tag, 14):
             e.append(f'point {i} kinetic tag is max 14 characters')
+    elif kind == 'wall':
+        tiles, stats = v.get('tiles', []), v.get('stats', [])
+        num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x < 1e9
+        if not 3 <= len(tiles) <= 12 or any(not short(t, 14) for t in tiles):
+            e.append(f'point {i} wall needs 3 to 12 tiles with labels of max 14 characters')
+        elif not 2 <= len(stats) <= 4 or any(not isinstance(s, dict) or not num(s.get('value')) or not short(s.get('label'), 14)
+                                              or (s.get('suffix') is not None and not short(s['suffix'], 3))
+                                              for s in stats):
+            e.append(f'point {i} wall needs 2 to 4 stats: a non-negative "value" the reel can back with a real count or '
+                     f'measurement, a "label" of max 14 characters and an optional "suffix" of max 3 (like %, ms, +)')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -651,6 +661,10 @@ VISUAL_SCHEMA = {
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
+        'tiles': {'type': 'array', 'items': {'type': 'string'}},
+        'stats': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['value', 'label'],
+            'properties': {'value': {'type': 'number'}, 'label': {'type': 'string'}, 'suffix': {'type': 'string'}}}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -1064,6 +1078,11 @@ numbers only from a cited page.
   3, each 1 to 4 words, max 20 characters, *highlight* the key word) and an optional "tag" (max 14 characters,
   e.g. "Key step") as a small pill under it. Only for the one rule or principle a point leaves you with, never
   for something that could be shown as real code or output.
+- wall: the camera pulls back from one tile to a wall of the same tiles, then counters roll up over it. "tiles" (3 to
+  12 labels of max 14 characters, e.g. components, endpoints, services), "stats" (2 to 4 {"value": a non-negative
+  number, "label" max 14 characters, optional "suffix" max 3 like "%", "ms", "+"}). The stats must be real counts or
+  measurements the reel can back (from the code, repo or a cited page), never estimates. For "what the project
+  contains" or scale moments.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
