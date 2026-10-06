@@ -265,10 +265,21 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
+QUOTES_TOTAL = 200  # the quotes animation types its text on and must fit MAX_SECONDS
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
+
+
+def quote_errors(i, v, label='quote'):
+    """One real public post: author, a known platform, an https url and the exact text. Used by the quote visual
+    and by each quote of the quotes animation."""
+    if not 10 <= len(v.get('text', '')) <= 220 or not v.get('url', '').startswith('https://') \
+            or not v.get('author') or v.get('platform') not in QUOTE_PLATFORMS:
+        return [f'point {i} {label} needs author, platform ({", ".join(QUOTE_PLATFORMS)}), an https url '
+                'and the exact text (10 to 220 characters)']
+    return []
 
 
 def motion_errors(i, v):
@@ -371,10 +382,100 @@ def motion_errors(i, v):
             e.append(f'point {i} kinetic needs 1 to 3 lines of 1 to 4 words (max 20 characters, balanced *highlights*)')
         elif tag is not None and not short(tag, 14):
             e.append(f'point {i} kinetic tag is max 14 characters')
+    elif kind == 'inspect':
+        lines, marks = v.get('code', '').rstrip('\n').split('\n'), v.get('marks', [])
+        if not v.get('code', '').strip() or not v.get('language') or len(lines) > 10 or max(len(l) for l in lines) > 36 \
+                or not short(v.get('title'), 24):
+            e.append(f'point {i} inspect needs a language, a title (max 24 characters) and code (max 10 lines of 36)')
+        elif not 1 <= len(marks) <= 3 or any(not isinstance(m.get('line'), int) or not 1 <= m['line'] <= len(lines)
+                                             or not lines[m['line'] - 1].strip() or not short(m.get('label'), 22)
+                                             for m in marks) or len({m['line'] for m in marks}) < len(marks):
+            e.append(f'point {i} inspect needs 1 to 3 marks on different non-empty code lines (labels of max 22 characters)')
+    elif kind == 'variants':
+        vs = v.get('variants', [])
+        rows = [x.get('rows') for x in vs]
+        if not short(v.get('title'), 24) or not 2 <= len(vs) <= 5 or any(not short(x.get('label'), 16) for x in vs):
+            e.append(f'point {i} variants needs a title (max 24 characters) and 2 to 5 variants with labels of max 16')
+        elif any(not isinstance(r, list) or not 2 <= len(r) <= 4 or any(not short(s, 26) for s in r) for r in rows) \
+                or len({len(r) for r in rows}) > 1:
+            e.append(f'point {i} variants needs 2 to 4 rows of max 26 characters in every variant, the same count in each')
+        elif len({tuple(r) for r in rows}) < len(rows):
+            e.append(f'point {i} variants needs variants that differ from each other')
+    elif kind == 'wall':
+        tiles, stats = v.get('tiles', []), v.get('stats', [])
+        num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x < 1e9
+        if not 3 <= len(tiles) <= 12 or any(not short(t, 14) for t in tiles):
+            e.append(f'point {i} wall needs 3 to 12 tiles with labels of max 14 characters')
+        elif not 2 <= len(stats) <= 4 or any(not isinstance(s, dict) or not num(s.get('value')) or not short(s.get('label'), 14)
+                                              or (s.get('suffix') is not None and not short(s['suffix'], 3))
+                                              for s in stats):
+            e.append(f'point {i} wall needs 2 to 4 stats: a non-negative "value" the reel can back with a real count or '
+                     f'measurement, a "label" of max 14 characters and an optional "suffix" of max 3 (like %, ms, +)')
+    elif kind == 'drawn':
+        lines = v.get('lines', [])
+        if not 1 <= len(lines) <= 3 or any(not short(l, 16 + 2 * l.count('*')) or not 1 <= words(l) <= 3
+                                           or highlights(l) is None or len(l.replace('*', '')) > 16 for l in lines):
+            e.append(f'point {i} drawn needs 1 to 3 lines of 1 to 3 words (max 16 characters, balanced *highlights*)')
+    elif kind == 'dots':
+        word, cap = v.get('word', ''), v.get('caption', '')
+        if not isinstance(word, str) or highlights(word) is None or not 1 <= len(word.replace('*', '')) <= 8 \
+                or not re.fullmatch(r'[A-Za-z0-9./*-]+', word):
+            e.append(f'point {i} dots word is 1 to 8 characters (letters, digits and . / - only, balanced *highlights*)')
+        elif not short(cap, 28):
+            e.append(f'point {i} dots caption is 1 to 28 characters')
+    elif kind == 'board':
+        tasks, caps = v.get('tasks', []), v.get('captions', [])
+        if not short(v.get('goal'), 36) or not 2 <= len(tasks) <= 4 or any(not short(t, 22) for t in tasks):
+            e.append(f'point {i} board needs a goal (max 36 characters) and 2 to 4 tasks of max 22 characters')
+        elif len(caps) > 3 or any(not short(c, 32) for c in caps):
+            e.append(f'point {i} board captions are 0 to 3 lines of max 32 characters')
+    elif kind == 'blueprint':
+        parts, links, calls = v.get('parts', []), v.get('links', []), v.get('callouts', [])
+        ids = [p.get('id') for p in parts]
+        if not 2 <= len(parts) <= 5 or len(set(ids)) != len(ids) or any(not short(p.get('id'), 20) or not short(p.get('label'), 14)
+                                                                       for p in parts):
+            e.append(f'point {i} blueprint needs 2 to 5 parts with distinct ids and labels of max 14 characters')
+        elif not 1 <= len(links) <= 6 or any(l.get('from') not in ids or l.get('to') not in ids or l.get('from') == l.get('to')
+                                              for l in links):
+            e.append(f'point {i} blueprint needs 1 to 6 links between two different listed part ids')
+        elif not 1 <= len(calls) <= 3 or any(c.get('part') not in ids or not short(c.get('text'), 22) for c in calls):
+            e.append(f'point {i} blueprint needs 1 to 3 callouts, each on a listed part id with text of max 22 characters')
+    elif kind == 'statement':
+        lines = v.get('lines', [])
+        if not 2 <= len(lines) <= 4 or any(not short(l, 22) or highlights(l) is None for l in lines):
+            e.append(f'point {i} statement needs 2 to 4 short lines (max 22 characters, balanced *highlights*)')
+    elif kind == 'quotes':
+        quotes = v.get('quotes', [])
+        if not 1 <= len(quotes) <= 3:
+            e.append(f'point {i} quotes needs 1 to 3 real posts')
+        elif any(not isinstance(q, dict) for q in quotes):
+            e.append(f'point {i} quotes are {{author, platform, url, text}} objects')
+        else:
+            for q in quotes:
+                e += quote_errors(i, q, 'quotes entry')
+            if not e and sum(len(q['text']) for q in quotes) > QUOTES_TOTAL:
+                e.append(f'point {i} quotes are typed on, so all the text together is max {QUOTES_TOTAL} characters; '
+                         'use fewer or shorter posts')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
             e.append(f'point {i} outputmap needs a command (max 34 characters) and 2 to 6 output lines of max 34')
+    elif kind == 'command':
+        rows = v.get('rows', [])
+        if not short(v.get('command'), 40) or not short(v.get('title'), 24):
+            e.append(f'point {i} command needs a command (max 40 characters) and a title (max 24)')
+        elif not 2 <= len(rows) <= 5 or any(not short(r, 32) for r in rows):
+            e.append(f'point {i} command needs 2 to 5 result rows of max 32 characters')
+    elif kind == 'palette':
+        items, chips, pick = v.get('items', []), v.get('chips', []), v.get('pick')
+        if not short(v.get('prompt'), 24):
+            e.append(f'point {i} palette needs a prompt of max 24 characters')
+        elif not 4 <= len(items) <= 12 or any(not short(x, 28) for x in items) or len(set(items)) != len(items):
+            e.append(f'point {i} palette needs 4 to 12 different items of max 28 characters')
+        elif pick not in items or items.index(pick) < 3:
+            e.append(f'point {i} palette pick must be one of items, but not among the first 3 (so the list scrolls)')
+        elif len(chips) > 6 or any(not short(c, 12) for c in chips):
+            e.append(f'point {i} palette chips are 0 to 6 labels of max 12 characters')
     return e
 
 
@@ -651,6 +752,34 @@ VISUAL_SCHEMA = {
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
+        'marks': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['line', 'label'],
+            'properties': {'line': {'type': 'integer'}, 'label': {'type': 'string'}}}},
+        'variants': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'rows'],
+            'properties': {'label': {'type': 'string'}, 'rows': {'type': 'array', 'items': {'type': 'string'}}}}},
+        'tiles': {'type': 'array', 'items': {'type': 'string'}},
+        'stats': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['value', 'label'],
+            'properties': {'value': {'type': 'number'}, 'label': {'type': 'string'}, 'suffix': {'type': 'string'}}}},
+        'word': {'type': 'string'}, 'caption': {'type': 'string'},
+        'goal': {'type': 'string'}, 'tasks': {'type': 'array', 'items': {'type': 'string'}},
+        'captions': {'type': 'array', 'items': {'type': 'string'}},
+        'parts': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['id', 'label'],
+            'properties': {'id': {'type': 'string'}, 'label': {'type': 'string'}}}},
+        'links': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'to'],
+            'properties': {'from': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'callouts': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['part', 'text'],
+            'properties': {'part': {'type': 'string'}, 'text': {'type': 'string'}}}},
+        'rows': {'type': 'array', 'items': {'type': 'string'}}, 'prompt': {'type': 'string'}, 'pick': {'type': 'string'},
+        'chips': {'type': 'array', 'items': {'type': 'string'}},
+        'quotes': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['author', 'platform', 'url', 'text'],
+            'properties': {'author': {'type': 'string'}, 'platform': {'type': 'string'}, 'url': {'type': 'string'},
+                           'text': {'type': 'string'}}}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -791,10 +920,7 @@ def visual_errors(i, visual):
             if not 1 <= len(cmds) <= 6 or any(len(c) > 40 for c in cmds):
                 errors.append(f'point {i} terminal needs 1 to 6 commands of max 40 characters')
         elif kind == 'quote':
-            if not 10 <= len(v.get('text', '')) <= 220 or not v.get('url', '').startswith('https://') \
-                    or not v.get('author') or v.get('platform') not in QUOTE_PLATFORMS:
-                errors.append(f'point {i} quote needs author, platform ({", ".join(QUOTE_PLATFORMS)}), an https url '
-                              'and the exact text (10 to 220 characters)')
+            errors += quote_errors(i, v)
         elif kind == 'walkthrough':
             steps = v.get('steps', [])
             if not v.get('url', '').startswith('https://') or not 1 <= len(steps) <= 4:
@@ -1064,6 +1190,43 @@ numbers only from a cited page.
   3, each 1 to 4 words, max 20 characters, *highlight* the key word) and an optional "tag" (max 14 characters,
   e.g. "Key step") as a small pill under it. Only for the one rule or principle a point leaves you with, never
   for something that could be shown as real code or output.
+- inspect: real code with selection boxes and label pills on chosen lines, one at a time. "language", "title" (max
+  24 characters), "code" (max 10 lines of 36), "marks" (1 to 3 {"line" 1-based, "label" max 22 characters}, on
+  different lines). Each label states a true fact about that line (what it does, what it returns, why it fails).
+- variants: one card that swaps between real alternatives while a step label counts "01 / 03". "title" (max 24
+  characters), "variants" (2 to 5 {"label" max 16, "rows" 2 to 4 strings of max 26}, the same row count in each).
+  Only genuine options of one thing (cache modes, HTTP methods, git reset modes), every row true for its variant.
+- wall: the camera pulls back from one tile to a wall of the same tiles, then counters roll up over it. "tiles" (3 to
+  12 labels of max 14 characters, e.g. components, endpoints, services), "stats" (2 to 4 {"value": a non-negative
+  number, "label" max 14 characters, optional "suffix" max 3 like "%", "ms", "+"}). The stats must be real counts or
+  measurements the reel can back (from the code, repo or a cited page), never estimates. For "what the project
+  contains" or scale moments.
+- drawn: the hook or takeaway drawn in as big bold outlines that then fill, with accent dots on the curves.
+  "lines" (1 to 3, each 1 to 3 words, max 16 characters, *highlight* the key word). Short (about 3 seconds); for a
+  punchy claim, never for something that could be shown as real code or output.
+- dots: one short word or number as a dot matrix, then a caption that resolves out of scrambled characters.
+  "word" (1 to 8 characters: letters, digits and . / - only; *highlight* a part, e.g. "p*99*") and "caption" (max 28
+  characters). A real term, number or name the point is about; never an invented statistic.
+- board: a workflow as a board. "goal" (max 36 characters, typed into an input bar), "tasks" (2 to 4 labels of max
+  22 characters; they drop into To do, move to Doing, then Done while a ring counts n/N) and optional "captions" (0
+  to 3 lines of max 32 characters, one per beat). Only a real sequence, e.g. what a coding agent or a CI pipeline
+  actually does for that goal; never invented results or numbers.
+- blueprint: a schematic drawn in line by line. "parts" (2 to 5 {"id", "label" max 14 characters}, placed in list
+  order), "links" (1 to 6 {"from", "to"} part ids), "callouts" (1 to 3 {"part" id, "text" max 22 characters}), shown
+  one at a time. For an architecture that really exists; callouts state facts, never measurements you cannot cite.
+- command: a terminal card types a real command, then shrinks into a bar and the result panel grows out of it. "command"
+  (max 40 characters), "title" (max 24, the file or page it produces) and "rows" (2 to 5 lines of max 32 characters,
+  exactly what that command really prints or that file really contains). For "one command, one result" moments.
+- palette: a command list scrolls and slows onto your pick, which lights up in the accent colour. "prompt" (max 24
+  characters, e.g. "/model" or "npx shadcn add"), "items" (4 to 12 real options of that tool, max 28 characters each),
+  "pick" (one of items, not among the first 3) and optional "chips" (0 to 6 labels of max 12 characters, for example
+  the frameworks it supports). Never invent options: every item must exist in that tool.
+- statement: short stacked statements on a soft moving gradient card, one line rising in at a time. "lines" (2 to
+  4, each max 22 characters, *highlight* the key word). For a punchy rule or a before/after claim in your own words.
+- quotes: 1 to 3 real public posts typed onto dark cards one after another, then stacked in a pile. "quotes" (1 to
+  3 {"author", "platform", "url", "text"}; same rules as the quote visual: a known platform, an https url, the exact
+  words of the post, 10 to 220 characters each and max 200 characters in total). Only on days real posts are
+  allowed, and only real posts you opened: never invent, reword or merge a quote. The caption credits each author.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

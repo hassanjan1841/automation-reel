@@ -237,11 +237,18 @@ def shown(slides):
 
 
 def credits(reel):
-    """A caption line crediting every real post shown, e.g. 'Quoted: @karpathy on X, pg on Hacker News'."""
-    quoted = [v for p in reel['points'] for v in (p.get('visual') or [])[:1] if v.get('type') == 'quote']
-    if not quoted:
+    """A caption line crediting every real post shown, e.g. 'Quoted: @karpathy on X, pg on Hacker News'. The quotes
+    animation carries several posts; the others one."""
+    posts = []
+    for p in reel['points']:
+        for v in (p.get('visual') or [])[:1]:
+            if v.get('type') == 'quote':
+                posts.append(v)
+            elif v.get('type') == 'quotes':
+                posts += v.get('quotes') or []
+    if not posts:
         return ''
-    return 'Quoted: ' + ', '.join(f"{v.get('handle') or v['author']} on {v['platform']}" for v in quoted) + '\n\n'
+    return 'Quoted: ' + ', '.join(f"{v.get('handle') or v['author']} on {v['platform']}" for v in posts) + '\n\n'
 
 
 # ---------- today's reel ----------

@@ -123,7 +123,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `test_study.py` | Offline tests of study.py on synthetic ffmpeg videos, fake Claude and YouTube | `make_video`, `Measure`, `Breakdown`, `Main` |
 | `test_learn.py` | Offline tests of the learning loop and what feeds it, with a six-week simulation | `Sandbox`, `FakeInstagram`, `SimulationTest` |
 | `carousel.py` | Weekly carousel: write (Claude), draw 1080x1350 slides, review, post as CAROUSEL with alt_text | `write`, `check`, `draw`, `content_slide`, `centred`, `title_slide`, `end_slide`, `review`, `review_once`, `post`, `SYSTEM`, `SCHEMA`, `LOG`, `CALL_TO_ACTION` |
-| `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources); and frame 0 and the payoff against the playbook | `review`, `frames`, `first_frame`, `SYSTEM`, `SCHEMA` |
+| `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources); and frame 0 and the payoff against the playbook | `review`, `describe`, `frames`, `first_frame`, `SYSTEM`, `SCHEMA` |
 | `playbook.md` | The researched rules for hooks, scripts, visuals and sound; read by the writer, the hook judge and qa | data, read by `generate.playbook` |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Camera`, `speech_beats`, `Captions`, `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL`, `KEYWORD_SIZE`, `HOLD_TICK`, `GLIDE`, `exit_progress` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard`, `heard_alone`, `BEAT`, `FINAL_TAKES`, `ask_respellings`, `align`, `by_line`, `transcribe`, `Voiceover`, `hold`, `tempo`, `HOLD`, `FAST_HOOK` |
@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint, command, palette, statement, quotes (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -313,8 +313,26 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     `voice.FAST_HOOK` times faster by `voice.tempo` (ffmpeg atempo, same pitch); "relaxed" at most 10 words.
   - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences, and a
     slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
+  - `wall` (motion.py): perspective grid of tiles (own projection, tilted ~57 degrees) revealed by a pull back, then
+    counters (`stats`, real numbers only) over a dark scrim; SETTLE is when the grid is revealed.
+  - `command` and `palette` (motion.py): `command` is a tilted terminal card (scale 1.15 to 1, skew and squash easing to
+    flat) that types, shrinks to a bar and grows the result panel (SETTLE when the rows are in); `palette` scrolls
+    `items` one line per 0.17 s, slows over its last 3 steps and lands on `pick` (validated to be past the first 3
+    items so it scrolls). `chips` are optional; both only show real commands, files and options.
+  - `statement` and `quotes` (motion.py, 2026-10-06): stacked lines on a drifting gradient card with glass panels, and
+    1-3 real posts typed onto dark cards (initials chip, never a photo) then piled. `quotes` is a quote: same rules
+    (`generate.quote_errors`, plus max `QUOTES_TOTAL` characters in all), credited by `publish.credits`, counted by
+    `trends.quotes_allowed`.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
+  - `inspect` and `variants` (motion.py): selection boxes with label pills on code lines, and one card swapping
+    between real alternatives under a light sweep; both settle once the code or card is in.
+  - `drawn` and `dots` (motion.py): `drawn` computes Poppins Bold glyph outlines with fontTools in `prepare()`
+    (`glyph_outlines`) and the page draws each outline, fills it, then drops its anchor dots; `dots` rasterises a
+    word with Pillow into a dot grid (`dot_raster`) that appears with seeded delays, then a mono caption scramble.
+  - `board` and `blueprint` (motion.py): a typed goal with task cards moving To do, Doing, Done and a ring; outline
+    parts that draw in with callouts whose text resolves from a seeded scramble. `board` captions use Instrument Serif
+    (OFL), fetched by `render.ensure_fonts` and embedded by `motion.font_css`.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
     `RULE_FIELDS`.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or

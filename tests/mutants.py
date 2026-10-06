@@ -90,7 +90,7 @@ MUTANTS = [
     ('visuals.py', "        return max(1.0, self.meta['duration'] / max(0.5, self.duration - self.TAIL))", "        return 1.0",
      'an animation never fits a short slide'),
     ('motion.py', "                matched_b.add(j)", "                pass", 'morph tokens appear twice'),
-    ('motion.py', "  const M = 36, bb = ROOT.getBBox()", "  const M = 0, bb = ROOT.getBBox()", 'shadows cut at the box edge'),
+    ('motion.py', "  const M = 36, bb = (FIT || ROOT).getBBox()", "  const M = 0, bb = (FIT || ROOT).getBBox()", 'shadows cut at the box edge'),
     ('generate.py', "    if not 3 <= words(hook) <= 6:", "    if not 3 <= words(hook) <= 9:", 'sentences on screen as hooks'),
     ('generate.py', "    if not isinstance(hv, dict) or hv.get('type') not in HOOK_VISUALS:", "    if False:",
      'no proof under the hook'),
@@ -161,6 +161,17 @@ MUTANTS = [
      'an empty frame between slides'),
     ('generate.py', "    if sum(len(str(c).rstrip('\\n').split('\\n')) for c in stages) > 8:", "    if False:",
      'a build too long to show whole'),
+    # The launch-video animations (2026-10-06).
+    ('publish.py', "                posts += v.get('quotes') or []", "                pass", 'the quotes animation is not credited'),
+    ('trends.py', "v.get('type') in ('quote', 'quotes')", "v.get('type') == 'quote'", 'quotes reels skip the weekly quote limit'),
+    ('generate.py', "                e += quote_errors(i, q, 'quotes entry')", "                pass", 'quotes entries not checked as real posts'),
+    ('generate.py', "        elif pick not in items or items.index(pick) < 3:", "        elif False:", 'a palette pick that is not an item',
+     'test_motion.py'),
+    ('generate.py', "        if not 3 <= len(tiles) <= 12 or any(not short(t, 14) for t in tiles):", "        if False:",
+     'a wall with any tiles', 'test_motion.py'),
+    ('qa.py', "'inspect': 'code with selection boxes", "'inspect_': 'code with selection boxes",
+     'a new animation shown to the reviewer as a screenshot', 'test_motion.py'),
+    ('motion.py', "    on = grids[0] > 0.5", "    on = grids[0] > 2", 'the dot-matrix word has no dots'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

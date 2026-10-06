@@ -30,6 +30,24 @@ import render
 SOUNDS = {'key', 'tick', 'pop', 'click', 'swish', 'air', 'thud', 'scribble'}  # render.sound_kit
 
 
+class PaletteRules(unittest.TestCase):
+    def test_pick_must_be_a_real_item_that_scrolls_into_view(self):
+        import generate
+        ok = dict(motion.EXAMPLES['palette'])
+        self.assertEqual(generate.motion_errors(1, ok), [])
+        for bad in ({**ok, 'pick': 'not-a-component'}, {**ok, 'pick': ok['items'][0]}, {**ok, 'items': ok['items'][:3]},
+                    {**ok, 'chips': ['x'] * 7}):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+
+
+class Review(unittest.TestCase):
+    def test_every_animation_is_described_to_the_reviewer(self):
+        # New types once fell through to "a screenshot of", so the frame review judged them against the wrong thing.
+        import qa
+        for kind in motion.TYPES:
+            self.assertFalse(qa.describe(motion.EXAMPLES[kind]).startswith('a screenshot of'), kind)
+
+
 class MorphPlan(unittest.TestCase):
     def test_unchanged_tokens_glide_and_changes_are_marked(self):
         toks, removed, added = motion.morph_plan('const user = res.json()\nreturn user',
@@ -51,6 +69,52 @@ class MorphPlan(unittest.TestCase):
     def test_tokens_keep_indentation(self):
         lines = motion.tokens('if x:\n    y = 1', 'py')
         self.assertEqual(''.join(t for t, _ in lines[1]), '    y = 1')
+
+
+class Prepare(unittest.TestCase):
+    def test_inspect_gets_highlighted_tokens_and_empty_lists_default(self):
+        spec = motion.prepare(dict(motion.EXAMPLES['inspect']), 980)
+        self.assertEqual(len(spec['tokens']), len(spec['code'].split('\n')))
+        self.assertEqual(motion.prepare({'type': 'variants'}, 980)['marks'], [])
+class WallRules(unittest.TestCase):
+    def test_wall_validation(self):
+        import generate
+        ok = dict(motion.EXAMPLES['wall'])
+        self.assertEqual(generate.motion_errors(1, ok), [])
+        for bad in ({**ok, 'tiles': ['a', 'b']}, {**ok, 'tiles': ['x' * 15] * 3}, {**ok, 'stats': ok['stats'][:1]},
+                    {**ok, 'stats': [{'value': -1, 'label': 'x'}] * 2}, {**ok, 'stats': [{'value': 5, 'label': 'x', 'suffix': 'abcd'}] * 2},
+                    {**ok, 'stats': [{'value': '5', 'label': 'x'}] * 2}):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+class Typography(unittest.TestCase):
+    def test_glyph_outlines_are_laid_out_per_glyph(self):
+        g = motion.glyph_outlines(['Hi *you*', 'ok'], 800)
+        self.assertEqual(len(g['glyphs']), 7)  # spaces have no outline
+        self.assertEqual([x['hl'] for x in g['glyphs']], [False, False, True, True, True, False, False])
+        self.assertEqual([x['word'] for x in g['glyphs']], [0, 0, 1, 1, 1, 2, 2])
+        self.assertEqual([x['line'] for x in g['glyphs']], [0] * 5 + [1] * 2)
+        self.assertTrue(all(x['d'].startswith('M') and 'Z' in x['d'] and 1 <= len(x['anchors']) <= 3
+                            for x in g['glyphs']))
+        self.assertLessEqual(g['gw'], 800.5)
+        self.assertEqual(g, motion.glyph_outlines(['Hi *you*', 'ok'], 800))
+
+    def test_highlight_marks_only_the_starred_word(self):
+        g = motion.glyph_outlines(['a *b* c'], 600)
+        self.assertEqual([x['hl'] for x in g['glyphs']], [False, True, False])
+
+    def test_dot_raster_is_a_grid_of_dots_and_deterministic(self):
+        d = motion.dot_raster('IO*1*')
+        self.assertEqual(d, motion.dot_raster('IO*1*'))
+        self.assertGreaterEqual(d['rows'], 9)
+        self.assertTrue(d['dots'] and all(0 <= c < d['cols'] and 0 <= r < d['rows'] for c, r, _ in d['dots']))
+        self.assertEqual(len({(c, r) for c, r, _ in d['dots']}), len(d['dots']))
+        hl = [c for c, _, on in d['dots'] if on]
+        self.assertTrue(hl and min(hl) > d['cols'] // 2)  # only the trailing 1 is highlighted
+        self.assertGreater(motion.dot_raster('WIDE')['cols'], motion.dot_raster('I')['cols'])
+
+    def test_prepare_adds_the_computed_data(self):
+        self.assertTrue(motion.prepare(motion.EXAMPLES['drawn'], 980)['glyphs'])
+        spec = motion.prepare(motion.EXAMPLES['dots'], 980)
+        self.assertTrue(spec['dots'] and isinstance(spec['seed'], int))
 
 
 class Fields(unittest.TestCase):
@@ -111,6 +175,17 @@ class Render(unittest.TestCase):
             drawn = (alpha > 64).mean()  # clearly visible pixels, not the soft edge of a shadow
             self.assertTrue(0.02 < drawn < 0.97, (kind, drawn))
             self.assertTrue(alpha[0, -1] < 8 and alpha[-1, 0] < 8, kind)  # the corners stay see-through
+
+    def test_layout_fills_and_centres_the_box(self):
+        # A hidden sweep bar parked outside the box once made the fit shrink command and palette to half width, pushed
+        # to the right; the visible layout must be centred and use most of one side of the box.
+        for kind, (folder, meta) in self.out.items():
+            frames = sorted(folder.glob('*.png'))
+            alpha = np.asarray(Image.open(frames[-1]).convert('RGBA'))[..., 3] > 64
+            ys, xs = np.nonzero(alpha)
+            w, h = (xs.max() - xs.min()) / alpha.shape[1], (ys.max() - ys.min()) / alpha.shape[0]
+            self.assertLess(abs((xs.max() + xs.min()) / 2 / alpha.shape[1] - 0.5), 0.08, kind)
+            self.assertGreater(max(w, h), 0.45, (kind, round(w, 2), round(h, 2)))
 
     def test_motion_happens(self):
         for kind, (folder, meta) in self.out.items():

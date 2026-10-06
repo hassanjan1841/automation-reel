@@ -22,6 +22,17 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   memory     variables pointing at objects; references move, orphans dim       refs, objects, reassign
   outputmap  a real command's output lines lift out into a diagram              command, output
   kinetic    the takeaway in big type, word by word, the key word underlined     lines, tag
+  inspect    code with selection boxes and label pills on chosen lines          language, title, code, marks
+  variants   one card swapping between real alternatives, a light sweep         title, variants
+  wall       the camera pulls back to a wall of results, then counters roll up    tiles, stats
+  drawn      big words whose outlines draw in, then fill, anchor dots on them    lines
+  dots       a short word as a dot matrix, a caption resolving by scramble       word, caption
+  board      a goal typed, task cards moving To do, Doing, Done, a ring          goal, tasks, captions
+  blueprint  outline parts drawing in, links, then scrambled-text callouts        parts, links, callouts
+  command    a terminal card types a command, then becomes its result panel     command, title, rows
+  palette    a command list scrolls and lands on the pick, chips above it       prompt, items, pick, chips
+  statement  short lines rising in over a drifting gradient and glass panels   lines
+  quotes     real posts typed onto dark cards, then stacked into a pile         quotes
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -37,14 +48,14 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}
-text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}
+text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}.serif{font-family:'Instrument Serif'}
 </style></head><body><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg><script>
 const P = window.PARAMS, S = P.spec, W = P.w, H = P.h;
 const C = {panel: '#1E2230', bar: '#161A25', text: '#E6E9F2', dim: '#8A91A5', line: 'rgba(230,233,242,0.18)',
@@ -75,7 +86,7 @@ const E = {
   spring: p => { if (p >= 1) return 1; const z = 0.82, w = 2 * Math.PI * 1.35, t = p * 1.6, wd = w * Math.sqrt(1 - z * z);
     return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + z * w / wd * Math.sin(wd * t)); },
 };
-const TW = [], SND = []; let SETTLE = 0, END = 0;
+const TW = [], SND = []; let SETTLE = 0, END = 0, FIT = null;  // FIT: what to fit into the box when ROOT holds clipped overflow
 function at(start, dur, fn, ease = E.out) { TW.push({start, dur, fn, ease}); END = Math.max(END, start + dur); }
 function set(t, fn) { at(t, 0, p => p && fn()); }
 function snd(t, kind) { SND.push([Math.round(t * 1000) / 1000, kind]); }
@@ -142,7 +153,8 @@ function pill(parent, cx, cy, s, size = 28, color = C.accent, textColor = '#fff'
 // One light sweep across a box, once per animation at most.
 function sweep(x, y, w, h, t) { const clip = mk('clipPath', {id: 'sw' + t}, svg.querySelector('defs'));
   mk('rect', {x, y, width: w, height: h, rx: 22}, clip);
-  const r = mk('rect', {x: x - w, y, width: w * 0.6, height: h, fill: 'url(#sweep)', 'clip-path': `url(#sw${t})`, opacity: 0}, L3);
+  // Parked inside the box until it runs: the page fits its layout to everything drawn, hidden parts included.
+  const r = mk('rect', {x, y, width: w * 0.6, height: h, fill: 'url(#sweep)', 'clip-path': `url(#sw${t})`, opacity: 0}, L3);
   at(t, 0.9, (p, raw) => { r.setAttribute('x', lerp(x - w * 0.6, x + w, p)); r.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout); }
 // A code window from tokens [[text, colour]] per line; returns where each line sits.
 function codeWindow(x, y, w, lines, title = '', maxSize = 40) {
@@ -530,11 +542,507 @@ T.kinetic = () => {
   END = Math.max(END, t + 2.2);
 };
 
-Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
+T.inspect = () => {
+  // A code panel, then one selection box and label pill per mark: the box wipes in, the pill flies in from the right.
+  const lines = S.tokens, marks = S.marks, ph = 66, gap = 18;
+  const cols = Math.max(8, ...lines.map(l => l.reduce((n, t) => n + t[0].length, 0)));
+  let maxSize = 40;
+  while (maxSize > 24) { const size = Math.min(maxSize, Math.floor((W - 90) / (cols * 0.6)));
+    if (56 + 30 + Math.round(size * 1.6) * lines.length + 26 + 30 + marks.length * (ph + gap) <= H - 8) break; maxSize -= 2; }
+  const cw = codeWindow(0, 0, W, lines, S.title || '', maxSize);
+  pop(cw.g, 0, W / 2, cw.h / 2, 0.5); SETTLE = 0.5;
+  const expo = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p);
+  const chip = (g, x, y, n, r) => { mk('circle', {cx: x, cy: y, r, fill: C.accent}, g);
+    txt(g, x, y + r * 0.36, String(n), r * 1.1, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700}); };
+  const shown = []; let t = 1.0;
+  marks.forEach((m, k) => {
+    const n = lines[m.line - 1].reduce((s, tk) => s + tk[0].length, 0);
+    const bx = cw.x + 40 - 14, by = cw.lineY(m.line - 1) + 2, bw = n * cw.cw + 28, bh = cw.lh - 4;
+    const clip = mk('clipPath', {id: 'ins' + k}, svg.querySelector('defs')), cr = mk('rect', {x: bx - 4, y: by - 4, width: 0, height: bh + 8}, clip);
+    const box = mk('g', {'clip-path': `url(#ins${k})`, opacity: 1}, L2);
+    mk('rect', {x: bx, y: by, width: bw, height: bh, rx: 8, fill: C.accent, 'fill-opacity': 0.18}, box);
+    mk('rect', {x: bx, y: by, width: bw, height: bh, rx: 8, fill: 'none', stroke: C.accent, 'stroke-width': 3}, box);
+    const badge = mk('g', {opacity: 0}, L3); chip(badge, bx + bw, by + bh / 2, k + 1, 15);
+    const py = cw.h + 30 + k * (ph + gap) + ph / 2, g = mk('g', {opacity: 0}, L2);
+    const label = txt(g, 84, py + 12, m.label, 36, {fill: C.text}), w = 74 + label.getComputedTextLength() + 34;
+    const bg = mk('rect', {x: 0, y: py - ph / 2, width: w, height: ph, rx: ph / 2, fill: C.bar, stroke: C.line, 'stroke-width': 2}, g); g.insertBefore(bg, label);
+    chip(g, 33, py, k + 1, 21);
+    shown.forEach(o => { dim(o.box, t, 0.5, 0.3); dim(o.g, t, 0.55, 0.3); });
+    at(t, 0.2, p => { cr.setAttribute('width', (bw + 8) * p); badge.setAttribute('opacity', p); }, E.out);
+    at(t + 0.15, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 3));
+      g.setAttribute('transform', `translate(${160 * (1 - p)} 0)`); }, expo);
+    snd(t, 'tick'); snd(t + 0.15, 'swish');
+    shown.push({box, g}); t += 1.7;
+  });
+  END = Math.max(END, t - 0.1);
+};
+
+T.variants = () => {
+  // One card that swaps between real alternatives: the rows change, a light sweep crosses it, the step label counts up.
+  const vs = S.variants, n = vs.length, nr = vs[0].rows.length, rowH = 108, head = 120, top = 120, hh = head + nr * rowH + 24;
+  const card = mk('g', {opacity: 0}, L1); panel(card, 0, top, W, hh);
+  txt(card, 40, top + 76, S.title, 48, {class: 'mono', fill: C.text}); fit(card.lastChild, W - 360);
+  mk('rect', {x: 24, y: top + head - 6, width: W - 48, height: 2, fill: C.line}, card);
+  const segs = vs.map((v, i) => mk('rect', {x: W - 40 - (n - i) * 40 + 8, y: top + 56, width: 24, height: 14, rx: 7, fill: C.accent, opacity: 0.25}, card));
+  pop(card, 0, W / 2, top + hh / 2, 0.5); SETTLE = 0.5;
+  const clip = mk('clipPath', {id: 'vsw'}, svg.querySelector('defs')); mk('rect', {x: 0, y: top, width: W, height: hh, rx: 22}, clip);
+  const step = 0.6, t0 = 0.9, at_ = i => t0 + i * step;
+  const rowText = (v, r, y) => { const s = v.rows[r], e = mk('text', {x: 40, y, 'font-size': 42, class: 'mono', 'font-weight': 500, opacity: 0, 'xml:space': 'preserve'}, L2);
+    const m = s.match(/^([^:]+:)(\s*.*)$/);
+    if (m) { mk('tspan', {fill: C.dim}, e).textContent = m[1]; mk('tspan', {fill: C.text}, e).textContent = m[2]; } else { e.setAttribute('fill', C.text); e.textContent = s; }
+    while (e.getComputedTextLength() > W - 80 && +e.getAttribute('font-size') > 20) e.setAttribute('font-size', +e.getAttribute('font-size') - 2);
+    return e; };
+  const step_ = vs.map((v, i) => { const e = txt(L2, W / 2, 84, `${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`, 72, {'text-anchor': 'middle', fill: C.ink, 'font-weight': 700, opacity: 0});
+    const lab = txt(L2, 0, 84, v.label, 44, {fill: C.accent, 'font-weight': 600, opacity: 0, class: 'mono'});
+    const w1 = e.getComputedTextLength(), w2 = lab.getComputedTextLength(), x0 = (W - (w1 + 30 + w2)) / 2;
+    e.setAttribute('x', x0); e.setAttribute('text-anchor', 'start'); lab.setAttribute('x', x0 + w1 + 30); return [e, lab]; });
+  const cells = vs.map((v, i) => v.rows.map((_, r) => rowText(v, r, top + head + r * rowH + 68)));
+  const swapIn = (e, t, d, dy) => at(t, d, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2)); e.setAttribute('transform', `translate(0 ${dy * (1 - p)})`); });
+  const swapOut = (e, t, d, dy) => at(t, d, (p, raw) => { e.setAttribute('opacity', 1 - Math.min(1, raw * 2)); e.setAttribute('transform', `translate(0 ${dy * p})`); });
+  vs.forEach((v, i) => { const t = i ? at_(i) : 0.5;
+    cells[i].forEach((e, r) => { const ts = t + r * 0.05; swapIn(e, ts, 0.3, 18);
+      if (i < n - 1) swapOut(e, at_(i + 1) + r * 0.05, 0.22, -18);
+      if (i && vs[i - 1].rows[r] !== v.rows[r]) { const f = mk('rect', {x: 6, y: top + head + r * rowH + 6, width: W - 12, height: rowH - 12, rx: 10, fill: C.accent, opacity: 0}, L1);
+        at(ts, 0.55, (p, raw) => f.setAttribute('opacity', 0.16 * Math.sin(Math.PI * raw))); } });
+    step_[i].forEach(e => { swapIn(e, t, 0.3, 22); if (i < n - 1) swapOut(e, at_(i + 1), 0.22, -22); });
+    at(t, 0.3, p => segs.forEach((s, j) => { const on = j === i; if (on) s.setAttribute('opacity', lerp(0.25, 1, p)); else if (j === i - 1) s.setAttribute('opacity', lerp(1, 0.25, p)); }));
+    if (i) { const sw = mk('rect', {x: 0, y: top, width: W * 0.6, height: hh, fill: 'url(#sweep)', 'clip-path': 'url(#vsw)', opacity: 0}, L3);
+      at(t, 0.55, (p, raw) => { sw.setAttribute('x', lerp(-W * 0.6, W, p)); sw.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout);
+      snd(t, 'swish'); snd(t + 0.1, 'tick'); } else snd(0.5, 'pop'); });
+  END = Math.max(END, at_(n - 1) + 1.6);
+};
+
+T.wall = () => {
+  // Device 4 of the style guide: the camera starts on one tile, pulls back and tilts to a wall of the same tiles
+  // fading into the distance, then a row of counters rolls up over it. Own perspective projection, tile corners
+  // projected one by one; labels and bars ride an affine map of each tile.
+  const TW = 320, TH = 200, PX = 380, PY = 250, F = W, NC = 9, C0 = -4, R0 = -2, NR = 14;
+  const defs = svg.querySelector('defs');
+  defs.insertAdjacentHTML('beforeend', `<radialGradient id="wfade"><stop offset="0.55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="wscrim"><stop offset="0" stop-color="#06080D" stop-opacity="0.82"/><stop offset="0.6" stop-color="#06080D" stop-opacity="0.62"/><stop offset="1" stop-color="#06080D" stop-opacity="0"/></radialGradient>
+<mask id="wmask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect id="wfr" width="${W}" height="${H}" fill="url(#wfade)"/></mask>`);
+  mk('rect', {x: 0, y: 0, width: W, height: H, fill: 'none'}, L0);
+  const grid = mk('g', {mask: 'url(#wmask)'}, L1), n = S.tiles.length;
+  const tiles = [];
+  for (let r = R0; r < R0 + NR; r++) for (let c = C0; c < C0 + NC; c++) {
+    const g = mk('g', {display: 'none'}, grid), poly = mk('polygon', {fill: C.panel, stroke: C.line, 'stroke-width': 2}, g);
+    const ord = (r - R0) * NC + (c - C0), o0 = (0 - R0) * NC + (0 - C0);
+    const inner = mk('g', {}, g), label = S.tiles[(((ord - o0) % n) + n) % n];
+    const lt = fit(txt(inner, 26, 66, label, 36, {'font-weight': 600}), TW - 52);
+    mk('circle', {cx: TW - 34, cy: 46, r: 8, fill: C.accent}, inner);
+    mk('rect', {x: 26, y: 112, width: (TW - 52) * 0.8, height: 16, rx: 8, fill: C.dim, opacity: 0.32}, inner);
+    mk('rect', {x: 26, y: 146, width: (TW - 52) * 0.5, height: 16, rx: 8, fill: C.dim, opacity: 0.22}, inner);
+    tiles.push({focus: ord === o0, g, poly, inner, x0: c * PX - TW / 2, y0: r * PY - TH / 2});
+  }
+  // Camera: tilt (radians) about the focus point, focus on the plane, distance. Progress q: 0 close, 1 the wall.
+  const cam = q => ({a: lerp(0.1, 1.0, q), fx: 0, fy: lerp(0, 760, q), d: lerp(F * TW / (0.78 * W), 2500, q)});
+  let dimG = 1;
+  const fr = document.getElementById('wfr');
+  const frame = q => { const k = cam(q), ca = Math.cos(k.a), sa = Math.sin(k.a), s0 = F / k.d;
+    const m = lerp(1.8, 1, q); fr.setAttribute('transform', `translate(${W / 2 * (1 - m)} ${H / 2 * (1 - m)}) scale(${m})`);
+    const proj = (x, y) => { const yr = (y - k.fy) * ca, zr = (y - k.fy) * sa, z = k.d + zr, s = F / z;
+      return [W / 2 + (x - k.fx) * s, H * 0.4 - yr * s, z, s]; };
+    for (const t of tiles) { const tl = proj(t.x0, t.y0 + TH), tr = proj(t.x0 + TW, t.y0 + TH),
+        br = proj(t.x0 + TW, t.y0), bl = proj(t.x0, t.y0);
+      if (Math.min(tl[2], tr[2], br[2], bl[2]) < 80) { t.g.setAttribute('display', 'none'); continue; }
+      t.g.removeAttribute('display');
+      t.poly.setAttribute('points', [tl, tr, br, bl].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+      t.inner.setAttribute('transform', `matrix(${(tr[0] - tl[0]) / TW} ${(tr[1] - tl[1]) / TW} ${(bl[0] - tl[0]) / TH} ${(bl[1] - tl[1]) / TH} ${tl[0]} ${tl[1]})`);
+      const sc = (tl[3] + bl[3]) / 2 / s0;
+      t.g.setAttribute('opacity', clamp(Math.pow(sc, 1.6)) * dimG * (t.focus ? 1 : clamp((q - 0.02) * 6)));
+      t.poly.setAttribute('stroke-width', Math.max(1, 2 * Math.min(1, sc * 2))); } };
+  const t0 = 0.25, pull = 1.9;
+  at(t0, pull, frame, E.out); set(0, () => frame(0));
+  snd(t0, 'swish'); SETTLE = t0 + pull; snd(SETTLE, 'thud');
+
+  // Counters over the lower part of the grid, on a soft dark scrim so they read on both themes.
+  const st = S.stats, cols = 2, rows = st.length > 2 ? 2 : 1, cy0 = rows === 1 ? H * 0.64 : H * 0.57, rowH = H * 0.2;
+  const scrim = mk('ellipse', {cx: W / 2, cy: cy0 + (rows - 1) * rowH / 2, rx: W * 0.56, ry: rows === 1 ? H * 0.17 : H * 0.26,
+    fill: 'url(#wscrim)', opacity: 0}, L2);
+  const dec = v => Math.min(2, (String(v).split('.')[1] || '').length);
+  const fmt = (v, d) => Number(v).toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+  const measure = (s, sz) => { const e = txt(L3, 0, 0, s, sz, {'font-weight': 700}); const w = e.getComputedTextLength(); e.remove(); return w; };
+  let size = rows === 1 ? 128 : 108;
+  const cw = W / 2 - 40, wide = s => measure(fmt(s.value, dec(s.value)), size) + (s.suffix ? measure(s.suffix, size * 0.55) + 4 : 0);
+  while (size > 40 && Math.max(...st.map(wide)) > cw) size -= 4;
+  const tc = SETTLE + 0.3;
+  at(tc - 0.1, 0.5, p => dimG = lerp(1, 0.5, p)); at(tc - 0.1, 0.5, () => frame(1));
+  at(tc - 0.1, 0.5, p => scrim.setAttribute('opacity', p));
+  st.forEach((s, i) => {
+    const row = Math.floor(i / cols), inRow = Math.min(cols, st.length - row * cols);
+    const cx = W / 2 + (i - row * cols - (inRow - 1) / 2) * (W / 2), cy = cy0 + row * rowH;
+    const g = mk('g', {opacity: 0}, L3), d = dec(s.value);
+    const num = txt(g, cx, cy, '', size, {'font-weight': 700, 'text-anchor': 'middle', filter: `url(#wb${i})`});
+    const a = mk('tspan', {}, num), b = mk('tspan', {fill: C.accent, 'font-size': size * 0.55, dx: 4}, num);
+    defs.insertAdjacentHTML('beforeend', `<filter id="wb${i}" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur id="wbs${i}" stdDeviation="0"/></filter>`);
+    const blur = document.getElementById(`wbs${i}`), lsp = Math.max(3, size * 0.03);
+    const lab = txt(g, cx + lsp / 2, cy + size * 0.36, s.label.toUpperCase(), Math.max(20, Math.round(size * 0.2)),
+      {'text-anchor': 'middle', fill: '#B4BACB', 'font-weight': 500, 'letter-spacing': lsp});
+    const show = (v, bl) => { a.textContent = fmt(v, d); b.textContent = s.suffix || ''; blur.setAttribute('stdDeviation', bl); };
+    show(0, 0);
+    const ts = tc + i * 0.07;
+    at(ts, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${(1 - p) * 46})`); }, E.spring);
+    at(ts, 0.6, (p, raw) => show(s.value * p, 7 * Math.pow(1 - raw, 2)));
+    snd(ts, 'tick');
+  });
+  END = Math.max(END, tc + (st.length - 1) * 0.07 + 0.6 + 1.7);
+};
+
+T.drawn = () => {
+  // Hook drawn in, then filled: accent anchor dots pop onto a glyph's outline, a 4 px stroke draws it, the glyph
+  // fills with ink (accent for *highlighted* words), the stroke fades and the dots shrink away.
+  const GS = S.glyphs, step = 0.05, t0 = 0.2; let last = 0, word = -1;
+  GS.forEach((g, i) => {
+    const t = t0 + i * step, grp = mk('g', {}, L2);
+    const fill = mk('path', {d: g.d, fill: g.hl ? C.accent : C.ink, 'fill-rule': 'nonzero', opacity: 0}, grp);
+    const ol = mk('path', {d: g.d, fill: 'none', stroke: C.accent, 'stroke-width': 4, 'stroke-linejoin': 'round', opacity: 0}, grp);
+    const len = ol.getTotalLength() + 2;
+    ol.setAttribute('stroke-dasharray', len); ol.setAttribute('stroke-dashoffset', len);
+    const dots = g.anchors.map(([x, y]) => mk('circle', {cx: x, cy: y, r: 0, fill: C.accent}, L3));
+    at(t - 0.15, 0.15, p => dots.forEach(c => c.setAttribute('r', 10 * p)));
+    at(t, 0.25, (p, raw) => { ol.setAttribute('opacity', 1); ol.setAttribute('stroke-dashoffset', len * (1 - p));
+      if (raw >= 1) ol.setAttribute('stroke-dashoffset', 0); }, E.inout);
+    at(t + 0.25, 0.1, p => fill.setAttribute('opacity', p), E.lin);
+    at(t + 0.35, 0.15, p => ol.setAttribute('opacity', 1 - p), E.lin);
+    at(t + 0.3, 0.15, p => dots.forEach(c => c.setAttribute('r', 10 * (1 - p))));
+    if (g.word !== word) { word = g.word; snd(t - 0.15, g.hl ? 'pop' : 'tick'); }
+    last = t + 0.45; });
+  SETTLE = last;
+  END = Math.max(END, last + 1.6);
+};
+
+T.dots = () => {
+  // Dot-matrix word: round dots on a grid appear with seeded random delays, each settling from a small jitter,
+  // then a mono caption resolves left to right out of random capitals and digits (a seeded hash, so every frame
+  // is the same on every run).
+  const pitch = Math.min(30, (W - 2 * 40) / S.cols), r = pitch * 0.38, gw = S.cols * pitch, gh = S.rows * pitch;
+  let seed = S.seed >>> 0;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const x0 = (W - gw) / 2, DUR = 0.5;
+  S.dots.forEach(([c, row, hl]) => {
+    const d = rnd() * DUR, jx = (rnd() - 0.5) * 8, jy = (rnd() - 0.5) * 8;
+    const e = mk('circle', {cx: x0 + (c + 0.5) * pitch, cy: (row + 0.5) * pitch, r, fill: hl ? C.accent : C.ink, opacity: 0}, L2);
+    at(0.1 + d, 0.25, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5));
+      e.setAttribute('transform', `translate(${jx * (1 - p)} ${jy * (1 - p)})`); }); });
+  [0.15, 0.3, 0.45].forEach(t => snd(t, 'tick'));
+  const csize = Math.max(22, Math.min(34, Math.floor((gw + 80) / (Math.max(S.caption.length, 1) * 0.62)))),
+    cap = txt(L2, W / 2, gh + pitch * 2 + csize, S.caption, csize, {'text-anchor': 'middle', class: 'mono', 'font-weight': 500,
+      fill: C.mute, opacity: 0, 'letter-spacing': 2});
+  const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', tc = 0.9, td = 0.4, n = S.caption.length;
+  const hash = (i, f) => { let h = Math.imul(i + 1, 374761393) ^ Math.imul(f + 7, 668265263) ^ S.seed;
+    h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  at(tc, td, (p, raw) => { cap.setAttribute('opacity', 1); const k = Math.floor(p * n), f = Math.floor((tc + p * td) * 30);
+    cap.textContent = [...S.caption].map((ch, i) => i < k || ch === ' ' ? ch : CH[Math.floor(hash(i, f) * CH.length)]).join('');
+    if (raw >= 1) cap.textContent = S.caption; }, E.lin);
+  snd(tc, 'key');
+  SETTLE = 0.9;
+  END = Math.max(END, tc + td + 1.6);
+};
+
+T.command = () => {
+  // Device 1: a tilted terminal card types the command, shrinks into a thin bar, and the result panel grows out of it.
+  const rows = S.rows, size = 34, lh = 62, cw = W * 0.84, ch = 56 + 24 + lh + 16, rl = 58;
+  const RH = 84 + 16 + rows.length * rl + 22, cy = RH / 2, cx = W / 2, x0 = (W - cw) / 2, y0 = cy - ch / 2;
+  const rg = mk('g', {opacity: 0}, L1); panel(rg, 0, 0, W, RH);
+  mk('circle', {cx: 46, cy: 42, r: 10, fill: C.accent}, rg);
+  fit(txt(rg, 74, 42 + 11, S.title, 32, {class: 'mono', 'font-weight': 600}), W - 110);
+  mk('rect', {x: 0, y: 84, width: W, height: 2, fill: C.line}, rg);
+  const cg = mk('g', {opacity: 0}, L1), cr = panel(cg, x0, y0, cw, ch), cc = mk('g', {}, cg);
+  mk('rect', {x: x0, y: y0, width: cw, height: 56, rx: 22, fill: C.bar}, cc); mk('rect', {x: x0, y: y0 + 34, width: cw, height: 22, fill: C.bar}, cc);
+  ['#FF5F57', '#FEBC2E', '#28C840'].forEach((c, i) => mk('circle', {cx: x0 + 34 + i * 30, cy: y0 + 28, r: 9, fill: c}, cc));
+  const full = '$ ' + S.command, ty = y0 + 56 + 24 + lh / 2 + size * 0.36;
+  const cmd = fit(txt(cc, x0 + 36, ty, full, size, {class: 'mono', 'font-weight': 500, 'xml:space': 'preserve'}), cw - 60); cmd.textContent = '';
+  at(0, 0.8, p => { const s = lerp(1.15, 1, p), sy = lerp(0.84, 1, p);
+    cg.setAttribute('transform', `translate(${cx} ${cy}) skewX(${lerp(-7, 0, p)}) scale(${s} ${s * sy}) translate(${-cx} ${-cy})`); });
+  at(0, 0.3, p => cg.setAttribute('opacity', p));
+  const per = 0.04, t0 = 0.45, tEnd = t0 + full.length * per;
+  at(t0, full.length * per, p => { cmd.textContent = full.slice(0, Math.round(p * full.length)); }, E.lin);
+  for (let i = 2; i < full.length; i += 5) snd(t0 + i * per, 'key');
+  const t1 = tEnd + 0.4, t2 = t1 + 0.35;
+  at(t1, 0.15, p => cc.setAttribute('opacity', 1 - p));
+  at(t1, 0.35, p => { cr.setAttribute('y', lerp(y0, cy - 7, p)); cr.setAttribute('height', lerp(ch, 14, p)); }, E.inout);
+  snd(t1, 'swish');
+  at(t2, 0.01, p => { cg.setAttribute('opacity', 1 - p); rg.setAttribute('opacity', p); });
+  at(t2, 0.55, p => rg.setAttribute('transform', `translate(${cx} ${cy}) scale(${lerp(cw / W, 1, p)} ${lerp(14 / RH, 1, p)}) translate(${-cx} ${-cy})`));
+  snd(t2, 'pop');
+  const title = rg.querySelector('text'); title.setAttribute('opacity', 0); fade(title, t2 + 0.25, 0.25);
+  rows.forEach((s, i) => { const e = fit(txt(rg, 44, 84 + 16 + i * rl + rl / 2 + 11, s, 30, {class: 'mono', 'font-weight': 500, opacity: 0, filter: 'url(#soft)', 'xml:space': 'preserve'}), W - 88);
+    const ts = t2 + 0.4 + i * 0.12;
+    at(ts, 0.4, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5)); e.setAttribute('transform', `translate(0 ${(1 - p) * 10})`); if (raw > 0.5) e.removeAttribute('filter'); });
+    snd(ts, 'tick'); });
+  SETTLE = t2 + 0.4 + rows.length * 0.12 + 0.3; sweep(0, 0, W, RH, SETTLE + 0.2); END = Math.max(END, SETTLE + 1.8);
+};
+
+T.palette = () => {
+  // Device 8: a command list scrolls up one line at a time, decelerates and lands on the pick in an accent band.
+  const items = S.items, n = items.length, pk = Math.max(0, items.indexOf(S.pick)), chips = S.chips, size = 38, lh = 64, vis = 7, bi = 3, hh = 96;
+  const csz = 26, ch = Math.round(csz * 1.6), gap = 14, ts = chips.map(c => { const e = txt(L2, 0, 0, c, csz); const w = e.getComputedTextLength() + 34; e.remove(); return w; });
+  const crow = []; let cur = [], cw = 0;
+  chips.forEach((c, i) => { if (cur.length && cw + gap + ts[i] > W) { crow.push(cur); cur = []; cw = 0; } cw += (cur.length ? gap : 0) + ts[i]; cur.push(i); }); if (cur.length) crow.push(cur);
+  chips.forEach((c, i) => { const r = crow.findIndex(q => q.includes(i)), q = crow[r], tot = q.reduce((a, j) => a + ts[j], 0) + gap * (q.length - 1);
+    const x = (W - tot) / 2 + q.slice(0, q.indexOf(i)).reduce((a, j) => a + ts[j] + gap, 0) + ts[i] / 2, p = pill(L2, x, r * (ch + gap) + ch / 2, c, csz, C.panel, C.text);
+    pop(p.g, 0.3 + i * 0.17, p.cx, p.cy, 0.4); snd(0.3 + i * 0.17, 'tick'); });
+  const py = chips.length ? crow.length * (ch + gap) + 20 : 0, ph = hh + vis * lh + 24, g = mk('g', {opacity: 0}, L1);
+  panel(g, 0, py, W, ph); pop(g, 0, W / 2, py + ph / 2, 0.45);
+  txt(g, 44, py + hh / 2 + 13, '>', size, {class: 'mono', fill: C.accent}); fit(txt(g, 44 + size * 1.2, py + hh / 2 + 13, S.prompt, size, {class: 'mono', 'font-weight': 500}), W - 130);
+  mk('rect', {x: 0, y: py + hh, width: W, height: 2, fill: C.line}, g);
+  const lt = py + hh + 12, bandY = lt + bi * lh;
+  mk('rect', {x: 14, y: bandY, width: W - 28, height: lh, rx: 14, fill: '#fff', opacity: 0.07}, g);
+  const hi = mk('rect', {x: 14, y: bandY, width: W - 28, height: lh, rx: 14, fill: C.accent, opacity: 0}, g);
+  mk('rect', {x: 0, y: lt, width: W, height: vis * lh}, mk('clipPath', {id: 'plc'}, svg.querySelector('defs')));
+  const lg = mk('g', {'clip-path': 'url(#plc)'}, g);
+  const els = items.map(s => fit(txt(lg, 60, 0, s, size, {class: 'mono', 'font-weight': 500}), W - 120));
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), a = rgb(C.text), b = rgb(C.dim);
+  const place = pos => els.forEach((e, i) => { const d = i - pos, ad = Math.abs(d), k = clamp(ad / 0.8);
+    e.setAttribute('y', lt + (bi + d) * lh + lh / 2 + size * 0.36); e.setAttribute('opacity', 1 - 0.93 * clamp((ad - 0.4) / 3));
+    e.setAttribute('fill', `rgb(${a.map((v, j) => Math.round(lerp(v, b[j], k))).join(',')})`); });
+  place(0);
+  const dur = []; for (let k = 0; k < pk; k++) dur.push([0.44, 0.32, 0.24][pk - 1 - k] || 0.17);
+  const starts = dur.map((d, k) => dur.slice(0, k).reduce((s, x) => s + x, 0)), total = dur.reduce((s, x) => s + x, 0), tS = 0.3, slow = pk - 1;
+  at(tS, total, (p, raw) => { const u = raw * total; let k = dur.length - 1; while (k > 0 && u < starts[k]) k--;
+    const q = clamp((u - starts[k]) / dur[k]); place(pk ? k + (dur[k] > 0.17 ? E.out(q) : q) : 0); }, E.lin);
+  dur.forEach((d, k) => snd(tS + starts[k] + d, k === slow ? 'pop' : 'tick'));
+  const tL = tS + total; at(tL, 0.3, (p, raw) => { hi.setAttribute('opacity', Math.min(1, raw * 3)); hi.setAttribute('transform', `translate(${W / 2} ${bandY + lh / 2}) scale(${lerp(0.96, 1, p)} ${lerp(0.9, 1, p)}) translate(${-W / 2} ${-(bandY + lh / 2)})`);
+    els[pk].setAttribute('fill', '#fff'); }, E.spring);
+  SETTLE = tL + 0.3; sweep(0, py, W, ph, SETTLE + 0.2); END = Math.max(END, SETTLE + 1.8);
+};
+
+T.board = () => {
+  // A goal typed into an input bar, task cards dropping into To do, then walking to Doing and Done while a ring fills.
+  const N = S.tasks.length, CREAM = '#F7F1E3', INK = '#1B1F2A', SUB = '#6B6F7B', EDGE = 'rgba(20,24,33,0.16)';
+  const cp = (g, x, y, w, h) => panel(g, x, y, w, h, {fill: CREAM, stroke: EDGE});
+  const bar = mk('g', {opacity: 0}, L1); cp(bar, 0, 0, W, 88);
+  txt(bar, 34, 56, '>', 34, {class: 'mono', fill: C.accent});
+  const goal = txt(bar, 76, 55, '', 32, {class: 'mono', fill: INK, 'font-weight': 500, 'xml:space': 'preserve'});
+  const caret = mk('rect', {x: 76, y: 24, width: 4, height: 40, fill: C.accent, opacity: 0}, bar);
+  pop(bar, 0, W / 2, 44, 0.45);
+  const t0 = 0.5, per = 0.03, n = S.goal.length, typed = t0 + n * per;
+  fade(caret, t0 - 0.1, 0.1);
+  at(t0, n * per, p => { const k = Math.round(p * n); goal.textContent = S.goal.slice(0, k); caret.setAttribute('x', 76 + k * 19.2); }, E.lin);
+  at(typed, 0.9, p => caret.setAttribute('opacity', p < 0.8 ? (Math.floor(p * 6) % 2 ? 0 : 1) : 0), E.lin);
+  for (let i = 1; i < n; i += 3) snd(t0 + i * per, 'key');
+  const gap = 18, colW = (W - 2 * gap) / 3, cw = colW - 28, ch = 96, y0 = 108, colH = 52 + N * (ch + 14) + 14;
+  const cols = mk('g', {opacity: 0, filter: 'url(#soft)'}, L0);
+  ['To do', 'Doing', 'Done'].forEach((h, i) => { const x = i * (colW + gap);
+    mk('rect', {x, y: y0, width: colW, height: colH, rx: 22, fill: C.track, stroke: C.guide, 'stroke-width': 2}, cols);
+    txt(cols, x + 24, y0 + 36, h.toUpperCase(), 22, {fill: C.mute, 'letter-spacing': 3}); });
+  at(0.25, 0.5, (p, raw) => { cols.setAttribute('opacity', Math.min(1, raw * 2.2)); if (raw > 0.5) cols.removeAttribute('filter'); }, E.out);
+  const slot = (col, row) => [col * (colW + gap) + 14, y0 + 52 + row * (ch + 14) + 6];
+  const width = (s, sz) => { const e = txt(L2, 0, 0, s, sz); const m = e.getComputedTextLength(); e.remove(); return m; };
+  const wrap = s => { let lines = [s], size = 26; const ws = s.split(' ');
+    if (width(s, size) > cw - 84 && ws.length > 1) { let best = Infinity;
+      for (let k = 1; k < ws.length; k++) { const a = ws.slice(0, k).join(' '), b = ws.slice(k).join(' '), m = Math.max(width(a, size), width(b, size));
+        if (m < best) { best = m; lines = [a, b]; } } }
+    while (size > 18 && Math.max(...lines.map(l => width(l, size))) > cw - 84) size -= 2;
+    return {lines, size}; };
+  const cards = S.tasks.map((label, i) => {
+    const g = mk('g', {opacity: 0}, L1), halo = mk('rect', {x: -4, y: -4, width: cw + 8, height: ch + 8, rx: 26, fill: 'none',
+      stroke: C.accent, 'stroke-width': 6, opacity: 0, filter: 'url(#glow)'}, g);
+    cp(g, 0, 0, cw, ch);
+    const ring = mk('rect', {x: -2, y: -2, width: cw + 4, height: ch + 4, rx: 24, fill: 'none', stroke: C.accent, 'stroke-width': 4, opacity: 0}, g);
+    mk('circle', {cx: 38, cy: ch / 2, r: 15, fill: 'none', stroke: SUB, 'stroke-width': 3}, g);
+    const fill = mk('circle', {cx: 38, cy: ch / 2, r: 15, fill: C.accent, opacity: 0}, g);
+    const tick = mk('path', {d: `M30 ${ch / 2 + 1} L36 ${ch / 2 + 7} L47 ${ch / 2 - 6}`, fill: 'none', stroke: '#fff', 'stroke-width': 4,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0}, g);
+    const tl = tick.getTotalLength(); tick.setAttribute('stroke-dasharray', tl); tick.setAttribute('stroke-dashoffset', tl);
+    const w = wrap(label);
+    w.lines.forEach((l, j) => txt(g, 68, ch / 2 + (j - (w.lines.length - 1) / 2) * w.size * 1.25 + w.size * 0.34, l, w.size, {fill: INK}));
+    return {g, halo, ring, fill, tick, tl}; });
+  const tCards = typed + 0.35, drop = 0.45;
+  cards.forEach((c, i) => { const t = tCards + i * drop, [x, y] = slot(0, i);
+    at(t, 0.25, (p, raw) => { c.g.setAttribute('opacity', Math.min(1, raw * 3)); c.g.setAttribute('transform', `translate(${x} ${y - (1 - p) * 80})`); }, E.out);
+    snd(t + 0.18, 'pop'); });
+  SETTLE = tCards + (N - 1) * drop + 0.25;
+  const ry = y0 + colH + 26, hasCap = S.captions.length > 0, rx = hasCap ? 0 : (W - 300) / 2, rcx = rx + 84, rcy = ry + 78, R = 46, circ = 2 * Math.PI * R;
+  const rg = mk('g', {opacity: 0}, L1); cp(rg, rx, ry, 300, 156);
+  mk('circle', {cx: rcx, cy: rcy, r: R, fill: 'none', stroke: 'rgba(20,24,33,0.12)', 'stroke-width': 14}, rg);
+  const arc = mk('circle', {cx: rcx, cy: rcy, r: R, fill: 'none', stroke: C.accent, 'stroke-width': 14, 'stroke-linecap': 'round',
+    'stroke-dasharray': circ, 'stroke-dashoffset': circ, transform: `rotate(-90 ${rcx} ${rcy})`}, rg);
+  const count = txt(rg, rcx, rcy + 11, `0/${N}`, 30, {fill: INK, 'font-weight': 700, 'text-anchor': 'middle'});
+  txt(rg, rx + 156, ry + 70, 'Tasks', 28, {fill: INK});
+  const status = txt(rg, rx + 156, ry + 106, 'Queued', 24, {fill: SUB, 'font-weight': 500});
+  pop(rg, tCards, rx + 150, ry + 78, 0.5);
+  const tWork = SETTLE + 0.4, step = 0.75, [dx, dy] = slot(1, 0);
+  set(tWork, () => { status.textContent = 'Running'; status.setAttribute('fill', C.accent); });
+  cards.forEach((c, i) => { const s = tWork + i * step, [x, y] = slot(0, i), [ex, ey] = slot(2, i);
+    moveTo(c.g, s, 0.4, x, y, dx, dy, E.out); fade(c.ring, s, 0.3); at(s, 0.3, p => c.halo.setAttribute('opacity', p * 0.7)); snd(s, 'tick');
+    moveTo(c.g, s + 0.65, 0.4, dx, dy, ex, ey, E.out); fade(c.ring, s + 0.65, 0.25, 1, 0);
+    at(s + 0.65, 0.25, p => c.halo.setAttribute('opacity', (1 - p) * 0.7));
+    fade(c.fill, s + 0.95, 0.2); fade(c.tick, s + 0.95, 0.05);
+    at(s + 0.95, 0.3, p => c.tick.setAttribute('stroke-dashoffset', c.tl * (1 - p)), E.out); snd(s + 0.95, 'pop');
+    at(s + 0.95, 0.4, (p) => { arc.setAttribute('stroke-dashoffset', circ * (1 - lerp(i / N, (i + 1) / N, p)));
+      count.textContent = `${p > 0.4 ? i + 1 : i}/${N}`; }, E.out); });
+  const done = tWork + (N - 1) * step + 0.95;
+  set(done + 0.4, () => { status.textContent = 'Done'; }); snd(done + 0.4, 'click');
+  const beats = {1: [tWork], 2: [tCards, done], 3: [tCards, tWork, done]}[S.captions.length] || [];
+  S.captions.forEach((s, j) => { const e = txt(L2, rx + 330, ry + 46 + j * 52, s, 44, {class: 'serif', 'font-weight': 400, fill: C.ink,
+      'font-style': j ? 'italic' : 'normal', opacity: 0, filter: 'url(#soft)'});
+    fit(e, W - 330); const by = +e.getAttribute('y');
+    at(beats[j], 0.4, (p, raw) => { e.setAttribute('opacity', p); e.setAttribute('y', by + (1 - p) * 10); if (raw > 0.5) e.removeAttribute('filter'); }, E.out); });
+  END = Math.max(END, done + 1.2);
+};
+
+T.blueprint = () => {
+  // A schematic on the reel background: outlines draw in, connectors follow, then callouts one at a time, their text
+  // resolving out of a seeded scramble. Parts take fixed spots by count, so connectors never cross a third part.
+  const parts = S.parts, N = parts.length, BW = 214, BH = 84;
+  const POS = {2: [[-250, -120], [250, 120]], 3: [[0, -190], [-270, 110], [270, 110]],
+    4: [[-270, -170], [270, -170], [-270, 150], [270, 150]], 5: [[0, -250], [-310, -60], [310, -60], [-190, 190], [190, 190]]}[N];
+  const byId = {}, SQ = 8, CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@';
+  const sq = (x, y, s, color, a = {}) => mk('rect', {x: x - s / 2, y: y - s / 2, width: s, height: s, fill: color, opacity: 0, ...a}, L2);
+  const outline = {stroke: C.ink, 'stroke-width': 3, 'stroke-linecap': 'butt', 'stroke-linejoin': 'miter', opacity: 0.9};
+  parts.forEach((p, i) => { const [cx, cy] = POS[i], x = cx - BW / 2, y = cy - BH / 2, t = 0.15 + i * 0.05;
+    const o = line(`M${x} ${y} H${x + BW} V${y + BH} H${x} Z`, outline), body = mk('rect', {x, y, width: BW, height: BH, fill: C.track, opacity: 0}, L0);
+    const lab = fit(txt(L2, cx, cy + 8, p.label, 22, {class: 'mono', 'font-weight': 500, fill: C.ink, 'text-anchor': 'middle', opacity: 0}), BW - 24);
+    const corners = [[x, y], [x + BW, y], [x + BW, y + BH], [x, y + BH]].map(([a, b]) => sq(a, b, SQ, C.ink));
+    draw(o, t, 0.7); fade(body, t + 0.5, 0.3); fade(lab, t + 0.55, 0.3); corners.forEach(c => fade(c, t + 0.6, 0.15));
+    byId[p.id] = {o, cx, cy, w: BW, h: BH, i}; });
+  snd(0.15, 'scribble');
+  const tl = 0.15 + (N - 1) * 0.05 + 0.7 + 0.15;
+  S.links.forEach((k, i) => { const a = byId[k.from], b = byId[k.to], [x1, y1, x2, y2] = exits(a, b), t = tl + i * 0.12;
+    const l = line(`M${x1} ${y1} L${x2} ${y2}`, {stroke: C.ink, 'stroke-width': 2.5, opacity: 0.7});
+    draw(l, t, 0.5); [[x1, y1], [x2, y2]].forEach(([x, y], j) => fade(sq(x, y, SQ - 2, C.ink), t + (j ? 0.45 : 0), 0.1));
+    snd(t, 'swish'); });
+  const tc = tl + (S.links.length - 1) * 0.12 + 0.5 + 0.3; SETTLE = tc - 0.3;
+  const half = Math.max(...POS.map(p => Math.abs(p[0]))) + BW / 2, step = 1.4, lh = 56;
+  let prev = null;
+  S.callouts.forEach((c, k) => { const p = byId[c.part], above = p.cy < 0 || (p.cy === 0 && p.i % 2 === 0), dir = above ? -1 : 1;
+    const sx = p.cx + (p.cx < 0 ? -50 : 50), ey = p.cy + dir * BH / 2, ty = ey + dir * lh, t = tc + k * step;
+    const lw = c.text.length * 24 * 0.6, lx = Math.max(-(half - lw / 2), Math.min(half - lw / 2, sx));
+    const l = line(`M${sx} ${ey} L${sx} ${ty}`, {stroke: C.ink, 'stroke-width': 2, 'stroke-linecap': 'butt'});
+    const end = sq(sx, ey, 10, C.ink), el = txt(L2, lx, ty + (above ? -14 : 34), '', 24, {class: 'mono', 'font-weight': 500, fill: C.ink,
+      'text-anchor': 'middle', opacity: 0});
+    const paint = (color, on) => { l.p.setAttribute('stroke', color); end.setAttribute('fill', color); el.setAttribute('fill', color);
+      p.o.p.setAttribute('stroke', on ? C.accent : C.ink); };
+    const pv = prev; if (pv) set(t, pv);
+    set(t, () => paint(C.accent, true));
+    const off = () => paint(C.ink, false); prev = off;
+    fade(end, t, 0.1); draw(l, t, 0.35); fade(el, t + 0.25, 0.05); snd(t, 'tick');
+    let seed = k * 977; for (const ch of c.text) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const mix = (a, b, d) => { let h = (a * 374761393 + b * 668265263 + d * 2147483647) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
+    at(t + 0.25, 0.4, p2 => { const n = c.text.length, res = Math.floor(p2 * n), st = Math.floor(p2 * 12);
+      el.textContent = p2 >= 1 ? c.text : [...c.text].map((ch, i) => i < res || ch === ' ' ? ch : CH[mix(seed, st, i) % CH.length]).join(''); }, E.lin);
+    snd(t + 0.3, 'key'); snd(t + 0.5, 'key'); });
+  END = Math.max(END, tc + (S.callouts.length - 1) * step + 1.8);
+};
+
+T.statement = () => {
+  // Short stacked statements on a soft card of drifting blurred blobs, with frosted glass panels floating over it.
+  // Each line rises out of a blur, held a beat before the next; the key word in the accent gets a marker stroke.
+  const cw = W - 72, ch = H - 72, defs = svg.querySelector('defs'), ink = '#141821', w = 2 * Math.PI * 0.08;
+  const G = mk('g', {}, L1);
+  const blur = (id, sd) => { const f = mk('filter', {id, x: '-30%', y: '-30%', width: '160%', height: '160%'}, defs);
+    return mk('feGaussianBlur', {stdDeviation: sd}, f); };
+  blur('stblob', 46); blur('stfrost', 110);
+  mk('clipPath', {id: 'stclip'}, defs).appendChild(mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 56}, svg));
+  FIT = mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 56, fill: '#F5F2FB', filter: 'url(#shadow)'}, G);
+  const hues = [[C.accent, 0.5, 0.25, 0.3], ['#B9C4FF', 0.8, 0.8, 0.28], ['#BFEBD8', 0.85, 0.2, 0.26], ['#FFD9C2', 0.2, 0.85, 0.3]];
+  const sets = [];
+  const blobs = (parent, filter) => { const g = mk('g', {filter: `url(#${filter})`}, parent);
+    sets.push(hues.map(([c, bx, by, r]) => ({e: mk('circle', {r: r * cw, fill: c, opacity: c === C.accent ? 0.42 : 0.8}, g), bx, by}))); };
+  const base = mk('svg', {width: cw, height: ch, overflow: 'hidden', 'clip-path': 'url(#stclip)'}, G); blobs(base, 'stblob');
+  const panels = [[0.5, 0.1, 0.4, 0.3, 0], [0.42, 0.62, 0.46, 0.26, 2.1]].map(([px, py, pw, ph, ph0], k) => {
+    const clip = mk('clipPath', {id: 'stp' + k}, defs), cr = mk('rect', {width: pw * cw, height: ph * ch, rx: 36}, clip);
+    blobs(mk('svg', {width: cw, height: ch, overflow: 'hidden', 'clip-path': `url(#stp${k})`}, G), 'stfrost');
+    const r = mk('rect', {width: pw * cw, height: ph * ch, rx: 36, fill: 'rgba(255,255,255,0.4)', stroke: 'rgba(255,255,255,0.8)', 'stroke-width': 2}, G);
+    return {r, cr, x: px * cw, y: py * ch, ph0}; });
+  const drift = t => { hues.forEach((_, j) => sets.forEach(s => { const b = s[j], a = 0.09 * cw;
+      b.e.setAttribute('cx', b.bx * cw + a * Math.cos(w * t + j * 1.7)); b.e.setAttribute('cy', b.by * ch + a * Math.sin(w * t + j * 2.3)); }));
+    panels.forEach(p => { const x = p.x + 0.03 * cw * Math.sin(w * t + p.ph0), y = p.y + 0.03 * ch * Math.cos(w * t + p.ph0);
+      for (const e of [p.r, p.cr]) { e.setAttribute('x', x); e.setAttribute('y', y); } }); };
+  drift(0);
+  const parsed = S.lines.map(l => l.split('*').map((s, i) => [s, i % 2 === 1]).filter(([s]) => s));
+  const left = cw * 0.08, avail = cw - left - cw * 0.05;
+  let size = Math.min(84, Math.floor(ch / (parsed.length * 1.25 + 1)));
+  const els = parsed.map(segs => { const e = mk('text', {x: left, y: 0, 'font-size': size, 'font-weight': 700, fill: ink, opacity: 0}, G);
+    segs.forEach(([s, hl]) => { const sp = mk('tspan', hl ? {fill: C.accent} : {}, e); sp.textContent = s; }); return e; });
+  while (size > 36 && Math.max(...els.map(e => e.getComputedTextLength())) > avail) { size -= 2; els.forEach(e => e.setAttribute('font-size', size)); }
+  const lh = size * 1.3, y0 = (ch - lh * els.length) / 2 + size * 0.95, marks = [];
+  els.forEach((e, i) => { const y = y0 + i * lh; e.setAttribute('y', y);
+    const g = blur('stline' + i, 8); e.setAttribute('filter', `url(#stline${i})`);
+    const t0 = 0.25 + i * 1.2;
+    at(t0, 0.3, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5)); e.setAttribute('transform', `translate(0 ${(1 - p) * 40})`);
+      g.setAttribute('stdDeviation', 8 * (1 - p)); if (raw >= 1) e.removeAttribute('filter'); });
+    snd(t0, 'swish');
+    [...e.querySelectorAll('tspan[fill]')].forEach(sp => { const n = sp.textContent.length;
+      const x1 = sp.getStartPositionOfChar(0).x, x2 = sp.getEndPositionOfChar(n - 1).x;
+      const m = mk('path', {d: `M${x1} ${y + size * 0.16} Q${(x1 + x2) / 2} ${y + size * 0.22} ${x2} ${y + size * 0.14}`, fill: 'none', stroke: C.accent,
+        'stroke-width': Math.max(6, size * 0.07), 'stroke-linecap': 'round', opacity: 0.85}, G);
+      const len = m.getTotalLength(); m.setAttribute('stroke-dasharray', len); m.setAttribute('stroke-dashoffset', len);
+      G.insertBefore(m, e); marks.push({m, len}); }); });
+  SETTLE = 0.25 + (els.length - 1) * 1.2 + 0.4;
+  marks.forEach(({m, len}) => at(SETTLE, 0.45, p => m.setAttribute('stroke-dashoffset', len * (1 - p)), E.inout));
+  if (marks.length) snd(SETTLE, 'scribble');
+  const total = SETTLE + 1.5; at(0, total, (p, raw) => drift(raw * total), E.lin);
+  END = Math.max(END, total);
+};
+
+T.quotes = () => {
+  // Real posts typed onto dark cards one after another (about 18 characters a second, faster only when the text would
+  // not fit the time), each card blur-sliding out as the next slides in; at the end the cards stack into a tilted pile.
+  const Q = S.quotes, n = Q.length, cw = W - 150, pad = 44, bodyW = cw - 2 * pad, defs = svg.querySelector('defs');
+  const total = Q.reduce((k, q) => k + q.text.length, 0), cps = Math.max(18, total / 6.5), IN = p => p * p * p;
+  const wrap = (text, sz) => { const probe = txt(L2, 0, 0, '', sz, {'font-weight': 500}); const out = [];
+    text.split('\n').forEach(par => { let cur = '';
+      par.split(/\s+/).filter(Boolean).forEach(word => { const trial = cur ? cur + ' ' + word : word; probe.textContent = trial;
+        if (cur && probe.getComputedTextLength() > bodyW) { out.push(cur); cur = word; } else cur = trial; });
+      out.push(cur); });
+    probe.remove(); return out; };
+  let size = 40, wrapped = Q.map(q => wrap(q.text, size));
+  while (size > 28 && Math.max(...wrapped.map(l => l.length)) > 8) { size -= 2; wrapped = Q.map(q => wrap(q.text, size)); }
+  const lh = Math.round(size * 1.4), head = 150, ch = head + 30 + lh * Math.max(...wrapped.map(l => l.length)) + 40;
+  const cx = cw / 2, cy = ch / 2;
+  const tf = (x, y, rot, s) => `translate(${x} ${y}) translate(${cx} ${cy}) rotate(${rot}) scale(${s}) translate(${-cx} ${-cy})`;
+  const rest = {x: 0, y: 0, rot: 0, s: 1, blur: 0, op: 1}, gone = {x: -cw * 0.9, y: 0, rot: 0, s: 1, blur: 12, op: 0};
+  const cards = Q.map((q, j) => {
+    const f = mk('filter', {id: 'qb' + j, x: '-30%', y: '-30%', width: '160%', height: '160%'}, defs), sd = mk('feGaussianBlur', {stdDeviation: 0}, f);
+    const g = mk('g', {opacity: 0, transform: tf(0, 0, 0, 1)}, L1);
+    mk('rect', {x: 0, y: 0, width: cw, height: ch, rx: 34, fill: '#161C28', stroke: '#2A3242', 'stroke-width': 2, filter: 'url(#shadow)'}, g);
+    const name = q.author.replace(/^@/, '');
+    mk('circle', {cx: pad + 36, cy: 50 + 36, r: 36, fill: '#232A38', stroke: C.accent, 'stroke-width': 2}, g);
+    txt(g, pad + 36, 50 + 36 + 11, name.split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase(), 30, {'text-anchor': 'middle', fill: C.accent, 'font-weight': 700});
+    fit(txt(g, pad + 96, 50 + 30, name, 34), cw - pad * 2 - 96);
+    txt(g, pad + 96, 50 + 68, q.platform, 26, {fill: C.dim, 'font-weight': 500});
+    const rows = wrapped[j].map((l, i) => ({t: txt(g, pad, head + 30 + i * lh + size * 0.8, '', size, {'font-weight': 500, fill: '#E6E9F2'}), full: l}));
+    const caret = mk('rect', {x: pad, y: head + 30 + size * 0.05, width: 4, height: size * 1.05, rx: 2, fill: C.accent, opacity: 0}, g);
+    return {g, sd, rows, caret, q, len: rows.reduce((k, r) => k + r.full.length, 0)};
+  });
+  // Animate any of x, y, rot, scale, blur and opacity of a card between two states.
+  const move = (j, t, d, a, b, ease = E.out) => at(t, d, p => { const c = cards[j], v = k => lerp(a[k], b[k], p);
+    c.g.setAttribute('transform', tf(v('x'), v('y'), v('rot'), v('s'))); c.g.setAttribute('opacity', v('op'));
+    c.sd.setAttribute('stdDeviation', v('blur')); if (v('blur') > 0.05) c.g.setAttribute('filter', `url(#qb${j})`); else c.g.removeAttribute('filter'); }, ease);
+  let t = 0.1;
+  cards.forEach((c, j) => {
+    move(j, t, 0.45, j ? {...gone, x: cw * 0.7} : {...rest, y: 40, blur: 10, op: 0}, rest); snd(t, 'swish');
+    if (j === 0) SETTLE = t + 0.45;
+    const ts = t + 0.5, dur = c.len / cps, hold = 0.55;
+    at(ts, dur, p => { let left = Math.round(p * c.len), at_ = 0;
+      c.rows.forEach((r, i) => { const k = Math.min(left, r.full.length); r.t.textContent = r.full.slice(0, k); left -= k; if (k > 0) at_ = i; });
+      const r = c.rows[at_]; c.caret.setAttribute('x', pad + r.t.getComputedTextLength() + 4);
+      c.caret.setAttribute('y', head + 30 + at_ * lh + size * 0.05); }, E.lin);
+    at(ts, dur + hold, (p, raw) => { const tm = raw * (dur + hold);
+      c.caret.setAttribute('opacity', raw < 1 && (tm < dur || Math.floor(tm * 4) % 2 === 0) ? 1 : 0); }, E.lin);
+    for (let k = 3; k <= c.len; k += 3) snd(ts + k / cps, 'key');
+    t = ts + dur + hold;
+    if (j < n - 1) { move(j, t, 0.4, rest, gone, IN); t += 0.1; }
+  });
+  if (n > 1) {
+    const pile = j => ({x: (j - (n - 1)) * 16, y: (j - (n - 1)) * 14, rot: 2 + (j - (n - 1)) * 4, s: 0.88, blur: 0, op: 1});
+    const t1 = t + 0.1;
+    cards.forEach((c, j) => { move(j, t1 + (n - 1 - j) * 0.08, 0.6, j === n - 1 ? rest : {...gone, op: 0}, pile(j)); });
+    snd(t1, 'swish'); snd(t1 + 0.45, 'thud'); END = Math.max(END, t1 + 0.6 + (n - 1) * 0.08 + 0.6);
+  } else END = Math.max(END, t + 0.4);
+};
+
+Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'),
+  document.fonts.load('500 34px "JetBrains Mono"'), document.fonts.load('400 34px "Instrument Serif"'),
+  document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
   // reel), scaling down only when needed, and centre the layout both ways.
-  const M = 36, bb = ROOT.getBBox(), k = Math.min(1, (W - 2 * M) / bb.width, (H - 2 * M) / bb.height);
+  const M = 36, bb = (FIT || ROOT).getBBox(), k = Math.min(1, (W - 2 * M) / bb.width, (H - 2 * M) / bb.height);
   ROOT.setAttribute('transform', `translate(${(W - bb.width * k) / 2 - bb.x * k} ${(H - bb.height * k) / 2 - bb.y * k}) scale(${k})`); window.META = {duration: Math.min(P.max, END + 0.4), settle: SETTLE, sounds: SND};
   window.renderAt(0); window.READY = true;
 }).catch(e => { window.ERROR = String(e); });
@@ -594,6 +1102,96 @@ def morph_plan(before, after, language):
     return toks, removed, added
 
 
+POPPINS_BOLD = render.FONT_DIR / 'Poppins-Bold.ttf'
+
+
+def _marked(line):
+    """A line with *highlights* as words [(text, highlighted)]."""
+    out, hl = [], False
+    for k, part in enumerate(line.split('*')):
+        if k:
+            hl = not hl
+        out += [(w, hl) for w in part.split()]
+    return out
+
+
+def glyph_outlines(lines, width, size=220):
+    """Poppins Bold laid out per line, centred: {'glyphs': [{'d': svg path, 'hl', 'word', 'line', 'anchors': [[x, y]]}],
+    'gw', 'gh'}. The size shrinks so the widest line fits `width`. Anchors are up to 3 on-curve points per glyph."""
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.recordingPen import DecomposingRecordingPen
+    from fontTools.pens.transformPen import TransformPen
+    from fontTools.ttLib import TTFont
+    font = TTFont(str(POPPINS_BOLD))
+    cmap, gs, hmtx, upm = font.getBestCmap(), font.getGlyphSet(), font['hmtx'], font['head'].unitsPerEm
+    cap = getattr(font['OS/2'], 'sCapHeight', 0) or upm * 0.7
+    parsed = [_marked(l) for l in lines]
+
+    def adv(ch):
+        return hmtx[cmap.get(ord(ch), '.notdef')][0]
+    widths = [sum(sum(adv(c) for c in w) for w, _ in ws) + adv(' ') * (len(ws) - 1) for ws in parsed]
+    k = min(size, width * upm / max(widths)) / upm
+    lh, glyphs, word = upm * 1.2 * k, [], 0
+    for li, ws in enumerate(parsed):
+        x = (max(widths) - widths[li]) / 2 * k
+        base = li * lh + cap * k
+        for w, hl in ws:
+            for ch in w:
+                name = cmap.get(ord(ch), '.notdef')
+                svg_pen = SVGPathPen(gs, ntos=lambda v: f'{v:.1f}')
+                gs[name].draw(TransformPen(svg_pen, (k, 0, 0, -k, x, base)))
+                rec = DecomposingRecordingPen(gs)
+                gs[name].draw(rec)
+                pts = [p[-1] for op, p in rec.value if op in ('moveTo', 'lineTo', 'curveTo', 'qCurveTo') and p and p[-1]]
+                pick = [pts[round(i * (len(pts) - 1) / 2)] for i in range(3)] if len(pts) >= 3 else pts
+                anchors = [[round(x + px * k, 1), round(base - py * k, 1)] for px, py in dict.fromkeys(pick)]
+                if svg_pen.getCommands():
+                    glyphs.append({'d': svg_pen.getCommands(), 'hl': hl, 'word': word, 'line': li, 'anchors': anchors})
+                x += adv(ch) * k
+            x += adv(' ') * k
+            word += 1
+    return {'glyphs': glyphs, 'gw': round(max(widths) * k, 1), 'gh': round(((len(parsed) - 1) * 1.2 + 0.9) * upm * k, 1)}
+
+
+def dot_raster(word, rows=9):
+    """A word (letters, digits, . / - and *highlight* marks) from Poppins Bold as a dot grid, `rows` dots from the
+    cap height to the baseline: {'cols', 'rows', 'dots': [[col, row, highlighted]]} where coverage is over 0.5."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont
+    plain, hlmask, hl = '', [], False
+    for k, part in enumerate(word.split('*')):
+        if k:
+            hl = not hl
+        plain += part
+        hlmask += [hl] * len(part)
+    size = 360
+    font = ImageFont.truetype(str(POPPINS_BOLD), size)
+    cap = font.getbbox('H')[3] - font.getbbox('H')[1]
+    cell = cap / rows
+    base = size * 2
+    pad, total = int(cell * 2), int(font.getlength(plain)) + int(cell * 4)
+    height = int(base + cell * 4)
+    masks = []
+    for only in (False, True):
+        img = Image.new('L', (total, height), 0)
+        d, x = ImageDraw.Draw(img), pad
+        for ch, on in zip(plain, hlmask):
+            if on or not only:
+                d.text((x, base), ch, font=font, fill=255, anchor='ls')
+            x += font.getlength(ch)
+        masks.append(img)
+    w, h = (int(np.ceil(total / cell)), int(np.ceil(height / cell)))
+    grids = [np.asarray(m.resize((w, h), Image.BOX), dtype=np.float32) / 255 for m in masks]
+    on = grids[0] > 0.5
+    ys, xs = np.nonzero(on)
+    if not len(xs):
+        return {'cols': 1, 'rows': 1, 'dots': []}
+    r0, r1, c0, c1 = ys.min(), ys.max(), xs.min(), xs.max()
+    return {'cols': int(c1 - c0 + 1), 'rows': int(r1 - r0 + 1),
+            'dots': [[int(c - c0), int(r - r0), bool(grids[1][r, c] > 0.5)] for r, c in zip(*np.nonzero(on))
+                     if r0 <= r <= r1 and c0 <= c <= c1]}
+
+
 def prepare(spec, w):
     """The spec with what the page needs computed here: highlighted tokens, a font size, a source's host."""
     spec = dict(spec)
@@ -605,13 +1203,21 @@ def prepare(spec, w):
         spec.update(toks=toks, removed_lines=removed, added_lines=added,
                     rows=max(len(spec['before'].rstrip('\n').split('\n')), len(spec['after'].rstrip('\n').split('\n'))),
                     size=min(40, int((w - 90) / (max(cols, 8) * 0.6))))
+    elif spec['type'] == 'inspect':
+        spec['tokens'] = tokens(spec['code'], spec.get('language'))
     elif spec['type'] == 'race':
         from urllib.parse import urlparse
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
+    elif spec['type'] == 'drawn':
+        spec.update(glyph_outlines(spec['lines'], w - 80))
+    elif spec['type'] == 'dots':
+        spec.update(dot_raster(spec['word']))
+        spec['seed'] = int(hashlib.sha1(spec['word'].encode()).hexdigest()[:8], 16)
+        spec.setdefault('caption', '')
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines'):
+                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes'):
         spec.setdefault(key, [])
     return spec
 
@@ -619,11 +1225,14 @@ def prepare(spec, w):
 def font_css():
     import visuals
     visuals.mono(20)  # makes sure JetBrains Mono is downloaded
-    faces = [('Poppins', wt, render.FONT_DIR / f'Poppins-{name}.ttf') for wt, name in (('700', 'Bold'), ('600', 'SemiBold'),
-                                                                                      ('500', 'Regular'))]
-    faces.append(('JetBrains Mono', '500', visuals.MONO))
-    return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};src:url(data:font/ttf;base64,"
-                   f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, path in faces)
+    render.ensure_fonts()
+    faces = [('Poppins', wt, 'normal', render.FONT_DIR / f'Poppins-{name}.ttf') for wt, name in (('700', 'Bold'), ('600', 'SemiBold'),
+                                                                                                ('500', 'Regular'))]
+    faces.append(('JetBrains Mono', '500', 'normal', visuals.MONO))
+    faces += [('Instrument Serif', '400', style.lower(), render.FONT_DIR / f'InstrumentSerif-{style}.ttf')
+              for style in render.SERIF_STYLES if (render.FONT_DIR / f'InstrumentSerif-{style}.ttf').exists()]
+    return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};font-style:{fs};src:url(data:font/ttf;base64,"
+                   f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, fs, path in faces)
 
 
 def render_motion(spec, theme, size):
@@ -712,6 +1321,39 @@ EXAMPLES = {
     'outputmap': {'type': 'outputmap', 'command': 'git branch',
                   'output': ['* main', '  feature/login', '  fix/cache']},
     'kinetic': {'type': 'kinetic', 'lines': ['Delete the key', 'on every *write*'], 'tag': 'Key step'},
+    'inspect': {'type': 'inspect', 'language': 'ts', 'title': 'user.ts',
+                'code': 'async function load(url) {\n  const res = await fetch(url)\n  const user = res.json()\n  return user.name\n}',
+                'marks': [{'line': 2, 'label': 'awaits the response'}, {'line': 3, 'label': 'a Promise, no await'},
+                          {'line': 4, 'label': 'undefined at runtime'}]},
+    'variants': {'type': 'variants', 'title': 'git reset HEAD~1',
+                 'variants': [{'label': '--soft', 'rows': ['HEAD: moved back', 'Index: kept', 'Files: kept']},
+                              {'label': '--mixed', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: kept']},
+                              {'label': '--hard', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: reset']}]},
+    'wall': {'type': 'wall', 'tiles': ['Auth', 'Billing', 'Search', 'Webhooks', 'Queues', 'Emails'],
+             'stats': [{'value': 48, 'label': 'Endpoints'}, {'value': 1240, 'label': 'Tests'},
+                       {'value': 94, 'label': 'Coverage', 'suffix': '%'}]},
+    'drawn': {'type': 'drawn', 'lines': ['Cache the *read*', 'not the write']},
+    'dots': {'type': 'dots', 'word': 'p*99*', 'caption': 'LATENCY, NOT AVERAGE'},
+    'board': {'type': 'board', 'goal': 'Fix the flaky login test',
+              'tasks': ['Reproduce the failure', 'Find the race', 'Patch the test', 'Run the suite'],
+              'captions': ['Start from a goal.', 'Split it into small tasks.', 'Check each one off.']},
+    'blueprint': {'type': 'blueprint',
+                  'parts': [{'id': 'edge', 'label': 'Edge'}, {'id': 'api', 'label': 'API'}, {'id': 'queue', 'label': 'Queue'},
+                            {'id': 'db', 'label': 'Postgres'}, {'id': 'worker', 'label': 'Worker'}],
+                  'links': [{'from': 'edge', 'to': 'api'}, {'from': 'api', 'to': 'queue'}, {'from': 'api', 'to': 'db'},
+                            {'from': 'queue', 'to': 'worker'}, {'from': 'worker', 'to': 'db'}],
+                  'callouts': [{'part': 'queue', 'text': 'Retries on failure'}, {'part': 'db', 'text': 'Source of truth'}]},
+    'command': {'type': 'command', 'command': 'npm init -y', 'title': 'package.json',
+                'rows': ['"name": "my-app"', '"version": "1.0.0"', '"main": "index.js"', '"license": "ISC"']},
+    'palette': {'type': 'palette', 'prompt': 'npx shadcn add', 'pick': 'button', 'chips': ['Next.js', 'Vite', 'Remix', 'Astro'],
+                'items': ['accordion', 'alert', 'alert-dialog', 'avatar', 'badge', 'breadcrumb', 'button', 'calendar']},
+    'statement': {'type': 'statement', 'lines': ['Cache the *read*,', 'never the write.', 'Delete the key.']},
+    'quotes': {'type': 'quotes', 'quotes': [
+        {'author': 'Andrej Karpathy', 'platform': 'X', 'url': 'https://x.com/karpathy/status/1617979122625712128',
+         'text': 'The hottest new programming language is English'},
+        {'author': 'Andrej Karpathy', 'platform': 'X', 'url': 'https://x.com/karpathy/status/1886192184808149383',
+         'text': 'There\'s a new kind of coding I call "vibe coding", where you fully give in to the vibes, '
+                 'embrace exponentials, and forget that the code even exists.'}]},
 }
 
 
