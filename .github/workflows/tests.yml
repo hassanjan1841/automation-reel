@@ -59,7 +59,7 @@ jobs:
 
       - name: Install packages and the browser
         run: |
-          pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)"
+          pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
           python -m playwright install --with-deps chromium
 
       - name: Download fonts

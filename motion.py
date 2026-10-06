@@ -609,6 +609,8 @@ T.variants = () => {
       at(t, 0.55, (p, raw) => { sw.setAttribute('x', lerp(-W * 0.6, W, p)); sw.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout);
       snd(t, 'swish'); snd(t + 0.1, 'tick'); } else snd(0.5, 'pop'); });
   END = Math.max(END, at_(n - 1) + 1.6);
+};
+
 T.wall = () => {
   // Device 4 of the style guide: the camera starts on one tile, pulls back and tilts to a wall of the same tiles
   // fading into the distance, then a row of counters rolls up over it. Own perspective projection, tile corners
@@ -683,6 +685,8 @@ T.wall = () => {
     snd(ts, 'tick');
   });
   END = Math.max(END, tc + (st.length - 1) * 0.07 + 0.6 + 1.7);
+};
+
 T.drawn = () => {
   // Hook drawn in, then filled: accent anchor dots pop onto a glyph's outline, a 4 px stroke draws it, the glyph
   // fills with ink (accent for *highlighted* words), the stroke fades and the dots shrink away.
@@ -734,6 +738,8 @@ T.dots = () => {
   snd(tc, 'key');
   SETTLE = 0.9;
   END = Math.max(END, tc + td + 1.6);
+};
+
 T.command = () => {
   // Device 1: a tilted terminal card types the command, shrinks into a thin bar, and the result panel grows out of it.
   const rows = S.rows, size = 34, lh = 62, cw = W * 0.84, ch = 56 + 24 + lh + 16, rl = 58;
@@ -802,7 +808,6 @@ T.palette = () => {
   SETTLE = tL + 0.3; sweep(0, py, W, ph, SETTLE + 0.2); END = Math.max(END, SETTLE + 1.8);
 };
 
-Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
 T.board = () => {
   // A goal typed into an input bar, task cards dropping into To do, then walking to Doing and Done while a ring fills.
   const N = S.tasks.length, CREAM = '#F7F1E3', INK = '#1B1F2A', SUB = '#6B6F7B', EDGE = 'rgba(20,24,33,0.16)';
@@ -922,8 +927,6 @@ T.blueprint = () => {
   END = Math.max(END, tc + (S.callouts.length - 1) * step + 1.8);
 };
 
-Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"'),
-  document.fonts.load('400 34px "Instrument Serif"'), document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
 T.statement = () => {
   // Short stacked statements on a soft card of drifting blurred blobs, with frosted glass panels floating over it.
   // Each line rises out of a blur, held a beat before the next; the key word in the accent gets a marker stroke.
@@ -1032,7 +1035,9 @@ T.quotes = () => {
   } else END = Math.max(END, t + 0.4);
 };
 
-Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
+Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'),
+  document.fonts.load('500 34px "JetBrains Mono"'), document.fonts.load('400 34px "Instrument Serif"'),
+  document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
   // reel), scaling down only when needed, and centre the layout both ways.
