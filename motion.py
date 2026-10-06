@@ -1230,7 +1230,7 @@ def font_css():
                                                                                                 ('500', 'Regular'))]
     faces.append(('JetBrains Mono', '500', 'normal', visuals.MONO))
     faces += [('Instrument Serif', '400', style.lower(), render.FONT_DIR / f'InstrumentSerif-{style}.ttf')
-              for style in render.SERIF_STYLES]
+              for style in render.SERIF_STYLES if (render.FONT_DIR / f'InstrumentSerif-{style}.ttf').exists()]
     return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};font-style:{fs};src:url(data:font/ttf;base64,"
                    f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, fs, path in faces)
 

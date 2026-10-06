@@ -73,7 +73,11 @@ def ensure_fonts():
         path = FONT_DIR / f'InstrumentSerif-{style}.ttf'
         if not (path.exists() and path.stat().st_size > 10_000):
             print(f'Downloading InstrumentSerif-{style}')
-            urllib.request.urlretrieve(SERIF_URL.format(style), path)
+            try:
+                urllib.request.urlretrieve(SERIF_URL.format(style), path)
+            except Exception as e:  # only the board's captions use it; they fall back to a system serif
+                path.unlink(missing_ok=True)
+                print(f'Warning: could not download InstrumentSerif-{style}: {e}')
 
 
 _font_cache = {}
