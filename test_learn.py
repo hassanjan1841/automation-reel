@@ -1317,7 +1317,8 @@ class MotionTest(Sandbox):
                   'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
                   'states': {'moves': [{'event': 'go', 'to': 'nowhere'}]}, 'race': {'source': 'http://x'},
                   'xray': {'focus': 'nothing'}, 'memory': {'reassign': [{'name': 'zz', 'to': 'null'}]},
-                  'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']}}
+                  'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']},
+                  'drawn': {'lines': ['this line is far too long']}, 'dots': {'word': 'two words'}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':
