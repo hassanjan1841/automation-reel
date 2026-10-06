@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint, command, palette (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -315,6 +315,10 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
   - `wall` (motion.py): perspective grid of tiles (own projection, tilted ~57 degrees) revealed by a pull back, then
     counters (`stats`, real numbers only) over a dark scrim; SETTLE is when the grid is revealed.
+  - `command` and `palette` (motion.py): `command` is a tilted terminal card (scale 1.15 to 1, skew and squash easing to
+    flat) that types, shrinks to a bar and grows the result panel (SETTLE when the rows are in); `palette` scrolls
+    `items` one line per 0.17 s, slows over its last 3 steps and lands on `pick` (validated to be past the first 3
+    items so it scrolls). `chips` are optional; both only show real commands, files and options.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `inspect` and `variants` (motion.py): selection boxes with label pills on code lines, and one card swapping

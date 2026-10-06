@@ -29,6 +29,8 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   dots       a short word as a dot matrix, a caption resolving by scramble       word, caption
   board      a goal typed, task cards moving To do, Doing, Done, a ring          goal, tasks, captions
   blueprint  outline parts drawing in, links, then scrambled-text callouts        parts, links, callouts
+  command    a terminal card types a command, then becomes its result panel     command, title, rows
+  palette    a command list scrolls and lands on the pick, chips above it       prompt, items, pick, chips
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -44,7 +46,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -730,6 +732,72 @@ T.dots = () => {
   snd(tc, 'key');
   SETTLE = 0.9;
   END = Math.max(END, tc + td + 1.6);
+T.command = () => {
+  // Device 1: a tilted terminal card types the command, shrinks into a thin bar, and the result panel grows out of it.
+  const rows = S.rows, size = 34, lh = 62, cw = W * 0.84, ch = 56 + 24 + lh + 16, rl = 58;
+  const RH = 84 + 16 + rows.length * rl + 22, cy = RH / 2, cx = W / 2, x0 = (W - cw) / 2, y0 = cy - ch / 2;
+  const rg = mk('g', {opacity: 0}, L1); panel(rg, 0, 0, W, RH);
+  mk('circle', {cx: 46, cy: 42, r: 10, fill: C.accent}, rg);
+  fit(txt(rg, 74, 42 + 11, S.title, 32, {class: 'mono', 'font-weight': 600}), W - 110);
+  mk('rect', {x: 0, y: 84, width: W, height: 2, fill: C.line}, rg);
+  const cg = mk('g', {opacity: 0}, L1), cr = panel(cg, x0, y0, cw, ch), cc = mk('g', {}, cg);
+  mk('rect', {x: x0, y: y0, width: cw, height: 56, rx: 22, fill: C.bar}, cc); mk('rect', {x: x0, y: y0 + 34, width: cw, height: 22, fill: C.bar}, cc);
+  ['#FF5F57', '#FEBC2E', '#28C840'].forEach((c, i) => mk('circle', {cx: x0 + 34 + i * 30, cy: y0 + 28, r: 9, fill: c}, cc));
+  const full = '$ ' + S.command, ty = y0 + 56 + 24 + lh / 2 + size * 0.36;
+  const cmd = fit(txt(cc, x0 + 36, ty, full, size, {class: 'mono', 'font-weight': 500, 'xml:space': 'preserve'}), cw - 60); cmd.textContent = '';
+  at(0, 0.8, p => { const s = lerp(1.15, 1, p), sy = lerp(0.84, 1, p);
+    cg.setAttribute('transform', `translate(${cx} ${cy}) skewX(${lerp(-7, 0, p)}) scale(${s} ${s * sy}) translate(${-cx} ${-cy})`); });
+  at(0, 0.3, p => cg.setAttribute('opacity', p));
+  const per = 0.04, t0 = 0.45, tEnd = t0 + full.length * per;
+  at(t0, full.length * per, p => { cmd.textContent = full.slice(0, Math.round(p * full.length)); }, E.lin);
+  for (let i = 2; i < full.length; i += 5) snd(t0 + i * per, 'key');
+  const t1 = tEnd + 0.4, t2 = t1 + 0.35;
+  at(t1, 0.15, p => cc.setAttribute('opacity', 1 - p));
+  at(t1, 0.35, p => { cr.setAttribute('y', lerp(y0, cy - 7, p)); cr.setAttribute('height', lerp(ch, 14, p)); }, E.inout);
+  snd(t1, 'swish');
+  at(t2, 0.01, p => { cg.setAttribute('opacity', 1 - p); rg.setAttribute('opacity', p); });
+  at(t2, 0.55, p => rg.setAttribute('transform', `translate(${cx} ${cy}) scale(${lerp(cw / W, 1, p)} ${lerp(14 / RH, 1, p)}) translate(${-cx} ${-cy})`));
+  snd(t2, 'pop');
+  const title = rg.querySelector('text'); title.setAttribute('opacity', 0); fade(title, t2 + 0.25, 0.25);
+  rows.forEach((s, i) => { const e = fit(txt(rg, 44, 84 + 16 + i * rl + rl / 2 + 11, s, 30, {class: 'mono', 'font-weight': 500, opacity: 0, filter: 'url(#soft)', 'xml:space': 'preserve'}), W - 88);
+    const ts = t2 + 0.4 + i * 0.12;
+    at(ts, 0.4, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5)); e.setAttribute('transform', `translate(0 ${(1 - p) * 10})`); if (raw > 0.5) e.removeAttribute('filter'); });
+    snd(ts, 'tick'); });
+  SETTLE = t2 + 0.4 + rows.length * 0.12 + 0.3; sweep(0, 0, W, RH, SETTLE + 0.2); END = Math.max(END, SETTLE + 1.8);
+};
+
+T.palette = () => {
+  // Device 8: a command list scrolls up one line at a time, decelerates and lands on the pick in an accent band.
+  const items = S.items, n = items.length, pk = Math.max(0, items.indexOf(S.pick)), chips = S.chips, size = 38, lh = 64, vis = 7, bi = 3, hh = 96;
+  const csz = 26, ch = Math.round(csz * 1.6), gap = 14, ts = chips.map(c => { const e = txt(L2, 0, 0, c, csz); const w = e.getComputedTextLength() + 34; e.remove(); return w; });
+  const crow = []; let cur = [], cw = 0;
+  chips.forEach((c, i) => { if (cur.length && cw + gap + ts[i] > W) { crow.push(cur); cur = []; cw = 0; } cw += (cur.length ? gap : 0) + ts[i]; cur.push(i); }); if (cur.length) crow.push(cur);
+  chips.forEach((c, i) => { const r = crow.findIndex(q => q.includes(i)), q = crow[r], tot = q.reduce((a, j) => a + ts[j], 0) + gap * (q.length - 1);
+    const x = (W - tot) / 2 + q.slice(0, q.indexOf(i)).reduce((a, j) => a + ts[j] + gap, 0) + ts[i] / 2, p = pill(L2, x, r * (ch + gap) + ch / 2, c, csz, C.panel, C.text);
+    pop(p.g, 0.3 + i * 0.17, p.cx, p.cy, 0.4); snd(0.3 + i * 0.17, 'tick'); });
+  const py = chips.length ? crow.length * (ch + gap) + 20 : 0, ph = hh + vis * lh + 24, g = mk('g', {opacity: 0}, L1);
+  panel(g, 0, py, W, ph); pop(g, 0, W / 2, py + ph / 2, 0.45);
+  txt(g, 44, py + hh / 2 + 13, '>', size, {class: 'mono', fill: C.accent}); fit(txt(g, 44 + size * 1.2, py + hh / 2 + 13, S.prompt, size, {class: 'mono', 'font-weight': 500}), W - 130);
+  mk('rect', {x: 0, y: py + hh, width: W, height: 2, fill: C.line}, g);
+  const lt = py + hh + 12, bandY = lt + bi * lh;
+  mk('rect', {x: 14, y: bandY, width: W - 28, height: lh, rx: 14, fill: '#fff', opacity: 0.07}, g);
+  const hi = mk('rect', {x: 14, y: bandY, width: W - 28, height: lh, rx: 14, fill: C.accent, opacity: 0}, g);
+  mk('rect', {x: 0, y: lt, width: W, height: vis * lh}, mk('clipPath', {id: 'plc'}, svg.querySelector('defs')));
+  const lg = mk('g', {'clip-path': 'url(#plc)'}, g);
+  const els = items.map(s => fit(txt(lg, 60, 0, s, size, {class: 'mono', 'font-weight': 500}), W - 120));
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), a = rgb(C.text), b = rgb(C.dim);
+  const place = pos => els.forEach((e, i) => { const d = i - pos, ad = Math.abs(d), k = clamp(ad / 0.8);
+    e.setAttribute('y', lt + (bi + d) * lh + lh / 2 + size * 0.36); e.setAttribute('opacity', 1 - 0.93 * clamp((ad - 0.4) / 3));
+    e.setAttribute('fill', `rgb(${a.map((v, j) => Math.round(lerp(v, b[j], k))).join(',')})`); });
+  place(0);
+  const dur = []; for (let k = 0; k < pk; k++) dur.push([0.44, 0.32, 0.24][pk - 1 - k] || 0.17);
+  const starts = dur.map((d, k) => dur.slice(0, k).reduce((s, x) => s + x, 0)), total = dur.reduce((s, x) => s + x, 0), tS = 0.3, slow = pk - 1;
+  at(tS, total, (p, raw) => { const u = raw * total; let k = dur.length - 1; while (k > 0 && u < starts[k]) k--;
+    const q = clamp((u - starts[k]) / dur[k]); place(pk ? k + (dur[k] > 0.17 ? E.out(q) : q) : 0); }, E.lin);
+  dur.forEach((d, k) => snd(tS + starts[k] + d, k === slow ? 'pop' : 'tick'));
+  const tL = tS + total; at(tL, 0.3, (p, raw) => { hi.setAttribute('opacity', Math.min(1, raw * 3)); hi.setAttribute('transform', `translate(${W / 2} ${bandY + lh / 2}) scale(${lerp(0.96, 1, p)} ${lerp(0.9, 1, p)}) translate(${-W / 2} ${-(bandY + lh / 2)})`);
+    els[pk].setAttribute('fill', '#fff'); }, E.spring);
+  SETTLE = tL + 0.3; sweep(0, py, W, ph, SETTLE + 0.2); END = Math.max(END, SETTLE + 1.8);
 };
 
 Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
@@ -1032,7 +1100,7 @@ def prepare(spec, w):
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts'):
+                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips'):
         spec.setdefault(key, [])
     return spec
 
@@ -1158,6 +1226,10 @@ EXAMPLES = {
                   'links': [{'from': 'edge', 'to': 'api'}, {'from': 'api', 'to': 'queue'}, {'from': 'api', 'to': 'db'},
                             {'from': 'queue', 'to': 'worker'}, {'from': 'worker', 'to': 'db'}],
                   'callouts': [{'part': 'queue', 'text': 'Retries on failure'}, {'part': 'db', 'text': 'Source of truth'}]},
+    'command': {'type': 'command', 'command': 'npm init -y', 'title': 'package.json',
+                'rows': ['"name": "my-app"', '"version": "1.0.0"', '"main": "index.js"', '"license": "ISC"']},
+    'palette': {'type': 'palette', 'prompt': 'npx shadcn add', 'pick': 'button', 'chips': ['Next.js', 'Vite', 'Remix', 'Astro'],
+                'items': ['accordion', 'alert', 'alert-dialog', 'avatar', 'badge', 'breadcrumb', 'button', 'calendar']},
 }
 
 

@@ -265,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -433,6 +433,22 @@ def motion_errors(i, v):
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
             e.append(f'point {i} outputmap needs a command (max 34 characters) and 2 to 6 output lines of max 34')
+    elif kind == 'command':
+        rows = v.get('rows', [])
+        if not short(v.get('command'), 40) or not short(v.get('title'), 24):
+            e.append(f'point {i} command needs a command (max 40 characters) and a title (max 24)')
+        elif not 2 <= len(rows) <= 5 or any(not short(r, 32) for r in rows):
+            e.append(f'point {i} command needs 2 to 5 result rows of max 32 characters')
+    elif kind == 'palette':
+        items, chips, pick = v.get('items', []), v.get('chips', []), v.get('pick')
+        if not short(v.get('prompt'), 24):
+            e.append(f'point {i} palette needs a prompt of max 24 characters')
+        elif not 4 <= len(items) <= 12 or any(not short(x, 28) for x in items) or len(set(items)) != len(items):
+            e.append(f'point {i} palette needs 4 to 12 different items of max 28 characters')
+        elif pick not in items or items.index(pick) < 3:
+            e.append(f'point {i} palette pick must be one of items, but not among the first 3 (so the list scrolls)')
+        elif len(chips) > 6 or any(not short(c, 12) for c in chips):
+            e.append(f'point {i} palette chips are 0 to 6 labels of max 12 characters')
     return e
 
 
@@ -731,6 +747,8 @@ VISUAL_SCHEMA = {
         'callouts': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['part', 'text'],
             'properties': {'part': {'type': 'string'}, 'text': {'type': 'string'}}}},
+        'rows': {'type': 'array', 'items': {'type': 'string'}}, 'prompt': {'type': 'string'}, 'pick': {'type': 'string'},
+        'chips': {'type': 'array', 'items': {'type': 'string'}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -1168,6 +1186,13 @@ numbers only from a cited page.
 - blueprint: a schematic drawn in line by line. "parts" (2 to 5 {"id", "label" max 14 characters}, placed in list
   order), "links" (1 to 6 {"from", "to"} part ids), "callouts" (1 to 3 {"part" id, "text" max 22 characters}), shown
   one at a time. For an architecture that really exists; callouts state facts, never measurements you cannot cite.
+- command: a terminal card types a real command, then shrinks into a bar and the result panel grows out of it. "command"
+  (max 40 characters), "title" (max 24, the file or page it produces) and "rows" (2 to 5 lines of max 32 characters,
+  exactly what that command really prints or that file really contains). For "one command, one result" moments.
+- palette: a command list scrolls and slows onto your pick, which lights up in the accent colour. "prompt" (max 24
+  characters, e.g. "/model" or "npx shadcn add"), "items" (4 to 12 real options of that tool, max 28 characters each),
+  "pick" (one of items, not among the first 3) and optional "chips" (0 to 6 labels of max 12 characters, for example
+  the frameworks it supports). Never invent options: every item must exist in that tool.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

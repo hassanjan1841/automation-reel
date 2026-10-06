@@ -1322,7 +1322,8 @@ class MotionTest(Sandbox):
                   'variants': {'variants': [{'label': 'a', 'rows': ['x', 'y']}, {'label': 'b', 'rows': ['x']}]},
                   'wall': {'stats': [{'value': -1, 'label': 'x'}] * 2},
                   'drawn': {'lines': ['this line is far too long']}, 'dots': {'word': 'two words'},
-                  'board': {'tasks': ['only one']}, 'blueprint': {'links': [{'from': 'a', 'to': 'nowhere'}]}}
+                  'board': {'tasks': ['only one']}, 'blueprint': {'links': [{'from': 'a', 'to': 'nowhere'}]},
+                  'command': {'rows': ['one row']}, 'palette': {'pick': 'accordion'}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

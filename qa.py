@@ -133,6 +133,10 @@ def review(video, reel, slides, voiceover=None):
                                   'are what that workflow really does)',
                          'blueprint': 'an animated schematic of ' + ', '.join(p.get('label', '') for p in visual.get('parts', []))
                                       + ' with callouts (check the parts and links are real)',
+                         'command': 'the command `' + visual.get('command', '') + '` turning into its result, '
+                                    + visual.get('title', '') + ' (check the rows are what it really produces)',
+                         'palette': 'a scrolling list of options for `' + visual.get('prompt', '') + '` landing on '
+                                    + str(visual.get('pick')) + ' (check the items are real options)',
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
