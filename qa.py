@@ -129,6 +129,10 @@ def review(video, reel, slides, voiceover=None):
                          'memory': 'an animation of variables pointing at objects, references moving',
                          'outputmap': 'the output of `' + visual.get('command', '') + '` lifting out into boxes '
                                       '(check it is what that command really prints)',
+                         'command': 'the command `' + visual.get('command', '') + '` turning into its result, '
+                                    + visual.get('title', '') + ' (check the rows are what it really produces)',
+                         'palette': 'a scrolling list of options for `' + visual.get('prompt', '') + '` landing on '
+                                    + str(visual.get('pick')) + ' (check the items are real options)',
                          }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                                + visual.get('find', '') + '" outlined')
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'

@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, command, palette (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -313,6 +313,10 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     `voice.FAST_HOOK` times faster by `voice.tempo` (ffmpeg atempo, same pitch); "relaxed" at most 10 words.
   - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences, and a
     slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
+  - `command` and `palette` (motion.py): `command` is a tilted terminal card (scale 1.15 to 1, skew and squash easing to
+    flat) that types, shrinks to a bar and grows the result panel (SETTLE when the rows are in); `palette` scrolls
+    `items` one line per 0.17 s, slows over its last 3 steps and lands on `pick` (validated to be past the first 3
+    items so it scrolls). `chips` are optional; both only show real commands, files and options.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
