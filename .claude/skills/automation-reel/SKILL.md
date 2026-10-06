@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -322,6 +322,9 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
   - `drawn` and `dots` (motion.py): `drawn` computes Poppins Bold glyph outlines with fontTools in `prepare()`
     (`glyph_outlines`) and the page draws each outline, fills it, then drops its anchor dots; `dots` rasterises a
     word with Pillow into a dot grid (`dot_raster`) that appears with seeded delays, then a mono caption scramble.
+  - `board` and `blueprint` (motion.py): a typed goal with task cards moving To do, Doing, Done and a ring; outline
+    parts that draw in with callouts whose text resolves from a seeded scramble. `board` captions use Instrument Serif
+    (OFL), fetched by `render.ensure_fonts` and embedded by `motion.font_css`.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
     `RULE_FIELDS`.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or

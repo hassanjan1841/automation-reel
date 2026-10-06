@@ -265,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -412,6 +412,23 @@ def motion_errors(i, v):
             e.append(f'point {i} dots word is 1 to 8 characters (letters, digits and . / - only, balanced *highlights*)')
         elif not short(cap, 28):
             e.append(f'point {i} dots caption is 1 to 28 characters')
+    elif kind == 'board':
+        tasks, caps = v.get('tasks', []), v.get('captions', [])
+        if not short(v.get('goal'), 36) or not 2 <= len(tasks) <= 4 or any(not short(t, 22) for t in tasks):
+            e.append(f'point {i} board needs a goal (max 36 characters) and 2 to 4 tasks of max 22 characters')
+        elif len(caps) > 3 or any(not short(c, 32) for c in caps):
+            e.append(f'point {i} board captions are 0 to 3 lines of max 32 characters')
+    elif kind == 'blueprint':
+        parts, links, calls = v.get('parts', []), v.get('links', []), v.get('callouts', [])
+        ids = [p.get('id') for p in parts]
+        if not 2 <= len(parts) <= 5 or len(set(ids)) != len(ids) or any(not short(p.get('id'), 20) or not short(p.get('label'), 14)
+                                                                       for p in parts):
+            e.append(f'point {i} blueprint needs 2 to 5 parts with distinct ids and labels of max 14 characters')
+        elif not 1 <= len(links) <= 6 or any(l.get('from') not in ids or l.get('to') not in ids or l.get('from') == l.get('to')
+                                              for l in links):
+            e.append(f'point {i} blueprint needs 1 to 6 links between two different listed part ids')
+        elif not 1 <= len(calls) <= 3 or any(c.get('part') not in ids or not short(c.get('text'), 22) for c in calls):
+            e.append(f'point {i} blueprint needs 1 to 3 callouts, each on a listed part id with text of max 22 characters')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -703,6 +720,17 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['value', 'label'],
             'properties': {'value': {'type': 'number'}, 'label': {'type': 'string'}, 'suffix': {'type': 'string'}}}},
         'word': {'type': 'string'}, 'caption': {'type': 'string'},
+        'goal': {'type': 'string'}, 'tasks': {'type': 'array', 'items': {'type': 'string'}},
+        'captions': {'type': 'array', 'items': {'type': 'string'}},
+        'parts': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['id', 'label'],
+            'properties': {'id': {'type': 'string'}, 'label': {'type': 'string'}}}},
+        'links': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['from', 'to'],
+            'properties': {'from': {'type': 'string'}, 'to': {'type': 'string'}}}},
+        'callouts': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['part', 'text'],
+            'properties': {'part': {'type': 'string'}, 'text': {'type': 'string'}}}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -1133,6 +1161,13 @@ numbers only from a cited page.
 - dots: one short word or number as a dot matrix, then a caption that resolves out of scrambled characters.
   "word" (1 to 8 characters: letters, digits and . / - only; *highlight* a part, e.g. "p*99*") and "caption" (max 28
   characters). A real term, number or name the point is about; never an invented statistic.
+- board: a workflow as a board. "goal" (max 36 characters, typed into an input bar), "tasks" (2 to 4 labels of max
+  22 characters; they drop into To do, move to Doing, then Done while a ring counts n/N) and optional "captions" (0
+  to 3 lines of max 32 characters, one per beat). Only a real sequence, e.g. what a coding agent or a CI pipeline
+  actually does for that goal; never invented results or numbers.
+- blueprint: a schematic drawn in line by line. "parts" (2 to 5 {"id", "label" max 14 characters}, placed in list
+  order), "links" (1 to 6 {"from", "to"} part ids), "callouts" (1 to 3 {"part" id, "text" max 22 characters}), shown
+  one at a time. For an architecture that really exists; callouts state facts, never measurements you cannot cite.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
