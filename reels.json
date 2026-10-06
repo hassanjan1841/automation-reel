@@ -2744,5 +2744,143 @@
     ],
     "slot": 3,
     "seconds": 22.8
+  },
+  {
+    "id": 53,
+    "style": "light",
+    "payoff": "A single SQL query with 89 CTEs renders every Doom frame as a 320x200 pixel buffer, replacing the game's entire C game engine.",
+    "kicker": "Wild SQL",
+    "hook": "No game engine, just *SQL*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "sql",
+      "title": "sqldoom.sql",
+      "code": "-- Doom, fully rewritten in SQL\n-- 7,200 lines replace the\n-- entire C game engine\nSELECT frame_rgb FROM framebuffer;",
+      "highlight": [
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "They ported *Doom* to SQL",
+        "spoken": "[grinning, punchy] Someone rebuilt the entire Doom engine using nothing but SQL.",
+        "hook_type": "news"
+      },
+      {
+        "hook": "You'd *swear* SQL can't do this",
+        "spoken": "[mock outraged] SQL can't render real time 3D, or so we thought.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "We *found* Doom inside a database",
+        "spoken": "[excited] Engineers actually rebuilt Doom's entire engine using nothing but SQL.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "Full game logic",
+        "body": "Game logic and rendering live in SQL",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git clone github.com/cedardb/sqldoom",
+              "wc -l sql/*.sql"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One giant query",
+        "body": "One query builds the entire frame",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "render.sql",
+            "code": "framebuffer AS (\n  SELECT string_agg(\n    rgb, ''::bytea\n    ORDER BY y, x\n  ) AS frame_rgb\n  FROM pixel_candidates\n)",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Up to 60fps",
+        "body": "Each frame renders in sixteen milliseconds",
+        "visual": [
+          {
+            "type": "race",
+            "title": "Lines of code",
+            "unit": "lines of code",
+            "bars": [
+              {
+                "label": "Doom (C)",
+                "value": 12300
+              },
+              {
+                "label": "SQLDoom",
+                "value": 7200
+              }
+            ],
+            "source": "https://cedardb.com/blog/sqldoom/"
+          },
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "performance.sql",
+            "code": "-- Average frame: ~16ms\n-- Sustained: 35 to 60 FPS\n-- Running entirely inside CedarDB"
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "What would *you* build in SQL?",
+    "caption": "Doom ported entirely to SQL queries\nOne query with 89 CTEs renders every frame at up to 60 FPS\nWhat's the wildest thing you'd build in a database? 👇",
+    "hashtags": [
+      "#sql",
+      "#database",
+      "#doom",
+      "#programming"
+    ],
+    "voiceover": [
+      "[amused] Doom just swapped its game engine for pure SQL.",
+      "[impressed] Seven thousand lines of SQL replace Doom's entire C engine.",
+      "[excited] One query with eighty nine CTEs builds the whole frame.",
+      "[confident and fast] It still hits sixty frames a second in a database.",
+      "[warm, curious] Could your database handle a game like this?"
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://cedardb.com/blog/sqldoom/",
+      "https://github.com/cedardb/sqldoom"
+    ],
+    "posted_at": "2026-10-06T01:07:45+00:00",
+    "media_id": "18562275184077286",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only shows a one-CTE code fragment; the full 89-CTE query and the 320x200 pixel buffer it produces are spoken but never shown on screen to copy or screenshot."
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.5
   }
 ]
