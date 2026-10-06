@@ -3040,5 +3040,157 @@
     ],
     "slot": 1,
     "seconds": 19.9
+  },
+  {
+    "id": 55,
+    "style": "light",
+    "payoff": "Array.sort() with no compare function sorts numbers as text, so [10,1,2,21,100].sort() returns [1,10,100,2,21] instead of numeric order - fix it with nums.sort((a, b) => a - b).",
+    "kicker": "Myth vs fact #1",
+    "hook": "Numbers in, *text* order out",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "sort.js",
+      "code": "const nums = [10, 1, 2, 21, 100];\nnums.sort();\nconsole.log(nums);\n// [1, 10, 100, 2, 21]",
+      "highlight": [
+        2,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "*Sort()* doesn't sort numbers",
+        "spoken": "[fired up] Most developers think sort handles numbers correctly by default.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your *array* sorts out of order",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your number array might not sort in order."
+      },
+      {
+        "hook": "I tested *sort()* on numbers",
+        "hook_type": "test",
+        "spoken": "[fired up] I ran a quick test sorting plain numbers."
+      }
+    ],
+    "points": [
+      {
+        "title": "Sort converts text",
+        "body": "Default sort compares values as strings",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "sort.js",
+            "code": "const nums = [10, 1, 2, 21, 100];\nnums.sort();\nconsole.log(nums);\n// [1, 10, 100, 2, 21]",
+            "highlight": [
+              2,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add a comparator",
+        "body": "Pass a minus b to fix it",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "sort.js",
+            "before": "const nums = [10, 1, 2, 21, 100];\nnums.sort();\nconsole.log(nums);",
+            "after": "const nums = [10, 1, 2, 21, 100];\nnums.sort((a, b) => a - b);\nconsole.log(nums);"
+          }
+        ]
+      },
+      {
+        "title": "Real terminal proof",
+        "body": "Node prints both results live",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "sort.js",
+                "content": "const nums = [10, 1, 2, 21, 100];\nconsole.log(nums.sort());\nconsole.log(nums.sort((a, b) => a - b));"
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "sort.js"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node sort.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 1
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "terminal",
+            "code": "node sort.js\n[ 1, 10, 100, 2, 21 ]\n[ 1, 2, 10, 21, 100 ]",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Has *sort()* ever burned you on a real project?",
+    "caption": "JavaScript Array.sort() default behavior explained\nNumbers sort as text unless you fix it\nHas this bug ever hit your code? 👇",
+    "hashtags": [
+      "#javascript",
+      "#arraysort",
+      "#webdev",
+      "#jstips"
+    ],
+    "voiceover": [
+      "[grinning, punchy] Numbers go in, but text order comes out.",
+      "[exasperated] By default, sort compares numbers as text.",
+      "[confident and fast] One extra function and the numbers sort correctly.",
+      "[serious, fast] I ran this live in node. [excited] First call prints out of order. [emphasis] Second prints perfectly sorted, one through one hundred.",
+      "[warm, curious] Did this quirky default ever wreck your output before?"
+    ],
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 1,
+    "posted_at": "2026-10-06T16:00:45+00:00",
+    "media_id": "18014017487950787",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "text",
+      "ide",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 23.6
   }
 ]

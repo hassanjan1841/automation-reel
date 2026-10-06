@@ -5,6 +5,7 @@
     "Supabase": "Soo pa base"
   },
   "fish": {
+    "I": "<|phoneme_start|>AY1<|phoneme_end|>",
     "localStorage": "<|phoneme_start|>L OW1 K AH0 L S T AO1 R IH0 JH<|phoneme_end|>",
     "login": "<|phoneme_start|>L AA1 G IH0 N<|phoneme_end|>",
     "sonnet": "<|phoneme_start|>S AA1 N AH0 T<|phoneme_end|>",
