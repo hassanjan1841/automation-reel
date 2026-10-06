@@ -1319,7 +1319,8 @@ class MotionTest(Sandbox):
                   'xray': {'focus': 'nothing'}, 'memory': {'reassign': [{'name': 'zz', 'to': 'null'}]},
                   'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']},
                   'inspect': {'marks': [{'line': 99, 'label': 'nope'}]},
-                  'variants': {'variants': [{'label': 'a', 'rows': ['x', 'y']}, {'label': 'b', 'rows': ['x']}]}}
+                  'variants': {'variants': [{'label': 'a', 'rows': ['x', 'y']}, {'label': 'b', 'rows': ['x']}]},
+                  'wall': {'stats': [{'value': -1, 'label': 'x'}] * 2}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

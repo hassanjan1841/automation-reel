@@ -58,6 +58,15 @@ class Prepare(unittest.TestCase):
         spec = motion.prepare(dict(motion.EXAMPLES['inspect']), 980)
         self.assertEqual(len(spec['tokens']), len(spec['code'].split('\n')))
         self.assertEqual(motion.prepare({'type': 'variants'}, 980)['marks'], [])
+class WallRules(unittest.TestCase):
+    def test_wall_validation(self):
+        import generate
+        ok = dict(motion.EXAMPLES['wall'])
+        self.assertEqual(generate.motion_errors(1, ok), [])
+        for bad in ({**ok, 'tiles': ['a', 'b']}, {**ok, 'tiles': ['x' * 15] * 3}, {**ok, 'stats': ok['stats'][:1]},
+                    {**ok, 'stats': [{'value': -1, 'label': 'x'}] * 2}, {**ok, 'stats': [{'value': 5, 'label': 'x', 'suffix': 'abcd'}] * 2},
+                    {**ok, 'stats': [{'value': '5', 'label': 'x'}] * 2}):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
 
 
 class Fields(unittest.TestCase):

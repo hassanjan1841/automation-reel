@@ -24,6 +24,7 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   kinetic    the takeaway in big type, word by word, the key word underlined     lines, tag
   inspect    code with selection boxes and label pills on chosen lines          language, title, code, marks
   variants   one card swapping between real alternatives, a light sweep         title, variants
+  wall       the camera pulls back to a wall of results, then counters roll up    tiles, stats
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -39,7 +40,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic', 'inspect', 'variants')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -600,6 +601,80 @@ T.variants = () => {
       at(t, 0.55, (p, raw) => { sw.setAttribute('x', lerp(-W * 0.6, W, p)); sw.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout);
       snd(t, 'swish'); snd(t + 0.1, 'tick'); } else snd(0.5, 'pop'); });
   END = Math.max(END, at_(n - 1) + 1.6);
+T.wall = () => {
+  // Device 4 of the style guide: the camera starts on one tile, pulls back and tilts to a wall of the same tiles
+  // fading into the distance, then a row of counters rolls up over it. Own perspective projection, tile corners
+  // projected one by one; labels and bars ride an affine map of each tile.
+  const TW = 320, TH = 200, PX = 380, PY = 250, F = W, NC = 9, C0 = -4, R0 = -2, NR = 14;
+  const defs = svg.querySelector('defs');
+  defs.insertAdjacentHTML('beforeend', `<radialGradient id="wfade"><stop offset="0.55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="wscrim"><stop offset="0" stop-color="#06080D" stop-opacity="0.82"/><stop offset="0.6" stop-color="#06080D" stop-opacity="0.62"/><stop offset="1" stop-color="#06080D" stop-opacity="0"/></radialGradient>
+<mask id="wmask" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect id="wfr" width="${W}" height="${H}" fill="url(#wfade)"/></mask>`);
+  mk('rect', {x: 0, y: 0, width: W, height: H, fill: 'none'}, L0);
+  const grid = mk('g', {mask: 'url(#wmask)'}, L1), n = S.tiles.length;
+  const tiles = [];
+  for (let r = R0; r < R0 + NR; r++) for (let c = C0; c < C0 + NC; c++) {
+    const g = mk('g', {display: 'none'}, grid), poly = mk('polygon', {fill: C.panel, stroke: C.line, 'stroke-width': 2}, g);
+    const ord = (r - R0) * NC + (c - C0), o0 = (0 - R0) * NC + (0 - C0);
+    const inner = mk('g', {}, g), label = S.tiles[(((ord - o0) % n) + n) % n];
+    const lt = fit(txt(inner, 26, 66, label, 36, {'font-weight': 600}), TW - 52);
+    mk('circle', {cx: TW - 34, cy: 46, r: 8, fill: C.accent}, inner);
+    mk('rect', {x: 26, y: 112, width: (TW - 52) * 0.8, height: 16, rx: 8, fill: C.dim, opacity: 0.32}, inner);
+    mk('rect', {x: 26, y: 146, width: (TW - 52) * 0.5, height: 16, rx: 8, fill: C.dim, opacity: 0.22}, inner);
+    tiles.push({focus: ord === o0, g, poly, inner, x0: c * PX - TW / 2, y0: r * PY - TH / 2});
+  }
+  // Camera: tilt (radians) about the focus point, focus on the plane, distance. Progress q: 0 close, 1 the wall.
+  const cam = q => ({a: lerp(0.1, 1.0, q), fx: 0, fy: lerp(0, 760, q), d: lerp(F * TW / (0.78 * W), 2500, q)});
+  let dimG = 1;
+  const fr = document.getElementById('wfr');
+  const frame = q => { const k = cam(q), ca = Math.cos(k.a), sa = Math.sin(k.a), s0 = F / k.d;
+    const m = lerp(1.8, 1, q); fr.setAttribute('transform', `translate(${W / 2 * (1 - m)} ${H / 2 * (1 - m)}) scale(${m})`);
+    const proj = (x, y) => { const yr = (y - k.fy) * ca, zr = (y - k.fy) * sa, z = k.d + zr, s = F / z;
+      return [W / 2 + (x - k.fx) * s, H * 0.4 - yr * s, z, s]; };
+    for (const t of tiles) { const tl = proj(t.x0, t.y0 + TH), tr = proj(t.x0 + TW, t.y0 + TH),
+        br = proj(t.x0 + TW, t.y0), bl = proj(t.x0, t.y0);
+      if (Math.min(tl[2], tr[2], br[2], bl[2]) < 80) { t.g.setAttribute('display', 'none'); continue; }
+      t.g.removeAttribute('display');
+      t.poly.setAttribute('points', [tl, tr, br, bl].map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+      t.inner.setAttribute('transform', `matrix(${(tr[0] - tl[0]) / TW} ${(tr[1] - tl[1]) / TW} ${(bl[0] - tl[0]) / TH} ${(bl[1] - tl[1]) / TH} ${tl[0]} ${tl[1]})`);
+      const sc = (tl[3] + bl[3]) / 2 / s0;
+      t.g.setAttribute('opacity', clamp(Math.pow(sc, 1.6)) * dimG * (t.focus ? 1 : clamp((q - 0.02) * 6)));
+      t.poly.setAttribute('stroke-width', Math.max(1, 2 * Math.min(1, sc * 2))); } };
+  const t0 = 0.25, pull = 1.9;
+  at(t0, pull, frame, E.out); set(0, () => frame(0));
+  snd(t0, 'swish'); SETTLE = t0 + pull; snd(SETTLE, 'thud');
+
+  // Counters over the lower part of the grid, on a soft dark scrim so they read on both themes.
+  const st = S.stats, cols = 2, rows = st.length > 2 ? 2 : 1, cy0 = rows === 1 ? H * 0.64 : H * 0.57, rowH = H * 0.2;
+  const scrim = mk('ellipse', {cx: W / 2, cy: cy0 + (rows - 1) * rowH / 2, rx: W * 0.56, ry: rows === 1 ? H * 0.17 : H * 0.26,
+    fill: 'url(#wscrim)', opacity: 0}, L2);
+  const dec = v => Math.min(2, (String(v).split('.')[1] || '').length);
+  const fmt = (v, d) => Number(v).toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+  const measure = (s, sz) => { const e = txt(L3, 0, 0, s, sz, {'font-weight': 700}); const w = e.getComputedTextLength(); e.remove(); return w; };
+  let size = rows === 1 ? 128 : 108;
+  const cw = W / 2 - 40, wide = s => measure(fmt(s.value, dec(s.value)), size) + (s.suffix ? measure(s.suffix, size * 0.55) + 4 : 0);
+  while (size > 40 && Math.max(...st.map(wide)) > cw) size -= 4;
+  const tc = SETTLE + 0.3;
+  at(tc - 0.1, 0.5, p => dimG = lerp(1, 0.5, p)); at(tc - 0.1, 0.5, () => frame(1));
+  at(tc - 0.1, 0.5, p => scrim.setAttribute('opacity', p));
+  st.forEach((s, i) => {
+    const row = Math.floor(i / cols), inRow = Math.min(cols, st.length - row * cols);
+    const cx = W / 2 + (i - row * cols - (inRow - 1) / 2) * (W / 2), cy = cy0 + row * rowH;
+    const g = mk('g', {opacity: 0}, L3), d = dec(s.value);
+    const num = txt(g, cx, cy, '', size, {'font-weight': 700, 'text-anchor': 'middle', filter: `url(#wb${i})`});
+    const a = mk('tspan', {}, num), b = mk('tspan', {fill: C.accent, 'font-size': size * 0.55, dx: 4}, num);
+    defs.insertAdjacentHTML('beforeend', `<filter id="wb${i}" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur id="wbs${i}" stdDeviation="0"/></filter>`);
+    const blur = document.getElementById(`wbs${i}`), lsp = Math.max(3, size * 0.03);
+    const lab = txt(g, cx + lsp / 2, cy + size * 0.36, s.label.toUpperCase(), Math.max(20, Math.round(size * 0.2)),
+      {'text-anchor': 'middle', fill: '#B4BACB', 'font-weight': 500, 'letter-spacing': lsp});
+    const show = (v, bl) => { a.textContent = fmt(v, d); b.textContent = s.suffix || ''; blur.setAttribute('stdDeviation', bl); };
+    show(0, 0);
+    const ts = tc + i * 0.07;
+    at(ts, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${(1 - p) * 46})`); }, E.spring);
+    at(ts, 0.6, (p, raw) => show(s.value * p, 7 * Math.pow(1 - raw, 2)));
+    snd(ts, 'tick');
+  });
+  END = Math.max(END, tc + (st.length - 1) * 0.07 + 0.6 + 1.7);
 };
 
 Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
@@ -685,7 +760,7 @@ def prepare(spec, w):
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines', 'marks', 'variants'):
+                'lines', 'marks', 'variants', 'tiles', 'stats'):
         spec.setdefault(key, [])
     return spec
 
@@ -794,6 +869,9 @@ EXAMPLES = {
                  'variants': [{'label': '--soft', 'rows': ['HEAD: moved back', 'Index: kept', 'Files: kept']},
                               {'label': '--mixed', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: kept']},
                               {'label': '--hard', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: reset']}]},
+    'wall': {'type': 'wall', 'tiles': ['Auth', 'Billing', 'Search', 'Webhooks', 'Queues', 'Emails'],
+             'stats': [{'value': 48, 'label': 'Endpoints'}, {'value': 1240, 'label': 'Tests'},
+                       {'value': 94, 'label': 'Coverage', 'suffix': '%'}]},
 }
 
 
