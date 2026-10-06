@@ -104,6 +104,10 @@ def review(video, reel, slides, voiceover=None):
                          'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
                          'ide': 'a real VS Code recording typing and running code',
                          'quote': 'a credited quote of a real public post by ' + visual.get('author', ''),
+                         'quotes': 'typed credited quotes of real public posts by '
+                                   + ', '.join(q.get('author', '') for q in visual.get('quotes', [])),
+                         'statement': 'short stacked statements on a moving gradient card: '
+                                      + ' / '.join(visual.get('lines', [])),
                          'word': 'the hook word "' + visual.get('text', '') + '" as 3D text',
                          'diagram': 'a 3D diagram of ' + ', '.join(n.get('label', '') for n in visual.get('nodes', []))
                                     + ' with a packet moving along the flow',

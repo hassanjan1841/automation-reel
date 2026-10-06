@@ -276,10 +276,11 @@ How to choose:
 
 Real voices (only when allowed this week, see the prompt):
 - When a story is about how developers are reacting to or using something, up to 2 points may show a real
-  public post as a "quote" visual: author, handle, platform (X, Hacker News, GitHub, Bluesky, Threads,
-  LinkedIn, Mastodon, YouTube or Blog), its url, and the text copied exactly (shorten only with "..." at
-  the ends, never change words). Pick posts from developers, founders and companies; never mock a private
-  person. The voiceover adds the creator's own take on each; a reel is never just a list of quotes.
+  public post as a "quote" visual, or up to 3 posts typed on cards together as a "quotes" visual: author, handle,
+  platform (X, Hacker News, GitHub, Bluesky, Threads, LinkedIn, Mastodon, YouTube or Blog), its url, and the
+  text copied exactly (shorten only with "..." at the ends, never change words). Pick posts from developers,
+  founders and companies; never mock a private person. The voiceover adds the creator's own take on each; a reel
+  is never just a list of quotes.
 
 Verification is mandatory:
 - Use WebSearch and WebFetch to read the primary source (official blog, docs, changelog or repo) before writing.
@@ -314,7 +315,7 @@ def quotes_allowed(reels, days=6):
     """Real posts at most once a week: Instagram reduces reach for accounts that repost others often."""
     since = datetime.now(timezone.utc) - timedelta(days=days)
     return not any(r.get('posted_at') and datetime.fromisoformat(r['posted_at']) > since
-                   and any(v.get('type') == 'quote' for p in r['points'] for v in p.get('visual') or [])
+                   and any(v.get('type') in ('quote', 'quotes') for p in r['points'] for v in p.get('visual') or [])
                    for r in reels)
 
 
@@ -358,7 +359,7 @@ slides, in the voiceover and in the caption: names, versions, numbers, dates, pr
 - A claim that something is still broken, unfixed, ongoing, "no fix yet" or "right now" must be confirmed as
   still true today from a current source; if a later fix or change exists, the reel must say so (fix) or,
   if the whole point no longer holds, reject.
-- Quote visuals: open each url and confirm the text is the author's exact words and the author, handle and
+- Quote and quotes visuals: open each url and confirm the text is the author's exact words and the author, handle and
   platform are right. Fix a small copying error; reject the reel if a quote cannot be found or is misattributed.
 - Describe what happened, not motives: words like "hid", "secretly", "quietly" or "sneaky" about a real
   company or person are only allowed when a source shows it was deliberate; otherwise reword neutrally (fix).

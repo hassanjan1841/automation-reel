@@ -1302,6 +1302,44 @@ class ReelFormatTest(Sandbox):
         self.assertGreater(np.abs(ticks).max(), 0)
 
 
+QUOTES = {'type': 'quotes', 'quotes': [
+    {'author': 'Ana Dev', 'platform': 'X', 'url': 'https://x.com/a/status/1', 'text': 'Ship the small thing first.'},
+    {'author': 'Bo Ops', 'platform': 'Hacker News', 'url': 'https://news.ycombinator.com/item?id=2',
+     'text': 'Measure before you cache anything.'}]}
+
+
+class QuotesTypeTest(Sandbox):
+    """The quotes animation is treated like the quote visual: validated the same way, credited, counted."""
+
+    def reel(self, visual, posted_at=None):
+        return {'points': [{'visual': [visual]}], 'posted_at': posted_at}
+
+    def test_credits_every_author_of_a_quotes_visual(self):
+        self.assertEqual(publish.credits(self.reel(QUOTES)), 'Quoted: Ana Dev on X, Bo Ops on Hacker News\n\n')
+        quote = {'type': 'quote', 'author': 'Cy', 'handle': '@cy', 'platform': 'Bluesky'}
+        self.assertEqual(publish.credits(self.reel(quote)), 'Quoted: @cy on Bluesky\n\n')
+        self.assertEqual(publish.credits(self.reel({'type': 'statement'})), '')
+
+    def test_quotes_allowed_counts_the_quotes_type(self):
+        now = datetime.now(timezone.utc)
+        recent = self.reel(QUOTES, (now - timedelta(days=2)).isoformat())
+        old = self.reel(QUOTES, (now - timedelta(days=9)).isoformat())
+        self.assertFalse(trends.quotes_allowed([recent]))
+        self.assertTrue(trends.quotes_allowed([old]))
+        self.assertTrue(trends.quotes_allowed([self.reel({'type': 'statement'}, now.isoformat())]))
+
+    def test_each_quote_follows_the_quote_rules(self):
+        self.assertEqual(generate.motion_errors(1, QUOTES), [])
+        for bad in ({'platform': 'Reddit'}, {'url': 'http://x.com/1'}, {'author': ''}, {'text': 'short'}):
+            spec = copy.deepcopy(QUOTES)
+            spec['quotes'][0].update(bad)
+            self.assertIn('quotes entry needs author', ' '.join(generate.motion_errors(1, spec)), bad)
+        spec = copy.deepcopy(QUOTES)
+        spec['quotes'][0]['text'] = 'x' * 190
+        self.assertIn('together is max', ' '.join(generate.motion_errors(1, spec)))
+        self.assertTrue(generate.motion_errors(1, {'type': 'quotes', 'quotes': []}))
+
+
 class MotionTest(Sandbox):
     """The writer's side of the 2D animations (motion.py): each type's data is checked, a reel has at most one
     animation and always a flat backup after it, and the card plays at the animation's own pace."""
@@ -1317,7 +1355,8 @@ class MotionTest(Sandbox):
                   'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
                   'states': {'moves': [{'event': 'go', 'to': 'nowhere'}]}, 'race': {'source': 'http://x'},
                   'xray': {'focus': 'nothing'}, 'memory': {'reassign': [{'name': 'zz', 'to': 'null'}]},
-                  'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']}}
+                  'outputmap': {'output': ['only one line']}, 'kinetic': {'lines': ['far *too* many words here']},
+                  'statement': {'lines': ['only one line']}, 'quotes': {'quotes': [{'author': 'A', 'platform': 'X'}]}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

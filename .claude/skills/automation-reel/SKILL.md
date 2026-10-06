@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, statement, quotes (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -313,6 +313,10 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     `voice.FAST_HOOK` times faster by `voice.tempo` (ffmpeg atempo, same pitch); "relaxed" at most 10 words.
   - Slide changes glide: `render.Camera` no longer punches on a slide start, only on spoken sentences, and a
     slide's exit runs `GLIDE` seconds into the next one (`render.exit_progress`), so no frame between them is empty.
+  - `statement` and `quotes` (motion.py, 2026-10-06): stacked lines on a drifting gradient card with glass panels, and
+    1-3 real posts typed onto dark cards (initials chip, never a photo) then piled. `quotes` is a quote: same rules
+    (`generate.quote_errors`, plus max `QUOTES_TOTAL` characters in all), credited by `publish.credits`, counted by
+    `trends.quotes_allowed`.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and

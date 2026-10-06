@@ -717,7 +717,7 @@ class Scene:
 
 SCENES_3D = ('diagram', 'device', 'bars', 'logos', 'word')
 MOTION_TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-                'memory', 'outputmap', 'kinetic')  # motion.TYPES, kept here so importing visuals does not import motion
+                'memory', 'outputmap', 'kinetic', 'statement', 'quotes')  # motion.TYPES, kept here so importing visuals does not import motion
 
 
 class Motion:
