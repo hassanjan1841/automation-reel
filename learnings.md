@@ -9,3 +9,4 @@
 - The reel with the most reach (id 29, 138 views, 'Next.js RCE fix') also had one of the lower skip rates — an early sign that urgent/breaking-news phrasing may work, but confirm with more news reels before relying on it.
 - Zero comments across all reels. Try ending with a direct question in the caption or on-screen text to invite replies, since right now nothing is prompting people to engage beyond watching.
 - Reels tagged hook_style: question averaged a worse skip rate than reels run with no test (skip_vs_usual +4.1 vs -0.7, 5 reels each).
+- Favor freebie-style CTAs over question CTAs: freebie reels average skip_vs_usual +0.1 vs +3.0 for question reels (11 vs 7 reels).

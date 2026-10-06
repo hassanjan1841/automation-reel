@@ -88,5 +88,15 @@
     "evidence": "test none (5 reels) beat hook_style: question (5 reels): skip rate +4.8 points",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 10,
+    "text": "Favor freebie-style CTAs over question CTAs: freebie reels average skip_vs_usual +0.1 vs +3.0 for question reels (11 vs 7 reels).",
+    "since": "2026-10-06",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "offer freebie (11 reels) beat question (7 reels): skip rate +2.9 points",
+    "verdict": "",
+    "checked": ""
   }
 ]
