@@ -53,6 +53,38 @@ class MorphPlan(unittest.TestCase):
         self.assertEqual(''.join(t for t, _ in lines[1]), '    y = 1')
 
 
+class Typography(unittest.TestCase):
+    def test_glyph_outlines_are_laid_out_per_glyph(self):
+        g = motion.glyph_outlines(['Hi *you*', 'ok'], 800)
+        self.assertEqual(len(g['glyphs']), 7)  # spaces have no outline
+        self.assertEqual([x['hl'] for x in g['glyphs']], [False, False, True, True, True, False, False])
+        self.assertEqual([x['word'] for x in g['glyphs']], [0, 0, 1, 1, 1, 2, 2])
+        self.assertEqual([x['line'] for x in g['glyphs']], [0] * 5 + [1] * 2)
+        self.assertTrue(all(x['d'].startswith('M') and 'Z' in x['d'] and 1 <= len(x['anchors']) <= 3
+                            for x in g['glyphs']))
+        self.assertLessEqual(g['gw'], 800.5)
+        self.assertEqual(g, motion.glyph_outlines(['Hi *you*', 'ok'], 800))
+
+    def test_highlight_marks_only_the_starred_word(self):
+        g = motion.glyph_outlines(['a *b* c'], 600)
+        self.assertEqual([x['hl'] for x in g['glyphs']], [False, True, False])
+
+    def test_dot_raster_is_a_grid_of_dots_and_deterministic(self):
+        d = motion.dot_raster('IO*1*')
+        self.assertEqual(d, motion.dot_raster('IO*1*'))
+        self.assertGreaterEqual(d['rows'], 9)
+        self.assertTrue(d['dots'] and all(0 <= c < d['cols'] and 0 <= r < d['rows'] for c, r, _ in d['dots']))
+        self.assertEqual(len({(c, r) for c, r, _ in d['dots']}), len(d['dots']))
+        hl = [c for c, _, on in d['dots'] if on]
+        self.assertTrue(hl and min(hl) > d['cols'] // 2)  # only the trailing 1 is highlighted
+        self.assertGreater(motion.dot_raster('WIDE')['cols'], motion.dot_raster('I')['cols'])
+
+    def test_prepare_adds_the_computed_data(self):
+        self.assertTrue(motion.prepare(motion.EXAMPLES['drawn'], 980)['glyphs'])
+        spec = motion.prepare(motion.EXAMPLES['dots'], 980)
+        self.assertTrue(spec['dots'] and isinstance(spec['seed'], int))
+
+
 class Fields(unittest.TestCase):
     def test_templates_read_only_fields_their_spec_has(self):
         # The race once printed "Source: undefined" on every reel: it read S.head_host, prepare() sets source_host.

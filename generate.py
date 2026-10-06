@@ -265,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic')
+          'memory', 'outputmap', 'kinetic', 'drawn', 'dots')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -371,6 +371,18 @@ def motion_errors(i, v):
             e.append(f'point {i} kinetic needs 1 to 3 lines of 1 to 4 words (max 20 characters, balanced *highlights*)')
         elif tag is not None and not short(tag, 14):
             e.append(f'point {i} kinetic tag is max 14 characters')
+    elif kind == 'drawn':
+        lines = v.get('lines', [])
+        if not 1 <= len(lines) <= 3 or any(not short(l, 16 + 2 * l.count('*')) or not 1 <= words(l) <= 3
+                                           or highlights(l) is None or len(l.replace('*', '')) > 16 for l in lines):
+            e.append(f'point {i} drawn needs 1 to 3 lines of 1 to 3 words (max 16 characters, balanced *highlights*)')
+    elif kind == 'dots':
+        word, cap = v.get('word', ''), v.get('caption', '')
+        if not isinstance(word, str) or highlights(word) is None or not 1 <= len(word.replace('*', '')) <= 8 \
+                or not re.fullmatch(r'[A-Za-z0-9./*-]+', word):
+            e.append(f'point {i} dots word is 1 to 8 characters (letters, digits and . / - only, balanced *highlights*)')
+        elif not short(cap, 28):
+            e.append(f'point {i} dots caption is 1 to 28 characters')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -651,6 +663,7 @@ VISUAL_SCHEMA = {
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
+        'word': {'type': 'string'}, 'caption': {'type': 'string'},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -1064,6 +1077,12 @@ numbers only from a cited page.
   3, each 1 to 4 words, max 20 characters, *highlight* the key word) and an optional "tag" (max 14 characters,
   e.g. "Key step") as a small pill under it. Only for the one rule or principle a point leaves you with, never
   for something that could be shown as real code or output.
+- drawn: the hook or takeaway drawn in as big bold outlines that then fill, with accent dots on the curves.
+  "lines" (1 to 3, each 1 to 3 words, max 16 characters, *highlight* the key word). Short (about 3 seconds); for a
+  punchy claim, never for something that could be shown as real code or output.
+- dots: one short word or number as a dot matrix, then a caption that resolves out of scrambled characters.
+  "word" (1 to 8 characters: letters, digits and . / - only; *highlight* a part, e.g. "p*99*") and "caption" (max 28
+  characters). A real term, number or name the point is about; never an invented statistic.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):
