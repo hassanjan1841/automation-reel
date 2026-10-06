@@ -87,6 +87,67 @@ def frames(video, slides, folder):
     return paths
 
 
+def describe(visual):
+    """What a slide's visual is meant to show, in words for the reviewer."""
+    return {'code': 'a code window', 'terminal': 'a terminal typing commands',
+             'diff': 'code before and after (removed lines red, added lines green)',
+             'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
+             'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
+             'ide': 'a real VS Code recording typing and running code',
+             'quote': 'a credited quote of a real public post by ' + visual.get('author', ''),
+             'quotes': 'typed credited quotes of real public posts by '
+                       + ', '.join(q.get('author', '') for q in visual.get('quotes', [])),
+             'statement': 'short stacked statements on a moving gradient card: '
+                          + ' / '.join(visual.get('lines', [])),
+             'word': 'the hook word "' + visual.get('text', '') + '" as 3D text',
+             'diagram': 'a 3D diagram of ' + ', '.join(n.get('label', '') for n in visual.get('nodes', []))
+                        + ' with a packet moving along the flow',
+             'device': 'a 3D ' + visual.get('device', 'laptop') + ' showing '
+                       + (visual.get('show') or {}).get('type', 'code'),
+             'bars': '3D bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
+                                             for b in visual.get('bars', []))
+                     + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
+             'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
+             'stepper': 'an animation stepping through code line by line with its variables changing '
+                        '(check the values are what the code really does)',
+             'flow': 'an animated request travelling between ' + ', '.join(n.get('label', '') for n in visual.get('nodes', [])),
+             'morph': 'an animation turning the before code into the after code',
+             'git': 'an animated git graph (' + visual.get('op', 'none') + ')',
+             'eventloop': 'an animation of the JavaScript event loop (call stack, Web APIs, queues, console)',
+             'structure': 'an animated ' + visual.get('structure', 'data structure') + ' changing step by step',
+             'sequence': 'an animated sequence diagram between ' + ', '.join(visual.get('actors', [])),
+             'states': 'an animated state machine: ' + ' -> '.join(visual.get('states', [])),
+             'race': 'animated bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
+                                                   for b in visual.get('bars', []))
+                     + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
+             'xray': 'an animated zoom into ' + str(visual.get('focus')) + ' showing ' + ', '.join(visual.get('inside', [])),
+             'memory': 'an animation of variables pointing at objects, references moving',
+             'outputmap': 'the output of `' + visual.get('command', '') + '` lifting out into boxes '
+                          '(check it is what that command really prints)',
+             'kinetic': 'the takeaway in big type: ' + ' / '.join(visual.get('lines', [])),
+             'inspect': 'code with selection boxes and label pills: ' + ', '.join(
+                 f"line {m.get('line')} {m.get('label')}" for m in visual.get('marks', []))
+                        + ' (check each label is true of its line)',
+             'variants': 'one card swapping between ' + ', '.join(v.get('label', '') for v in visual.get('variants', []))
+                         + ' (check every row is true for its variant)',
+             'wall': 'a wall of ' + ', '.join(visual.get('tiles', [])) + ' and counters: ' + ', '.join(
+                 f"{s.get('value')}{s.get('suffix', '')} {s.get('label')}" for s in visual.get('stats', []))
+                     + ' (check the numbers are real)',
+             'drawn': 'the words "' + ' '.join(visual.get('lines', [])) + '" drawn as outlines, then filled',
+             'dots': 'the word "' + str(visual.get('word')) + '" in dots with the caption "'
+                     + str(visual.get('caption', '')) + '"',
+             'board': 'an animated task board for the goal "' + str(visual.get('goal')) + '" (check the tasks '
+                      'are what that workflow really does)',
+             'blueprint': 'an animated schematic of ' + ', '.join(p.get('label', '') for p in visual.get('parts', []))
+                          + ' with callouts (check the parts and links are real)',
+             'command': 'the command `' + visual.get('command', '') + '` turning into its result, '
+                        + visual.get('title', '') + ' (check the rows are what it really produces)',
+             'palette': 'a scrolling list of options for `' + visual.get('prompt', '') + '` landing on '
+                        + str(visual.get('pick')) + ' (check the items are real options)',
+             }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
+                   + visual.get('find', '') + '" outlined')
+
+
 def review(video, reel, slides, voiceover=None):
     """{'slides': [{slide, ok, visual_ok, honest, problem}] (slide 0 is the hook, 1 to 3 the points, 4 the CTA),
     'first_frame': {ok, problem}, 'payoff': {ok, problem}}."""
@@ -96,53 +157,7 @@ def review(video, reel, slides, voiceover=None):
         lines = []
         for i, path in enumerate(paths):
             visual = slides[i].visual.spec if slides[i].visual else None
-            meant = ''
-            if visual:
-                meant = {'code': 'a code window', 'terminal': 'a terminal typing commands',
-                         'diff': 'code before and after (removed lines red, added lines green)',
-                         'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
-                         'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
-                         'ide': 'a real VS Code recording typing and running code',
-                         'quote': 'a credited quote of a real public post by ' + visual.get('author', ''),
-                         'quotes': 'typed credited quotes of real public posts by '
-                                   + ', '.join(q.get('author', '') for q in visual.get('quotes', [])),
-                         'statement': 'short stacked statements on a moving gradient card: '
-                                      + ' / '.join(visual.get('lines', [])),
-                         'word': 'the hook word "' + visual.get('text', '') + '" as 3D text',
-                         'diagram': 'a 3D diagram of ' + ', '.join(n.get('label', '') for n in visual.get('nodes', []))
-                                    + ' with a packet moving along the flow',
-                         'device': 'a 3D ' + visual.get('device', 'laptop') + ' showing '
-                                   + (visual.get('show') or {}).get('type', 'code'),
-                         'bars': '3D bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
-                                                         for b in visual.get('bars', []))
-                                 + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
-                         'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
-                         'stepper': 'an animation stepping through code line by line with its variables changing '
-                                    '(check the values are what the code really does)',
-                         'flow': 'an animated request travelling between ' + ', '.join(n.get('label', '') for n in visual.get('nodes', [])),
-                         'morph': 'an animation turning the before code into the after code',
-                         'git': 'an animated git graph (' + visual.get('op', 'none') + ')',
-                         'eventloop': 'an animation of the JavaScript event loop (call stack, Web APIs, queues, console)',
-                         'structure': 'an animated ' + visual.get('structure', 'data structure') + ' changing step by step',
-                         'sequence': 'an animated sequence diagram between ' + ', '.join(visual.get('actors', [])),
-                         'states': 'an animated state machine: ' + ' -> '.join(visual.get('states', [])),
-                         'race': 'animated bars: ' + ', '.join(f"{b.get('label')} {b.get('value')}{visual.get('unit', '')}"
-                                                               for b in visual.get('bars', []))
-                                 + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
-                         'xray': 'an animated zoom into ' + str(visual.get('focus')) + ' showing ' + ', '.join(visual.get('inside', [])),
-                         'memory': 'an animation of variables pointing at objects, references moving',
-                         'outputmap': 'the output of `' + visual.get('command', '') + '` lifting out into boxes '
-                                      '(check it is what that command really prints)',
-                         'board': 'an animated task board for the goal "' + str(visual.get('goal')) + '" (check the tasks '
-                                  'are what that workflow really does)',
-                         'blueprint': 'an animated schematic of ' + ', '.join(p.get('label', '') for p in visual.get('parts', []))
-                                      + ' with callouts (check the parts and links are real)',
-                         'command': 'the command `' + visual.get('command', '') + '` turning into its result, '
-                                    + visual.get('title', '') + ' (check the rows are what it really produces)',
-                         'palette': 'a scrolling list of options for `' + visual.get('prompt', '') + '` landing on '
-                                    + str(visual.get('pick')) + ' (check the items are real options)',
-                         }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
-                               + visual.get('find', '') + '" outlined')
+            meant = describe(visual) if visual else ''
             lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
                          f'  visual: {meant or "none"}')
         sources = reel.get('sources') or []

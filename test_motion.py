@@ -30,6 +30,14 @@ import render
 SOUNDS = {'key', 'tick', 'pop', 'click', 'swish', 'air', 'thud', 'scribble'}  # render.sound_kit
 
 
+class Review(unittest.TestCase):
+    def test_every_animation_is_described_to_the_reviewer(self):
+        # New types once fell through to "a screenshot of", so the frame review judged them against the wrong thing.
+        import qa
+        for kind in motion.TYPES:
+            self.assertFalse(qa.describe(motion.EXAMPLES[kind]).startswith('a screenshot of'), kind)
+
+
 class MorphPlan(unittest.TestCase):
     def test_unchanged_tokens_glide_and_changes_are_marked(self):
         toks, removed, added = motion.morph_plan('const user = res.json()\nreturn user',
