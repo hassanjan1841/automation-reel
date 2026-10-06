@@ -200,7 +200,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -319,6 +319,9 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `inspect` and `variants` (motion.py): selection boxes with label pills on code lines, and one card swapping
     between real alternatives under a light sweep; both settle once the code or card is in.
+  - `drawn` and `dots` (motion.py): `drawn` computes Poppins Bold glyph outlines with fontTools in `prepare()`
+    (`glyph_outlines`) and the page draws each outline, fills it, then drops its anchor dots; `dots` rasterises a
+    word with Pillow into a dot grid (`dot_raster`) that appears with seeded delays, then a mono caption scramble.
   - `learn.looks` adds `reveal` (held beat / no beat) and `offer` (freebie / question), in `GROUP_FIELDS` and
     `RULE_FIELDS`.
 - 3D tracking (2026-09-28): `learn.looks` tags each measured reel with its visual types, `hook_word` ("3D word" or

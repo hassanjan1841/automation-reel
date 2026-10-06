@@ -25,6 +25,8 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   inspect    code with selection boxes and label pills on chosen lines          language, title, code, marks
   variants   one card swapping between real alternatives, a light sweep         title, variants
   wall       the camera pulls back to a wall of results, then counters roll up    tiles, stats
+  drawn      big words whose outlines draw in, then fill, anchor dots on them    lines
+  dots       a short word as a dot matrix, a caption resolving by scramble       word, caption
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -40,7 +42,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -675,6 +677,57 @@ T.wall = () => {
     snd(ts, 'tick');
   });
   END = Math.max(END, tc + (st.length - 1) * 0.07 + 0.6 + 1.7);
+T.drawn = () => {
+  // Hook drawn in, then filled: accent anchor dots pop onto a glyph's outline, a 4 px stroke draws it, the glyph
+  // fills with ink (accent for *highlighted* words), the stroke fades and the dots shrink away.
+  const GS = S.glyphs, step = 0.05, t0 = 0.2; let last = 0, word = -1;
+  GS.forEach((g, i) => {
+    const t = t0 + i * step, grp = mk('g', {}, L2);
+    const fill = mk('path', {d: g.d, fill: g.hl ? C.accent : C.ink, 'fill-rule': 'nonzero', opacity: 0}, grp);
+    const ol = mk('path', {d: g.d, fill: 'none', stroke: C.accent, 'stroke-width': 4, 'stroke-linejoin': 'round', opacity: 0}, grp);
+    const len = ol.getTotalLength() + 2;
+    ol.setAttribute('stroke-dasharray', len); ol.setAttribute('stroke-dashoffset', len);
+    const dots = g.anchors.map(([x, y]) => mk('circle', {cx: x, cy: y, r: 0, fill: C.accent}, L3));
+    at(t - 0.15, 0.15, p => dots.forEach(c => c.setAttribute('r', 10 * p)));
+    at(t, 0.25, (p, raw) => { ol.setAttribute('opacity', 1); ol.setAttribute('stroke-dashoffset', len * (1 - p));
+      if (raw >= 1) ol.setAttribute('stroke-dashoffset', 0); }, E.inout);
+    at(t + 0.25, 0.1, p => fill.setAttribute('opacity', p), E.lin);
+    at(t + 0.35, 0.15, p => ol.setAttribute('opacity', 1 - p), E.lin);
+    at(t + 0.3, 0.15, p => dots.forEach(c => c.setAttribute('r', 10 * (1 - p))));
+    if (g.word !== word) { word = g.word; snd(t - 0.15, g.hl ? 'pop' : 'tick'); }
+    last = t + 0.45; });
+  SETTLE = last;
+  END = Math.max(END, last + 1.6);
+};
+
+T.dots = () => {
+  // Dot-matrix word: round dots on a grid appear with seeded random delays, each settling from a small jitter,
+  // then a mono caption resolves left to right out of random capitals and digits (a seeded hash, so every frame
+  // is the same on every run).
+  const pitch = Math.min(30, (W - 2 * 40) / S.cols), r = pitch * 0.38, gw = S.cols * pitch, gh = S.rows * pitch;
+  let seed = S.seed >>> 0;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const x0 = (W - gw) / 2, DUR = 0.5;
+  S.dots.forEach(([c, row, hl]) => {
+    const d = rnd() * DUR, jx = (rnd() - 0.5) * 8, jy = (rnd() - 0.5) * 8;
+    const e = mk('circle', {cx: x0 + (c + 0.5) * pitch, cy: (row + 0.5) * pitch, r, fill: hl ? C.accent : C.ink, opacity: 0}, L2);
+    at(0.1 + d, 0.25, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2.5));
+      e.setAttribute('transform', `translate(${jx * (1 - p)} ${jy * (1 - p)})`); }); });
+  [0.15, 0.3, 0.45].forEach(t => snd(t, 'tick'));
+  const csize = Math.max(22, Math.min(34, Math.floor((gw + 80) / (Math.max(S.caption.length, 1) * 0.62)))),
+    cap = txt(L2, W / 2, gh + pitch * 2 + csize, S.caption, csize, {'text-anchor': 'middle', class: 'mono', 'font-weight': 500,
+      fill: C.mute, opacity: 0, 'letter-spacing': 2});
+  const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', tc = 0.9, td = 0.4, n = S.caption.length;
+  const hash = (i, f) => { let h = Math.imul(i + 1, 374761393) ^ Math.imul(f + 7, 668265263) ^ S.seed;
+    h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  at(tc, td, (p, raw) => { cap.setAttribute('opacity', 1); const k = Math.floor(p * n), f = Math.floor((tc + p * td) * 30);
+    cap.textContent = [...S.caption].map((ch, i) => i < k || ch === ' ' ? ch : CH[Math.floor(hash(i, f) * CH.length)]).join('');
+    if (raw >= 1) cap.textContent = S.caption; }, E.lin);
+  snd(tc, 'key');
+  SETTLE = 0.9;
+  END = Math.max(END, tc + td + 1.6);
 };
 
 Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
@@ -741,6 +794,96 @@ def morph_plan(before, after, language):
     return toks, removed, added
 
 
+POPPINS_BOLD = render.FONT_DIR / 'Poppins-Bold.ttf'
+
+
+def _marked(line):
+    """A line with *highlights* as words [(text, highlighted)]."""
+    out, hl = [], False
+    for k, part in enumerate(line.split('*')):
+        if k:
+            hl = not hl
+        out += [(w, hl) for w in part.split()]
+    return out
+
+
+def glyph_outlines(lines, width, size=220):
+    """Poppins Bold laid out per line, centred: {'glyphs': [{'d': svg path, 'hl', 'word', 'line', 'anchors': [[x, y]]}],
+    'gw', 'gh'}. The size shrinks so the widest line fits `width`. Anchors are up to 3 on-curve points per glyph."""
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.recordingPen import DecomposingRecordingPen
+    from fontTools.pens.transformPen import TransformPen
+    from fontTools.ttLib import TTFont
+    font = TTFont(str(POPPINS_BOLD))
+    cmap, gs, hmtx, upm = font.getBestCmap(), font.getGlyphSet(), font['hmtx'], font['head'].unitsPerEm
+    cap = getattr(font['OS/2'], 'sCapHeight', 0) or upm * 0.7
+    parsed = [_marked(l) for l in lines]
+
+    def adv(ch):
+        return hmtx[cmap.get(ord(ch), '.notdef')][0]
+    widths = [sum(sum(adv(c) for c in w) for w, _ in ws) + adv(' ') * (len(ws) - 1) for ws in parsed]
+    k = min(size, width * upm / max(widths)) / upm
+    lh, glyphs, word = upm * 1.2 * k, [], 0
+    for li, ws in enumerate(parsed):
+        x = (max(widths) - widths[li]) / 2 * k
+        base = li * lh + cap * k
+        for w, hl in ws:
+            for ch in w:
+                name = cmap.get(ord(ch), '.notdef')
+                svg_pen = SVGPathPen(gs, ntos=lambda v: f'{v:.1f}')
+                gs[name].draw(TransformPen(svg_pen, (k, 0, 0, -k, x, base)))
+                rec = DecomposingRecordingPen(gs)
+                gs[name].draw(rec)
+                pts = [p[-1] for op, p in rec.value if op in ('moveTo', 'lineTo', 'curveTo', 'qCurveTo') and p and p[-1]]
+                pick = [pts[round(i * (len(pts) - 1) / 2)] for i in range(3)] if len(pts) >= 3 else pts
+                anchors = [[round(x + px * k, 1), round(base - py * k, 1)] for px, py in dict.fromkeys(pick)]
+                if svg_pen.getCommands():
+                    glyphs.append({'d': svg_pen.getCommands(), 'hl': hl, 'word': word, 'line': li, 'anchors': anchors})
+                x += adv(ch) * k
+            x += adv(' ') * k
+            word += 1
+    return {'glyphs': glyphs, 'gw': round(max(widths) * k, 1), 'gh': round(((len(parsed) - 1) * 1.2 + 0.9) * upm * k, 1)}
+
+
+def dot_raster(word, rows=9):
+    """A word (letters, digits, . / - and *highlight* marks) from Poppins Bold as a dot grid, `rows` dots from the
+    cap height to the baseline: {'cols', 'rows', 'dots': [[col, row, highlighted]]} where coverage is over 0.5."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont
+    plain, hlmask, hl = '', [], False
+    for k, part in enumerate(word.split('*')):
+        if k:
+            hl = not hl
+        plain += part
+        hlmask += [hl] * len(part)
+    size = 360
+    font = ImageFont.truetype(str(POPPINS_BOLD), size)
+    cap = font.getbbox('H')[3] - font.getbbox('H')[1]
+    cell = cap / rows
+    base = size * 2
+    pad, total = int(cell * 2), int(font.getlength(plain)) + int(cell * 4)
+    height = int(base + cell * 4)
+    masks = []
+    for only in (False, True):
+        img = Image.new('L', (total, height), 0)
+        d, x = ImageDraw.Draw(img), pad
+        for ch, on in zip(plain, hlmask):
+            if on or not only:
+                d.text((x, base), ch, font=font, fill=255, anchor='ls')
+            x += font.getlength(ch)
+        masks.append(img)
+    w, h = (int(np.ceil(total / cell)), int(np.ceil(height / cell)))
+    grids = [np.asarray(m.resize((w, h), Image.BOX), dtype=np.float32) / 255 for m in masks]
+    on = grids[0] > 0.5
+    ys, xs = np.nonzero(on)
+    if not len(xs):
+        return {'cols': 1, 'rows': 1, 'dots': []}
+    r0, r1, c0, c1 = ys.min(), ys.max(), xs.min(), xs.max()
+    return {'cols': int(c1 - c0 + 1), 'rows': int(r1 - r0 + 1),
+            'dots': [[int(c - c0), int(r - r0), bool(grids[1][r, c] > 0.5)] for r, c in zip(*np.nonzero(on))
+                     if r0 <= r <= r1 and c0 <= c <= c1]}
+
+
 def prepare(spec, w):
     """The spec with what the page needs computed here: highlighted tokens, a font size, a source's host."""
     spec = dict(spec)
@@ -757,6 +900,12 @@ def prepare(spec, w):
     elif spec['type'] == 'race':
         from urllib.parse import urlparse
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
+    elif spec['type'] == 'drawn':
+        spec.update(glyph_outlines(spec['lines'], w - 80))
+    elif spec['type'] == 'dots':
+        spec.update(dot_raster(spec['word']))
+        spec['seed'] = int(hashlib.sha1(spec['word'].encode()).hexdigest()[:8], 16)
+        spec.setdefault('caption', '')
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
@@ -872,6 +1021,8 @@ EXAMPLES = {
     'wall': {'type': 'wall', 'tiles': ['Auth', 'Billing', 'Search', 'Webhooks', 'Queues', 'Emails'],
              'stats': [{'value': 48, 'label': 'Endpoints'}, {'value': 1240, 'label': 'Tests'},
                        {'value': 94, 'label': 'Coverage', 'suffix': '%'}]},
+    'drawn': {'type': 'drawn', 'lines': ['Cache the *read*', 'not the write']},
+    'dots': {'type': 'dots', 'word': 'p*99*', 'caption': 'LATENCY, NOT AVERAGE'},
 }
 
 
