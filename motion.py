@@ -153,7 +153,8 @@ function pill(parent, cx, cy, s, size = 28, color = C.accent, textColor = '#fff'
 // One light sweep across a box, once per animation at most.
 function sweep(x, y, w, h, t) { const clip = mk('clipPath', {id: 'sw' + t}, svg.querySelector('defs'));
   mk('rect', {x, y, width: w, height: h, rx: 22}, clip);
-  const r = mk('rect', {x: x - w, y, width: w * 0.6, height: h, fill: 'url(#sweep)', 'clip-path': `url(#sw${t})`, opacity: 0}, L3);
+  // Parked inside the box until it runs: the page fits its layout to everything drawn, hidden parts included.
+  const r = mk('rect', {x, y, width: w * 0.6, height: h, fill: 'url(#sweep)', 'clip-path': `url(#sw${t})`, opacity: 0}, L3);
   at(t, 0.9, (p, raw) => { r.setAttribute('x', lerp(x - w * 0.6, x + w, p)); r.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout); }
 // A code window from tokens [[text, colour]] per line; returns where each line sits.
 function codeWindow(x, y, w, lines, title = '', maxSize = 40) {

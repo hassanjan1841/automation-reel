@@ -166,6 +166,17 @@ class Render(unittest.TestCase):
             self.assertTrue(0.02 < drawn < 0.97, (kind, drawn))
             self.assertTrue(alpha[0, -1] < 8 and alpha[-1, 0] < 8, kind)  # the corners stay see-through
 
+    def test_layout_fills_and_centres_the_box(self):
+        # A hidden sweep bar parked outside the box once made the fit shrink command and palette to half width, pushed
+        # to the right; the visible layout must be centred and use most of one side of the box.
+        for kind, (folder, meta) in self.out.items():
+            frames = sorted(folder.glob('*.png'))
+            alpha = np.asarray(Image.open(frames[-1]).convert('RGBA'))[..., 3] > 64
+            ys, xs = np.nonzero(alpha)
+            w, h = (xs.max() - xs.min()) / alpha.shape[1], (ys.max() - ys.min()) / alpha.shape[0]
+            self.assertLess(abs((xs.max() + xs.min()) / 2 / alpha.shape[1] - 0.5), 0.08, kind)
+            self.assertGreater(max(w, h), 0.45, (kind, round(w, 2), round(h, 2)))
+
     def test_motion_happens(self):
         for kind, (folder, meta) in self.out.items():
             frames = sorted(folder.glob('*.png'))
