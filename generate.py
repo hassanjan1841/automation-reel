@@ -265,7 +265,7 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -371,6 +371,25 @@ def motion_errors(i, v):
             e.append(f'point {i} kinetic needs 1 to 3 lines of 1 to 4 words (max 20 characters, balanced *highlights*)')
         elif tag is not None and not short(tag, 14):
             e.append(f'point {i} kinetic tag is max 14 characters')
+    elif kind == 'inspect':
+        lines, marks = v.get('code', '').rstrip('\n').split('\n'), v.get('marks', [])
+        if not v.get('code', '').strip() or not v.get('language') or len(lines) > 10 or max(len(l) for l in lines) > 36 \
+                or not short(v.get('title'), 24):
+            e.append(f'point {i} inspect needs a language, a title (max 24 characters) and code (max 10 lines of 36)')
+        elif not 1 <= len(marks) <= 3 or any(not isinstance(m.get('line'), int) or not 1 <= m['line'] <= len(lines)
+                                             or not lines[m['line'] - 1].strip() or not short(m.get('label'), 22)
+                                             for m in marks) or len({m['line'] for m in marks}) < len(marks):
+            e.append(f'point {i} inspect needs 1 to 3 marks on different non-empty code lines (labels of max 22 characters)')
+    elif kind == 'variants':
+        vs = v.get('variants', [])
+        rows = [x.get('rows') for x in vs]
+        if not short(v.get('title'), 24) or not 2 <= len(vs) <= 5 or any(not short(x.get('label'), 16) for x in vs):
+            e.append(f'point {i} variants needs a title (max 24 characters) and 2 to 5 variants with labels of max 16')
+        elif any(not isinstance(r, list) or not 2 <= len(r) <= 4 or any(not short(s, 26) for s in r) for r in rows) \
+                or len({len(r) for r in rows}) > 1:
+            e.append(f'point {i} variants needs 2 to 4 rows of max 26 characters in every variant, the same count in each')
+        elif len({tuple(r) for r in rows}) < len(rows):
+            e.append(f'point {i} variants needs variants that differ from each other')
     elif kind == 'outputmap':
         out = v.get('output', [])
         if not short(v.get('command'), 34) or not 2 <= len(out) <= 6 or any(not short(o, 34) for o in out):
@@ -651,6 +670,12 @@ VISUAL_SCHEMA = {
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
+        'marks': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['line', 'label'],
+            'properties': {'line': {'type': 'integer'}, 'label': {'type': 'string'}}}},
+        'variants': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'rows'],
+            'properties': {'label': {'type': 'string'}, 'rows': {'type': 'array', 'items': {'type': 'string'}}}}},
         'files': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'content'],
             'properties': {'name': {'type': 'string'}, 'content': {'type': 'string'}}}},
@@ -1064,6 +1089,12 @@ numbers only from a cited page.
   3, each 1 to 4 words, max 20 characters, *highlight* the key word) and an optional "tag" (max 14 characters,
   e.g. "Key step") as a small pill under it. Only for the one rule or principle a point leaves you with, never
   for something that could be shown as real code or output.
+- inspect: real code with selection boxes and label pills on chosen lines, one at a time. "language", "title" (max
+  24 characters), "code" (max 10 lines of 36), "marks" (1 to 3 {"line" 1-based, "label" max 22 characters}, on
+  different lines). Each label states a true fact about that line (what it does, what it returns, why it fails).
+- variants: one card that swaps between real alternatives while a step label counts "01 / 03". "title" (max 24
+  characters), "variants" (2 to 5 {"label" max 16, "rows" 2 to 4 strings of max 26}, the same row count in each).
+  Only genuine options of one thing (cache modes, HTTP methods, git reset modes), every row true for its variant.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

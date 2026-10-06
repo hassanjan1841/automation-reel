@@ -53,6 +53,13 @@ class MorphPlan(unittest.TestCase):
         self.assertEqual(''.join(t for t, _ in lines[1]), '    y = 1')
 
 
+class Prepare(unittest.TestCase):
+    def test_inspect_gets_highlighted_tokens_and_empty_lists_default(self):
+        spec = motion.prepare(dict(motion.EXAMPLES['inspect']), 980)
+        self.assertEqual(len(spec['tokens']), len(spec['code'].split('\n')))
+        self.assertEqual(motion.prepare({'type': 'variants'}, 980)['marks'], [])
+
+
 class Fields(unittest.TestCase):
     def test_templates_read_only_fields_their_spec_has(self):
         # The race once printed "Source: undefined" on every reel: it read S.head_host, prepare() sets source_host.

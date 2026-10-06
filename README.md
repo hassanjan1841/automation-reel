@@ -136,7 +136,7 @@ Run it by hand any time: Actions → **Learning** → **Run workflow**. (Actions
   - **A freebie on every how-to**: how-to, build, trick, versus, beginner, dev-mistake, AI and freelance-playbook reels must offer a `dm_keyword` with the full code or template in `dm_guide` ("Comment CODE for the code"); the closing card shows the keyword big, in the hook's style.
   - **Points escalate**: what it is, then it working, then the strongest proof.
   - **A held beat** (`reveal`): on the payoff point the voice goes quiet for about a second, with soft ticks, while the output prints or the page finishes, then a pop and the result.
-  - **Calmer motion**: slide changes glide instead of jumping, and a `kinetic` animation shows a takeaway in big type word by word with one accent colour.
+  - **Calmer motion**: slide changes glide instead of jumping, and a `kinetic` animation shows a takeaway in big type word by word with one accent colour. New `inspect` (selection boxes and label pills on code lines) and `variants` (one card swapping between real alternatives) animations.
   - **Hook pace test**: `hook_pace` (dense, faster first line vs a short relaxed one) runs next after the current test.
 - **Measured**: the learning loop compares reels by hook type, opening (proof under the hook or text only), reveal (held beat or not) and offer (freebie or question), and Claude's summary and new rules draw on those groups, so your own numbers decide which works.
 

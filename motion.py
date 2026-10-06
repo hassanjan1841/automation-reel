@@ -22,6 +22,8 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   memory     variables pointing at objects; references move, orphans dim       refs, objects, reassign
   outputmap  a real command's output lines lift out into a diagram              command, output
   kinetic    the takeaway in big type, word by word, the key word underlined     lines, tag
+  inspect    code with selection boxes and label pills on chosen lines          language, title, code, marks
+  variants   one card swapping between real alternatives, a light sweep         title, variants
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -37,7 +39,7 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -530,6 +532,76 @@ T.kinetic = () => {
   END = Math.max(END, t + 2.2);
 };
 
+T.inspect = () => {
+  // A code panel, then one selection box and label pill per mark: the box wipes in, the pill flies in from the right.
+  const lines = S.tokens, marks = S.marks, ph = 66, gap = 18;
+  const cols = Math.max(8, ...lines.map(l => l.reduce((n, t) => n + t[0].length, 0)));
+  let maxSize = 40;
+  while (maxSize > 24) { const size = Math.min(maxSize, Math.floor((W - 90) / (cols * 0.6)));
+    if (56 + 30 + Math.round(size * 1.6) * lines.length + 26 + 30 + marks.length * (ph + gap) <= H - 8) break; maxSize -= 2; }
+  const cw = codeWindow(0, 0, W, lines, S.title || '', maxSize);
+  pop(cw.g, 0, W / 2, cw.h / 2, 0.5); SETTLE = 0.5;
+  const expo = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p);
+  const chip = (g, x, y, n, r) => { mk('circle', {cx: x, cy: y, r, fill: C.accent}, g);
+    txt(g, x, y + r * 0.36, String(n), r * 1.1, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700}); };
+  const shown = []; let t = 1.0;
+  marks.forEach((m, k) => {
+    const n = lines[m.line - 1].reduce((s, tk) => s + tk[0].length, 0);
+    const bx = cw.x + 40 - 14, by = cw.lineY(m.line - 1) + 2, bw = n * cw.cw + 28, bh = cw.lh - 4;
+    const clip = mk('clipPath', {id: 'ins' + k}, svg.querySelector('defs')), cr = mk('rect', {x: bx - 4, y: by - 4, width: 0, height: bh + 8}, clip);
+    const box = mk('g', {'clip-path': `url(#ins${k})`, opacity: 1}, L2);
+    mk('rect', {x: bx, y: by, width: bw, height: bh, rx: 8, fill: C.accent, 'fill-opacity': 0.18}, box);
+    mk('rect', {x: bx, y: by, width: bw, height: bh, rx: 8, fill: 'none', stroke: C.accent, 'stroke-width': 3}, box);
+    const badge = mk('g', {opacity: 0}, L3); chip(badge, bx + bw, by + bh / 2, k + 1, 15);
+    const py = cw.h + 30 + k * (ph + gap) + ph / 2, g = mk('g', {opacity: 0}, L2);
+    const label = txt(g, 84, py + 12, m.label, 36, {fill: C.text}), w = 74 + label.getComputedTextLength() + 34;
+    const bg = mk('rect', {x: 0, y: py - ph / 2, width: w, height: ph, rx: ph / 2, fill: C.bar, stroke: C.line, 'stroke-width': 2}, g); g.insertBefore(bg, label);
+    chip(g, 33, py, k + 1, 21);
+    shown.forEach(o => { dim(o.box, t, 0.5, 0.3); dim(o.g, t, 0.55, 0.3); });
+    at(t, 0.2, p => { cr.setAttribute('width', (bw + 8) * p); badge.setAttribute('opacity', p); }, E.out);
+    at(t + 0.15, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 3));
+      g.setAttribute('transform', `translate(${160 * (1 - p)} 0)`); }, expo);
+    snd(t, 'tick'); snd(t + 0.15, 'swish');
+    shown.push({box, g}); t += 1.7;
+  });
+  END = Math.max(END, t - 0.1);
+};
+
+T.variants = () => {
+  // One card that swaps between real alternatives: the rows change, a light sweep crosses it, the step label counts up.
+  const vs = S.variants, n = vs.length, nr = vs[0].rows.length, rowH = 108, head = 120, top = 120, hh = head + nr * rowH + 24;
+  const card = mk('g', {opacity: 0}, L1); panel(card, 0, top, W, hh);
+  txt(card, 40, top + 76, S.title, 48, {class: 'mono', fill: C.text}); fit(card.lastChild, W - 360);
+  mk('rect', {x: 24, y: top + head - 6, width: W - 48, height: 2, fill: C.line}, card);
+  const segs = vs.map((v, i) => mk('rect', {x: W - 40 - (n - i) * 40 + 8, y: top + 56, width: 24, height: 14, rx: 7, fill: C.accent, opacity: 0.25}, card));
+  pop(card, 0, W / 2, top + hh / 2, 0.5); SETTLE = 0.5;
+  const clip = mk('clipPath', {id: 'vsw'}, svg.querySelector('defs')); mk('rect', {x: 0, y: top, width: W, height: hh, rx: 22}, clip);
+  const step = 0.6, t0 = 0.9, at_ = i => t0 + i * step;
+  const rowText = (v, r, y) => { const s = v.rows[r], e = mk('text', {x: 40, y, 'font-size': 42, class: 'mono', 'font-weight': 500, opacity: 0, 'xml:space': 'preserve'}, L2);
+    const m = s.match(/^([^:]+:)(\s*.*)$/);
+    if (m) { mk('tspan', {fill: C.dim}, e).textContent = m[1]; mk('tspan', {fill: C.text}, e).textContent = m[2]; } else { e.setAttribute('fill', C.text); e.textContent = s; }
+    while (e.getComputedTextLength() > W - 80 && +e.getAttribute('font-size') > 20) e.setAttribute('font-size', +e.getAttribute('font-size') - 2);
+    return e; };
+  const step_ = vs.map((v, i) => { const e = txt(L2, W / 2, 84, `${String(i + 1).padStart(2, '0')} / ${String(n).padStart(2, '0')}`, 72, {'text-anchor': 'middle', fill: C.ink, 'font-weight': 700, opacity: 0});
+    const lab = txt(L2, 0, 84, v.label, 44, {fill: C.accent, 'font-weight': 600, opacity: 0, class: 'mono'});
+    const w1 = e.getComputedTextLength(), w2 = lab.getComputedTextLength(), x0 = (W - (w1 + 30 + w2)) / 2;
+    e.setAttribute('x', x0); e.setAttribute('text-anchor', 'start'); lab.setAttribute('x', x0 + w1 + 30); return [e, lab]; });
+  const cells = vs.map((v, i) => v.rows.map((_, r) => rowText(v, r, top + head + r * rowH + 68)));
+  const swapIn = (e, t, d, dy) => at(t, d, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 2)); e.setAttribute('transform', `translate(0 ${dy * (1 - p)})`); });
+  const swapOut = (e, t, d, dy) => at(t, d, (p, raw) => { e.setAttribute('opacity', 1 - Math.min(1, raw * 2)); e.setAttribute('transform', `translate(0 ${dy * p})`); });
+  vs.forEach((v, i) => { const t = i ? at_(i) : 0.5;
+    cells[i].forEach((e, r) => { const ts = t + r * 0.05; swapIn(e, ts, 0.3, 18);
+      if (i < n - 1) swapOut(e, at_(i + 1) + r * 0.05, 0.22, -18);
+      if (i && vs[i - 1].rows[r] !== v.rows[r]) { const f = mk('rect', {x: 6, y: top + head + r * rowH + 6, width: W - 12, height: rowH - 12, rx: 10, fill: C.accent, opacity: 0}, L1);
+        at(ts, 0.55, (p, raw) => f.setAttribute('opacity', 0.16 * Math.sin(Math.PI * raw))); } });
+    step_[i].forEach(e => { swapIn(e, t, 0.3, 22); if (i < n - 1) swapOut(e, at_(i + 1), 0.22, -22); });
+    at(t, 0.3, p => segs.forEach((s, j) => { const on = j === i; if (on) s.setAttribute('opacity', lerp(0.25, 1, p)); else if (j === i - 1) s.setAttribute('opacity', lerp(1, 0.25, p)); }));
+    if (i) { const sw = mk('rect', {x: 0, y: top, width: W * 0.6, height: hh, fill: 'url(#sweep)', 'clip-path': 'url(#vsw)', opacity: 0}, L3);
+      at(t, 0.55, (p, raw) => { sw.setAttribute('x', lerp(-W * 0.6, W, p)); sw.setAttribute('opacity', raw >= 1 ? 0 : 1); }, E.inout);
+      snd(t, 'swish'); snd(t + 0.1, 'tick'); } else snd(0.5, 'pop'); });
+  END = Math.max(END, at_(n - 1) + 1.6);
+};
+
 Promise.all([document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'), document.fonts.load('500 34px "JetBrains Mono"')]).then(() => {
   T[S.type](); sortTW();
   // Fit inside a margin that leaves room for the soft shadows (a shadow cut at the box edge shows as a line in the
@@ -605,13 +677,15 @@ def prepare(spec, w):
         spec.update(toks=toks, removed_lines=removed, added_lines=added,
                     rows=max(len(spec['before'].rstrip('\n').split('\n')), len(spec['after'].rstrip('\n').split('\n'))),
                     size=min(40, int((w - 90) / (max(cols, 8) * 0.6))))
+    elif spec['type'] == 'inspect':
+        spec['tokens'] = tokens(spec['code'], spec.get('language'))
     elif spec['type'] == 'race':
         from urllib.parse import urlparse
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines'):
+                'lines', 'marks', 'variants'):
         spec.setdefault(key, [])
     return spec
 
@@ -712,6 +786,14 @@ EXAMPLES = {
     'outputmap': {'type': 'outputmap', 'command': 'git branch',
                   'output': ['* main', '  feature/login', '  fix/cache']},
     'kinetic': {'type': 'kinetic', 'lines': ['Delete the key', 'on every *write*'], 'tag': 'Key step'},
+    'inspect': {'type': 'inspect', 'language': 'ts', 'title': 'user.ts',
+                'code': 'async function load(url) {\n  const res = await fetch(url)\n  const user = res.json()\n  return user.name\n}',
+                'marks': [{'line': 2, 'label': 'awaits the response'}, {'line': 3, 'label': 'a Promise, no await'},
+                          {'line': 4, 'label': 'undefined at runtime'}]},
+    'variants': {'type': 'variants', 'title': 'git reset HEAD~1',
+                 'variants': [{'label': '--soft', 'rows': ['HEAD: moved back', 'Index: kept', 'Files: kept']},
+                              {'label': '--mixed', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: kept']},
+                              {'label': '--hard', 'rows': ['HEAD: moved back', 'Index: reset', 'Files: reset']}]},
 }
 
 
