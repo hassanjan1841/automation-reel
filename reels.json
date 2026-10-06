@@ -2882,5 +2882,163 @@
     ],
     "slot": 3,
     "seconds": 19.5
+  },
+  {
+    "id": 54,
+    "style": "dark",
+    "payoff": "Verify every Stripe webhook with stripe.webhooks.constructEvent(rawBody, signature, secret) in a try/catch — skip it and anyone can POST a fake 'payment succeeded' event straight into your handler.",
+    "kicker": "Dev mistake #2",
+    "hook": "No check, then *blocked*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "language": "js",
+      "title": "webhook.js",
+      "before": "app.post('/webhook', (req,res)=>{\n  const event = req.body\n  if (event.type === 'paid') {\n    grantAccess(event)\n  }\n  res.sendStatus(200)\n})",
+      "after": "app.post('/webhook', (req,res)=>{\n  const sig = req.headers['stripe-sig']\n  const event = stripe.webhooks\n    .constructEvent(req.body, sig, key)\n  if (event.type === 'paid') {\n    grantAccess(event)\n  }\n  res.sendStatus(200)\n})"
+    },
+    "alternatives": [
+      {
+        "hook": "Your webhook trusts *anyone*",
+        "spoken": "[urgent] Your Stripe webhook will accept a fake payment from anyone.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Fake payments *slip right in*",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your webhook will process a payment event (break) [urgent] that nobody at Stripe sent."
+      },
+      {
+        "hook": "I *faked* a Stripe payment",
+        "hook_type": "test",
+        "spoken": "[mock outraged] I sent a fake payment event straight into this (break) [grinning] webhook handler."
+      }
+    ],
+    "points": [
+      {
+        "title": "Trusts raw body",
+        "body": "Handler reads req.body with no check",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "webhook.js",
+            "code": "app.post('/webhook', (req,res)=>{\n  const event = req.body\n  if (event.type === 'paid') {\n    grantAccess(event)\n  }\n  res.sendStatus(200)\n})",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Verify the signature",
+        "body": "constructEvent checks it came from Stripe",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "webhook.js",
+            "code": "const sig = req.headers['stripe-sig']\nconst event = stripe.webhooks\n  .constructEvent(req.body, sig, key)\nif (event.type === 'paid') {\n  grantAccess(event)\n}",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Fake request rejected",
+        "body": "Invalid signature throws before code runs",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "test.js",
+                "content": "const Stripe = require('stripe')\nconst stripe = Stripe('sk_test_123')\n\ntry {\n  stripe.webhooks.constructEvent(\n    JSON.stringify({ fake: true }),\n    'bad_signature',\n    'whsec_test'\n  )\n} catch (err) {\n  console.log(err.message)\n}"
+              }
+            ],
+            "setup": [
+              "npm init -y",
+              "npm i stripe"
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "test.js"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node test.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 2
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "test.js",
+            "code": "try {\n  stripe.webhooks.constructEvent(\n    body, 'bad_signature', secret\n  )\n} catch (err) {\n  console.log(err.message)\n}",
+            "highlight": [
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *WEBHOOK* for the full handler",
+    "dm_keyword": "WEBHOOK",
+    "dm_guide": "Here's the fix: never trust a Stripe webhook body directly. In your API route, grab the raw request body (App Router: await request.text(); Pages Router: set bodyParser: false and read the raw stream). Then verify it:\n\nconst event = stripe.webhooks.constructEvent(rawBody, request.headers.get('stripe-signature'), process.env.STRIPE_WEBHOOK_SECRET)\n\nWrap it in a try/catch and return a 400 on failure so Stripe retries. Only grant access after constructEvent succeeds. Docs: https://stripe.com/docs/webhooks/signatures",
+    "caption": "Stripe webhook signature verification in Node.js\nSkip it and anyone can POST a fake 'paid' event to your endpoint\nDoes your webhook check the signature? 👇",
+    "hashtags": [
+      "#stripe",
+      "#webhooks",
+      "#nodejs",
+      "#nextjs",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[fired up] Without a signature check anyone can fake a payment. (break) [confident] One line blocks it.",
+      "[exasperated] Most code just reads the body and trusts it blindly.",
+      "[confident and fast] Stripe's construct event function checks a signing secret instead.",
+      "[excited] Send a fake one and it throws verification failed instantly.",
+      "[warm, curious] Comment WEBHOOK and I will send you the full handler."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_style",
+      "arm": "statement"
+    },
+    "pillar": "devtip",
+    "series": "Dev mistake",
+    "episode": 2,
+    "posted_at": "2026-10-06T12:00:54+00:00",
+    "media_id": "18192835846401844",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just two short text lines on an empty dark background with no code or proof visible, so the hook has nothing to look at."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "ide",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.9
   }
 ]
