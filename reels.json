@@ -3192,5 +3192,158 @@
     ],
     "slot": 2,
     "seconds": 23.6
+  },
+  {
+    "id": 56,
+    "style": "dark",
+    "payoff": "A JWT's middle part decodes with plain Buffer.from(part, 'base64').toString() — signing it never hides the data, it only stops tampering.",
+    "kicker": "Explained #2",
+    "hook": "JWT: *signed*, not secret",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "json",
+      "title": "decoded payload",
+      "code": "{\n  \"sub\": \"user_42\",\n  \"email\": \"a@mail.com\",\n  \"role\": \"admin\"\n}",
+      "highlight": [
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your JWT isn't *encrypted*",
+        "spoken": "[urgent] Your JWT token isn't actually encrypted at all.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Can you read a *stolen* JWT?",
+        "spoken": "[blunt] Yes, anyone can read a stolen JWT.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Decode any *JWT* in seconds",
+        "spoken": "[excited] You can decode any JWT in seconds.",
+        "hook_type": "shortcut"
+      }
+    ],
+    "points": [
+      {
+        "title": "Three plain parts",
+        "body": "Header, payload, and signature are all readable",
+        "visual": [
+          {
+            "type": "code",
+            "language": "txt",
+            "title": "token.txt",
+            "code": "header: eyJhbGciOiJIUzI1NiJ9\npayload: eyJzdWIiOiJ1c2VyXzQyfQ\nsignature: 4Adcj3UFYzPUVaVF43Fm",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Decode it live",
+        "body": "Run it, see plaintext instantly",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "decode.js",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "decode.js"
+              },
+              {
+                "do": "type",
+                "file": "decode.js",
+                "text": "const payload = { role: \"admin\", sub: \"user_42\" };\nconst json = JSON.stringify(payload);\nconst encoded = Buffer.from(json).toString(\"base64\");\nconsole.log(encoded);\nconsole.log(Buffer.from(encoded, \"base64\").toString());"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node decode.js"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "decode.js",
+            "code": "const data = { role: \"admin\" };\nconst json = JSON.stringify(data);\nconst b64 = Buffer.from(json)\n  .toString(\"base64\");\nconsole.log(b64);\nconsole.log(\n  Buffer.from(b64, \"base64\")\n    .toString()\n);",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Never hide secrets",
+        "body": "Keep passwords out of the payload",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "json",
+            "title": "payload.json",
+            "before": "{\n  \"sub\": \"user_42\",\n  \"password\": \"hunter2\",\n  \"role\": \"admin\"\n}",
+            "after": "{\n  \"sub\": \"user_42\",\n  \"role\": \"admin\"\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *JWT* for the decode guide.",
+    "caption": "JWT tokens explained: encoded, not encrypted.\nMost devs think signing a token keeps the data secret.\nWhat would you put in a token if you knew everyone could read it? 👇",
+    "hashtags": [
+      "#jwt",
+      "#webdev",
+      "#javascript",
+      "#authentication"
+    ],
+    "voiceover": [
+      "[flat] Signed means verified. It never means hidden.",
+      "[matter-of-fact] It's just three base64 chunks, header, payload, and signature.",
+      "[confident and fast] Decode it yourself and you'll see every field. (break) [emphasis] All in plain text.",
+      "[serious, fast] Never put passwords or secrets in that payload. (break) [emphasis] The signature only stops tampering, not reading.",
+      "[warm, curious] Comment JWT and I'll send you the full decode guide."
+    ],
+    "reveal": 2,
+    "dm_keyword": "JWT",
+    "dm_guide": "Quick JWT decode guide: a JWT is header.payload.signature, each part base64url encoded, not encrypted. In Node, run: const payload = token.split('.')[1]; console.log(Buffer.from(payload, 'base64').toString()); That prints the full payload as plain JSON. Only the signature is protected, so never put passwords, SSNs or other secrets in the payload - verify signatures server-side with a trusted library instead. Docs: https://jwt.io and https://www.rfc-editor.org/rfc/rfc7519",
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 2,
+    "posted_at": "2026-10-07T12:00:45+00:00",
+    "media_id": "18177770887448066",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "ide",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 24.5
   }
 ]
