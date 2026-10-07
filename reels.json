@@ -3345,5 +3345,138 @@
     ],
     "slot": 1,
     "seconds": 24.5
+  },
+  {
+    "id": 57,
+    "style": "light",
+    "kicker": "Freelance playbook #4",
+    "payoff": "A 4-line message you send right after delivery that gives clients a free bug-fix window, then switches any further asks to hourly billing or a new quote",
+    "hook": "Endless fixes, then *one line*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "md",
+      "title": "message.txt",
+      "code": "Happy to fix any bugs you find.\nJust let me know what's off!",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *free* fixes never end",
+        "spoken": "[exasperated] You're fixing client bugs for free forever (break) [flat] because you never set a cutoff.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Copy this *line* today",
+        "hook_type": "shortcut",
+        "spoken": "[confident and fast] Copy this one message and you'll never fix a bug (break) [sure] for free again."
+      },
+      {
+        "hook": "Your *bug fixes* are unpaid work",
+        "hook_type": "problem",
+        "spoken": "[fired up] Right now you're doing unlimited bug fixes for free (break) [flat] and clients expect it forever."
+      }
+    ],
+    "points": [
+      {
+        "title": "No fix cutoff",
+        "body": "Every bug blurs into new features",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "message.txt",
+            "code": "Happy to fix any bugs you find.\nJust let me know what's off!",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Send this line",
+        "body": "Put the free window in writing",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "message.txt",
+            "code": "Love that you're testing it!\nBug fixes free for 14 days.\nAfter that, billed hourly.\nNew features get a quote.",
+            "highlight": [
+              2,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Before vs after",
+        "body": "Vague promise becomes one firm line",
+        "visual": [
+          {
+            "type": "morph",
+            "language": "md",
+            "title": "message.txt",
+            "before": "Happy to fix any bugs you find.\nJust let me know what's off!",
+            "after": "Bug fixes free for 14 days.\nAfter that, billed hourly.\nNew features get a quote."
+          },
+          {
+            "type": "diff",
+            "language": "md",
+            "title": "message.txt",
+            "before": "Happy to fix any bugs you find.\nJust let me know what's off!",
+            "after": "Love that you're testing it!\nBug fixes free for 14 days.\nAfter that, billed hourly.\nNew features get a quote."
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *FIX* for the full message",
+    "dm_keyword": "FIX",
+    "dm_guide": "Here's the exact message to send right after you deliver a project:\n\nLove that you're testing it! Bug fixes from this build are free for 14 days. After that, fixes are billed at my hourly rate, and new features get a separate quote.\n\nSend it the moment you hand off the project, before any 'can you also add' messages start. Adjust the window and rate to match your own process.",
+    "caption": "Freelance client message for free bug fixes after launch\nOne line that stops post-launch fixes from going on forever\nWhat's the client phrase that always gets you? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancedeveloper",
+      "#scopecreep",
+      "#clientmanagement",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[fired up] Clients expect free bug fixes forever (break) [matter-of-fact] until one message sets the limit.",
+      "[knowing] After launch, clients call every ask a tiny fix.",
+      "[confident] So you send this line right after delivery.",
+      "[excited] Free fixes for a set window, (break) [matter-of-fact] then hourly, and features get their own quote.",
+      "[warm, curious] Comment FIX and I'll send the exact message to copy."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 4,
+    "posted_at": "2026-10-07T16:00:44+00:00",
+    "media_id": "18145813429604125",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "morph",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 20.2
   }
 ]
