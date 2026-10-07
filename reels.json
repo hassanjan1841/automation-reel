@@ -3478,5 +3478,139 @@
     ],
     "slot": 2,
     "seconds": 20.2
+  },
+  {
+    "id": 58,
+    "style": "dark",
+    "payoff": "app/layout.tsx automatically wraps every page.tsx in its folder and in every folder below it — you never import it, and adding a nested layout.tsx makes it stack inside the parent automatically.",
+    "kicker": "Next.js from zero #2",
+    "hook": "The *file* every page uses",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "code",
+      "language": "tsx",
+      "title": "layout.tsx",
+      "code": "export default function Layout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return <main>{children}</main>\n}",
+      "highlight": [
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Every new page *repeats* your nav",
+        "hook_type": "problem",
+        "spoken": "[urgent] Copying the same navbar into every page?"
+      },
+      {
+        "hook": "No wrapper, then *one* shared layout",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] One file now wraps every single page."
+      },
+      {
+        "hook": "Stop *importing* your header everywhere",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Stop importing that header into every page."
+      }
+    ],
+    "points": [
+      {
+        "title": "The wrapper file",
+        "body": "layout.tsx sits beside page.tsx",
+        "visual": [
+          {
+            "type": "code",
+            "language": "txt",
+            "title": "app folder",
+            "code": "app/\n  layout.tsx\n  page.tsx",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Wraps everything below",
+        "body": "Every page in that folder nests inside",
+        "visual": [
+          {
+            "type": "code",
+            "language": "txt",
+            "title": "app folder",
+            "code": "app/\n  layout.tsx\n  page.tsx\n  blog/\n    page.tsx",
+            "highlight": [
+              2,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Layouts nest too",
+        "body": "Add a nested layout, it stacks automatically",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "txt",
+            "title": "blog folder",
+            "before": "app/\n  blog/\n    page.tsx",
+            "after": "app/\n  blog/\n    layout.tsx\n    page.tsx"
+          },
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "blog/layout.tsx",
+            "code": "export default function BlogLayout({\n  children,\n}: {\n  children: React.ReactNode\n}) {\n  return <section>{children}</section>\n}",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *LAYOUT* for the file",
+    "dm_keyword": "LAYOUT",
+    "dm_guide": "Here's the layout.tsx breakdown. In the app router, every folder can hold a layout.tsx next to its page.tsx. Next.js wraps the page in that layout automatically, no import needed. Nested folders can add their own layout.tsx, and it nests inside the parent layout automatically.\n\nRoot layout example:\nexport default function Layout({ children }: { children: React.ReactNode }) { return <main>{children}</main> }\n\nDocs: https://nextjs.org/docs/app/building-your-application/routing/layouts-and-templates",
+    "caption": "Next.js layout.tsx explained for beginners\nThe file that wraps every page without being imported\nUsing nested layouts yet? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#reactjs",
+      "#webdevelopment",
+      "#beginnercoder"
+    ],
+    "voiceover": [
+      "[excited] One file secretly wraps every page you build.",
+      "[confident] Right beside page, there's a layout file you never imported.",
+      "[matter-of-fact] That layout wraps every page inside its folder automatically. [quick] Even pages in subfolders get wrapped too.",
+      "[building excitement] Add a layout inside a subfolder. [emphasis] It nests inside the parent, automatically.",
+      "[warm, curious] Comment LAYOUT and I'll send you the file."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 2,
+    "posted_at": "2026-10-07T20:01:06+00:00",
+    "media_id": "17989452758865609",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "diff",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 22.3
   }
 ]
