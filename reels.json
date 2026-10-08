@@ -3777,5 +3777,151 @@
     ],
     "slot": 1,
     "seconds": 26.8
+  },
+  {
+    "id": 60,
+    "style": "dark",
+    "payoff": "git revert HEAD undoes a pushed commit by creating a brand-new commit instead of rewriting history, so it stays safe even after your team has pulled, unlike reset or amend which only work before you push.",
+    "kicker": "Ranked #1",
+    "hook": "One command *undoes* that commit",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "undo-options.sh",
+      "code": "git commit --amend\ngit reset --soft HEAD~1\ngit revert HEAD",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Three ways to *undo* a commit",
+        "spoken": "[fired up] Made a bad commit? (break) [confident] There are three real ways to undo it, ranked.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Don't *reset* a pushed commit",
+        "hook_type": "mistake",
+        "spoken": "[urgent] Resetting a commit after you've pushed it (break) [serious] rewrites history for your whole team."
+      },
+      {
+        "hook": "Wrong fix breaks everyone's *branch*",
+        "hook_type": "problem",
+        "spoken": "[exasperated] One bad commit can break everyone's branch. (break) [knowing] That's when the real mess starts."
+      }
+    ],
+    "points": [
+      {
+        "title": "Amend the commit",
+        "body": "Fixes it before you push",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git commit --amend"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "bash",
+            "title": "git log -1",
+            "before": "a1b2c3 Fix bug now",
+            "after": "d4e5f6 fix: handle null input"
+          }
+        ]
+      },
+      {
+        "title": "Reset erases locally",
+        "body": "Risky once you've already pushed",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git log --oneline -1",
+              "git reset --soft HEAD~1",
+              "git status"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "warning.sh",
+            "code": "# only if NOT pushed yet\ngit reset --soft HEAD~1\n# rewrites local history",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Revert stays safe",
+        "body": "Adds new commit, keeps history",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "git revert HEAD",
+            "output": [
+              "[main 9f86d08] Revert \"bad fix\"",
+              "1 file changed, 2 insertions(+)"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "git revert HEAD",
+              "git push"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *GITFIX* for the cheat sheet",
+    "caption": "Git commit undo: amend vs reset vs revert compared\nComment GITFIX for the full cheat sheet\nWhich one do you reach for first? 👇",
+    "hashtags": [
+      "#git",
+      "#gitcommands",
+      "#devtips",
+      "#webdevelopment",
+      "#coding"
+    ],
+    "dm_keyword": "GITFIX",
+    "dm_guide": "Here's your git undo cheat sheet:\n1. Fix the last commit (not pushed yet): git commit --amend\n2. Undo a local-only commit, keep changes staged: git reset --soft HEAD~1\n3. Undo a commit you already pushed (safe, keeps history): git revert HEAD, then git push\nRevert creates a new commit instead of rewriting history, so it's always safe on shared branches. Full docs: https://git-scm.com/docs/git-revert",
+    "voiceover": [
+      "[confident and fast] One git command undoes a bad commit (break) [excited] without losing any history at all.",
+      "[straight to it] Amend quickly fixes your last commit before you push.",
+      "[serious] Reset works fine solo, (break) [careful] but it rewrites history once others have your commit.",
+      "[here's the winner] Revert adds a new commit undoing it, (break) [confident] keeping history safe for everyone.",
+      "[warm, curious] Comment GITFIX (break) [excited] for the full undo cheat sheet."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "relatable",
+    "series": "Ranked",
+    "episode": 1,
+    "posted_at": "2026-10-08T16:00:46+00:00",
+    "media_id": "18116699602800250",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "code",
+      "outputmap",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 22.4
   }
 ]
