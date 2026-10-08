@@ -3923,5 +3923,127 @@
     ],
     "slot": 2,
     "seconds": 22.4
+  },
+  {
+    "id": 61,
+    "style": "light",
+    "payoff": "Claude Code mods let you add a live pane or command with a few lines of JS: run /plugin install mod@marketplace, and check what a mod touches first with claude plugin validate ./mod-folder.",
+    "kicker": "Claude Code",
+    "hook": "Claude Code just got *mods*",
+    "hook_type": "news",
+    "hook_visual": {
+      "type": "diff",
+      "language": "text",
+      "title": "Claude Code spinner",
+      "before": "Thinking…",
+      "after": "Thinking · tool calls: 3…"
+    },
+    "alternatives": [
+      {
+        "hook": "One command *mods* your CLI",
+        "spoken": "[grinning, punchy] One command adds a custom pane to Claude Code.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Plain Claude Code, then *modded*",
+        "spoken": "[excited] Same CLI, then it grows your own live panel.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Don't install a *mod* blind",
+        "spoken": "[urgent] Never install a mod without checking what it touches first.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Hook into events",
+        "body": "JS hooks that run inside Claude Code",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "register.js",
+            "code": "export function register(on) {\n  let calls = 0\n  on('tool.call', async ($, e, n) => {\n    calls += 1\n    $.ui.invalidate('ui.render')\n    return n(e)\n  })\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One command",
+        "body": "One command adds a live pane",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "/plugin install token-chart@your-org",
+              "/plugin"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Check before trust",
+        "body": "See exactly what a mod can touch",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "claude plugin validate ./some-mod"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *MODS* for the setup",
+    "caption": "Claude Code mods: custom panes, commands and tool-call hooks\nAnthropic shipped this October 1, built with a few lines of JavaScript\nWhat would you build first? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#devtools",
+      "#ai",
+      "#plugins",
+      "#automation"
+    ],
+    "voiceover": [
+      "[fired up] Claude Code just shipped something called mods.",
+      "[confident and fast] A mod is JavaScript that hooks into every event.",
+      "[excited] One command installs it and a live pane shows up.",
+      "[serious, fast] Always run validate first to see what it touches.",
+      "[warm, curious] Comment mods and I will send you the setup."
+    ],
+    "dm_keyword": "MODS",
+    "dm_guide": "Update to Claude Code v2.1.287+. Clone github.com/anthropics/claude-code-playground, cd into claude-code/mods, then run claude --plugin-dir ./token-weather for one session — or claude plugin marketplace add ./ followed by claude plugin install token-weather@claude-code-playground-mods to keep it. Before trusting any mod, run claude plugin validate ./mod-folder to see its hooks and calls. Sample mods (token-weather, blast-radius, replay-theater) live in that folder. Docs: code.claude.com/docs/en/plugins/mods/overview",
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://code.claude.com/docs/en/plugins/mods/overview",
+      "https://github.com/anthropics/claude-code-playground/tree/main/claude-code/mods"
+    ],
+    "posted_at": "2026-10-08T20:00:43+00:00",
+    "media_id": "17956705305267458",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is only the text phrase 'Claude Code just got mods' on a plain background — no code, diff, or screenshot proof is shown under it, so there is nothing to look at."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The promised '/plugin install mod@marketplace' command is never shown on screen — slide 2 only says 'One command' in text with no visual; only the 'claude plugin validate' command is actually shown (mid-typed, not even completed)."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "text",
+      "terminal",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.4
   }
 ]
