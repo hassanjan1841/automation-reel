@@ -3612,5 +3612,170 @@
     ],
     "slot": 3,
     "seconds": 22.3
+  },
+  {
+    "id": 59,
+    "style": "light",
+    "payoff": "One supabase.channel().on('postgres_changes', cb).subscribe() call pushes new order rows into your dashboard instantly, no polling.",
+    "kicker": "Build smart #2",
+    "hook": "One call, *zero* refresh",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "tsx",
+      "title": "dashboard.tsx",
+      "before": "useEffect(() => {\n  const id = setInterval(() => {\n    fetch('/api/orders')\n  }, 5000)\n  return () => clearInterval(id)\n}, [])",
+      "after": "useEffect(() => {\n  const c = supabase\n    .channel('orders')\n    .on('postgres_changes', {}, cb)\n    .subscribe()\n  return () => supabase.removeChannel(c)\n}, [])"
+    },
+    "alternatives": [
+      {
+        "hook": "Your dashboard updates *live*",
+        "spoken": "[excited] Build a dashboard that updates the instant new data lands, [emphasis] no refresh needed.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Orders *vanish* until refresh",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your dashboard hides brand new orders until someone finally hits [emphasis] refresh by hand."
+      },
+      {
+        "hook": "You're still *polling* for updates",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Most Next.js dashboards poll Supabase every few seconds and still [annoyed] show stale data."
+      }
+    ],
+    "points": [
+      {
+        "title": "Stop polling",
+        "body": "Polling wastes calls and still lags",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "dashboard.tsx",
+            "code": "useEffect(() => {\n  const id = setInterval(() => {\n    fetch('/api/orders')\n  }, 5000)\n  return () => clearInterval(id)\n}, [])",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One subscribe call",
+        "body": "Supabase pushes inserts into your state",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "dashboard.tsx",
+                "content": "export default function Dashboard() {\n  const [orders, setOrders] = useState([])\n  // fetch initial orders here\n  return <OrderList orders={orders} />\n}"
+              }
+            ],
+            "setup": [
+              "npm install @supabase/supabase-js"
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "dashboard.tsx"
+              },
+              {
+                "do": "type",
+                "text": "useEffect(() => {\n  const ch = supabase.channel('orders')\n    .on('postgres_changes',\n      { event: '*', schema: 'public', table: 'orders' },\n      (p) => setOrders((o) => [...o, p.new]))\n    .subscribe()\n  return () => supabase.removeChannel(ch)\n}, [])"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "npm run dev"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "dashboard.tsx",
+            "code": "supabase.channel('orders')\n  .on('postgres_changes',\n    { event: '*', schema: 'public',\n      table: 'orders' },\n    (p) => setOrders((o) =>\n      [...o, p.new]))\n  .subscribe()",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Live proof",
+        "body": "Insert a row, watch it appear",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node insertOrder.js",
+            "output": [
+              "> node insertOrder.js",
+              "Inserted order: Pro Plan",
+              "Realtime event received: INSERT",
+              "Dashboard order list updated"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "insertOrder.js",
+            "code": "await supabase\n  .from('orders')\n  .insert({ item: 'Pro Plan' })",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *REALTIME* for the setup",
+    "dm_keyword": "REALTIME",
+    "dm_guide": "Here is the realtime dashboard setup. In Supabase, go to Database, then Replication, and turn on realtime for your table. Run npm install at supabase slash supabase-js. In your component, call supabase.channel('orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, callback).subscribe(), then return () => supabase.removeChannel(channel) in your cleanup. Full docs: supabase.com/docs/guides/realtime/postgres-changes",
+    "caption": "Supabase Realtime subscriptions in Next.js\nBuild a dashboard that updates the second new data lands, no refresh button needed.\nWhat would you build with live updates first? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#supabase",
+      "#realtime",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[confident and fast] One Supabase subscribe call keeps your dashboard current without any [emphasis] manual refresh.",
+      "[knowing] Most dashboards poll on a timer, so new rows sit [emphasis] invisible.",
+      "[confident] Supabase streams every change through this one listener. [excited] No polling, no extra calls needed.",
+      "[hushed] Watch this. (break) [excited] Insert a row, it appears instantly.",
+      "[warm, curious] Comment REALTIME for the full setup and cleanup code."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "saas",
+    "series": "Build smart",
+    "episode": 2,
+    "posted_at": "2026-10-08T12:00:44+00:00",
+    "media_id": "18450329467123798",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Hook text \"One call, zero refresh\" sits alone on an empty background with no code or proof visible, violating the text-only-with-nothing-to-look-at rule."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 26.8
   }
 ]
