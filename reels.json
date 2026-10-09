@@ -4045,5 +4045,151 @@
     ],
     "slot": 3,
     "seconds": 18.4
+  },
+  {
+    "id": 62,
+    "style": "dark",
+    "payoff": "claude mcp add fetch -- uvx mcp-server-fetch gives Claude Code a live browser: ask it to fetch any URL and it reads and summarizes the page right in your terminal, no copy-paste.",
+    "kicker": "AI tool in 30s #4",
+    "hook": "Give Claude Code a *browser*",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "code",
+      "language": "json",
+      "title": "mcp.json",
+      "code": "{\n  \"mcpServers\": {\n    \"fetch\": {\n      \"command\": \"uvx\",\n      \"args\": [\n        \"mcp-server-fetch\"\n      ]\n    }\n  }\n}",
+      "highlight": [
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Claude Code can't *browse* the web",
+        "spoken": "[exasperated] Claude Code can't open a single web page (break) [flat] unless you paste it in yourself.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Still *pasting* docs into chat?",
+        "spoken": "[mock outraged] You're still pasting docs into chat by hand (break) [wry] every time you need an answer.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "No more *tab-switching* for docs",
+        "spoken": "[relieved] Before, you'd alt tab to the browser. (break) [bright] Now Claude just fetches the page itself.",
+        "hook_type": "before_after"
+      }
+    ],
+    "points": [
+      {
+        "title": "Add a browser",
+        "body": "A fetch MCP server for Claude Code",
+        "visual": [
+          {
+            "type": "code",
+            "language": "json",
+            "title": "mcp.json",
+            "code": "{\n  \"mcpServers\": {\n    \"fetch\": {\n      \"command\": \"uvx\",\n      \"args\": [\n        \"mcp-server-fetch\"\n      ]\n    }\n  }\n}",
+            "highlight": [
+              6
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "claude mcp add fetch"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Confirm it's live",
+        "body": "mcp list shows fetch is connected",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "claude mcp list",
+            "output": [
+              "fetch",
+              "uvx mcp-server-fetch",
+              "status: connected"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "claude mcp list"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Ask it live",
+        "body": "It reads the page and replies",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "claude",
+              "summarize https://react.dev/learn"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "ask.md",
+            "code": "summarize https://react.dev/learn",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *FETCH* for the setup",
+    "dm_keyword": "FETCH",
+    "dm_guide": "Here's the full setup: 1) Update Claude Code. 2) Run: claude mcp add fetch -- uvx mcp-server-fetch 3) Run claude mcp list to confirm it shows connected. 4) In any Claude Code session, ask it to fetch a URL and summarize or pull data from it, no copy paste needed. Official MCP docs: https://docs.anthropic.com/en/docs/claude-code/mcp",
+    "caption": "Claude Code MCP fetch server setup\nNo more copy pasting docs into chat\nWhat page would you have it fetch first? 👇",
+    "hashtags": [
+      "#ClaudeCode",
+      "#MCP",
+      "#AItools",
+      "#DevTips"
+    ],
+    "voiceover": [
+      "[fired up] One terminal command turns Claude Code into (break) [confident] a tool that reads live web pages.",
+      "[upbeat] Add the fetch MCP server with one command.",
+      "[snappy] Run claude mcp list and see it connected instantly.",
+      "[quiet] Now ask it to fetch any page (break) [excited] and it summarizes instantly.",
+      "[warm, curious] Comment FETCH and I'll send you the exact setup steps."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 4,
+    "posted_at": "2026-10-09T12:01:22+00:00",
+    "media_id": "18097520900639798",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows an actual terminal session where Claude fetches a real URL and prints a summary — only the mcp.json config and the `claude mcp list` status are shown, the actual payoff is just claimed in text on slide 3."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "outputmap",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 24.2
   }
 ]
