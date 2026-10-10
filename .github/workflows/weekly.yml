@@ -57,16 +57,16 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Install Claude Code
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
 
       - name: Write, review and post the carousel
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: python carousel.py
 
       - uses: actions/upload-artifact@v7
