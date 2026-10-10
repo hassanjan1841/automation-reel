@@ -32,14 +32,14 @@ jobs:
       - run: pip install requests pillow numpy
 
       - name: Install Claude Code
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
 
       - name: Learn from the latest numbers
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
           LEARN_DAYS: ${{ vars.LEARN_DAYS }}
         run: python learn.py

@@ -35,14 +35,14 @@ jobs:
 
       - name: Install Claude Code
         if: inputs.mode != 'check'
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
 
       - name: Answer new comments
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.mode == 'dry_run' && 'true' || 'false' }}

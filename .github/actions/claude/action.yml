@@ -1,0 +1,33 @@
+name: Claude Code
+description: Install Claude Code and use the first Claude token that works, so one expired or revoked token does not stop the run.
+inputs:
+  token:
+    description: CLAUDE_CODE_OAUTH_TOKEN
+    required: true
+  backup:
+    description: CLAUDE_CODE_OAUTH_TOKEN_2, tried when the first one fails
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TOKEN_1: ${{ inputs.token }}
+        TOKEN_2: ${{ inputs.backup }}
+      run: |
+        curl -fsSL https://claude.ai/install.sh | bash
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        for n in 1 2; do
+          var="TOKEN_$n"; token="${!var}"
+          [ -n "$token" ] || continue
+          if CLAUDE_CODE_OAUTH_TOKEN="$token" timeout 120 "$HOME/.local/bin/claude" -p 'Reply with OK' --tools '' \
+              --setting-sources '' --no-session-persistence < /dev/null > /dev/null 2>&1; then
+            echo "CLAUDE_CODE_OAUTH_TOKEN=$token" >> "$GITHUB_ENV"
+            echo "Claude: token $n works"
+            exit 0
+          fi
+          echo "::warning::Claude token $n does not work (expired, revoked or out of usage)"
+        done
+        echo "::warning::No Claude token works; every Claude step in this run will fail. Run claude setup-token and update the secret."
+        echo "CLAUDE_CODE_OAUTH_TOKEN=$TOKEN_1" >> "$GITHUB_ENV"

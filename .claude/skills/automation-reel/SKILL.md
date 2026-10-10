@@ -103,7 +103,7 @@ docs-check.yml (every push except reels.json-only ones, and PRs)  docs_check.py 
 docs-sync.yml (code push + Sat 09:00) docs_sync.py   Claude fixes the docs, opens a PR from docs-sync
 ```
 
-Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), billed to the Max plan via `CLAUDE_CODE_OAUTH_TOKEN`, not the API. The writer and hook judge use `generate.MODEL`; `CLAUDE_MODEL` overrides the model in trends, qa, learn, study, dm (comment triage), carousel review (`carousel.review_once`) and docs_sync (default `claude-sonnet-5`, docs_sync's `generate.MODEL`; an empty value means the default). Only daily-reel.yml (trends, qa), study.yml and dm.yml pass the repo variable.
+Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), billed to the Max plan via `CLAUDE_CODE_OAUTH_TOKEN`, not the API. Every workflow installs it with the local action `.github/actions/claude`, which tries one short prompt with that token and then `CLAUDE_CODE_OAUTH_TOKEN_2`, and exports the first that works (2026-10-10: an expired token failed every reel for a day); never set the token in a step's `env` again, it would override the pick. The writer and hook judge use `generate.MODEL`; `CLAUDE_MODEL` overrides the model in trends, qa, learn, study, dm (comment triage), carousel review (`carousel.review_once`) and docs_sync (default `claude-sonnet-5`, docs_sync's `generate.MODEL`; an empty value means the default). Only daily-reel.yml (trends, qa), study.yml and dm.yml pass the repo variable.
 
 ## Files
 
@@ -258,7 +258,7 @@ Pillar and series come from `generate.pillar_for`: reel 1 rotates the teaching s
 
 ## Secrets and variables
 
-Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
+Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_2` (optional backup), `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
 Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: news, trick, versus, series or build), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`.
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
