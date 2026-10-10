@@ -64,7 +64,9 @@ weekly.yml (Sun 10:00 UTC)
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
                      (a manual run posts it only with the post_carousel input ticked)
 
-dm.yml (every 15 min)      dm.py            keyword comments -> post's dm_guide as a private reply + public "Sent you a DM" (the dedupe marker)
+dm.yml (scheduler.py, every 10 min; cron backup)  dm.py   keyword comments -> post's dm_guide as a private reply + public
+                     "Sent you a DM" (the dedupe marker); every other new comment -> dm.triage (one Claude call per
+                     post): guide, answer or thanks (public reply), spam (hidden), needs_you (dm.INBOX issue)
 demo-preview.yml (manual)  demos.py record <spec>   records one demo on GitHub and uploads the mp4
 
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
@@ -77,7 +79,8 @@ post-video.yml (manual)  post_video.py <video> <caption file> [cover]   posts a 
 
 scheduler.yml (every 10 min + dispatch)  scheduler.py   starts a dropped Daily reel slot (in its window, not
                      posted, nothing running, at most 2 tries), the day's Learning run (LEARN_DAYS) or a missed
-                     Sunday Weekly, or the Sunday Study (study.yml auto, from 08:00; issue runs do not count);
+                     Sunday Weekly, or the Sunday Study (study.yml auto, from 08:00; issue runs do not count),
+                     and dm.yml (mode send) on every run unless one is active (scheduler.due_dms);
                      a cron-job.org job dispatches it every 10 minutes
 
 study.yml (Sun 08:00 UTC --auto, also started by scheduler.py; issue labelled "study" by the repo owner; or manual
@@ -100,7 +103,7 @@ docs-check.yml (every push except reels.json-only ones, and PRs)  docs_check.py 
 docs-sync.yml (code push + Sat 09:00) docs_sync.py   Claude fixes the docs, opens a PR from docs-sync
 ```
 
-Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), billed to the Max plan via `CLAUDE_CODE_OAUTH_TOKEN`, not the API. The writer and hook judge use `generate.MODEL`; `CLAUDE_MODEL` overrides the model in trends, qa, learn, study, carousel review (`carousel.review_once`) and docs_sync (default `claude-sonnet-5`, docs_sync's `generate.MODEL`; an empty value means the default). Only daily-reel.yml (trends, qa) and study.yml pass the repo variable.
+Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), billed to the Max plan via `CLAUDE_CODE_OAUTH_TOKEN`, not the API. The writer and hook judge use `generate.MODEL`; `CLAUDE_MODEL` overrides the model in trends, qa, learn, study, dm (comment triage), carousel review (`carousel.review_once`) and docs_sync (default `claude-sonnet-5`, docs_sync's `generate.MODEL`; an empty value means the default). Only daily-reel.yml (trends, qa), study.yml and dm.yml pass the repo variable.
 
 ## Files
 
@@ -132,7 +135,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learnings.md` | The active rules, read by the writers (reels, news, carousel) | data, generated from `rules.json` by `history.save_rules` |
 | `rules.json`, `experiments.json`, `ideas.json`, `metrics/`, `reports/` | The learning loop's data | data, written by `learn.py` only |
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
-| `dm.py` | Comment-to-DM for reels and carousels with dm_keyword/dm_guide | `main`, `posts`, `asks`, `comments`, `answer`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
+| `dm.py` | Comment replies on recent reels, carousels and extras: keyword guide by DM, Claude triage of the rest | `main`, `posts`, `asks`, `comments`, `answer`, `triage`, `send_guide`, `inbox`, `to_inbox`, `clean`, `claude`, `SYSTEM`, `KINDS`, `INBOX`, `REPLY_LIMIT`, `ABOUT`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
 | `refresh_token.py` | IG token refresh | script |
 | `docs_check.py` | Docs vs code drift check, stdlib only | `check`, `main`, `file_table` |
@@ -168,7 +171,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs 
 .venv/bin/python trends.py --pick        # also ask Claude to pick/write (prints only, saves nothing; needs claude CLI)
 DRY_RUN=true .venv/bin/python publish.py # full daily path, render only, posts nothing
 DRY_RUN=true .venv/bin/python carousel.py # write, draw and review the carousel, posts nothing
-DRY_RUN=true .venv/bin/python dm.py      # print the DMs it would send; dm.py --check only checks the token
+DRY_RUN=true .venv/bin/python dm.py      # print what it would send, reply, hide or list; dm.py --check only checks the token
 IG_TOKEN=... .venv/bin/python insights.py 20
 python3 docs_check.py                    # docs match the code? no dependencies needed
 python3 docs_sync.py                     # let Claude fix stale docs locally (needs claude CLI; --base REF, --force)
@@ -269,7 +272,7 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
 - The voice verifier (`voice.verify`, used by `clean_take` (and so `say_checked`), `say_whole`, `report`) listens to every take four ways, because each alone missed a real fault: with the script as a hint (names; respelled via `learn`), without it (an everyday word said badly, like "Check" heard as "you correct"; the hint hides these), each burst of sound alone (`islands` + `heard_alone`: a burst with no script word is a stray sound, like the "uhh" Fish invented after a long pause), and the bursts' words together. Faults cost a retake (up to `FINAL_TAKES`); stray sounds left in the best take are cut to silence (`mute`, never into a word) and verified again; a line still unclear is recorded alone and swapped in; a whole voiceover still not clean is recorded once more. `clips.verdict` ('clean' or what is unclear) is printed as "Voice check" in the daily log. The beat between slides is silence added in `split` (`BEAT`), never a Fish `(long-break)`; `say_whole` joins the lines with a short `(break)`. `test_voice.py --verify` replays the recorded "uhh" (`tests/stray-uhh.wav`) and fails if the verifier misses it or the cut damages a word.
 - Writer rules learned from posts with thousands of comments (2026-09-28): the hook promises one concrete result ("in 2 minutes", "one afternoon"), one doubt or tension beat per voiceover ("You might think...", "Most people stop right here"), how-tos show the real steps. Slot 1 rotates `TEACH` by weekday % 4: Mon/Fri AI how-tos with a real result (Claude, MCP, automations), Tue/Sat Dev mistake, Wed/Sun Explained, Thu "Build X in one afternoon". Topic filter in `generate.SYSTEM` and `carousel.SYSTEM`: no gambling, betting, interest-based lending, adult content or deceptive tools.
 - Packages in any code, command, ide file or carousel snippet must exist on npm or PyPI (`generate.package_errors`, used by `visual_errors` and `carousel.check`); the writer is told to use only official packages, because a lookalike package that asks for credentials would hurt viewers.
-- Comment-to-DM (2026-09-28, learned from posts with more comments than likes; widened 2026-10-01): every format in `generate.DM_PILLARS` (AI, dev mistake, build smart, freelance playbook, trick, versus, beginner, build it live; not myth, ranked or explained), and every carousel, carry `dm_keyword`; `generate.pillar_errors` (run by `generate.generate` and its repair, which know the day's pillar) enforces it, and the offer names a concrete freebie ("Comment CODE for the code"). Carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then shows the keyword big in the hook's style (`render.KEYWORD_SIZE`, bold accent with a marker stroke) and says "I'll send it to your DMs". `dm.py` never stores state: our public reply under a comment marks it as done; it sends at most `dm.GUIDE_LIMIT` (1000) characters of the guide.
+- Comment-to-DM (2026-09-28, learned from posts with more comments than likes; widened 2026-10-01): every format in `generate.DM_PILLARS` (AI, dev mistake, build smart, freelance playbook, trick, versus, beginner, build it live; not myth, ranked or explained), and every carousel, carry `dm_keyword`; `generate.pillar_errors` (run by `generate.generate` and its repair, which know the day's pillar) enforces it, and the offer names a concrete freebie ("Comment CODE for the code"). Carry `dm_keyword` (capitals, 3 to 10) and `dm_guide` (150 to 900 characters, the whole promised guide). `generate.dm_errors` makes the cta, caption and last voiceover line offer it, and checks the guide's packages; `qa.review` fails honesty if the reel promises more than the guide holds. The CTA slide then shows the keyword big in the hook's style (`render.KEYWORD_SIZE`, bold accent with a marker stroke) and says "I'll send it to your DMs". `dm.py` never stores state: our reply under a comment, the comment being hidden, or its id in the `dm.INBOX` issue body marks it as done; it sends at most `dm.GUIDE_LIMIT` (1000) characters of the guide. Comments without the keyword (2026-10-10, after a first comment sat unanswered for hours): `dm.triage` asks Claude once per post; a verdict it cannot carry out safely (a guide the post lacks, an empty reply or one over `REPLY_LIMIT`) becomes needs_you, and a Claude failure leaves them for the next run. Comment text is untrusted: tools off, structured output, replies capped. Guides start with what to install first (reel 62 skipped uv).
 - GitHub drops scheduled runs (2026-09-28: the Daily reel's crons fired twice in three days, none on the 28th).
   `scheduler.py` fills the gaps: each slot owns a window from its start to the next slot's start, and a missing
   slot is started once its window opens if nothing is running (at most `MAX_ATTEMPTS` tries); a passed window is

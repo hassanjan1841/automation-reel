@@ -4147,7 +4147,7 @@
     ],
     "cta": "Comment *FETCH* for the setup",
     "dm_keyword": "FETCH",
-    "dm_guide": "Here's the full setup: 1) Update Claude Code. 2) Run: claude mcp add fetch -- uvx mcp-server-fetch 3) Run claude mcp list to confirm it shows connected. 4) In any Claude Code session, ask it to fetch a URL and summarize or pull data from it, no copy paste needed. Official MCP docs: https://docs.anthropic.com/en/docs/claude-code/mcp",
+    "dm_guide": "Here's the full setup: 1) Install uv (it gives you uvx): curl -LsSf https://astral.sh/uv/install.sh | sh 2) Update Claude Code: claude update 3) Run: claude mcp add fetch -- uvx mcp-server-fetch 4) Run claude mcp list to confirm it shows connected. 5) In any Claude Code session, ask it to fetch a URL and summarize or pull data from it, no copy paste needed. Official MCP docs: https://docs.anthropic.com/en/docs/claude-code/mcp",
     "caption": "Claude Code MCP fetch server setup\nNo more copy pasting docs into chat\nWhat page would you have it fetch first? 👇",
     "hashtags": [
       "#ClaudeCode",

@@ -850,6 +850,103 @@ def run(created, status='completed'):
     return {'status': status, 'createdAt': created.strftime('%Y-%m-%dT%H:%M:%SZ')}
 
 
+class CommentsTest(Sandbox):
+    """dm.py: keyword comments get the guide, every other new comment is sorted by Claude and handled."""
+
+    ME = '1'
+    POST = {'media_id': 'm1', 'keyword': 'FETCH', 'guide': 'Install uv, then claude mcp add fetch.', 'label': 'Hook',
+            'about': {'hook': 'Give Claude Code a *browser*'}}
+
+    def comment(self, cid, text, author='9', replied=False, hidden=False):
+        return {'id': cid, 'text': text, 'hidden': hidden, 'from': {'id': author, 'username': 'someone'},
+                'replies': {'data': [{'from': {'id': self.ME}}] if replied else []}}
+
+    def handle(self, found, verdicts=None, post=None, issue=(None, ''), dry=False, claude=None):
+        calls, prompts, gh_calls = [], [], []
+
+        def fake_claude(prompt):
+            prompts.append(prompt)
+            return {'comments': [{'id': i, 'kind': k, 'reply': r} for i, (k, r) in (verdicts or {}).items()]}
+
+        def gh(*args):
+            gh_calls.append(args)
+            return ''
+        with mock.patch.object(dm, 'comments', lambda media, token: found), \
+                mock.patch.object(dm, 'call', lambda method, path, token, **p: calls.append((method, path, p)) or {}), \
+                mock.patch.object(dm, 'claude', claude or fake_claude), mock.patch.object(dm, 'gh', gh), \
+                mock.patch.dict(os.environ, {'GH_TOKEN': 'x'}), contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            done = dm.answer(post or self.POST, self.ME, 'tok', dry, issue)
+        return done, calls, prompts, gh_calls
+
+    def test_keyword_comments_need_no_claude(self):
+        done, calls, prompts, _ = self.handle([self.comment('c1', 'Fetch!')])
+        self.assertEqual(done, {'guide': 1})
+        self.assertEqual([c[1] for c in calls], ['1/messages', 'c1/replies'])
+        self.assertEqual(prompts, [])
+
+    def test_every_kind_is_handled(self):
+        found = [self.comment('c1', 'fetchh pls'), self.comment('c2', 'Do I need uv?'), self.comment('c3', '🔥🔥'),
+                 self.comment('c4', 'Can you build my app? paid'), self.comment('c5', 'Promo? DM us'),
+                 self.comment('c6', 'old one', replied=True), self.comment('c7', 'hidden', hidden=True),
+                 self.comment('c8', 'my own', author=self.ME), self.comment('c9', 'already listed')]
+        verdicts = {'c1': ('guide', ''), 'c2': ('answer', 'Yes \u2014 uvx comes with uv.'),
+                    'c3': ('thanks', 'Thanks! Comment FETCH for the setup'), 'c4': ('needs_you', ''), 'c5': ('spam', '')}
+        done, calls, prompts, gh_calls = self.handle(found, verdicts, issue=(7, '- [ ] x <!-- c9 -->'))
+        self.assertEqual(done, {'guide': 1, 'answer': 1, 'thanks': 1, 'needs_you': 1, 'spam': 1})
+        self.assertIn(('POST', '1/messages', {'recipient': {'comment_id': 'c1'}, 'message': {'text': self.POST['guide']}}), calls)
+        self.assertIn(('POST', 'c2/replies', {'message': 'Yes, uvx comes with uv.'}), calls)   # long dash removed
+        self.assertIn(('POST', 'c5', {'hide': True}), calls)
+        self.assertFalse([c for c in calls if c[1].startswith('c4')])                           # never auto-answered
+        for skipped in ('c6', 'c7', 'c8', 'c9'):
+            self.assertNotIn(skipped, prompts[0])
+        edit = [a for a in gh_calls if a[:2] == ('issue', 'edit')]
+        self.assertEqual(edit[0][2], '7')
+        self.assertIn('Can you build my app? paid', edit[0][4])
+        self.assertIn('<!-- c4 -->', edit[0][4])
+        self.assertIn('<!-- c9 -->', edit[0][4])                                                # earlier ones kept
+
+    def test_an_unsafe_verdict_goes_to_the_creator(self):
+        no_offer = {**self.POST, 'keyword': None, 'guide': None}
+        found = [self.comment('c1', 'send it'), self.comment('c2', 'how?'), self.comment('c3', 'why?')]
+        verdicts = {'c1': ('guide', ''), 'c2': ('answer', ''), 'c3': ('answer', 'x' * 400)}
+        done, calls, _, gh_calls = self.handle(found, verdicts, post=no_offer)
+        self.assertEqual(done, {'needs_you': 3})
+        self.assertEqual(calls, [])
+        self.assertEqual([a[:2] for a in gh_calls], [('issue', 'create')])
+
+    def test_a_claude_failure_leaves_comments_for_the_next_run(self):
+        def down(prompt):
+            raise RuntimeError('claude exited 1')
+        done, calls, _, gh_calls = self.handle([self.comment('c1', 'FETCH'), self.comment('c2', 'nice')], claude=down)
+        self.assertEqual(done, {'guide': 1})
+        self.assertEqual([c[1] for c in calls], ['1/messages', 'c1/replies'])
+        self.assertEqual(gh_calls, [])
+
+    def test_dry_run_changes_nothing(self):
+        found = [self.comment('c1', 'FETCH'), self.comment('c2', 'great'), self.comment('c3', 'hire you?')]
+        verdicts = {'c2': ('thanks', 'Thanks!'), 'c3': ('needs_you', '')}
+        done, calls, _, gh_calls = self.handle(found, verdicts, dry=True)
+        self.assertEqual(done, {'guide': 1, 'thanks': 1, 'needs_you': 1})
+        self.assertEqual((calls, gh_calls), ([], []))
+
+    def test_posts_cover_every_recent_post(self):
+        now = datetime.now(timezone.utc)
+        render.QUEUE.write_text(json.dumps([
+            {'id': 1, 'hook': 'Old', 'media_id': 'a', 'posted_at': (now - timedelta(days=9)).isoformat()},
+            {'id': 2, 'hook': 'Offer', 'media_id': 'b', 'posted_at': now.isoformat(), 'dm_keyword': 'MCP',
+             'dm_guide': 'g' * 1200},
+            {'id': 3, 'hook': 'Question', 'media_id': 'c', 'posted_at': now.isoformat()},
+            {'id': 4, 'hook': 'Queued', 'media_id': None, 'posted_at': None}]))
+        with mock.patch.object(render, 'ROOT', self.tmp):
+            (self.tmp / 'extras.json').write_text(json.dumps([{'video': 'extras/a.mp4', 'caption': 'Chai',
+                                                                'media_id': 'd', 'posted_at': now.isoformat()}]))
+            found = dm.posts()
+        self.assertEqual([(p['media_id'], p['keyword']) for p in found], [('b', 'MCP'), ('c', None), ('d', None)])
+        self.assertEqual(len(found[0]['guide']), dm.GUIDE_LIMIT)
+        self.assertEqual(found[2]['about'], {'caption': 'Chai'})
+
+
 class BackupRunTest(Sandbox):
     """The learning job's 06:30 cron is only a backup for the Scheduler."""
 
@@ -922,9 +1019,10 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
-    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None):
+    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None):
         learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
         studied = [run(now)] if studied is None else studied   # and the Sunday study
+        dms = [run(now, 'in_progress')] if dms is None else dms  # and the comment replies are running
         os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
@@ -933,7 +1031,7 @@ class SchedulerTest(Sandbox):
             calls.append(args)
             if args[:2] == ('run', 'list'):
                 return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned,
-                                   'study.yml': studied}[args[3]])
+                                   'study.yml': studied, 'dm.yml': dms}[args[3]])
             return ''
 
         class Now(datetime):
@@ -952,6 +1050,12 @@ class SchedulerTest(Sandbox):
         self.assertEqual(self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [], argv=['--dry']), [])
         self.assertEqual(self.run_scheduler(at(16, 5), [self.posted(at(14, 26), slot=1), self.posted(at(16, 0), slot=2)],
                                             [], []), [])
+
+    def test_main_starts_the_comment_replies(self):
+        self.assertEqual(self.run_scheduler(at(9, 0), [], [], [], dms=[run(at(8, 50))]),
+                         [('workflow', 'run', 'dm.yml', '-f', 'mode=send')])
+        self.assertEqual(self.run_scheduler(at(9, 0), [], [], [], dms=[run(at(8, 58), 'queued')]), [])
+        self.assertEqual(self.run_scheduler(at(9, 0), [], [], [], dms=[], argv=['--dry']), [])
 
     def test_main_starts_a_missed_weekly(self):
         sunday = date(2026, 10, 4)
@@ -995,7 +1099,7 @@ class SchedulerTest(Sandbox):
                 contextlib.redirect_stdout(io.StringIO()) as out:
             scheduler.main()
         started = [c[2] for c in calls if c[:2] == ('workflow', 'run')]
-        self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml'])
+        self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml', 'dm.yml'])
         self.assertIn('Could not start daily-reel.yml: workflow is disabled', out.getvalue())
 
     def test_learn_days(self):

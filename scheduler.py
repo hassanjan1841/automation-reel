@@ -14,6 +14,8 @@ so this decides what should be running right now and starts it with workflow_dis
   Ready-made video: an extras.json entry with a post_at time and no media_id is started with post-video.yml from
   EXTRA_LEAD before that time (post_video.py waits for the minute itself), while no Post a video run is active,
   at most MAX_ATTEMPTS times, and not when more than EXTRA_LATE late.
+  Comment replies: on every run, start dm.yml (mode send) unless one is queued or running, so new comments are
+  answered within about 10 minutes (its own 15-minute cron fires every few hours at best).
 
 Safe to run as often as you like: it only starts what is missing, and publish.py itself never posts a slot twice.
 A dispatch GitHub refuses (a workflow disabled to pause it) is printed and the other checks still run.
@@ -117,6 +119,10 @@ def due_extra(now, extras, post_runs):
     return e
 
 
+def due_dms(dm_runs):
+    return not any(r['status'] in ACTIVE for r in dm_runs)
+
+
 def due_weekly(now, weekly_runs_today):
     return now.weekday() == 6 and now.time() >= WEEKLY_START and not weekly_runs_today
 
@@ -199,6 +205,8 @@ def main():
                   '-f', f"cover={extra.get('cover', '')}", '-f', 'dry_run=false')
     if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra:
         print('Nothing to start')
+    if due_dms(runs('dm.yml')) and not dry:
+        start('dm.yml', '-f', 'mode=send')
 
 
 if __name__ == '__main__':

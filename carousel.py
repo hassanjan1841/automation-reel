@@ -54,8 +54,8 @@ or are a checklist for a real task; the title promises that result.
   takeaway", e.g. "One webhook. Ten minutes. Payments that never get lost."
 - dm_keyword and dm_guide: people who comment the keyword get dm_guide as a private message. dm_keyword: one short
   word in capitals (3 to 10 letters) tied to the topic, e.g. "STRIPE". dm_guide: the complete guide as a plain
-  message (all steps, exact commands or code, official links), 150 to 900 characters, nothing invented. The
-  caption's last line offers it: "Comment STRIPE and I'll send you the full guide 👇".
+  message (all steps, exact commands or code, official links), 150 to 900 characters, nothing invented, starting
+  with anything to install first (uv for uvx, Node for npx). The caption's last line offers it: "Comment STRIPE and I'll send you the full guide 👇".
 - question: a short question for the last slide that invites a real answer. That last slide is added for you
   and already asks people to save and follow, so every slide in "slides" is a real tip: none about saving,
   sharing, bookmarking or following.

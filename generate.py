@@ -1094,7 +1094,8 @@ Field rules:
   reel itself always delivers its payoff; the guide is the extended version, never the payoff held back. dm_keyword: one short word in capitals
   (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
   written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
-  characters, no invented facts. The reel only promises what dm_guide really contains.
+  characters, no invented facts. It starts with anything to install first (uv for uvx, Node for npx, Python for
+  pip) so the steps work on a clean machine. The reel only promises what dm_guide really contains.
 - reveal (optional): the number of the point (1 to 3) whose visual finishes a result on screen (a terminal or
   outputmap printing it, a build reaching its finished look, race or bars growing, a stepper reaching its
   output). The voice holds a short silent beat on that slide while the result lands, then its line says it.
