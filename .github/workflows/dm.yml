@@ -2,7 +2,7 @@ name: Comment DMs
 
 on:
   schedule:
-    # Every 15 minutes: answer keyword comments ("Comment MCP") with the promised guide. Off the hour.
+    # Backup only: GitHub fires this every few hours at best; scheduler.py starts it every 10 minutes (mode send).
     - cron: '4,19,34,49 * * * *'
   workflow_dispatch:
     inputs:
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: comment-dms
@@ -32,8 +33,17 @@ jobs:
 
       - run: pip install requests numpy pillow
 
-      - name: Answer keyword comments
+      - name: Install Claude Code
+        if: inputs.mode != 'check'
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Answer new comments
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          GH_TOKEN: ${{ github.token }}
           DRY_RUN: ${{ inputs.mode == 'dry_run' && 'true' || 'false' }}
         run: python dm.py ${{ inputs.mode == 'check' && '--check' || '' }}
