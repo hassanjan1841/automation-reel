@@ -4313,5 +4313,157 @@
     ],
     "slot": 1,
     "seconds": 19.3
+  },
+  {
+    "id": 64,
+    "style": "dark",
+    "payoff": "The clause: 'If cancelled after work has started, completed milestones are due in full and the deposit is non-refundable.'",
+    "kicker": "Freelance playbook #5",
+    "hook": "Still get paid if they *cancel*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "contract.md",
+      "language": "md",
+      "before": "## Cancellation\n(no clause)",
+      "after": "## Cancellation\nCompleted milestones\ndue in full.\nDeposit kept."
+    },
+    "alternatives": [
+      {
+        "hook": "Your contract has *no exit* clause",
+        "hook_type": "problem",
+        "spoken": "[fired up] Most freelance contracts never mention what happens if clients ghost. [serious, fast] Yours should."
+      },
+      {
+        "hook": "Doing *unpaid* work after cancellation",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Freelancers keep finishing projects for free after a client cancels. [annoyed] That stops now."
+      },
+      {
+        "hook": "One *clause* that guarantees payment",
+        "hook_type": "shortcut",
+        "spoken": "[confident] Add one short clause to your contract and guarantee payment. [emphasis] No matter what."
+      }
+    ],
+    "points": [
+      {
+        "title": "No cancel clause",
+        "body": "clients disappear, you lose everything",
+        "visual": [
+          {
+            "type": "code",
+            "title": "contract.md",
+            "language": "md",
+            "code": "## Scope\n- Design\n- Build\n- Launch\n\n(no cancellation terms)",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add this line",
+        "body": "milestones due in full, period",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "contract.md",
+                "content": "## Scope\n- Design\n- Build\n- Launch\n\n(no cancellation terms)"
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "contract.md"
+              },
+              {
+                "do": "type",
+                "file": "contract.md",
+                "text": "## Cancellation\nIf cancelled after work\nhas started, completed\nmilestones are due in\nfull. Deposit is non-\nrefundable."
+              },
+              {
+                "do": "save",
+                "file": "contract.md"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "contract.md",
+            "language": "md",
+            "code": "## Cancellation\nIf the project is cancelled\nafter work has started,\ncompleted milestones are\ndue in full. Deposit is\nnon-refundable.",
+            "highlight": [
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Send this message",
+        "body": "quote the clause, attach invoice",
+        "visual": [
+          {
+            "type": "code",
+            "title": "message.txt",
+            "language": "md",
+            "code": "Per our agreement,\ncompleted milestones are\ndue in full now that\nwork has stopped.\nInvoice attached below.",
+            "highlight": [
+              3,
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 2,
+    "cta": "Comment *CANCEL* for the clause",
+    "dm_keyword": "CANCEL",
+    "dm_guide": "Add this to your contract: 'If this project is cancelled after work has started, all completed milestones are due in full and the deposit is non-refundable.' When a client actually cancels, send this: 'Per our agreement, completed milestones are due in full now that work has stopped. Invoice attached below.' Attach your invoice and you're covered either way.",
+    "caption": "Freelance contract cancellation clause for client projects\nStop losing paid work when a client disappears mid project\nWhat's the worst mid-project cancellation you've had? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancer",
+      "#contract",
+      "#webdev",
+      "#clientwork"
+    ],
+    "voiceover": [
+      "[urgent] Here's the one line that gets you paid. [serious, fast] Even if the client cancels halfway.",
+      "[exasperated] Most contracts never say what happens when clients disappear.",
+      "[confident and fast] This line guarantees you get paid for finished work.",
+      "[knowing] Point to it, then invoice for the work already done.",
+      "[warm, curious] Comment cancel and I will send the clause."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 5,
+    "posted_at": "2026-10-11T16:00:47+00:00",
+    "media_id": "18134090377647706",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Headline is a short readable phrase, but the code window only shows the placeholder '(no clause)' instead of the actual payoff/proof, and the frame is mostly empty blank space below it."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The full clause only appears in slide 2, where it's merged with leftover placeholder text ('(no cancellation terms)## Cancellation' runs together on one line), making it look broken rather than a clean, screenshot-able clause."
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "ide",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 18.8
   }
 ]
