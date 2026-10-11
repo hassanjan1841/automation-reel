@@ -72,5 +72,83 @@
     "style": "dark",
     "posted_at": "2026-09-27T18:31:45+00:00",
     "media_id": "17909215953545019"
+  },
+  {
+    "title": "Add Stripe checkout in one afternoon",
+    "subtitle": "The real steps from product to verified payment",
+    "slides": [
+      {
+        "heading": "The Goal",
+        "points": [
+          "One button triggers real payment",
+          "Stripe hosts the checkout page",
+          "No backend payment form needed"
+        ],
+        "alt": "A slide stating the goal: a button that triggers a real payment without building a custom payment form."
+      },
+      {
+        "heading": "Create A Product",
+        "points": [
+          "Add product and price in dashboard",
+          "Copy the price ID it generates",
+          "This ID goes in your code"
+        ],
+        "alt": "A slide showing how to create a product and price in the Stripe dashboard and copy its price ID."
+      },
+      {
+        "heading": "Install Stripe",
+        "code": "npm install stripe",
+        "language": "bash",
+        "alt": "A terminal command installing the Stripe Node package with npm install stripe."
+      },
+      {
+        "heading": "Create Checkout Session",
+        "code": "const session = await stripe.checkout\n  .sessions.create({\n    mode: 'payment',\n    line_items: [lineItem],\n    success_url: successUrl,\n    cancel_url: cancelUrl,\n  });",
+        "language": "javascript",
+        "alt": "Server code creating a Stripe checkout session with payment mode, a line item, and success and cancel URLs."
+      },
+      {
+        "heading": "Redirect The Customer",
+        "points": [
+          "Send them to session.url",
+          "Stripe collects card details securely",
+          "You never touch raw card numbers"
+        ],
+        "alt": "A slide explaining to redirect the customer to the checkout session URL returned by Stripe."
+      },
+      {
+        "heading": "Verify With Webhook",
+        "points": [
+          "Listen for checkout.session.completed event",
+          "Grant access only after that event",
+          "Never trust the success redirect alone"
+        ],
+        "alt": "A slide warning to verify payment through a Stripe webhook event, not the success redirect alone."
+      },
+      {
+        "heading": "Test Before Going Live",
+        "points": [
+          "Use Stripe test mode keys",
+          "Trigger events with Stripe CLI",
+          "Switch keys when going live"
+        ],
+        "alt": "A slide recommending testing with Stripe test mode keys and the Stripe CLI before switching to live keys."
+      }
+    ],
+    "takeaway": "One checkout session. Real payments, no custom form.",
+    "question": "What payment step always trips you up?",
+    "caption": "Add Stripe checkout in one afternoon\nNo backend payment page needed, just one API call.\nWhat payment step always trips you up?\nComment STRIPE and I'll send you the full guide 👇",
+    "hashtags": [
+      "#StripeCheckout",
+      "#WebDevelopment",
+      "#FullStackDeveloper",
+      "#PaymentIntegration",
+      "#FreelanceDev"
+    ],
+    "style": "dark",
+    "dm_keyword": "STRIPE",
+    "dm_guide": "Install: npm install stripe. 1) In the Stripe dashboard, create a Product and Price, copy the price ID. 2) Server: const session = await stripe.checkout.sessions.create({mode:'payment', line_items:[{price:'price_xxx', quantity:1}], success_url, cancel_url}); then redirect to session.url. 3) Verify payment server-side: run `stripe listen --forward-to localhost:3000/webhook` (Stripe CLI), check event.type === 'checkout.session.completed' before granting access. Full docs: https://docs.stripe.com/checkout/quickstart",
+    "posted_at": "2026-10-11T16:12:25+00:00",
+    "media_id": "18117846917033595"
   }
 ]
