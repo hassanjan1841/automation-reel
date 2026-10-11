@@ -4465,5 +4465,128 @@
     ],
     "slot": 2,
     "seconds": 18.8
+  },
+  {
+    "id": 65,
+    "style": "light",
+    "payoff": "cd - jumps straight back to your last directory, no retyping the path",
+    "kicker": "Quick trick #4",
+    "hook": "Stop retyping *long paths*",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "terminal",
+      "before": "cd ~/projects/acme-app/src/components\ncd ~/projects/acme-app/scripts\ncd ~/projects/acme-app/src/components",
+      "after": "cd ~/projects/acme-app/src/components\ncd ~/projects/acme-app/scripts\ncd -"
+    },
+    "alternatives": [
+      {
+        "hook": "You keep typing *full paths*",
+        "spoken": "[exasperated] You keep retyping that long path every time you switch. [urgent] Stop that now.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Long path, then *one keystroke*",
+        "spoken": "[grinning, punchy] Picture typing a long path every time you switch folders. (break) [confident and fast] Now, one keystroke.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Still cd-ing the *long way*",
+        "spoken": "[fired up] Still cd-ing into folders the long way, typing full paths? [serious, fast] Huge time sink.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Long path habit",
+        "body": "You retype full paths constantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/projects/acme-app/src/components",
+              "ls",
+              "cd ~/projects/acme-app/scripts"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Type cd dash",
+        "body": "Jumps straight back one line",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Toggle two folders",
+        "body": "Bounce back and forth instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd -",
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Comment *CDTRICK* for the full guide",
+    "dm_keyword": "CDTRICK",
+    "dm_guide": "cd - is built into bash and zsh, nothing to install. Try it: 1) cd into a folder, like cd ~/projects/app. 2) cd into another folder, like cd ~/projects/app/src. 3) run cd - to jump straight back to the first folder, it even prints the path. 4) run cd - again to jump back to the second one. It toggles between your last two directories. For jumping across more than two, install zoxide (https://github.com/ajeetdsouza/zoxide) and use z instead of cd.",
+    "caption": "cd dash command to jump back to your last terminal directory\nComment CDTRICK for the full guide\nWhat's the terminal shortcut you use every day? 👇",
+    "hashtags": [
+      "#bash",
+      "#terminal",
+      "#cli",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[fired up] Stop retyping that long folder path every time. [quick] Jump back in one keystroke instead.",
+      "[knowing] Every long cd command wastes seconds you never notice.",
+      "[excited] Type cd dash, jump straight back to your last folder.",
+      "[confident and fast] Keep tapping it. (break) You bounce between your last two folders.",
+      "[warm, curious] Comment CDTRICK and I will send the full guide."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 4,
+    "posted_at": "2026-10-11T20:00:45+00:00",
+    "media_id": "18150717574551090",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "terminal",
+      "terminal",
+      "terminal",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.3
   }
 ]
