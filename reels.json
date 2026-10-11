@@ -4191,5 +4191,127 @@
     ],
     "slot": 1,
     "seconds": 24.2
+  },
+  {
+    "id": 63,
+    "style": "light",
+    "payoff": "CORS only blocks requests made from inside a browser — curl, Postman, and server-to-server calls ignore the header completely, so it was never a security control; a real auth check on the server is.",
+    "kicker": "Explained #3",
+    "hook": "Your CORS header isn't *security*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "server.js",
+      "code": "app.use((req, res, next) => {\n  res.setHeader(\n    'Access-Control-Allow-Origin',\n    'https://app.com'\n  )\n  next()\n})",
+      "highlight": [
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your API still isn't *protected*",
+        "hook_type": "problem",
+        "spoken": "[fired up] That CORS header means nothing past the browser. (break) [urgent] curl or Postman walks through it."
+      },
+      {
+        "hook": "Browser blocked, *curl* walked right in",
+        "hook_type": "before_after",
+        "spoken": "[amused] Chrome blocks the request, (break) [deadpan] but curl just walks in like nothing happened at all."
+      },
+      {
+        "hook": "We tested CORS *bypass*",
+        "hook_type": "test",
+        "spoken": "[excited] We tested it with a blocked curl call. (break) [confident and fast] It still got the data instantly."
+      }
+    ],
+    "points": [
+      {
+        "title": "Browser only check",
+        "body": "Only browsers read that CORS header",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "server.js",
+            "code": "app.use((req, res, next) => {\n  res.setHeader(\n    'Access-Control-Allow-Origin',\n    'https://app.com'\n  )\n  next()\n})",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Curl ignores it",
+        "body": "Any non-browser tool skips the check",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "curl https://api.example.com/data",
+              "curl -H 'Origin: evil.com' $URL"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real protection",
+        "body": "Auth tokens are the real security",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "auth.js",
+            "before": "app.get('/data', (req, res) => {\n  res.json(data)\n})",
+            "after": "app.get(\n  '/data',\n  requireAuth,\n  (req, res) => res.json(data)\n)"
+          }
+        ]
+      }
+    ],
+    "cta": "Did you think CORS was *security*?",
+    "caption": "CORS explained: why it isn't real API security\nIt only runs inside the browser — curl skips it completely\nDid you believe this too? 👇",
+    "hashtags": [
+      "#cors",
+      "#api",
+      "#webdev",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[fired up] Your CORS header only stops browsers. (break) [urgent] curl, Postman, and servers walk straight through it.",
+      "[knowing] That header only tells the browser what's allowed.",
+      "[matter-of-fact] Outside a browser, nothing enforces it, so requests still succeed.",
+      "[confident] Real security checks a token on the server, every time.",
+      "[warm, curious] So tell me, (break) [teasing] did you think that header was keeping you safe?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 3,
+    "posted_at": "2026-10-11T12:00:45+00:00",
+    "media_id": "18124440434491536",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "text",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.3
   }
 ]
