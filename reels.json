@@ -4588,5 +4588,143 @@
     ],
     "slot": 3,
     "seconds": 19.3
+  },
+  {
+    "id": 66,
+    "style": "dark",
+    "payoff": "One MCP config file (mcp.json) gives Claude Code real access to a folder, so you can ask it to sort files by type and it actually moves them, not just tells you how.",
+    "kicker": "AI tool in 30s #5",
+    "hook": "Claude Code can *sort* your files",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "~/Downloads",
+      "language": "bash",
+      "before": "report.pdf\nphoto.jpg\ninvoice.pdf\nscreenshot.png\ninstaller.exe\nnotes.txt",
+      "after": "PDFs/\n  report.pdf\n  invoice.pdf\nImages/\n  photo.jpg\n  screenshot.png\nInstallers/\n  installer.exe\nDocs/\n  notes.txt"
+    },
+    "alternatives": [
+      {
+        "hook": "Your *Downloads* folder is chaos",
+        "spoken": "[exasperated] Your Downloads folder is complete chaos right now.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Claude Code can't *touch* files",
+        "spoken": "[urgent] Claude Code can't touch a single file yet.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "I let Claude *organize* my files",
+        "spoken": "[fired up] I actually let Claude sort my messy files.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "Add the server",
+        "body": "One small MCP config gives file access",
+        "visual": [
+          {
+            "type": "code",
+            "title": "mcp.json",
+            "language": "json",
+            "code": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\",\n        \"@modelcontextprotocol/...\",\n        \"~/Downloads\"]\n    }\n  }\n}",
+            "highlight": [
+              3,
+              6
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "claude mcp add filesystem"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Ask to sort",
+        "body": "Tell it to sort the folder by type",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "claude",
+              "sort ~/Downloads by file type"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Files actually move",
+        "body": "Downloads folder finally sorted into subfolders",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "ls ~/Downloads",
+            "output": [
+              "PDFs/",
+              "Images/",
+              "Installers/",
+              "Docs/"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "~/Downloads",
+            "language": "bash",
+            "before": "report.pdf\nphoto.jpg\ninvoice.pdf\nscreenshot.png\ninstaller.exe\nnotes.txt",
+            "after": "PDFs/\n  report.pdf\n  invoice.pdf\nImages/\n  photo.jpg\n  screenshot.png\nInstallers/\n  installer.exe\nDocs/\n  notes.txt"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *FILES* for the full setup",
+    "dm_keyword": "FILES",
+    "dm_guide": "Install Node.js first (needed for npx). Then in Claude Code, add a server with: claude mcp add filesystem npx -y @modelcontextprotocol/server-filesystem ~/Downloads. That gives Claude real read and write access to one folder using the official MCP filesystem server. Open a chat in Claude Code and ask it to sort that folder by file type, it will actually move the files, not just describe how. Full docs and other official servers: https://modelcontextprotocol.io/quickstart",
+    "caption": "Claude Code MCP filesystem server setup\nI asked it to sort my Downloads folder and it really moved the files.\nWhat would you let Claude Code touch first? 👇",
+    "hashtags": [
+      "#ClaudeCode",
+      "#MCP",
+      "#AIautomation",
+      "#DevTips"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[grinning, punchy] This one command lets Claude actually sort your files.",
+      "[confident and fast] You drop in one MCP config file. (break) [quick] That's the filesystem server added.",
+      "[excited] Then you just ask it to sort the folder. (break) [knowing] No scripts, no manual moving.",
+      "[amazed] And look, (break) [confident] every file actually lands in the right folder.",
+      "[warm, curious] Comment files and I'll send you the exact setup."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 5,
+    "posted_at": "2026-10-12T12:00:45+00:00",
+    "media_id": "17911287057488637",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "terminal",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 22.8
   }
 ]
