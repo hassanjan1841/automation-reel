@@ -4726,5 +4726,120 @@
     ],
     "slot": 1,
     "seconds": 22.8
+  },
+  {
+    "id": 67,
+    "style": "light",
+    "payoff": "message.txt: \"I don't discount my rate, but I can trim the scope to fit your budget\" — keeps your price intact instead of cutting it.",
+    "kicker": "Freelance playbook #6",
+    "hook": "One line beats any *discount*",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "title": "reply.txt",
+      "language": "md",
+      "before": "Sure, I can take 20% off.",
+      "after": "I don't discount my rate,\nbut I can trim the scope\nto fit your budget instead."
+    },
+    "alternatives": [
+      {
+        "hook": "Stop *discounting* your rate",
+        "spoken": "[fired up] Stop cutting your rate every time a client asks.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Client just asked for a *discount*",
+        "hook_type": "problem",
+        "spoken": "[tense] A client just asked you to lower your price."
+      },
+      {
+        "hook": "Same ask, *different* reply",
+        "hook_type": "before_after",
+        "spoken": "[confident] Here's the old reply, then the one that works."
+      }
+    ],
+    "points": [
+      {
+        "title": "The discount ask",
+        "body": "Lower price signals lower perceived value"
+      },
+      {
+        "title": "Send this instead",
+        "body": "The exact reply that keeps rate",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "reply.txt",
+            "code": "I don't discount my rate,\nbut I can adjust the scope\nto fit your budget instead.\nWant me to trim it down?",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Rate protection clause",
+        "body": "One contract line prevents repeats",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "clause.md",
+            "code": "Rate is fixed for the\nagreed project scope. Any\nscope changes adjust timeline\nor price accordingly.",
+            "highlight": [
+              1,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *DISCOUNT* for the script",
+    "dm_keyword": "DISCOUNT",
+    "dm_guide": "Here's the full script. When a client asks for a lower price, reply: \"I don't discount my rate, but I can trim the scope to fit your budget — want me to cut it down to the core pages instead?\" Then add this line to every contract so it doesn't happen again: \"Rate is fixed for the agreed project scope. Any scope changes will adjust the timeline or price accordingly.\" Use the reply for the ask, and the clause so you never have to write it twice.",
+    "caption": "How to reply when a client asks for a discount\nKeep your rate, adjust the scope instead\nWhat's the lowest a client has ever asked you to go? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancing",
+      "#webdev",
+      "#pricing"
+    ],
+    "voiceover": [
+      "[excited] Use this one line instead of discounting your rate.",
+      "[knowingly] Lower your price once, and they'll remember it forever.",
+      "[confident and fast] So don't cut the rate — [sharp] offer to cut the scope instead.",
+      "[steady] Lock it into your contract, [plainly] so this never comes up again.",
+      "[warm, curious] Comment discount and I will send you the exact script."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 6,
+    "posted_at": "2026-10-12T16:00:44+00:00",
+    "media_id": "17975003706133701",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the hook text on an empty background with no code, diff, or screenshot proof under it, so the frame looks mostly empty."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 18.7
   }
 ]
