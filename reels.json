@@ -4841,5 +4841,127 @@
     ],
     "slot": 2,
     "seconds": 18.7
+  },
+  {
+    "id": 68,
+    "style": "dark",
+    "payoff": "Cloudflare just bought the Deno team: Deno Deploy shuts down in 6 months (migration help for paying users) and the Deno runtime itself only gets 1 more year of bugfix and security releases before development stops.",
+    "kicker": "Dev news",
+    "hook": "Your Deno app has *6 months*",
+    "hook_type": "news",
+    "hook_visual": {
+      "type": "screenshot",
+      "url": "https://deno.com/blog/cloudflare",
+      "find": "Deno Deploy will continue operating for six months before shutting down."
+    },
+    "alternatives": [
+      {
+        "hook": "Still paying for *Deno Deploy*?",
+        "spoken": "[exasperated] Still paying for Deno Deploy? (break) [serious] Cloudflare is shutting it down in six months.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Deno Deploy's *six month* deadline",
+        "spoken": "[urgent] Deno Deploy got a six month deadline. (break) [knowing] Cloudflare bought the whole team.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Deno: *independent*, then Cloudflare's",
+        "spoken": "[fired up] Deno once ran its own independent cloud. (break) [serious, fast] Now Cloudflare owns the team.",
+        "hook_type": "before_after"
+      }
+    ],
+    "points": [
+      {
+        "title": "Deno joins Cloudflare",
+        "body": "Runtime team merges into Workers",
+        "visual": [
+          {
+            "type": "quotes",
+            "quotes": [
+              {
+                "author": "Cloudflare",
+                "platform": "Blog",
+                "url": "https://blog.cloudflare.com/deno-joins-cloudflare/",
+                "text": "The Deno team is joining Cloudflare, and we're merging workerd and celld!"
+              }
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://blog.cloudflare.com/deno-joins-cloudflare/",
+            "find": "merging workerd and celld"
+          }
+        ]
+      },
+      {
+        "title": "Deploy: 6 months",
+        "body": "Paying users get migration help",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://deno.com/blog/cloudflare",
+            "find": "Deno Deploy will continue operating for six months before shutting down."
+          }
+        ]
+      },
+      {
+        "title": "Runtime: 1 year",
+        "body": "Then Deno CLI updates stop",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://deno.com/blog/cloudflare",
+            "find": "support the Deno runtime for another year"
+          }
+        ]
+      }
+    ],
+    "cta": "Still building on *Deno*?",
+    "caption": "Cloudflare acquires Deno: what happens to Deno Deploy and the Deno runtime\nDeploy shuts down in 6 months, runtime gets 1 more year of updates\nAre you moving off Deno already? 👇",
+    "hashtags": [
+      "#deno",
+      "#cloudflare",
+      "#webdev",
+      "#javascript",
+      "#cloudflareworkers"
+    ],
+    "voiceover": [
+      "[urgent] Cloudflare just bought Deno. (break) [serious, fast] Your Deno Deploy app has six months left.",
+      "[grinning, punchy] The Deno team just moved into Cloudflare, runtime and all.",
+      "[serious, fast] Deno Deploy itself shuts down in six months, full stop.",
+      "[knowing] But here's the bigger hit. (break) [serious] The Deno runtime only gets one more year of updates.",
+      "[warm, curious] Are you still building on Deno today?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://blog.cloudflare.com/deno-joins-cloudflare/",
+      "https://deno.com/blog/cloudflare"
+    ],
+    "posted_at": "2026-10-12T20:00:54+00:00",
+    "media_id": "18143179876719018",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "screenshot",
+      "quotes",
+      "screenshot",
+      "screenshot",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.8
   }
 ]
