@@ -5234,5 +5234,233 @@
     ],
     "slot": 1,
     "seconds": 21.3
+  },
+  {
+    "id": 71,
+    "style": "light",
+    "payoff": "Swapping var for let in a for loop with setTimeout makes each callback log its own loop index (0, 1, 2) instead of the final value three times over.",
+    "kicker": "Myth vs fact #2",
+    "hook": "Your loop logs *three three three*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "loop.js",
+      "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}\n// logs: 3 3 3",
+      "highlight": [
+        1,
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "var in a loop *doesn't* work",
+        "spoken": "[mock outraged] Everyone believes var captures the right loop index. [knowing] It actually doesn't, every single time.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "I *tested* the var loop myth",
+        "hook_type": "test",
+        "spoken": "[confident and fast] I ran the var loop myth in node. (break) [deadpan] It failed, instantly, every single run."
+      },
+      {
+        "hook": "Your *setTimeout* loop is broken",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your setTimeout inside that loop grabs the wrong value. (break) [knowing] Same index, every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common belief",
+        "body": "var keeps each loop's own index",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loop.js",
+            "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real output",
+        "body": "Node prints three, three, three",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "loop.js",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "loop.js"
+              },
+              {
+                "do": "type",
+                "text": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node loop.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 1
+              }
+            ]
+          },
+          {
+            "type": "outputmap",
+            "command": "node loop.js",
+            "output": [
+              "3",
+              "3",
+              "3"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loop.js",
+            "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}\n// logs: 3 3 3",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The fix",
+        "body": "let gives zero, one, two",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "for (let i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "trace": [
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "0"
+                  }
+                ]
+              },
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "1"
+                  }
+                ]
+              },
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "2"
+                  }
+                ]
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "0"
+                  }
+                ],
+                "out": "0"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "1"
+                  }
+                ],
+                "out": "1"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "2"
+                  }
+                ],
+                "out": "2"
+              }
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "loop.js",
+            "before": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "after": "for (let i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Did this loop bug fool *you*?",
+    "caption": "var vs let in a JavaScript for loop with setTimeout\nThe classic interview trap, tested for real on the terminal\nWhich output did you expect? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#coding",
+      "#programming",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[urgent] You expect zero one two, (break) [deadpan] but that var loop gives three three three.",
+      "[knowing] Var shares one value across the whole loop, every time.",
+      "[exasperated] Run it, and all three timeouts print the same three.",
+      "[confident and fast] Swap in let, (break) [excited] and you get zero, one, two.",
+      "[warm, curious] Did you expect zero one two, or three three three?"
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 2,
+    "posted_at": "2026-10-13T16:02:08+00:00",
+    "media_id": "18040750205834006",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "ide",
+      "stepper",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 22.8
   }
 ]
