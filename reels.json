@@ -5097,5 +5097,142 @@
     ],
     "slot": 3,
     "seconds": 18.0
+  },
+  {
+    "id": 70,
+    "style": "dark",
+    "payoff": "Drop the NEXT_PUBLIC_ prefix from a secret key and read it only inside a server component, route handler or server action, never in a client file.",
+    "kicker": "Dev mistake #3",
+    "hook": "Hidden key, then *fully* public",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "language": "ts",
+      "title": "checkout flow",
+      "before": "// app/checkout/page.tsx\n'use client'\nconst key = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY",
+      "after": "// app/api/checkout/route.ts\nconst key = process.env\n  .STRIPE_SECRET_KEY"
+    },
+    "alternatives": [
+      {
+        "hook": "One *prefix* leaks your key",
+        "spoken": "[urgent] Typing next public before a secret key ships it straight [serious, fast] into your browser bundle.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your *secret* key is public",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your Stripe secret key might already be sitting inside [emphasis] your public browser bundle."
+      },
+      {
+        "hook": "I grepped the bundle for *secrets*",
+        "hook_type": "test",
+        "spoken": "[confident and fast] I grepped a real Next.js build and found [serious] a secret key exposed."
+      }
+    ],
+    "points": [
+      {
+        "title": "The leak",
+        "body": "NEXT_PUBLIC_ ships the key to browsers",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "bash",
+            "title": ".env.local",
+            "before": "NEXT_PUBLIC_STRIPE_SECRET_KEY=sk_x",
+            "after": "STRIPE_SECRET_KEY=sk_x"
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "page.tsx (bad)",
+            "code": "'use client'\nconst pk = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY\nfetch('/charge', {pk})",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Prove it",
+        "body": "Grep the build, find it there",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npm run build",
+              "grep -r sk_ .next/static"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The fix",
+        "body": "Drop prefix, keep key server-only",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "grep -r sk_ .next/static/chunks",
+            "output": [
+              "no matches found",
+              "0 secrets in client bundle"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "ts",
+            "title": "route.ts",
+            "before": "'use client'\nconst key = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY",
+            "after": "// app/api/checkout/route.ts\nconst key = process.env\n  .STRIPE_SECRET_KEY"
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Comment *KEYS* for the checklist",
+    "dm_keyword": "KEYS",
+    "dm_guide": "Install Node and Next.js first if you haven't (npx create-next-app). To find exposed secrets: 1) grep your repo for NEXT_PUBLIC_ next to any key, token or secret. 2) Rename it without the prefix, e.g. STRIPE_SECRET_KEY. 3) Only read it inside Server Components, Route Handlers or Server Actions, never a file with 'use client'. 4) Run npm run build then grep .next/static for the key value to confirm it's gone. Docs: https://nextjs.org/docs/app/building-your-application/configuring/environment-variables and https://docs.stripe.com/keys",
+    "caption": "Next.js environment variables and secret key leaks\nOne wrong prefix ships your secret straight to the browser\nComment KEYS for the leak-proofing checklist 👇",
+    "hashtags": [
+      "#nextjs",
+      "#stripe",
+      "#webdev",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[fired up] Your secret key starts hidden, (break) [alarmed] then one prefix makes it fully public.",
+      "[exasperated] That prefix copies the key straight into client code.",
+      "[knowing] Build the app, then grep the output for your key.",
+      "[confident and fast] Drop the prefix and keep it inside your server [emphasis] code only.",
+      "[warm, curious] Comment KEYS for the full leak-proofing checklist."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "devtip",
+    "series": "Dev mistake",
+    "episode": 3,
+    "posted_at": "2026-10-13T12:00:45+00:00",
+    "media_id": "17922181782440682",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the hook text with nothing below it — the 'public' proof badge that appears later in slide 0 isn't present yet, so the required visual proof isn't on screen at frame 0."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The fix slide only says 'Drop prefix, keep key server-only' in text; it never shows the actual corrected code (renamed env var read inside a server component/route handler), so there's nothing concrete to screenshot or copy."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.3
   }
 ]
