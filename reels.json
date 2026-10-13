@@ -4963,5 +4963,139 @@
     ],
     "slot": 3,
     "seconds": 21.8
+  },
+  {
+    "id": 69,
+    "style": "light",
+    "payoff": "Next.js's <Link> component from next/link replaces <a> tags so internal pages navigate without a full reload and preload automatically.",
+    "kicker": "Next.js from zero #3",
+    "hook": "Skip the reload with *one* swap",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "tsx",
+      "title": "page.tsx",
+      "before": "<a href=\"/about\">About</a>",
+      "after": "<Link href=\"/about\">\n  About\n</Link>"
+    },
+    "alternatives": [
+      {
+        "hook": "Your links are *reloading* everything",
+        "spoken": "[fired up] Every link tag in your Next.js app (break) [urgent] might reload the whole page instantly.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Full reload becomes *instant* navigation",
+        "hook_type": "before_after",
+        "spoken": "[mock outraged] Your anchor tags force a full page reload every click (break) [excited] Link makes it instant."
+      },
+      {
+        "hook": "Only one of these *reloads*",
+        "hook_type": "test",
+        "spoken": "[urgent] I tested two links side by side (break) [deadpan] only one triggers a full page reload."
+      }
+    ],
+    "points": [
+      {
+        "title": "Full page reload",
+        "body": "Anchor tags refresh everything on click",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "page.tsx",
+            "code": "<a href=\"/about\">\n  About\n</a>",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Import Link",
+        "body": "Swaps pages without a reload",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "nav.tsx",
+            "code": "import Link from \"next/link\"\n\nexport default function Nav() {\n  return (\n    <Link href=\"/about\">\n      About\n    </Link>\n  )\n}",
+            "highlight": [
+              1,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Instant navigation",
+        "body": "No reload, state stays intact",
+        "visual": [
+          {
+            "type": "device",
+            "device": "laptop",
+            "show": {
+              "type": "code",
+              "title": "page.tsx",
+              "code": "<Link href=\"/about\">\n  About\n</Link>",
+              "language": "tsx"
+            }
+          },
+          {
+            "type": "diff",
+            "language": "tsx",
+            "title": "page.tsx",
+            "before": "<a href=\"/about\">About</a>",
+            "after": "<Link href=\"/about\">\n  About\n</Link>"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *LINK* for the full before and after code.",
+    "dm_keyword": "LINK",
+    "dm_guide": "Quick fix: in any Next.js app, swap <a> tags for the Link component on internal pages. Import Link from next/link, then use it like this: import Link from \"next/link\" and write <Link href=\"/about\">About</Link> instead of <a href=\"/about\">About</a>. This skips the full browser reload and Next.js automatically preloads the linked page when it scrolls into view, so navigation feels instant. Full docs: https://nextjs.org/docs/app/api-reference/components/link",
+    "caption": "Next.js Link component explained for beginners\nSkip the reload, keep your app state\nStill using anchor tags for internal pages? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#reactjs",
+      "#webdev",
+      "#beginnercoder",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[grinning, punchy] Swap your anchor tag for one import (break) [confident] and skip every page reload.",
+      "[knowing] Anchor tags force a full reload and wipe state.",
+      "[confident and fast] Swap it in for Next's Link and navigate instantly.",
+      "[excited] Link even preloads the page before you click it.",
+      "[warm, curious] Type LINK and I'll send you the whole code swap."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 3,
+    "posted_at": "2026-10-13T01:38:14+00:00",
+    "media_id": "18110554904162908",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The hook text is on screen but there is no code, diff, or screenshot proof shown yet — just two text boxes on an empty background."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.0
   }
 ]
