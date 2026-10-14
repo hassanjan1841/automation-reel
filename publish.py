@@ -1,5 +1,6 @@
-"""Write today's reel (or take one queued by hand), render it, have Claude review the frames, wait for POST_AT_UTC
-and publish it to Instagram.
+"""Check the Instagram login, write today's reel (or take one queued by hand), render it, have Claude review the frames,
+wait for POST_AT_UTC and publish it to Instagram. A refused token stops the run before any work and leaves
+out/alert.md, which daily-reel.yml turns into an issue (check_login).
 
 Env:
   IG_TOKEN              Instagram User access token (Instagram API with Instagram Login)
@@ -9,8 +10,11 @@ Env:
   TRENDING=off          reel 3 never uses news (no trend scan; another format instead)
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
   FORCE_POST=true       post even if this slot's reel already went out today (UTC); without it a slot never posts twice
-  SLOT                  1 (default: a how-to), 2 (the evening reel: relatable, another series) or 3 (news, a trick,
-                        X vs Y or the beginner series, picked at random per day; see generate.slot3_format)
+  SLOT                  1 (default: Myth vs fact), 2 (off by default: Explained, AI, Ranked or a dev mistake) or 3
+                        (a myth, news, a trick, X vs Y or the beginner series, picked at random per day; see
+                        generate.slot3_format)
+  REEL_SLOTS            the slots that post (default 1,3); a scheduled run of another slot does nothing
+  GITHUB_EVENT_NAME     set by Actions: only a "schedule" run is held to REEL_SLOTS
   CLAUDE_CODE_OAUTH_TOKEN   the writer, hook judge, frame review and trend scan (Claude Code CLI)
   YOUTUBE_API_KEY       the trend scan, see trends.py
   CLAUDE_MODEL          optional model for the frame review and the trend scan (the writer uses generate.MODEL)
@@ -145,6 +149,32 @@ def ig_get(path, token, **params):
 
 def ig_post(path, token, **data):
     return check(requests.post(f'{GRAPH}/{path}', data={**data, 'access_token': token}, timeout=120), f'POST {path}')
+
+
+ALERT = render.OUT_DIR / 'alert.md'
+
+
+def check_login():
+    """Fail in seconds, before writing or rendering anything, when Instagram refuses the token, and leave
+    out/alert.md for the workflow to open an issue with (2026-10-03: a dead token failed every run for two days at
+    the last step, after 7 minutes of work each, and nobody noticed)."""
+    token = env('IG_TOKEN')
+    resp = requests.get(f'{GRAPH}/me', params={'fields': 'user_id,username', 'access_token': token}, timeout=60)
+    if resp.ok:
+        return
+    try:
+        detail = resp.json().get('error', {}).get('message', '')
+    except ValueError:
+        detail = resp.text[:300]
+    detail = redact(detail)
+    render.OUT_DIR.mkdir(exist_ok=True)
+    ALERT.write_text(
+        f'The Daily reel could not log in to Instagram, so nothing is being posted.\n\n'
+        f'Instagram said (HTTP {resp.status_code}): {detail}\n\n'
+        'Fix: make a new long-lived token (Meta for Developers, your app, Instagram API with Instagram Login, '
+        'Generate token) and save it as the IG_TOKEN secret (Settings, Secrets and variables, Actions). '
+        'The next slot posts on its own. See README.md, "Instagram login failed".\n')
+    raise SystemExit(f'ERROR: Instagram refused the token (HTTP {resp.status_code}): {detail}')
 
 
 def publish_to_instagram(video_url, caption, thumb_ms, cover_url=None):
@@ -337,6 +367,13 @@ def main():
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
     today = datetime.now(timezone.utc).date().isoformat()
+    # A slot that is off (REEL_SLOTS) still has its cron in daily-reel.yml; its scheduled run does nothing.
+    if os.environ.get('GITHUB_EVENT_NAME') == 'schedule' \
+            and generate.slot() not in scheduler.active_slots(os.environ.get('REEL_SLOTS')):
+        print(f'Reel {generate.slot()} is off (REEL_SLOTS); nothing to do.')
+        return
+    if not dry:
+        check_login()
     # Never post the same slot twice in a day, however many times a run is started (the scheduler retries).
     if not dry and generate.slot() in scheduler.posted_slots(reels, datetime.now(timezone.utc).date()) \
             and os.environ.get('FORCE_POST', '').strip().lower() not in ('1', 'true', 'yes'):

@@ -1,8 +1,8 @@
 """Catch-up scheduler: GitHub drops many scheduled runs (the Daily reel's three crons fired twice in three days),
 so this decides what should be running right now and starts it with workflow_dispatch.
 
-  Daily reel: each slot owns a window from its start (11:07, 15:07, 19:07 UTC) to the next slot's start (or
-  midnight). Inside a slot's window, if that slot has not posted today and no Daily reel run is queued or
+  Daily reel: only the slots in REEL_SLOTS post (1 and 3 by default; "1,2,3" for three a day). Each one owns a
+  window from its start (11:07, 15:07, 19:07 UTC) to the next posting slot's start (or midnight). Inside a slot's window, if that slot has not posted today and no Daily reel run is queued or
   running, start one for that slot (it waits for the post time itself, or posts right away when late), unless
   MAX_ATTEMPTS runs were already started in this window (a slot that keeps failing is left for a person). A slot
   whose window has passed is skipped, never posted late on top of the next one.
@@ -23,7 +23,7 @@ Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any 
 scheduler.yml. Standard library only; uses the gh CLI.
 
 Env: GH_TOKEN (Actions write), GITHUB_REPOSITORY, LEARN_DAYS (days the learning loop runs: empty or "daily" for
-     every day, or day names such as "sun,wed")
+     every day, or day names such as "sun,wed"), REEL_SLOTS (the slots that post: empty for "1,3", or e.g. "1,2,3")
 Usage: python scheduler.py          start whatever is due
        python scheduler.py --dry    only print the decision
 """
@@ -48,6 +48,18 @@ LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by
 DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 ACTIVE = ('queued', 'in_progress', 'waiting', 'requested', 'pending')
 MAX_ATTEMPTS = 2  # runs started in one slot's window; a slot that keeps failing is left for a person to look at
+# The slots that post (repo variable REEL_SLOTS, e.g. "1,2,3"). Two a day by default since 2026-10-14: slot 2
+# averaged 25 views against about 115 for the others, and a 55-follower account does better with two strong reels.
+DEFAULT_SLOTS = '1,3'
+
+
+def active_slots(value=None):
+    """The slots that post, from REEL_SLOTS ("1,3" by default)."""
+    names = [s.strip() for s in (value or DEFAULT_SLOTS).split(',') if s.strip()]
+    unknown = [s for s in names if not s.isdigit() or int(s) not in SLOT_STARTS]
+    if unknown or not names:
+        raise SystemExit(f'REEL_SLOTS has unknown slots: {", ".join(unknown) or "none"} (use e.g. "1,3" or "1,2,3")')
+    return {int(s) for s in names}
 
 
 def slot_of(reel):
@@ -63,32 +75,33 @@ def posted_slots(reels, day):
     return {slot_of(r) for r in reels if (r.get('posted_at') or '').startswith(day.isoformat())}
 
 
-def window(now):
-    """The slot whose window contains this moment, or None before the first slot of the day."""
+def window(now, slots=None):
+    """The slot whose window contains this moment, or None before the first slot of the day. With slots, only those
+    post: a slot's window then runs until the next posting slot's start."""
     current = None
     for slot, start in sorted(SLOT_STARTS.items()):
-        if now.time() >= start:
+        if (slots is None or slot in slots) and now.time() >= start:
             current = slot
     return current
 
 
-def started_in_window(now, daily_runs):
+def started_in_window(now, daily_runs, slots=None):
     """Daily reel runs created since the current slot's window opened today."""
-    slot = window(now)
+    slot = window(now, slots)
     if slot is None:
         return 0
     opened = datetime.combine(now.date(), SLOT_STARTS[slot], timezone.utc)
     return sum(1 for r in daily_runs if datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= opened)
 
 
-def due_reel(now, reels, daily_runs):
-    """The slot to start now, or None: its window is open, it has not posted today, nothing is running, and it has
-    not already been tried MAX_ATTEMPTS times in this window."""
-    slot = window(now)
+def due_reel(now, reels, daily_runs, slots=None):
+    """The slot to start now, or None: it posts (slots), its window is open, it has not posted today, nothing is
+    running, and it has not already been tried MAX_ATTEMPTS times in this window."""
+    slot = window(now, slots)
     busy = any(r['status'] in ACTIVE for r in daily_runs)
     if slot is None or busy or slot in posted_slots(reels, now.date()):
         return None
-    if started_in_window(now, daily_runs) >= MAX_ATTEMPTS:
+    if started_in_window(now, daily_runs, slots) >= MAX_ATTEMPTS:
         print(f'Slot {slot} was already tried {MAX_ATTEMPTS} times in its window; not starting it again')
         return None
     return slot
@@ -170,10 +183,12 @@ def main():
     now = datetime.now(timezone.utc)
     reels = json.loads(QUEUE.read_text())
     daily = runs('daily-reel.yml')
-    print(f"{now:%Y-%m-%d %H:%M} UTC: window slot {window(now)}, posted today {sorted(posted_slots(reels, now.date()))}, "
+    slots = active_slots(os.environ.get('REEL_SLOTS'))
+    print(f"{now:%Y-%m-%d %H:%M} UTC: slots {sorted(slots)}, window slot {window(now, slots)}, "
+          f"posted today {sorted(posted_slots(reels, now.date()))}, "
           f"daily runs active: {sum(r['status'] in ACTIVE for r in daily)}, started in this window: "
-          f"{started_in_window(now, daily)}")
-    slot = due_reel(now, reels, daily)
+          f"{started_in_window(now, daily, slots)}")
+    slot = due_reel(now, reels, daily, slots)
     if slot:
         print(f'Starting Daily reel for slot {slot}')
         if not dry:

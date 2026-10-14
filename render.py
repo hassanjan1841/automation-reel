@@ -313,6 +313,17 @@ def words_in(text):
     return len(text.replace('*', '').split())
 
 
+def closing_prompt(reel):
+    """The line under the closing question: the DM offer, a nudge to send it on when the last voiceover line asks for
+    that (the cta_style test's "share" option, so the card never says "Comment below" under a "send this"), or
+    "Comment below"."""
+    if reel.get('dm_keyword'):
+        return "I'll send it to your DMs"
+    if re.search(r'\b(send|share|forward)\b', (reel.get('voiceover') or [''])[-1], re.I):
+        return 'Send it to them'
+    return 'Comment below'
+
+
 def build_slides(reel, voice=None):
     theme = THEMES[reel['style']]
     slides = []
@@ -413,8 +424,7 @@ def build_slides(reel, voice=None):
     if keyword:
         end = add_words(s, k_lines, k_fnt, k_size, k_lh, y, end + 0.1, theme, step=step, anim=anim)
         y += k_h
-    prompt = "I'll send it to your DMs" if reel.get('dm_keyword') else 'Comment below'
-    y += add_block(s, prompt, 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
+    y += add_block(s, closing_prompt(reel), 'SemiBold', cb_size, 'accent', y, end + 0.15, theme, max_h=120) + 22
     add_block(s, follow, 'Regular', fl_size, 'muted', y, end + 0.5, theme, max_h=160)
     s.need = end + 0.5 + 2.2
     slides.append(s)

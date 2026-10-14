@@ -74,10 +74,10 @@ REEL = {
     'caption': 'Why a cache serves stale data after an update.\nReads use the cache, writes skip it.\nHow do you invalidate yours? 👇',
     'hashtags': ['#webdev', '#redis', '#backend'],
     'voiceover': ['[fired up] Users update a profile, [puzzled] the app shows the old one.',
-                  '[explaining] Reads check the cache first, [confident] only a miss hits the database.',
+                  '[explaining] Reads hit the cache first, [confident] misses reach the database.',
                   '[building tension] A write updates the database, [knowing] nobody tells the cache.',
-                  '[punchy] The fix is small. [warm] Delete that key on every write.',
-                  '[curious] So tell me, [grinning] do you clear keys or wait?'],
+                  '[punchy] The fix: [warm] delete that key on every write.',
+                  '[curious] So, [grinning] do you clear keys or wait?'],
     'posted_at': None, 'media_id': None,
 }
 
@@ -146,6 +146,7 @@ def main():
                mock.patch.object(publish, 'upload', lambda path, name, *a, **k: f'https://example.invalid/{name}'),
                mock.patch.object(publish, 'delete_upload', lambda name: None),
                mock.patch.object(publish, 'wait_for_post_time', lambda: None),
+               mock.patch.object(publish, 'check_login', lambda: None),
                mock.patch.object(publish, 'publish_to_instagram', lambda *a, **k: 'e2e-media-id'),
                mock.patch.dict(os.environ, {'DRY_RUN': '', 'FORCE_POST': 'true', 'VOICE': os.environ.get('VOICE', 'e2e')})]
     if '--voice' not in args:

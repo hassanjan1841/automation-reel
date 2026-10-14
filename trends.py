@@ -292,7 +292,8 @@ Verification is mandatory:
 - Return up to 3 options: the strongest distinct stories you could verify, best first, each a complete reel.
 - Return an empty list if nothing today beats a good evergreen tip.
 - reach_score is your honest estimate from 1 to 10 of how well the reel will spread compared with a typical evergreen tip.
-- Count words carefully: hook 3 to 6, point titles max 3, point bodies max 8, voiceover 40 to 55 in total. Over-long reels are thrown away."""
+- Count words carefully: hook 3 to 6, point titles max 3, point bodies max 8, voiceover """ + \
+    f"{generate.VO_MIN_WORDS} to {generate.VO_MAX_WORDS} in total. Over-long reels are thrown away."
 
 
 def claude(prompt, system, schema, model=None):

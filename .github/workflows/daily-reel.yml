@@ -5,7 +5,8 @@ on:
     # Starts an hour early (4 PM Pakistan) to research, write, voice, render and review today's reel, then posts
     # at POST_AT_UTC (12:00, 5 PM Pakistan). Off the hour because GitHub delays jobs queued exactly on the hour.
     - cron: '7 11 * * *'
-    # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York).
+    # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York). Off by default
+    # (repo variable REEL_SLOTS, "1,3"): its scheduled run exits at once; set REEL_SLOTS to "1,2,3" to post it.
     - cron: '7 15 * * *'
     # The third reel: starts 19:07 UTC, posts at 20:00 UTC (1 AM Pakistan, 4 PM New York).
     - cron: '7 19 * * *'
@@ -28,6 +29,7 @@ on:
 
 permissions:
   contents: write
+  issues: write   # the alert when Instagram refuses the token
 
 concurrency:
   group: reels-queue
@@ -101,8 +103,22 @@ jobs:
           EXPERIMENT: ${{ vars.EXPERIMENT }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+          REEL_SLOTS: ${{ vars.REEL_SLOTS }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python publish.py
+
+      - name: Alert when Instagram refuses the token
+        # publish.check_login leaves out/alert.md: one open issue (GitHub emails you), a comment on it per failed run.
+        if: failure() && hashFiles('out/alert.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "Instagram login failed"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/alert.md
+          else
+            gh issue create --title 'Instagram login failed: reels are not posting' --body-file out/alert.md
+          fi
 
       - name: Pronunciation test
         run: python test_voice.py

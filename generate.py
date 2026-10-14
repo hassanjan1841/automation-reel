@@ -41,8 +41,11 @@ PILLARS = {
               'the real steps (walkthrough, ide recording or screenshots)', 'AI tool in 30s'),
     1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
                   '(diff or ide recording)', 'Dev mistake'),
-    2: ('relatable', 'Myth vs fact: a belief many developers hold that is wrong, proven wrong on screen with real '
-                     'code, a real recording or the official docs, then what to do instead', 'Myth vs fact'),
+    2: ('relatable', 'Myth vs fact: one thing most developers believe about a famous basic that is wrong or half '
+                     'true (CORS, JWT, var vs let, == vs ===, async and await, git reset, localStorage, HTTP caching, '
+                     'SQL indexes, React re-renders, environment variables), proven on screen with real code or its '
+                     'real output, then the one-line truth to remember. A topic every web developer has met, not a '
+                     'niche setup', 'Myth vs fact'),
     3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
                      'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
@@ -57,7 +60,9 @@ PILLARS = {
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
 HASHTAG = re.compile(r'^#[A-Za-z0-9_]+$')
 SYMBOLS = re.compile(r'[/&%$#;()\[\]{}<>=_|\\]')
-VO_MIN_WORDS, VO_MAX_WORDS = 40, 55
+# 36 to 46 words keeps a reel under 20 seconds (posted reels: about 0.5 s a word; at 48 words they averaged 19.6 s,
+# and reels of 23 s or more got half the views of shorter ones, 2026-10-14).
+VO_MIN_WORDS, VO_MAX_WORDS = 36, 46
 
 
 def words(text):
@@ -518,12 +523,12 @@ SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
 
 
-# Reel 1 teaches, reel 2 is relatable; each rotates through its own series (indexes into PILLARS) by weekday,
-# so the two reels of a day are always different kinds. The freelance playbook comes up most (2026-10-01: the
-# relatable POV and client-chat skits were invented scenes with nothing to take away, and Instagram barely showed
-# them: 5 and 9 views).
-TEACH = (0, 1, 4, 6)
-RELATE = (3, 2, 3, 5)
+# Each slot rotates through its own series (indexes into PILLARS) by weekday. Reel 1 is Myth vs fact every day:
+# the myths about famous basics were the reels people stayed on (2026-10-14: CORS 1,105 views at 58.6% skip, JWT
+# 172, var vs let 151, against about 110 for the rest). Reel 2 (off by default, scheduler.REEL_SLOTS) no longer
+# runs the freelance playbook: it averaged 25 views, the client skits 5 to 9.
+TEACH = (2,)
+RELATE = (4, 0, 5, 1)
 
 
 # Reel 3 of the day picks one of these at random (fixed per date), so it never becomes a routine. "news" is only
@@ -538,15 +543,18 @@ EXTRA_FORMATS = {
                          'small concept a beginner can follow, with a code visual', 'Next.js from zero'),
     'build': ('build', 'Build it live: one small UI piece (a button, a card, a toggle, a badge, a loader) going from '
                        'plain HTML to a finished design in 2 to 4 CSS stages, as a build visual: the plain "before" '
-                       'under the hook, the finished look held at the end. Real CSS that works in any browser; the '
-                       'dm_guide holds the full code', 'Build it live'),
+                       'under the hook, the finished look held at the end. Real CSS that works in any browser, the '
+                       'finished code on screen long enough to screenshot', 'Build it live'),
 }
-SLOT3_FORMATS = ('news', 'trick', 'versus', 'series', 'build')
+# Myth is listed twice, so it comes up on about a third of days (the main format, see TEACH). Build it live left the
+# rotation (60 views); REEL_FORMAT=build still forces it.
+EXTRA_FORMATS['myth'] = PILLARS[2]
+SLOT3_FORMATS = ('myth', 'myth', 'news', 'trick', 'versus', 'series')
 
 
 def slot():
-    """Which of the day's reels this run writes: 1 (a how-to), 2 (the evening, relatable reel) or 3 (news, a
-    trick, X vs Y or the beginner series)."""
+    """Which of the day's reels this run writes: 1 (Myth vs fact), 2 (off by default: explained, AI, ranked or a
+    dev mistake) or 3 (a myth, news, a trick, X vs Y or the beginner series)."""
     value = os.environ.get('SLOT', '').strip()
     return int(value) if value in ('2', '3') else 1
 
@@ -554,7 +562,7 @@ def slot():
 def slot3_format(day=None, skip=()):
     """Reel 3's format for the day, random but fixed per date; skip formats already ruled out (news with no story)."""
     forced = os.environ.get('REEL_FORMAT', '').strip()
-    if forced in SLOT3_FORMATS and forced not in skip:
+    if (forced in EXTRA_FORMATS or forced == 'news') and forced not in skip:
         return forced
     day = day or datetime.now(timezone.utc).date()
     options = [f for f in SLOT3_FORMATS if f not in skip]
@@ -566,7 +574,8 @@ def pillar_for(day):
     if slot() == 3:
         fmt = slot3_format(day)
         return EXTRA_FORMATS[fmt if fmt != 'news' else slot3_format(day, skip=('news',))]
-    return PILLARS[(TEACH if slot() == 1 else RELATE)[day.weekday() % 4]]
+    series = TEACH if slot() == 1 else RELATE
+    return PILLARS[series[day.weekday() % len(series)]]
 
 
 def three_d_today(day=None):
@@ -589,6 +598,7 @@ def three_d_note():
 # The weekly test (learn.py starts one at a time, in experiments.json): each reel gets one option by chance, fixed
 # per date and slot, the writer is told which, validate() holds the reel to it, and learn.py compares the options.
 # Only things the writer controls and code can check; none of them bends the honesty rules.
+SEND = re.compile(r'\b(send|share|forward)\b', re.I)
 NUMBER = re.compile(r'\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|'
                     r'hundred|thousand)\b', re.I)
 EXPERIMENTS = {
@@ -608,11 +618,22 @@ EXPERIMENTS = {
                     lambda r: words(strip_cues((r.get('voiceover') or [''])[0])) <= 10,
                     'voiceover line 1 must have at most 10 spoken words'),
     },
+    'cta_style': {
+        'question': ('The ending (cta and voiceover line 5) is a direct question about the viewer\'s own code or '
+                     'experience, answered in the comments. It does not ask them to send or share the reel.',
+                     lambda r: not SEND.search(strip_cues((r.get('voiceover') or [''])[-1])),
+                     'voiceover line 5 must be a question for the comments, without asking to send or share'),
+        'share': ('The ending asks the viewer to send the reel to one developer who needs it: voiceover line 5 says '
+                  'so naturally ("Send this to the friend who still trusts that header."), and the cta is a short '
+                  'question that points at that person ("Know a dev who still *believes* this?").',
+                  lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),
+                  'voiceover line 5 must ask the viewer to send the reel to a developer who needs it'),
+    },
     'length': {
-        'short': ('Keep the voiceover short: 40 to 46 words in total.',
-                  lambda r: 40 <= vo_words(r) <= 46, 'the voiceover must have 40 to 46 words'),
-        'long': ('Use the full voiceover length: 49 to 55 words in total.',
-                 lambda r: 49 <= vo_words(r) <= 55, 'the voiceover must have 49 to 55 words'),
+        'short': ('Keep the voiceover short: 36 to 40 words in total.',
+                  lambda r: 36 <= vo_words(r) <= 40, 'the voiceover must have 36 to 40 words'),
+        'long': ('Use the full voiceover length: 42 to 46 words in total.',
+                 lambda r: 42 <= vo_words(r) <= 46, 'the voiceover must have 42 to 46 words'),
     },
     'hook_number': {
         'number': ('The hook contains a number (a time, a count or a size), written as digits.',
@@ -1085,17 +1106,9 @@ Field rules:
   real comparison). Never three points of equal weight. Each has a title (max 3 words, a label like "Delete the key", not a
   sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
   the voice carries the detail.
-- cta: a short question for the comments with exactly one *highlighted* word. With a dm_keyword it is instead the
-  offer, e.g. "Comment *MCP* for the setup", with the keyword highlighted.
-- dm_keyword and dm_guide (comment-to-DM; people who comment the keyword get dm_guide as a private message):
-  every how-to, build, trick, versus, beginner, dev-mistake, AI and freelance-playbook reel carries them, and the
-  offer names a concrete freebie: the code, the file, the template ("Comment *CODE* for the code"). Leave them
-  out of myth, ranked and explained reels, which end with a question instead. The
-  reel itself always delivers its payoff; the guide is the extended version, never the payoff held back. dm_keyword: one short word in capitals
-  (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
-  written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
-  characters, no invented facts. It starts with anything to install first (uv for uvx, Node for npx, Python for
-  pip) so the steps work on a clean machine. The reel only promises what dm_guide really contains.
+- cta: a short question with exactly one *highlighted* word, about the viewer's own code or experience. Never a
+  comment-to-DM offer ("Comment X for the code"): leave dm_keyword and dm_guide out; the reel itself delivers
+  everything it promises.
 - reveal (optional): the number of the point (1 to 3) whose visual finishes a result on screen (a terminal or
   outputmap printing it, a build reaching its finished look, race or bars growing, a stepper reaching its
   output). The voice holds a short silent beat on that slide while the result lands, then its line says it.
@@ -1115,8 +1128,8 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
   over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
   must talk about its own point; never jump ahead to a later point.
-- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that. With a dm_keyword, line 5 says the keyword and what they get, e.g. "Comment MCP and I'll send you the whole setup."
-- 40 to 55 words in total. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
+- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that. Never offer to send a guide, code or file.
+- 36 to 46 words in total, so the reel stays under 20 seconds. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
   lines, so every idea lands for slower viewers too; saying less, clearly, beats saying more, fast.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
 
@@ -1404,23 +1417,23 @@ def repair(reel, errors, rounds=2, extra=None):
             fixed = []
         if not fixed:
             continue
-        reel = tidy({**reel, **fixed[0]})
+        # Claude returns the whole reel: an optional field it left out was removed on purpose (a dm_keyword the fix
+        # dropped), so it goes; fields Claude never writes (id, series, test) stay.
+        optional = set(SCHEMA['properties']['reels']['items']['properties']) - set(fixed[0])
+        reel = tidy({**{k: v for k, v in reel.items() if k not in optional}, **fixed[0]})
         errors = check(reel)
         print(f"  repair: {'fixed' if not errors else '; '.join(errors)}")
     return None if errors else reel
 
 
-# How-tos carry a comment-to-DM freebie: the creators who get thousands of comments all offer the real file or tool.
-# Myth, ranked and explained reels end on a question instead.
-DM_PILLARS = ('ai', 'devtip', 'saas', 'freelance', 'trick', 'versus', 'series', 'build')
-
-
 def pillar_errors(reel, pillar):
-    """Rules that depend on the day's format: a how-to offers its freebie, a build reel shows a build."""
+    """Rules for freshly written reels: no comment-to-DM offer (2026-10-14: 29 reels offered one, not one keyword
+    comment came in, and they were watched less, 13% against 22%; carousels keep theirs), and a build reel shows a
+    build."""
     errors = []
-    if pillar in DM_PILLARS and not reel.get('dm_keyword'):
-        errors.append('this format offers a freebie: add dm_keyword and a dm_guide with the full code or template, '
-                      'and make the cta "Comment *KEYWORD* for the code"')
+    if reel.get('dm_keyword') or reel.get('dm_guide'):
+        errors.append('reels end on a question, not a comment-to-DM offer: drop dm_keyword and dm_guide and make the '
+                      'cta and voiceover line 5 a question')
     if pillar == 'build':
         firsts = [reel.get('hook_visual') or {}] + [(p.get('visual') or [{}])[0] for p in reel.get('points', [])]
         if not any(v.get('type') == 'build' for v in firsts):

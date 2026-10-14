@@ -37,7 +37,7 @@ import trends
 
 ROOT = Path(__file__).resolve().parent
 
-# A reel that passes generate.validate: a statement hook, 49 spoken words.
+# A reel that passes generate.validate: a statement hook, 43 spoken words.
 VALID = {
     'pillar': 'concept', 'series': 'Explained', 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
     'payoff': 'Delete the cached key on every write so readers never get the old row',
@@ -65,12 +65,13 @@ VALID = {
     'caption': 'Why a cache serves stale data after an update.\nReads use the cache, writes skip it.\nHow do you invalidate yours? 👇',
     'hashtags': ['#webdev', '#redis', '#backend'],
     'voiceover': ['[fired up] Users update a profile, [puzzled] the app shows the old one.',
-                  '[explaining] Reads check the cache first, [confident] only a miss hits the database.',
+                  '[explaining] Reads hit the cache first, [confident] misses reach the database.',
                   '[building tension] A write updates the database, [knowing] nobody tells the cache.',
-                  '[punchy] The fix is small. [warm] Delete that key on every write.',
-                  '[curious] So tell me, [grinning] do you clear keys or wait?'],
+                  '[punchy] The fix: [warm] delete that key on every write.',
+                  '[curious] So, [grinning] do you clear keys or wait?'],
 }
 QUESTION_HOOK = 'Why is your *cache* stale?'
+SHARE_LINE = '[warm, curious] Send this to the dev who never clears keys.'
 
 
 class Sandbox(unittest.TestCase):
@@ -89,7 +90,7 @@ class Sandbox(unittest.TestCase):
             mock.patch.object(learn, 'CAROUSELS', self.tmp / 'carousels.json'),
             mock.patch.object(learn, 'REPORT', self.tmp / 'out' / 'report.md'),
             mock.patch.dict(os.environ, {'EXPERIMENT': '', 'SLOT': '', 'THREE_D': '', 'DRY_RUN': '',
-                                         'FORCE_POST': '', 'REEL_FORMAT': ''}),
+                                         'FORCE_POST': '', 'REEL_FORMAT': '', 'REEL_SLOTS': '', 'GITHUB_EVENT_NAME': ''}),
         ]
         for p in self.patches:
             p.start()
@@ -207,11 +208,13 @@ class ExperimentTest(Sandbox):
         cases = {('hook_style', 'question'): ({'hook': QUESTION_HOOK}, {}),
                  ('hook_style', 'statement'): ({}, {'hook': QUESTION_HOOK}),
                  ('hook_number', 'number'): ({'hook': 'Fix a stale *cache* in 2 minutes'}, {}),
-                 ('hook_number', 'no_number'): ({}, {'hook': 'Fix a stale *cache* in 2 minutes'})}
+                 ('hook_number', 'no_number'): ({}, {'hook': 'Fix a stale *cache* in 2 minutes'}),
+                 ('cta_style', 'question'): ({}, {'voiceover': reel['voiceover'][:4] + [SHARE_LINE]}),
+                 ('cta_style', 'share'): ({'voiceover': reel['voiceover'][:4] + [SHARE_LINE]}, {})}
         for (name, arm), (good, bad) in cases.items():
             self.assertEqual(generate.experiment_errors({**reel, **good, 'test': {'name': name, 'arm': arm}}), [], (name, arm))
             self.assertEqual(len(generate.experiment_errors({**reel, **bad, 'test': {'name': name, 'arm': arm}})), 1, (name, arm))
-        self.assertEqual(generate.vo_words(reel), 49)
+        self.assertEqual(generate.vo_words(reel), 43)
         self.assertEqual(generate.experiment_errors({**reel, 'test': {'name': 'length', 'arm': 'long'}}), [])
         self.assertEqual(len(generate.experiment_errors({**reel, 'test': {'name': 'length', 'arm': 'short'}})), 1)
         self.assertEqual(generate.experiment_errors({**reel, 'test': {'name': 'gone', 'arm': 'x'}}), [])
@@ -378,10 +381,40 @@ class PublishTest(Sandbox):
                 mock.patch.object(publish, 'upload', return_value='https://x/y.mp4'), \
                 mock.patch.object(publish, 'delete_upload'), mock.patch.object(publish, 'wait_for_post_time'), \
                 mock.patch.object(publish, 'publish_to_instagram', return_value='17999'), \
-                mock.patch.object(publish, 'output'), \
+                mock.patch.object(publish, 'output'), mock.patch.object(publish, 'check_login'), \
                 mock.patch.object(publish, 'todays_reel', return_value=todays):
             publish.main()
         return json.loads(render.QUEUE.read_text())
+
+    def test_a_dead_token_stops_before_any_work_and_leaves_an_alert(self):
+        # 2026-10-03: an invalidated token failed every run for two days at the last step, after 7 minutes of work.
+        render.QUEUE.write_text('[]')
+        refused = SimpleNamespace(ok=False, status_code=400, text='', json=lambda: {'error': {
+            'message': 'Error validating access token secret-token: The session has been invalidated', 'code': 190}})
+        alert = self.tmp / 'out' / 'alert.md'
+        with mock.patch.object(publish, 'ALERT', alert), mock.patch.object(publish.render, 'OUT_DIR', self.tmp / 'out'), \
+                mock.patch.object(publish.requests, 'get', return_value=refused), \
+                mock.patch.dict(os.environ, {'IG_TOKEN': 'secret-token', 'SUPABASE_SERVICE_KEY': ''}), \
+                mock.patch.object(publish, 'todays_reel') as write, mock.patch.object(publish, 'output'):
+            with self.assertRaises(SystemExit) as stop:
+                publish.main()
+        write.assert_not_called()
+        self.assertIn('session has been invalidated', str(stop.exception))
+        self.assertIn('IG_TOKEN', alert.read_text())
+        self.assertNotIn('secret-token', alert.read_text())
+        ok = SimpleNamespace(ok=True)
+        with mock.patch.object(publish.requests, 'get', return_value=ok), mock.patch.dict(os.environ, {'IG_TOKEN': 't'}):
+            self.assertIsNone(publish.check_login())
+
+    def test_a_slot_that_is_off_does_nothing_on_its_cron(self):
+        render.QUEUE.write_text('[]')
+        with mock.patch.dict(os.environ, {'SLOT': '2', 'GITHUB_EVENT_NAME': 'schedule'}), \
+                mock.patch.object(publish, 'check_login') as login, mock.patch.object(publish, 'todays_reel') as write, \
+                mock.patch.object(publish, 'output'), contextlib.redirect_stdout(io.StringIO()) as out:
+            publish.main()
+        login.assert_not_called()
+        write.assert_not_called()
+        self.assertIn('is off', out.getvalue())
 
     def test_records_what_the_learning_loop_needs(self):
         hand = {**copy.deepcopy(VALID), 'id': 5, 'posted_at': None, 'media_id': None}
@@ -1045,11 +1078,25 @@ class SchedulerTest(Sandbox):
         return [c for c in calls if c[0] == 'workflow']
 
     def test_main_starts_the_missing_slot(self):
+        os.environ['REEL_SLOTS'] = '1,2,3'
         started = self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [])
         self.assertEqual(started, [('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', 'slot=2')])
         self.assertEqual(self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [], argv=['--dry']), [])
         self.assertEqual(self.run_scheduler(at(16, 5), [self.posted(at(14, 26), slot=1), self.posted(at(16, 0), slot=2)],
                                             [], []), [])
+
+    def test_two_reels_a_day_by_default(self):
+        # 2026-10-14: slot 2 averaged 25 views against about 115; REEL_SLOTS="1,2,3" brings it back.
+        self.assertEqual(scheduler.active_slots(''), {1, 3})
+        self.assertEqual(scheduler.active_slots('1,2,3'), {1, 2, 3})
+        self.assertRaises(SystemExit, scheduler.active_slots, '1,4')
+        one = [self.posted(at(12, 0), slot=1)]
+        self.assertEqual(self.run_scheduler(at(15, 20), one, [], []), [])          # slot 2 never starts
+        self.assertIsNone(scheduler.window(at(10, 0), {1, 3}))
+        self.assertEqual(scheduler.window(at(15, 20), {1, 3}), 1)               # slot 1's window runs to 19:07
+        self.assertEqual(scheduler.due_reel(at(15, 20), [], [], {1, 3}), 1)     # a late slot 1 can still post
+        started = self.run_scheduler(at(19, 30), one, [], [])
+        self.assertEqual(started, [('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', 'slot=3')])
 
     def test_main_starts_the_comment_replies(self):
         self.assertEqual(self.run_scheduler(at(9, 0), [], [], [], dms=[run(at(8, 50))]),
@@ -1200,11 +1247,11 @@ class PlaybookTest(Sandbox):
 
     def test_alternatives_fit_the_word_budget(self):
         long = copy.deepcopy(VALID)
-        long['voiceover'][3] = '[punchy] The fix is small and quick. [warm] Delete that cached key on every single write.'
+        long['voiceover'][3] = '[punchy] The fix is small. [warm] Delete that key on every write.'
         long['alternatives'][0]['spoken'] = '[urgent] You saved the profile, [exasperated] the cache shows the old one.'
-        self.assertEqual(generate.validate(long), [])  # 53 words, line 1 has 10, every alternative fits
+        self.assertEqual(generate.validate(long), [])  # 45 words, line 1 has 10, every alternative (11) fits: 46
         long['alternatives'][1]['spoken'] = ('[fired up] One delete call after every single write, [confident] and '
-                                             'stale reads are gone for good.')  # 14 words: 57 in total
+                                             'stale reads are gone for good.')  # 14 words: 49 in total
         self.assertIn('alternative 2 spoken line would take the voiceover outside', ' '.join(generate.validate(long)))
 
     def test_an_offer_needs_something_to_send(self):
@@ -1317,7 +1364,7 @@ class ReelFormatTest(Sandbox):
                              'loads the fresh row. In Redis that is one DEL call with the same key you read from, '
                              'e.g. user colon 42. Do it after the database write succeeds, never before.',
                     caption=VALID['caption'].rsplit('\n', 1)[0] + '\nComment REDIS for the code 👇')
-        reel['voiceover'][-1] = '[grinning] Comment REDIS and [warm] I will send you the code.'
+        reel['voiceover'][-1] = '[grinning] Want it? [warm] Comment REDIS.'
         return reel
 
     def test_build_visual_rules(self):
@@ -1334,23 +1381,45 @@ class ReelFormatTest(Sandbox):
         self.assertIn('must open on a visual that finishes', ' '.join(generate.validate({**VALID, 'reveal': 1})))
         self.assertIn('number of a point', ' '.join(generate.validate({**VALID, 'reveal': 4})))
 
-    def test_howtos_offer_a_freebie_and_build_reels_show_a_build(self):
-        self.assertIn('freebie', ' '.join(generate.pillar_errors(VALID, 'devtip')))
-        self.assertEqual(generate.pillar_errors(VALID, 'concept'), [])
-        self.assertEqual(generate.validate(self.freebie()), [])
-        self.assertEqual(generate.pillar_errors(self.freebie(), 'devtip'), [])
-        self.assertIn('build visual', ' '.join(generate.pillar_errors(self.freebie(), 'build')))
-        self.assertEqual(generate.pillar_errors({**self.freebie(), 'hook_visual': self.BUILD}, 'build'), [])
-        self.assertIn('build', generate.SLOT3_FORMATS)
+    def test_reels_never_offer_a_freebie_and_build_reels_show_a_build(self):
+        # 2026-10-14: 29 reels offered a comment-to-DM freebie and not one keyword comment came in.
+        for pillar in ('devtip', 'concept', 'relatable', 'trick'):
+            self.assertEqual(generate.pillar_errors(VALID, pillar), [], pillar)
+            self.assertIn('comment-to-DM', ' '.join(generate.pillar_errors(self.freebie(), pillar)), pillar)
+        self.assertEqual(generate.validate(self.freebie()), [])  # still a valid reel by hand (dm.py serves it)
+        self.assertIn('build visual', ' '.join(generate.pillar_errors(VALID, 'build')))
+        self.assertEqual(generate.pillar_errors({**VALID, 'hook_visual': self.BUILD}, 'build'), [])
+        self.assertNotIn('build', generate.SLOT3_FORMATS)  # out of the rotation, still possible by hand
+        with mock.patch.dict(os.environ, {'SLOT': '3', 'REEL_FORMAT': 'build'}):
+            self.assertEqual(generate.pillar_for(date(2026, 10, 6))[2], 'Build it live')
 
-    def test_generate_repairs_a_missing_freebie(self):
-        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [self.freebie()]}}),
+    def test_the_closing_card_matches_the_ending(self):
+        share = copy.deepcopy(VALID)
+        share['voiceover'][-1] = SHARE_LINE
+        self.assertEqual(render.closing_prompt(VALID), 'Comment below')
+        self.assertEqual(render.closing_prompt(share), 'Send it to them')
+        self.assertEqual(render.closing_prompt(self.freebie()), "I'll send it to your DMs")
+
+    def test_myth_is_the_main_format(self):
+        # 2026-10-14: myths about famous basics were the reels people stayed on; the freelance playbook got 25 views.
+        days = [date(2026, 10, 1) + timedelta(days=i) for i in range(90)]
+        with mock.patch.dict(os.environ, {'SLOT': '1'}):
+            self.assertEqual({generate.pillar_for(d)[2] for d in days}, {'Myth vs fact'})
+        with mock.patch.dict(os.environ, {'SLOT': '3'}):
+            myths = sum(generate.pillar_for(d)[2] == 'Myth vs fact' for d in days) / len(days)
+        self.assertTrue(0.2 < myths < 0.5, myths)
+        for slot in ('1', '2', '3'):
+            with mock.patch.dict(os.environ, {'SLOT': slot}):
+                self.assertNotIn('Freelance playbook', {generate.pillar_for(d)[2] for d in days}, slot)
+
+    def test_generate_repairs_a_freebie_offer(self):
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [copy.deepcopy(VALID)]}}),
                               stderr='')
-        with mock.patch.object(generate, 'ask_claude', lambda *a: [copy.deepcopy(VALID)]), \
+        with mock.patch.object(generate, 'ask_claude', lambda *a: [self.freebie()]), \
                 mock.patch.object(generate.subprocess, 'run', return_value=out) as run:
-            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # a Tuesday: Dev mistake
-        self.assertEqual((len(new), new[0]['dm_keyword'], new[0]['pillar']), (1, 'REDIS', 'devtip'))
-        self.assertIn('freebie', run.call_args[0][0][2])
+            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # slot 1: Myth vs fact every day
+        self.assertEqual((len(new), new[0].get('dm_keyword'), new[0]['pillar']), (1, None, 'relatable'))
+        self.assertIn('comment-to-DM', run.call_args[0][0][2])
 
     def test_hook_pace_test(self):
         dense = {**VALID, 'test': {'name': 'hook_pace', 'arm': 'dense'}}
@@ -1520,6 +1589,14 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(block, 'README lost its "Add a reel by hand" example')
         self.assertEqual(generate.validate(json.loads(block.group(1))), [])
 
+    def test_the_daily_run_alerts_and_follows_the_slots(self):
+        daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
+        self.assertIn('issues: write', daily)
+        self.assertIn("if: failure() && hashFiles('out/alert.md') != ''", daily)
+        self.assertIn('gh issue create', daily)
+        self.assertIn('REEL_SLOTS: ${{ vars.REEL_SLOTS }}', daily)
+        self.assertIn('REEL_SLOTS: ${{ vars.REEL_SLOTS }}', (ROOT / '.github/workflows/scheduler.yml').read_text())
+
     def test_empty_repo_variables_mean_the_default(self):
         # Workflows pass ${{ vars.X }}, which is an empty string when the variable is not set.
         for name in ('carousel.py', 'learn.py', 'qa.py', 'study.py', 'trends.py', 'dm.py', 'insights.py', 'publish.py'):
@@ -1580,13 +1657,13 @@ class SimulationTest(Sandbox):
     learn.main (the daily default) against a fake Instagram in which question hooks really do hold viewers better
     and views keep growing for a month."""
 
-    EFFECT = {'question': -5.0, 'statement': 5.0}
+    EFFECT = {('hook_style', 'question'): -5.0, ('hook_style', 'statement'): 5.0}  # only the hook style matters
 
     def metrics(self, media, name):
         r = self.by_media[media]
         age = (self.now - datetime.fromisoformat(r['posted_at'])).total_seconds() / 86400
         noise = random.Random(f"{r['id']}-{name}").uniform(-1.5, 1.5)
-        arm = (r.get('test') or {}).get('arm')
+        arm = ((r.get('test') or {}).get('name'), (r.get('test') or {}).get('arm'))
         return {'views': round(100 + 20 * min(age, 30)), 'reach': 90, 'saved': 2, 'shares': 1, 'likes': 5,
                 'comments': 1, 'profile_visits': 3,
                 'reels_skip_rate': round(70 + self.EFFECT.get(arm, 0) + noise, 1),
