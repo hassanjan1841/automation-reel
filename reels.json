@@ -5462,5 +5462,134 @@
     ],
     "slot": 2,
     "seconds": 22.8
+  },
+  {
+    "id": 72,
+    "style": "dark",
+    "payoff": "CREATE INDEX idx_email ON users(email) turns a Seq Scan into an Index Scan for reads, but every INSERT and UPDATE now has to rewrite that index too.",
+    "kicker": "Myth vs fact #3",
+    "hook": "Your index has a *downside*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "diff",
+      "language": "sql",
+      "title": "index.sql",
+      "before": "CREATE INDEX idx_email\nON users (email);\n-- SELECT: much faster",
+      "after": "-- but every INSERT/UPDATE\n-- now rewrites idx_email\n-- writes got slower"
+    },
+    "alternatives": [
+      {
+        "hook": "Seq Scan turns into *Index Scan*",
+        "hook_type": "before_after",
+        "spoken": "[excited] Watch a slow scan turn instant now."
+      },
+      {
+        "hook": "We *tested* the index myth",
+        "hook_type": "test",
+        "spoken": "[urgent] We ran one query two different ways."
+      },
+      {
+        "hook": "One line, *faster* reads",
+        "hook_type": "shortcut",
+        "spoken": "[confident] One line turns your slow select instant."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common belief",
+        "body": "Add an index, get speed",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "add_index.sql",
+            "code": "CREATE INDEX idx_email\nON users (email);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "True for reads",
+        "body": "Seq Scan becomes Index Scan",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "EXPLAIN SELECT * FROM users...",
+            "output": [
+              "Index Scan using idx_email",
+              "on users",
+              "Index Cond: email = $1"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "sql",
+            "title": "explain.sql",
+            "before": "EXPLAIN SELECT * FROM users\nWHERE email = 'a@x.com';\n-- Seq Scan on users",
+            "after": "EXPLAIN SELECT * FROM users\nWHERE email = 'a@x.com';\n-- Index Scan using idx_email"
+          }
+        ]
+      },
+      {
+        "title": "Cost on writes",
+        "body": "Every insert updates the index too",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "sql",
+            "title": "write_cost.sql",
+            "before": "-- 1 index\n-- INSERT = 1 table write",
+            "after": "-- 3 indexes\n-- INSERT = 1 table write\n-- + 3 index writes"
+          }
+        ]
+      }
+    ],
+    "cta": "How many *indexes* does your biggest table carry?",
+    "caption": "SQL index tradeoffs: faster reads, slower writes\nThe myth that quietly costs you performance\nHow many indexes are on your biggest table? 👇",
+    "hashtags": [
+      "#sql",
+      "#postgres",
+      "#databases",
+      "#webdev",
+      "#backend"
+    ],
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Indexes don't always make your queries faster.",
+      "[knowing] We add an index and assume it only helps.",
+      "[excited] Run explain and the seq scan becomes an index scan.",
+      "[serious, fast] But every insert now rewrites that index too, slowing writes.",
+      "[warm, curious] Go count the indexes sitting on your busiest table."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 3,
+    "posted_at": "2026-10-14T12:00:32+00:00",
+    "media_id": "18124477036922366",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is only the text hook and a tiny caption bubble ('faster') with no code, diff, or screenshot proof visible, so there's nothing to look at beyond the words."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows a real EXPLAIN output (Seq Scan vs Index Scan) or any evidence that inserts slow down — slides 2 and 3 only assert this in text, with no screenshot to copy."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
   }
 ]
