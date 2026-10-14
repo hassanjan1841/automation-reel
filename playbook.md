@@ -15,16 +15,27 @@ normal reel loses about 60%). The writers (`generate.py`, and `trends.py` for ne
   "this one line makes the query use an index" is a reel.
 - Show it, do not claim it: real code, a real diff, a real recording (ide, walkthrough). Never an invented
   result, number, chat or post. If it cannot be shown honestly, pick another topic.
-- The useful part stays on screen long enough to screenshot (2 seconds or more) and is in dm_guide or the
-  caption, so people save it.
+- The useful part stays on screen long enough to screenshot (2 seconds or more) and is in the caption, so
+  people save it.
 - Reels people send to a friend are surprising ("this is wrong and here is proof") or a pain they share; reels
   people save are exact steps they will need again. Aim for one of the two on purpose.
 - Watching something get built holds people (2026-10-01 study: a CSS login card built from a plain form, 47,800
   likes, held uncut for 7 seconds at the end): the plain "before" on frame 0, the change happening on screen, the
   finished result held long enough to screenshot. For UI and CSS use the build visual.
-- How-tos end with a concrete freebie: "Comment CODE for the code". The two studied reels with thousands of
-  comments (2,365 and 3,271) both offered the real file or tool for a keyword; ours offered a question and got
-  none. The reel still delivers its payoff; the freebie is the full file.
+- The ending is a direct question about the viewer's own code, never a comment-to-DM freebie. Two studied big
+  accounts got thousands of comments with freebies, but on this account 29 reels offered one, not one keyword
+  comment came in, and they were watched less (13% against 22% for question endings, 2026-10-14).
+
+What our own numbers say (42 reels measured, 2026-10-14; they outrank the studies above):
+- The myth about a famous basic is the format people stay on: "Your CORS header isn't security" reached 1,105
+  views at 58.6% skip with 7 saves and 2 shares; "JWT: signed, not secret" and var vs let came next. The rest sat
+  near 110 views at 80 to 90% skip.
+- Pick topics every web developer has met (CORS, JWT, cookies, git, async, caching, indexes, re-renders). Niche
+  setups (one library's realtime API, one provider's webhook into another) got 6 to 20 views.
+- Statement hooks beat questions (median 111 views against 68).
+- Under 20 seconds: reels of 23 seconds or more got half the views of shorter ones.
+- Shares push a reel past its first test audience; watch time alone did not (a reel held at 26% skip still
+  stopped at 142 views with no shares). Aim each reel at a surprise people want to send on.
 
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 
