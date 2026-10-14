@@ -5591,5 +5591,150 @@
     ],
     "slot": 1,
     "seconds": 19.0
+  },
+  {
+    "id": 73,
+    "style": "light",
+    "payoff": "Drizzle's query builder reads like raw SQL with no extra engine; Prisma trades that control for a generated client built from its own schema file.",
+    "kicker": "X vs Y #2",
+    "hook": "Prisma vs Drizzle: *real tradeoffs*",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "language": "ts",
+      "title": "schema.ts",
+      "code": "export const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  email: text('email').notNull(),\n});",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Less *code*, or more control",
+        "spoken": "[grinning] Want less code, or full SQL control? Pick one.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Skip the *engine*, write SQL",
+        "spoken": "[confident] Skip Prisma's engine. Write SQL straight from TypeScript.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Picking an *ORM* by habit",
+        "spoken": "[fired up] Stop picking your ORM by habit, know the tradeoff.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Schema syntax",
+        "body": "Prisma's DSL vs plain TypeScript",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "schema.ts",
+            "code": "export const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  email: text('email').notNull(),\n});",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Query style",
+        "body": "Same query, written two different ways",
+        "visual": [
+          {
+            "type": "variants",
+            "title": "Query style",
+            "variants": [
+              {
+                "label": "Prisma",
+                "rows": [
+                  "prisma.user.findMany({",
+                  "where: { active: true }",
+                  "})"
+                ]
+              },
+              {
+                "label": "Drizzle",
+                "rows": [
+                  "db.select().from(users)",
+                  ".where(eq(users.active,",
+                  "true))"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "ts",
+            "title": "query.ts",
+            "before": "prisma.user.findMany({\n  where: { active: true }\n})",
+            "after": "db.select().from(users)\n  .where(eq(users.active,\n  true))"
+          }
+        ]
+      },
+      {
+        "title": "No engine binary",
+        "body": "Drizzle skips the extra binary",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "drizzle.ts",
+            "code": "import { sql } from 'drizzle-orm';\nconst rows = await db.execute(\n  sql`select * from users`\n);",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which ORM is in your *current* project?",
+    "caption": "Prisma vs Drizzle: picking the right ORM\nSchema style, query syntax, and runtime weight compared\nWhich one matches your project? 👇",
+    "hashtags": [
+      "#prisma",
+      "#drizzleorm",
+      "#typescript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[energetic] Picking between Prisma and Drizzle? Here's the real tradeoff.",
+      "[confident] Prisma's schema lives in its own DSL file.",
+      "[curious] Same query, two syntaxes, one reads like SQL.",
+      "[serious, fast] Prisma adds a query engine binary. Drizzle skips it entirely.",
+      "[warm, curious] So which one's in your current stack?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 2,
+    "posted_at": "2026-10-14T20:00:45+00:00",
+    "media_id": "18093973073556574",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "Only Drizzle code ever appears on screen (pgTable schema, query builder, raw SQL execute); Prisma's DSL schema file and generated client are only described in text/badges, never shown, so half the promised comparison isn't actually demonstrated."
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "variants",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 16.4
   }
 ]
