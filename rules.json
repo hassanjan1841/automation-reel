@@ -128,5 +128,35 @@
     "evidence": "question endings watched_vs_usual +0.067 vs -0.003 for freebie offers, skip about equal (12 vs 26 reels)",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 14,
+    "text": "Voiceover line 1 is dense: 12 to 14 spoken words, the whole promise said fast (it is played a little faster too); the alternatives' spoken lines are 12 to 14 words as well.",
+    "since": "2026-10-15",
+    "status": "kept",
+    "source": "experiment",
+    "evidence": "test hook_pace: dense won: skip rate 4.0 points lower (dense 9, relaxed 5 reels)",
+    "verdict": "won a test",
+    "checked": "2026-10-15"
+  },
+  {
+    "id": 15,
+    "text": "Before/after hook_type reels average skip_vs_usual -3.2 versus +3.1 for untagged hooks (9 vs 14 reels); favor the before/after hook structure when the topic fits.",
+    "since": "2026-10-15",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "hook_type before_after (9 reels) beat untagged (14 reels): skip rate +6.3 points",
+    "verdict": "",
+    "checked": ""
+  },
+  {
+    "id": 16,
+    "text": "Ai-pillar reels average skip_vs_usual -0.8 (5 reels) and timely-pillar +0.9 (9 reels); freelance-pillar reels average +7.7 (8 reels); favor ai or timely topics.",
+    "since": "2026-10-15",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "pillar ai (5 reels) beat freelance (8 reels): skip rate +8.5 points; pillar timely (9 reels) beat freelance (8 reels): skip rate +6.8 points",
+    "verdict": "",
+    "checked": ""
   }
 ]

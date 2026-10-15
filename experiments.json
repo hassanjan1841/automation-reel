@@ -1,7 +1,7 @@
 {
   "active": {
-    "name": "hook_pace",
-    "since": "2026-10-07"
+    "name": "cta_style",
+    "since": "2026-10-15"
   },
   "done": [
     {
@@ -9,6 +9,12 @@
       "since": "2026-09-28",
       "until": "2026-10-07",
       "result": "no clear difference (question 11, statement 5 reels, skip rate +1.4)"
+    },
+    {
+      "name": "hook_pace",
+      "since": "2026-10-07",
+      "until": "2026-10-15",
+      "result": "dense won: skip rate 4.0 points lower (dense 9, relaxed 5 reels)"
     }
   ]
 }
