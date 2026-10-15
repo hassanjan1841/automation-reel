@@ -5882,5 +5882,129 @@
     ],
     "slot": 1,
     "seconds": 19.7
+  },
+  {
+    "id": 75,
+    "style": "light",
+    "payoff": "A folder named [id] in app/ matches any url segment, so app/blog/[id]/page.tsx renders every post from one file using params.id instead of a separate page per post.",
+    "kicker": "Next.js from zero #4",
+    "hook": "Your routes don't *scale* yet",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "app/blog/",
+      "before": "blog/1/page.tsx\nblog/2/page.tsx\nblog/3/page.tsx",
+      "after": "blog/[id]/page.tsx"
+    },
+    "alternatives": [
+      {
+        "hook": "No *page* per blog post",
+        "spoken": "[urgent] You don't need a page per blog post anymore.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "A hundred posts, *one* file",
+        "spoken": "[confident] Picture a hundred blog posts sharing one single page file.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Square brackets build *dynamic* routes",
+        "spoken": "[excited] Wrap a folder in brackets to match any url.",
+        "hook_type": "shortcut"
+      }
+    ],
+    "points": [
+      {
+        "title": "The id folder",
+        "body": "Square brackets match any url value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "folder structure",
+            "code": "app/\n  blog/\n    [id]/\n      page.tsx",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Read the param",
+        "body": "params.id reads that matched value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "app/blog/[id]/page.tsx",
+            "code": "export default function Page({\n  params\n}) {\n  const { id } = params\n  return <h1>Post {id}</h1>\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One file, everywhere",
+        "body": "Every blog id renders from one file",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "every id, one file",
+            "code": "/blog/1 -> Post 1\n/blog/2 -> Post 2\n/blog/42 -> Post 42",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which of your pages could become *one* dynamic route?",
+    "caption": "Next.js dynamic routes explained for beginners\nOne folder named [id] handles every blog post url\nWhich page in your project could become one dynamic route? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#webdev",
+      "#javascript",
+      "#reactjs"
+    ],
+    "voiceover": [
+      "[fired up] Hardcoding every blog url breaks the moment your content grows.",
+      "[curious] That bracket folder name isn't literal, it's dynamic.",
+      "[confident] Params dot id hands you that exact value inside.",
+      "[excited] One file now renders every single post you have.",
+      "[warm, curious] Where could one dynamic route replace your copy pasted pages?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 4,
+    "posted_at": "2026-10-15T20:00:55+00:00",
+    "media_id": "17998839947820355",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is only a text hook with no code, diff, or screenshot proof visible beneath it, and is mostly empty."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3
   }
 ]
