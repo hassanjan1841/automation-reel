@@ -5736,5 +5736,151 @@
     ],
     "slot": 3,
     "seconds": 16.4
+  },
+  {
+    "id": 74,
+    "style": "dark",
+    "payoff": "Cache-Control: no-cache still caches the response and revalidates with If-None-Match (usually a 304) before reuse; no-store is what skips caching entirely.",
+    "kicker": "Myth vs fact #4",
+    "hook": "*no-cache* still caches it",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "cache-control.http",
+      "language": "http",
+      "code": "Cache-Control: no-cache\nCache-Control: no-store\nCache-Control: max-age=3600",
+      "highlight": [
+        1,
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *no-cache* header isn't that",
+        "spoken": "[urgent] Your no-cache header isn't blocking caching like you think. (break) [knowing] It still saves a copy.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Empty cache assumed, *full copy* found",
+        "spoken": "[surprised] You'd expect an empty cache here. (break) [amused] But the browser kept a full copy.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "I checked: *no-cache* still caches",
+        "spoken": "[confident] I actually tested the no-cache header myself. (break) [sharp] It still stored a cached copy.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "The common myth",
+        "body": "No-cache blocks all caching, right?",
+        "visual": [
+          {
+            "type": "code",
+            "title": "assumption.http",
+            "language": "http",
+            "code": "// what devs assume:\nCache-Control: no-cache\n// = never cache this",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real meaning",
+        "body": "It caches, then checks first",
+        "visual": [
+          {
+            "type": "inspect",
+            "title": "Cache-Control",
+            "language": "http",
+            "code": "Cache-Control: no-cache\nCache-Control: no-store",
+            "marks": [
+              {
+                "line": 1,
+                "label": "Caches, revalidates"
+              },
+              {
+                "line": 2,
+                "label": "Never stores a copy"
+              }
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "curl -I https://developer.mozilla.org"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof: still cached",
+        "body": "304 reuses the stored file",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "curl -I example.com",
+              "curl -I -H 'If-None-Match:x' example.com"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "response.http",
+            "language": "http",
+            "code": "HTTP/1.1 304 Not Modified\nETag: \"a1b2c3\"",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "What's your *cache* header set to right now?",
+    "caption": "HTTP Cache-Control: no-cache vs no-store explained\nThe header doesn't do what most devs think.\nWhat does your cache header actually do? 👇",
+    "hashtags": [
+      "#http",
+      "#caching",
+      "#webdev",
+      "#frontend"
+    ],
+    "voiceover": [
+      "[fired up] You think no-cache stops your browser from caching, (break) [knowing] but it still caches it anyway.",
+      "[exasperated] Most developers think it disables caching entirely.",
+      "[confident and fast] It stores the file, then rechecks with the server.",
+      "[excited] That's the three oh four reusing your cache.",
+      "[warm, curious] So what does your cache header actually do?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 4,
+    "posted_at": "2026-10-15T12:00:44+00:00",
+    "media_id": "18148241026576321",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "inspect",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.7
   }
 ]
