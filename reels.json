@@ -6006,5 +6006,133 @@
     ],
     "slot": 3,
     "seconds": 20.3
+  },
+  {
+    "id": 76,
+    "style": "dark",
+    "payoff": "=== always returns false when types differ, while == quietly converts types first, so 0 == '0' and even [] == ![] both return true.",
+    "kicker": "Myth vs fact #5",
+    "hook": "Your *if* statement might lie",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "quirks.js",
+      "code": "0 == '0'        // true\n'' == 0         // true\n[] == ![]       // true",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "== *lies* about equality",
+        "spoken": "[grinning, punchy] Double equals in JavaScript secretly changes type before comparing values.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "== then *===*: watch it flip",
+        "hook_type": "before_after",
+        "spoken": "[fired up] Watch this exact comparison flip from true to false instantly."
+      },
+      {
+        "hook": "We tested *==* on weird values",
+        "hook_type": "test",
+        "spoken": "[urgent] We tested odd comparisons, and double equals said they matched."
+      }
+    ],
+    "points": [
+      {
+        "title": "Type coercion",
+        "body": "== converts types before comparing",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loose.js",
+            "code": "0 == '0'           // true\n'' == 0            // true\nnull == undefined  // true",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Strict comparison",
+        "body": "=== checks type and value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "strict.js",
+            "code": "0 === '0'             // false\n'' === 0              // false\nnull === undefined    // false",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The classic trap",
+        "body": "Empty array equals its negation",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "trap.js",
+            "code": "[] == ![]      // true\n[] === ![]     // false",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *trusts* double equals?",
+    "caption": "Double equals vs triple equals in JavaScript\nType coercion makes == behave in surprising ways\nWhich weird comparison surprised you most? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#coding",
+      "#programming"
+    ],
+    "voiceover": [
+      "[fired up] Your if statement can pass even when the values differ.",
+      "[exasperated] It quietly converts types, so zero equals empty string.",
+      "[confident and fast] Triple equals skips that trick and checks type too.",
+      "[mock outraged] Even an empty array equals its own negation here.",
+      "[warm, curious] Send this to the dev who trusts double equals."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 5,
+    "posted_at": "2026-10-16T12:00:34+00:00",
+    "media_id": "18175034788453334",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 16.1
   }
 ]
