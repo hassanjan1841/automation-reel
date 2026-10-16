@@ -6134,5 +6134,157 @@
     ],
     "slot": 1,
     "seconds": 16.1
+  },
+  {
+    "id": 77,
+    "style": "light",
+    "payoff": "A child component re-renders every time its parent re-renders, even if its own props never change, unless you wrap it in React.memo.",
+    "kicker": "Myth vs fact #6",
+    "hook": "Your *child* won't stop rendering",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "stepper",
+      "language": "jsx",
+      "code": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+      "trace": [
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "1"
+            }
+          ],
+          "out": "child render"
+        },
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "2"
+            }
+          ],
+          "out": "child render"
+        },
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "3"
+            }
+          ],
+          "out": "child render"
+        }
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Same *props*, still re-renders",
+        "spoken": "[urgent] A child component can re-render even when its props never [emphasis] change at all.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Plain child, then *memoized*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Watch the same child component stop rendering once we [confident] wrap it in memo."
+      },
+      {
+        "hook": "Three clicks, *one* log line",
+        "hook_type": "test",
+        "spoken": "[fired up] We clicked the button three times and compared [confident] renders with and without memo."
+      }
+    ],
+    "points": [
+      {
+        "title": "Zero props passed",
+        "body": "Child never receives any props",
+        "visual": [
+          {
+            "type": "code",
+            "title": "Child.jsx",
+            "language": "jsx",
+            "code": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Parent re-renders",
+        "body": "State updates re-render the child too",
+        "visual": [
+          {
+            "type": "code",
+            "title": "Parent.jsx",
+            "language": "jsx",
+            "code": "function Parent() {\n  const [n, setN] = useState(0)\n  return (\n    <>\n      <button onClick={bump}>+</button>\n      <Child />\n    </>\n  )\n}\nfunction bump() { setN(n => n+1) }",
+            "highlight": [
+              5,
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Memo stops renders",
+        "body": "React.memo skips unneeded re-renders",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "Child.jsx",
+            "language": "jsx",
+            "before": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+            "after": "const Child = memo(() => {\n  console.log(\"child render\")\n  return <p>Hi</p>\n})"
+          }
+        ]
+      }
+    ],
+    "cta": "Which *component* in your app re-renders too often?",
+    "caption": "React re-renders and React.memo explained\nA child can re-render even when its props never change\nWhich component in your app re-renders too often? 👇",
+    "hashtags": [
+      "#react",
+      "#reactjs",
+      "#javascript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Your child component keeps rendering even though its props never [emphasis] changed at all.",
+      "[knowing] This child receives zero props, yet it rerenders.",
+      "[fast] Every parent state update re-renders its children too.",
+      "[confident] Wrap it in react dot memo. (break) [satisfied] rendering finally stops.",
+      "[warm, curious] Which component re-renders more than you expect?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 6,
+    "posted_at": "2026-10-16T20:01:32+00:00",
+    "media_id": "18017067359958148",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The proof (Variables/Console panels) is still empty on frame 0, so the claim isn't backed by visible evidence yet."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stepper",
+      "code",
+      "code",
+      "diff",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.3
   }
 ]
