@@ -6286,5 +6286,193 @@
     ],
     "slot": 3,
     "seconds": 19.3
+  },
+  {
+    "id": 78,
+    "style": "dark",
+    "payoff": "await only pauses the async function it's in — the rest of your program, like a console.log right after you call it, keeps running on the event loop while you wait.",
+    "kicker": "Myth vs fact #7",
+    "hook": "*await* doesn't pause everything",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "run.js",
+      "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "*Await* isn't pausing anything",
+        "hook_type": "problem",
+        "spoken": "[alert] Here's the problem: await doesn't pause your whole program, (break) [deadpan] just one function."
+      },
+      {
+        "hook": "Expected order vs *real* order",
+        "hook_type": "before_after",
+        "spoken": "[fired up] You'd expect await to block everything, (break) [surprised] but the real order says otherwise."
+      },
+      {
+        "hook": "I *ran* this async code",
+        "hook_type": "test",
+        "spoken": "[fired up] I actually ran this async code, (break) [surprised] and the print order surprised me."
+      }
+    ],
+    "points": [
+      {
+        "title": "The myth",
+        "body": "Await blocks your whole app",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "What really happens",
+        "body": "Other code keeps running",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "trace": [
+              {
+                "line": 2,
+                "vars": [],
+                "out": "A"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "run()",
+                    "value": "paused"
+                  }
+                ]
+              },
+              {
+                "line": 7,
+                "vars": [],
+                "out": "B"
+              },
+              {
+                "line": 4,
+                "vars": [],
+                "out": "C"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real run proof",
+        "body": "Node confirms the order",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "index.js",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "index.js"
+              },
+              {
+                "do": "type",
+                "text": "function task() {\n  return new Promise(r => setTimeout(r, 0))\n}\n\nasync function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\n\nrun()\nconsole.log(\"B\")"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node index.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 1
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              2,
+              7,
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Has await ever *tripped* up your code?",
+    "caption": "Async await explained: what it actually pauses in JavaScript\nMost devs get this wrong, here's the real execution order\nWhat's one async bug that confused you? 👇",
+    "hashtags": [
+      "#javascript",
+      "#asyncawait",
+      "#eventloop",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Most devs think await freezes your whole running app.",
+      "[knowing] It feels like everything halts.",
+      "[confident] Only that function actually pauses.",
+      "[excited] Run it in Node: A prints first, (break) [confident] then B logs right after, (break) [matter-of-fact] C finally waits for await to finish.",
+      "[warm, curious] Has await tripped you up?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 7,
+    "posted_at": "2026-10-18T12:00:49+00:00",
+    "media_id": "17990788119098710",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "ide",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
   }
 ]
