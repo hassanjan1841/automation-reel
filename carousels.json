@@ -150,5 +150,83 @@
     "dm_guide": "Install: npm install stripe. 1) In the Stripe dashboard, create a Product and Price, copy the price ID. 2) Server: const session = await stripe.checkout.sessions.create({mode:'payment', line_items:[{price:'price_xxx', quantity:1}], success_url, cancel_url}); then redirect to session.url. 3) Verify payment server-side: run `stripe listen --forward-to localhost:3000/webhook` (Stripe CLI), check event.type === 'checkout.session.completed' before granting access. Full docs: https://docs.stripe.com/checkout/quickstart",
     "posted_at": "2026-10-11T16:12:25+00:00",
     "media_id": "18117846917033595"
+  },
+  {
+    "caption": "How to write a freelance proposal that wins the job\nMost proposals lose before the client finishes reading them.\nFix the structure, not your resume.\nWhat's the last line of your best proposal? 👇",
+    "dm_guide": "Proposal structure that gets replies: 1) Restate their exact problem in one line, skip your bio entirely. 2) Give a price range anchored to scope, not hours worked. 3) End with one next step only, something like \"Free for a 15 min call Tuesday or Wednesday?\" Keep the whole thing to one page covering just problem, plan, price. Send it within 24 hours of talking to them. Skip generic templates, rewrite the opening line for every client so it names their actual problem.",
+    "dm_keyword": "PROPOSAL",
+    "hashtags": [
+      "#freelancedeveloper",
+      "#clientwork",
+      "#webdevfreelance",
+      "#freelancing",
+      "#proposaltips"
+    ],
+    "question": "What's the last line of your best proposal?",
+    "slides": [
+      {
+        "heading": "The proposal that gets ignored",
+        "alt": "A code block shows a generic freelance proposal opening with the developer's bio and ending with let me know your thoughts.",
+        "code": "Hi, I'm a full-stack dev with\n5 years experience. I'd love\nto help with your project.\nLet me know your thoughts!",
+        "language": "text"
+      },
+      {
+        "heading": "The proposal that gets replies",
+        "alt": "A code block shows a rewritten proposal naming the client's specific problem, a price range, and a request for a short call.",
+        "code": "Your [specific problem] costs\nyou time every week. I'll fix\nit in 1 week, $800-1200.\nFree for a 15 min call Tue?",
+        "language": "text"
+      },
+      {
+        "heading": "Open with their problem",
+        "points": [
+          "Restate their exact goal in one line",
+          "Skip your bio entirely",
+          "Prove you listened before you pitch"
+        ],
+        "alt": "Slide explaining to open a proposal by restating the client's exact problem instead of a personal bio."
+      },
+      {
+        "heading": "Price as a range",
+        "points": [
+          "Give a range, not one number",
+          "Anchor the high number first",
+          "Tie it to scope, not hours"
+        ],
+        "alt": "Slide showing how to present a price as a scope-based range instead of a single hourly rate."
+      },
+      {
+        "heading": "One clear next step",
+        "points": [
+          "Ask for a 15 minute call",
+          "Never end with let me know",
+          "Make saying yes effortless"
+        ],
+        "alt": "Slide recommending every proposal end with a request for a short call instead of an open ended question."
+      },
+      {
+        "heading": "Keep it to one page",
+        "points": [
+          "Cut anything they can Google",
+          "Three sections only: problem, plan, price",
+          "Long proposals get skimmed, not read"
+        ],
+        "alt": "Slide advising freelance proposals stay one page covering only the problem, the plan, and the price."
+      },
+      {
+        "heading": "Send within 24 hours",
+        "points": [
+          "Speed signals you want the work",
+          "Late replies lose to faster ones",
+          "A template saves you the time"
+        ],
+        "alt": "Slide noting that sending a proposal within 24 hours wins more freelance work than a slower, polished one."
+      }
+    ],
+    "style": "dark",
+    "subtitle": "The one page structure clients actually reply to",
+    "takeaway": "One page. One price. One next step.",
+    "title": "Write a proposal that wins the job",
+    "posted_at": "2026-10-18T13:49:04+00:00",
+    "media_id": "17948146917068330"
   }
 ]
