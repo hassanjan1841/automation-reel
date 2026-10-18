@@ -6474,5 +6474,143 @@
     ],
     "slot": 1,
     "seconds": 19.0
+  },
+  {
+    "id": 79,
+    "style": "light",
+    "payoff": "Supabase's select('*, users(name)') loads a post and its author in one call because Postgres can join; Firestore needs two separate reads because it has no joins at all.",
+    "kicker": "X vs Y #3",
+    "hook": "Only one can *join*",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "title": "supabase.js",
+      "language": "js",
+      "code": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Firebase doesn't do *joins*",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Many devs assume Firebase can join data like SQL. [deadpan] It can't."
+      },
+      {
+        "hook": "Two backends, two *data models*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Supabase and Firebase handle the exact same job. (break) [deadpan] Opposite data models though."
+      },
+      {
+        "hook": "Your backend pick *locks you in*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Choosing Supabase or Firebase locks you in fast. [serious, fast] Your queries differ completely."
+      }
+    ],
+    "points": [
+      {
+        "title": "Different data models",
+        "body": "Postgres tables versus NoSQL documents",
+        "visual": [
+          {
+            "type": "code",
+            "title": "schema.sql",
+            "language": "sql",
+            "code": "create table posts (\n  id uuid primary key,\n  user_id uuid references users(id)\n);",
+            "highlight": [
+              3
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://firebase.google.com/docs/firestore",
+            "find": "NoSQL, document-oriented database"
+          }
+        ]
+      },
+      {
+        "title": "One query joins",
+        "body": "Supabase joins tables in one request",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node fetchPost.js",
+            "output": [
+              "[",
+              "  { id: 1, title: 'Hello',",
+              "    users: { name: 'Jo' } }",
+              "]"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "fetchPost.js",
+            "language": "js",
+            "before": "const postSnap = await getDoc(postRef)\nconst post = postSnap.data()\nconst userSnap = await getDoc(userRef)\nconst user = userSnap.data()",
+            "after": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')"
+          }
+        ]
+      },
+      {
+        "title": "Offline-first sync",
+        "body": "Firebase caches data for offline use",
+        "visual": [
+          {
+            "type": "code",
+            "title": "listen.js",
+            "language": "js",
+            "code": "import {\n  initializeFirestore,\n  persistentLocalCache\n} from 'firebase/firestore'\n\nconst db = initializeFirestore(app, {\n  localCache: persistentLocalCache()\n})",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which one powers your *current* project?",
+    "caption": "Supabase vs Firebase for your next backend\nSupabase for SQL joins, Firebase for offline-first realtime apps\nWhich one are you building with right now? 👇",
+    "hashtags": [
+      "#supabase",
+      "#firebase",
+      "#postgres",
+      "#webdev"
+    ],
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Supabase and Firebase seem similar. (break) [knowing] They store your data in opposite ways.",
+      "[confident] One uses real SQL tables and relations.",
+      "[excited] Watch one query pull a post with its author.",
+      "[serious, fast] Firebase still wins for offline, realtime mobile apps.",
+      "[warm, curious] So which setup are you shipping with these days?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 3,
+    "posted_at": "2026-10-18T20:00:43+00:00",
+    "media_id": "17907584355571785",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only demonstrates the Supabase one-query join; it never shows Firestore needing two separate reads to get a post and its author, so half the promised payoff is never proven on screen."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "outputmap",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.6
   }
 ]
