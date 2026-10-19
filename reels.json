@@ -6792,5 +6792,140 @@
     ],
     "slot": 1,
     "seconds": 19.1
+  },
+  {
+    "id": 81,
+    "style": "light",
+    "payoff": "console.log(0.1 + 0.2 === 0.3) prints false, because binary can't store 0.1 exactly, so you compare with a small tolerance instead of ===",
+    "kicker": "Explained #4",
+    "hook": "*0.1 + 0.2* isn't 0.3",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "title": "math.js",
+      "language": "js",
+      "code": "console.log(0.1 + 0.2 === 0.3);",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *===* check can lie",
+        "spoken": "[fired up] Your equality check can silently fail on simple decimal math. [knowing] Here's the real output.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Decimal math *breaks* in JS",
+        "spoken": "[urgent] Adding point one and point two in JavaScript breaks [knowing] the math you'd expect.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Exact sum, then *weird* decimal",
+        "spoken": "[grinning, punchy] You'd expect zero point three exactly, but JavaScript prints something [amused] totally different. Watch.",
+        "hook_type": "before_after"
+      }
+    ],
+    "points": [
+      {
+        "title": "Binary math",
+        "body": "Binary storage can't hold 0.1 exactly",
+        "visual": [
+          {
+            "type": "code",
+            "title": "sum.js",
+            "language": "js",
+            "code": "let sum = 0.1 + 0.2;\nconsole.log(sum);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Guess it",
+        "body": "True or false: does it match?",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "console.log(0.1 + 0.2 === 0.3);",
+            "choices": [
+              "true",
+              "false"
+            ],
+            "output": [
+              "false"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "check.js",
+            "language": "js",
+            "code": "console.log(0.1 + 0.2 === 0.3);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Safe compare",
+        "body": "Swap equals for a tolerance check",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "fix.js",
+            "language": "js",
+            "before": "if (0.1 + 0.2 === 0.3) {\n  console.log(\"equal\");\n}",
+            "after": "if (Math.abs(0.1+0.2-0.3) < 1e-9) {\n  console.log(\"equal\");\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Has *floating-point* math broken your code?",
+    "caption": "Floating point math in JavaScript\n0.1 + 0.2 is not 0.3, and here's the real output\nHas this ever broken your code? 👇",
+    "hashtags": [
+      "#javascript",
+      "#floatingpoint",
+      "#webdevelopment",
+      "#codingtips"
+    ],
+    "voiceover": [
+      "[fired up] Quick test: point one plus point two should equal [knowing] point three, right?",
+      "[exasperated] Binary can't store point one exactly.",
+      "[knowing] So that equals check actually returns false.",
+      "[confident and fast] Use a tiny tolerance instead of exact equals.",
+      "[warm, curious] Has floating point math broken your code before?"
+    ],
+    "reveal": 2,
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 4,
+    "posted_at": "2026-10-19T20:01:25+00:00",
+    "media_id": "18347170456268413",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "diff",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.8
   }
 ]
