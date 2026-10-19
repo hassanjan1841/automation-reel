@@ -158,5 +158,15 @@
     "evidence": "pillar ai (5 reels) beat freelance (8 reels): skip rate +8.5 points; pillar timely (9 reels) beat freelance (8 reels): skip rate +6.8 points",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 17,
+    "text": "Myth vs fact reels average skip_vs_usual -12.4 and watched_vs_usual +0.081 (6 reels), versus Freelance playbook's +8.0 and -0.037 (6 reels); favor myth-busting topics over freelance-advice topics.",
+    "since": "2026-10-19",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "series Myth vs fact (6 reels) beat Freelance playbook (6 reels): skip rate +20.4 points",
+    "verdict": "",
+    "checked": ""
   }
 ]
