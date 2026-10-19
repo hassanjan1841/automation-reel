@@ -329,7 +329,7 @@ def pick(reels, candidates, perf, model=None):
         + ('Quote visuals of real posts are allowed today.\n\n' if quotes_allowed(reels)
            else 'Quote visuals are NOT allowed today (one was used this week).\n\n')
         + generate.three_d_note() + '\n\n'
-        + (generate.experiment_note() + '\n\n' if generate.experiment_note() else '')
+        + (generate.experiment_note(news=True) + '\n\n' if generate.experiment_note(news=True) else '')
         + f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
@@ -385,7 +385,7 @@ def timely_reel(reels, perf=None):
         return None
     options = sorted(pick(reels, candidates, performance() if perf is None else perf)['options'], key=lambda o: -o['reach_score'])
     used = {u for r in reels for u in r.get('sources', [])}
-    test = generate.experiment_today()
+    test = generate.experiment_today(news=True)
     tested = {'test': test} if test else {}
     hooks = {generate.norm(r['hook']) for r in reels}
     for i, option in enumerate(options, 1):

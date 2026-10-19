@@ -654,6 +654,24 @@ EXPERIMENTS = {
                   lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),
                   'voiceover line 5 must ask the viewer to send the reel to a developer who needs it'),
     },
+    # 2026-10-19: the creator asked whether AI coding tools give viewers more value than famous basics. Our five setup
+    # tutorials about AI tools got about the usual views and no shares; this tests the topic in the shape that works
+    # (a myth proven on screen), with only verified facts (ai_facts.md). News reels sit it out (EVERGREEN_ONLY).
+    'topic': {
+        'basics': ('The topic is a famous web development basic (the language, the browser, HTTP, git, databases, '
+                   'CSS), not an AI tool and not how AI models behave.',
+                   lambda r: not AI_TOPIC.search(topic_text(r)),
+                   'the topic must be a famous web development basic, not an AI tool or AI model'),
+        'ai_tool': ('The topic is an AI coding tool or how AI models behave, taken only from the verified facts '
+                    'given with this test: a commonly misunderstood fact a developer can use today, proven on screen '
+                    'with the real config, a real command or the docs line itself. A claim about a product is what '
+                    'its own docs say ("GitHub\'s docs say ..."). Put the official pages you used in "sources". '
+                    'No model names or version numbers (they go stale). Never a setup tutorial, a list of tools or a '
+                    'promotion.',
+                    lambda r: bool(AI_TOPIC.search(topic_text(r))) and fact_sources(r),
+                    'the topic must be an AI coding tool or AI model fact from the verified list, with its official '
+                    'pages (from that list) in "sources"'),
+    },
     'length': {
         'short': ('Keep the voiceover short: 36 to 40 words in total.',
                   lambda r: 36 <= vo_words(r) <= 40, 'the voiceover must have 36 to 40 words'),
@@ -669,27 +687,64 @@ EXPERIMENTS = {
 }
 
 
+# Words that make a reel about AI tools or models (topic test). Cursor is matched only capitalised: a SQL or CSS
+# cursor is a web basic.
+AI_TOPIC = re.compile(r'(?i:\b(?:claude(?:\.md)?|copilot|codex|chatgpt|gpt[-\d.]*|gemini|llms?|mcp|ai|agents\.md|'
+                      r'subagents?|coding agents?|tokenizers?|prompts?)\b|\.claudeignore\b)|\bCursor\b')
+AI_FACTS = render.ROOT / 'ai_facts.md'
+EVERGREEN_ONLY = ('topic',)  # tests news reels sit out: the news is about whatever happened that day
+
+
+def topic_text(reel):
+    """The words that say what a reel is about: hook, payoff, points, voiceover and caption (not its code)."""
+    parts = [reel.get('hook', ''), reel.get('payoff', ''), reel.get('caption', '')]
+    parts += [p.get('title', '') + ' ' + p.get('body', '') for p in reel.get('points', [])]
+    return ' '.join(parts + [strip_cues(l) for l in reel.get('voiceover') or []])
+
+
+def ai_facts():
+    """The verified AI-tool facts (ai_facts.md), or an empty string."""
+    return AI_FACTS.read_text().strip() if AI_FACTS.exists() else ''
+
+
+def fact_pages():
+    """The official pages ai_facts.md cites: links outside `code`, so a quoted example command's URL is never one."""
+    return [u.rstrip('.,);') for u in re.findall(r'https://\S+', re.sub(r'`[^`]*`', '', ai_facts()))]
+
+
+def fact_sources(reel):
+    """The reel lists its sources and every one is an official page from ai_facts.md."""
+    known = set(fact_pages())
+    sources = reel.get('sources') or []
+    return bool(sources) and all(s in known for s in sources)
+
+
 def vo_words(reel):
     return sum(words(strip_cues(l)) for l in reel.get('voiceover') or [])
 
 
-def experiment_today(day=None):
+def experiment_today(day=None, news=False):
     """{'name', 'arm'} of the running test for this reel, or None. EXPERIMENT=off stops it, EXPERIMENT=<name>
-    forces a test (for trying it out)."""
+    forces a test (for trying it out). A news reel (news=True) sits out the tests in EVERGREEN_ONLY."""
     forced = os.environ.get('EXPERIMENT', '').strip()
     if forced == 'off':
         return None
     name = forced if forced in EXPERIMENTS else ((history.experiments().get('active') or {}).get('name'))
-    if name not in EXPERIMENTS:
+    if name not in EXPERIMENTS or (news and name in EVERGREEN_ONLY):
         return None
     day = day or datetime.now(timezone.utc).date()
     arms = sorted(EXPERIMENTS[name])
     return {'name': name, 'arm': random.Random(f'test-{name}-{day.isoformat()}-{slot()}').choice(arms)}
 
 
-def experiment_note():
-    test = experiment_today()
-    return f"This week's test, follow it exactly: {EXPERIMENTS[test['name']][test['arm']][0]}" if test else ''
+def experiment_note(news=False):
+    test = experiment_today(news=news)
+    if not test:
+        return ''
+    note = f"This week's test, follow it exactly: {EXPERIMENTS[test['name']][test['arm']][0]}"
+    if test == {'name': 'topic', 'arm': 'ai_tool'}:
+        note += '\n\nThe verified facts (use only these; quote the docs line as written):\n' + ai_facts()
+    return note
 
 
 def experiment_errors(reel):
@@ -1125,6 +1180,7 @@ SCHEMA = {
                     'cta': {'type': 'string'},
                     'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
                     'reveal': {'type': 'integer'},
+                    'sources': {'type': 'array', 'items': {'type': 'string'}},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
@@ -1159,6 +1215,8 @@ Field rules:
   starts with a high-energy [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
   reviewer picks the strongest of the four, so make every one good and honest.
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
+- sources: leave out, unless this week's test asks for them: then the official pages behind the reel's claims,
+  exactly as given.
 - hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
   *public*", "Stale *cache* after every save"). The spoken line 1 carries the full sentence.
   Wrap the key word or two in *asterisks* to highlight them in the accent color.
@@ -1605,6 +1663,9 @@ def today(reels, performance=()):
     test = experiment_today()
     if test:
         parts.append(experiment_note())
+    if 'AI coding tool' in learned() and test != {'name': 'topic', 'arm': 'ai_tool'}:
+        # The topic test's AI option became a kept rule: the writer still needs the facts it may use.
+        parts.append('The verified AI-tool facts (use only these; quote the docs line as written):\n' + ai_facts())
     context = '\n\n'.join(parts)
     new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context, test=test)
     if not new and test:

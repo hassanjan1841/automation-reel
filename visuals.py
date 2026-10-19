@@ -25,6 +25,7 @@ fit); the slide then falls back to its body text.
 import hashlib
 import json
 import math
+import re
 import subprocess
 import urllib.request
 
@@ -943,6 +944,15 @@ class Build(Card):
 
 # ---------- screenshot ----------
 
+def find_variants(find):
+    """The text to outline as typed, then with typographic quotes and as plain quotes: docs pages print can't as
+    can’t (2026-10-19: a Claude Code docs line was never found, so the proof slide fell back to text)."""
+    curly = re.sub(r'(?<=\w)\'(?=\w)', '\u2019', find)
+    curly = re.sub(r'"([^"]*)"', '\u201c\\1\u201d', curly)
+    plain = find.replace('\u2019', "'").replace('\u2018', "'").replace('\u201c', '"').replace('\u201d', '"')
+    return list(dict.fromkeys([find, curly, plain]))
+
+
 def capture(url, find):
     """Phone-width screenshot scrolled to the text `find`, with that element outlined in the accent color.
     Returns the image and the outlined box (x0, y0, x1, y1) in image pixels. Cached per URL and text."""
@@ -964,7 +974,8 @@ def capture(url, find):
                 if not resp or resp.status >= 400:
                     raise RuntimeError(f'HTTP {resp.status if resp else "no response"}')
                 page.wait_for_timeout(1000)
-                target = page.get_by_text(find, exact=False).first
+                spellings = [page.get_by_text(f, exact=False) for f in find_variants(find)]
+                target = next((t for t in spellings if t.count()), spellings[0]).first
                 target.wait_for(state='visible', timeout=8000)
                 overflows = target.evaluate(
                     'el => { for (let n = el; n && n !== document.body; n = n.parentElement)'

@@ -56,6 +56,9 @@ Judge each frame:
   sources support are honest even if dramatic. A visual that does not match what is said is not dishonest:
   mark visual_ok false instead. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.
+The rounded pill in the lower part of the frame is a live caption: it shows one to three words of the spoken line
+at a time, so read it as a fragment of the spoken line given for that slide, never as a claim of its own (a frame
+of "never lets allow win" can show just "allow win").
 Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false.
 
 Then judge the reel as a whole, by the playbook below:
