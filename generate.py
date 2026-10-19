@@ -42,10 +42,17 @@ PILLARS = {
     1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
                   '(diff or ide recording)', 'Dev mistake'),
     2: ('relatable', 'Myth vs fact: one thing most developers believe about a famous basic that is wrong or half '
-                     'true (CORS, JWT, var vs let, == vs ===, async and await, git reset, localStorage, HTTP caching, '
-                     'SQL indexes, React re-renders, environment variables), proven on screen with real code or its '
-                     'real output, then the one-line truth to remember. A topic every web developer has met, not a '
-                     'niche setup', 'Myth vs fact'),
+                     'true (CORS, JWT, var vs let, == vs ===, async and await, setTimeout and the event loop, '
+                     'Promise.all, 0.1 + 0.2, typeof null, Array.sort, git reset, localStorage, cookies, HTTP '
+                     'caching, SQL indexes, React re-renders, useEffect, environment variables), proven on screen with '
+                     'real code or its real output, then the one-line truth to remember. A topic every web developer '
+                     'has met, not a niche setup. The hook is a statement that names the thing and flips what people '
+                     'assume, like "Your CORS header isn\'t *security*" or "*await* doesn\'t pause everything": one '
+                     'highlighted word, never a question. The hook_visual is code: when the myth is about what code '
+                     'does, a short puzzle of 3 to 8 lines whose real output most developers guess wrong (the order '
+                     'of the logs, a surprising value); line 1 says what most devs expect, and the point that shows '
+                     'the real output (a stepper, terminal or outputmap, with "reveal") proves it. The output shown '
+                     'must be exactly what the code really prints', 'Myth vs fact'),
     3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
                      'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
@@ -547,14 +554,18 @@ EXTRA_FORMATS = {
                        'finished code on screen long enough to screenshot', 'Build it live'),
 }
 # Myth is listed twice, so it comes up on about a third of days (the main format, see TEACH). Build it live left the
-# rotation (60 views); REEL_FORMAT=build still forces it.
+# rotation (60 views), and so did the beginner series "Next.js from zero" (2026-10-19: 86% skip over 4 reels);
+# Explained took its place (CORS, 1,107 views, and JWT, 172, were Explained reels). REEL_FORMAT=build or series
+# still forces those.
 EXTRA_FORMATS['myth'] = PILLARS[2]
-SLOT3_FORMATS = ('myth', 'myth', 'news', 'trick', 'versus', 'series')
+EXTRA_FORMATS['explained'] = PILLARS[4]
+MYTH = PILLARS[2][2]
+SLOT3_FORMATS = ('myth', 'myth', 'news', 'trick', 'versus', 'explained')
 
 
 def slot():
     """Which of the day's reels this run writes: 1 (Myth vs fact), 2 (off by default: explained, AI, ranked or a
-    dev mistake) or 3 (a myth, news, a trick, X vs Y or the beginner series)."""
+    dev mistake) or 3 (a myth, news, a trick, X vs Y or an explainer)."""
     value = os.environ.get('SLOT', '').strip()
     return int(value) if value in ('2', '3') else 1
 
@@ -893,6 +904,37 @@ def dm_errors(post, offer):
     return errors
 
 
+HASH_COMMENTS = {'python', 'py', 'bash', 'sh', 'shell', 'zsh', 'console', 'yaml', 'yml', 'ruby', 'rb', 'toml',
+                 'dockerfile', 'env', 'dotenv', 'ini', 'conf', 'makefile', 'r', 'perl'}
+DASH_COMMENTS = {'sql', 'postgres', 'postgresql', 'psql', 'plpgsql', 'mysql', 'sqlite', 'lua', 'haskell'}
+PROSE = {'', 'text', 'txt', 'plaintext', 'md', 'markdown'}
+
+
+def comment_lines(code, language):
+    """How many of the code's non-empty lines are comments, and how many non-empty lines it has."""
+    language = (language or '').lower()
+    marks = ('//', '/*', '*', '<!--', '{/*') + (('#',) if language in HASH_COMMENTS else ()) \
+        + (('--',) if language in DASH_COMMENTS else ())
+    lines = [l.strip() for l in code.split('\n') if l.strip()]
+    return sum(l.startswith(marks) for l in lines), len(lines)
+
+
+def comment_errors(i, v):
+    """A code card, or either side of a diff, that is mostly comments explains the point in code clothing instead of
+    showing it (2026-10-14, reel 72: an all-comment "after" was rejected and the reel opened on text). Prose (md,
+    text) has no comments to count."""
+    if (v.get('language') or '').lower() in PROSE:
+        return []
+    errors = []
+    for part in (('code',) if v.get('type') == 'code' else ('before', 'after')):
+        found, total = comment_lines(v.get(part) or '', v.get('language'))
+        if total > (1 if part != 'code' else 0) and found * 2 > total:  # a diff side may be one placeholder line
+            name = 'code' if part == 'code' else f'diff "{part}"'
+            errors.append(f'point {i} {name} is mostly comments ({found} of {total} lines): show the real code that '
+                          'proves the point and let the voice explain it')
+    return errors
+
+
 def visual_errors(i, visual):
     """A point's visuals: a list of up to 3 choices, best first, each small enough to read on a phone."""
     if visual is None:
@@ -910,6 +952,8 @@ def visual_errors(i, visual):
         if missing:
             errors.append(f'point {i} names packages that do not exist: {", ".join(missing)}; use the real, '
                           'official package')
+        if kind in ('code', 'diff'):
+            errors += comment_errors(i, v)
         if kind == 'code':
             lines = v.get('code', '').rstrip('\n').split('\n')
             if not v.get('code', '').strip() or not v.get('language'):
@@ -1093,6 +1137,8 @@ Field rules:
 - hook_visual: the proof under the hook from the very first frame: a code, diff, screenshot, morph, stepper or build visual
   showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
+  Prefer code: the few real lines people get wrong. Use a diff only when the change itself is the payoff, and
+  never fill a code or diff card with comments that explain the point (the voice explains; the card shows code).
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
   on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1 with the same rules: it
   starts with a high-energy [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
@@ -1426,11 +1472,27 @@ def repair(reel, errors, rounds=2, extra=None):
     return None if errors else reel
 
 
-def pillar_errors(reel, pillar):
+MYTH_PROOF = ('code', 'stepper')
+
+
+def pillar_errors(reel, pillar, series=None):
     """Rules for freshly written reels: no comment-to-DM offer (2026-10-14: 29 reels offered one, not one keyword
-    comment came in, and they were watched less, 13% against 22%; carousels keep theirs), and a build reel shows a
-    build."""
+    comment came in, and they were watched less, 13% against 22%; carousels keep theirs), a build reel shows a
+    build, and a Myth vs fact reel opens on code under a statement hook with one highlighted word (2026-10-19: its
+    two breakouts, CORS at 1,107 views and await at 1,938, both opened on code under "Your X isn't Y" statements;
+    text-only openings averaged 84% skip, code ones 72%)."""
     errors = []
+    if series == MYTH:
+        if (reel.get('hook_visual') or {}).get('type') not in MYTH_PROOF:
+            errors.append('a Myth vs fact reel opens on the code people get wrong: make hook_visual a code visual '
+                          '(or a stepper), ideally a short snippet whose real output most developers guess wrong')
+        # The finished hook_style test's question option, if it is ever run again, outranks the statement rule.
+        asks = reel.get('test') == {'name': 'hook_style', 'arm': 'question'}
+        for h in [reel.get('hook', '')] + [a.get('hook', '') for a in reel.get('alternatives') or []]:
+            if '?' in h and not asks:
+                errors.append(f'Myth vs fact hooks are statements, never questions: "{h}"')
+            elif len(highlights(h) or []) != 1:
+                errors.append(f'a Myth vs fact hook highlights exactly one word or phrase: "{h}"')
     if reel.get('dm_keyword') or reel.get('dm_guide'):
         errors.append('reels end on a question, not a comment-to-DM offer: drop dm_keyword and dm_guide and make the '
                       'cta and voiceover line 5 a question')
@@ -1461,11 +1523,12 @@ def generate(reels, count, dates=None, context=None, test=None):
         problems, missed = [], todo[len(candidates):]
         for slot, cand in zip(todo, candidates):
             date, (pillar, _) = slot
+            series = pillar_for(date)[2]
             cand = tidy({**cand, **({'test': test} if test else {})})
-            errs = validate(cand) + pillar_errors(cand, pillar)
+            errs = validate(cand) + pillar_errors(cand, pillar, series)
             if errs and norm(cand.get('hook', '')) not in seen:
                 print(f"Repairing {cand.get('hook', '?')!r}: {'; '.join(errs)}")
-                fixed = repair(cand, errs, extra=lambda r: pillar_errors(r, pillar))
+                fixed = repair(cand, errs, extra=lambda r: pillar_errors(r, pillar, series))
                 if fixed:
                     cand, errs = fixed, []
             if norm(cand.get('hook', '')) in seen:
@@ -1683,7 +1746,8 @@ def add_visuals(reels):
 
 
 # Reels posted before the playbook (2026-10-01) have none of these.
-NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out')
+NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out',
+              'mostly comments')
 
 
 def main():

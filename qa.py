@@ -2,8 +2,9 @@
 
 A visual (code, terminal, screenshot) that is irrelevant, unreadable or broken (cookie banner, login wall,
 error page, blank page) is reported so publish.py re-renders that slide with the point's next visual choice (or as text); a rejected hook
-proof is dropped. A dishonest claim (honest=false) stops the post. The frame-0 and payoff checks and other problems
-are returned as warnings.
+proof is dropped (a diff first gets one more try as a code card of its "after"). A diff's frame is its red "before"
+and its green "after" side by side, because its last frame alone shows only the after. A dishonest claim
+(honest=false) stops the post. The frame-0 and payoff checks and other problems are returned as warnings.
 
 Env: CLAUDE_MODEL (optional, defaults to claude-sonnet-5)
 
@@ -81,16 +82,51 @@ def frames(video, slides, folder):
     for i, s in enumerate(slides):
         t = s.start + max(min(1.2, s.end - s.start - 0.3), s.end - s.start - 0.9)
         path = Path(folder) / f'slide-{i}.png'
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(video), '-frames:v', '1',
-                        '-vf', 'scale=540:-1', str(path)], check=True)
+        grab(video, t, path)
+        marked = getattr(s.visual, 'marked', None) if s.visual else None
+        if marked:
+            # A diff ends on its "after" alone; show its red "before" beside it, as one image (before | after). Three
+            # moments of the red stage, the sharpest kept: a camera punch on a spoken word blurs the frame it hits.
+            a, b = (s.start - s.lead + m for m in marked)
+            times = [x for x in (a, (a + b) / 2, b) if s.start <= x < t]
+            shots = []
+            for k, x in enumerate(times):
+                shots.append(Path(folder) / f'slide-{i}-before-{k}.png')
+                grab(video, x, shots[-1])
+            if shots:
+                side_by_side(max(shots, key=sharpness), path, path)
         paths.append(path)
     return paths
+
+
+def grab(video, t, path):
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(video), '-frames:v', '1',
+                    '-vf', 'scale=540:-1', str(path)], check=True)
+
+
+def sharpness(path):
+    """Edge energy of a frame: higher is sharper (motion blur smears the edges)."""
+    import numpy as np
+    from PIL import Image
+    g = np.asarray(Image.open(path).convert('L'), dtype=np.float32)
+    return float(np.abs(np.diff(g, axis=1)).mean() + np.abs(np.diff(g, axis=0)).mean())
+
+
+def side_by_side(left, right, out):
+    from PIL import Image
+    a, b = Image.open(left).convert('RGB'), Image.open(right).convert('RGB')
+    gap = 12
+    img = Image.new('RGB', (a.width + gap + b.width, max(a.height, b.height)), (255, 255, 255))
+    img.paste(a, (0, 0))
+    img.paste(b, (a.width + gap, 0))
+    img.save(out)
 
 
 def describe(visual):
     """What a slide's visual is meant to show, in words for the reviewer."""
     return {'code': 'a code window', 'terminal': 'a terminal typing commands',
-             'diff': 'code before and after (removed lines red, added lines green)',
+             'diff': 'code before and after, shown as two frames side by side: left, the before with its removed '
+                     'lines struck through in red; right, the after with its added lines green',
              'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
              'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
              'ide': 'a real VS Code recording typing and running code',

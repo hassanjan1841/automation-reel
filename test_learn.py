@@ -1351,6 +1351,67 @@ class PlaybookTest(Sandbox):
         self.assertEqual(reel['review']['first_frame'], {'ok': True, 'problem': ''})  # the last review is recorded
 
 
+    def test_a_rejected_diff_proof_comes_back_as_code(self):
+        # 2026-10-19: 12 of 17 diff hooks were dropped and those reels opened on text (84% skip against 72%).
+        reel = {**copy.deepcopy(VALID), 'id': 1,
+                'hook_visual': {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'var a = 1\nuse(a)',
+                                'after': 'const a = 1\nuse(a)'}}
+        slides = [SimpleNamespace(visual=SimpleNamespace(spec=reel['hook_visual']))] + \
+                 [SimpleNamespace(visual=None) for _ in range(4)]
+        reject = {'slides': [{'slide': 0, 'ok': True, 'visual_ok': False, 'honest': True, 'problem': 'no red'}]}
+        rendered = []
+        with mock.patch.object(publish.qa, 'review', side_effect=[reject, reject, {'slides': []}]), \
+                mock.patch.object(publish.render, 'render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v', slides)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            publish.check_visuals(reel, None, 'v', slides)
+        self.assertEqual(rendered[0]['hook_visual'], {'type': 'code', 'code': 'const a = 1\nuse(a)', 'language': 'js',
+                                                      'title': 'a.js', 'highlight': [1]})
+        self.assertEqual(generate.visual_errors('hook', [rendered[0]['hook_visual']]), [])
+        self.assertNotIn('hook_visual', rendered[1])  # the code card rejected too: the hook stands alone
+        self.assertEqual(reel['hook_visual']['type'], 'diff')  # the queue keeps what was written
+        rendered.clear()
+        with mock.patch.object(publish.qa, 'review', side_effect=[reject]), \
+                mock.patch.object(publish.render, 'render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v', slides)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            publish.check_visuals(reel, None, 'v', slides, rounds=1)
+        self.assertNotIn('hook_visual', rendered[0])  # no round left to review a new card: never posted unreviewed
+
+    def test_the_review_sees_a_diff_before_beside_its_after(self):
+        import visuals
+        from PIL import Image
+        states = iter([Image.new('RGB', (400, 200), (c, c, c)) for c in (10, 20, 30)])
+        with mock.patch.object(visuals, 'code_image', side_effect=lambda *a, **k: (next(states), [])), \
+                mock.patch.object(visuals, 'widen', side_effect=lambda box: box):
+            card = visuals.Diff({'before': 'a', 'after': 'b'}, (0, 0, 400, 600), render.THEMES['dark'])
+        card.duration = 6
+        for at in card.marked:
+            self.assertAlmostEqual(card.layer(at)[0].mean(), 20)  # the red "before" stage, start to end
+        self.assertAlmostEqual(card.layer(5.9)[0].mean(), 30)     # what the late frame alone showed
+        import shutil
+        if not shutil.which('ffmpeg'):
+            self.skipTest('ffmpeg is not installed')
+        video = self.tmp / 'v.mp4'
+        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=270x480:rate=10:duration=8',
+                        str(video)], check=True)
+        slides = [SimpleNamespace(start=0, end=4, lead=0.7, visual=card),
+                  SimpleNamespace(start=4, end=8, lead=0, visual=None)]
+        paths = publish.qa.frames(video, slides, self.tmp)
+        self.assertEqual(Image.open(paths[0]).width, 540 * 2 + 12)
+        self.assertEqual(Image.open(paths[1]).width, 540)
+        sharp, soft = self.tmp / 'sharp.png', self.tmp / 'soft.png'
+        Image.open(paths[1]).save(sharp)
+        Image.open(paths[1]).resize((54, 96)).resize((540, 960)).save(soft)
+        self.assertGreater(publish.qa.sharpness(sharp), publish.qa.sharpness(soft))
+
+        def fake_grab(video, at, path):  # the middle "before" moment is the sharp one
+            src = sharp if str(path).endswith('-before-1.png') or 'before' not in str(path) else soft
+            Image.open(src).save(path)
+        with mock.patch.object(publish.qa, 'grab', side_effect=fake_grab):
+            paths = publish.qa.frames(video, slides[:1], self.tmp)
+        left = Image.open(paths[0]).crop((0, 0, 540, 960))
+        self.assertAlmostEqual(np.abs(np.asarray(left, np.float32) - np.asarray(Image.open(sharp), np.float32)).mean(), 0)
+
+
 class ReelFormatTest(Sandbox):
     """What the study of creators with thousands of comments added (2026-10-01): a build visual (the page drawn while
     its CSS is typed), a held beat before a result, a freebie on every how-to, and the hook_pace test."""
@@ -1392,6 +1453,64 @@ class ReelFormatTest(Sandbox):
         self.assertNotIn('build', generate.SLOT3_FORMATS)  # out of the rotation, still possible by hand
         with mock.patch.dict(os.environ, {'SLOT': '3', 'REEL_FORMAT': 'build'}):
             self.assertEqual(generate.pillar_for(date(2026, 10, 6))[2], 'Build it live')
+
+    def test_myth_reels_open_on_code_under_a_statement(self):
+        # 2026-10-19: both breakouts (CORS 1,107 views, await 1,938) were myths opening on code under a statement.
+        myth = generate.MYTH
+        diff = {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'let a = 1', 'after': 'const a = 1'}
+        self.assertEqual(generate.pillar_errors(VALID, 'relatable', myth), [])
+        self.assertIn('opens on the code', ' '.join(generate.pillar_errors({**VALID, 'hook_visual': diff}, 'relatable', myth)))
+        self.assertEqual(generate.pillar_errors({**VALID, 'hook_visual': diff}, 'concept', 'Explained'), [])
+        self.assertIn('never questions', ' '.join(generate.pillar_errors({**VALID, 'hook': QUESTION_HOOK}, 'relatable', myth)))
+        alt = copy.deepcopy(VALID)
+        alt['alternatives'][1]['hook'] = 'Is your *cache* lying?'
+        self.assertIn('never questions', ' '.join(generate.pillar_errors(alt, 'relatable', myth)))  # the judge may pick it
+        two = {**VALID, 'hook': '*Your* cache serves *old* data'}
+        self.assertIn('exactly one', ' '.join(generate.pillar_errors(two, 'relatable', myth)))
+        asked = {**VALID, 'hook': QUESTION_HOOK, 'test': {'name': 'hook_style', 'arm': 'question'}}
+        self.assertEqual(generate.pillar_errors(asked, 'relatable', myth), [])  # a test's question option wins
+
+    def test_generate_holds_the_days_myth_to_its_rules(self):
+        diff = {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'let a = 1', 'after': 'const a = 1'}
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [copy.deepcopy(VALID)]}}),
+                              stderr='')
+        with mock.patch.object(generate, 'ask_claude', lambda *a: [{**copy.deepcopy(VALID), 'hook_visual': diff}]), \
+                mock.patch.object(generate.subprocess, 'run', return_value=out) as run, \
+                mock.patch.dict(os.environ, {'SLOT': '1'}), contextlib.redirect_stdout(io.StringIO()):
+            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # slot 1: Myth vs fact every day
+        self.assertEqual(new[0]['hook_visual'], VALID['hook_visual'])
+        self.assertIn('opens on the code', run.call_args[0][0][2])
+
+    def test_code_cards_that_are_mostly_comments_are_sent_back(self):
+        # Reel 72 (2026-10-14): an all-comment "after" was rejected and the reel opened on text.
+        explain = {'type': 'code', 'language': 'js', 'title': 'a.js', 'code': '// reads are fast\n// writes are slow\nx()'}
+        self.assertIn('mostly comments (2 of 3', ' '.join(generate.visual_errors(1, [explain])))
+        self.assertEqual(generate.visual_errors(1, VALID['points'][0]['visual']), [])
+        self.assertEqual(generate.visual_errors(1, VALID['points'][1]['visual']), [])  # 1 of 2 is not "mostly"
+        sql = {'type': 'diff', 'language': 'sql', 'title': 'i.sql', 'before': 'CREATE INDEX i ON u (email);',
+               'after': '-- every insert\n-- rewrites the index'}
+        self.assertIn('diff "after" is mostly comments', ' '.join(generate.visual_errors(1, [sql])))
+        css = {'type': 'diff', 'language': 'css', 'title': 'a.css', 'before': '/* no styles yet */',
+               'after': '#card {\n  padding: 24px;\n}'}
+        self.assertEqual(generate.visual_errors(1, [css]), [])  # a one-line placeholder; "#card" is a selector
+        prose = {'type': 'code', 'language': 'md', 'title': 'reply.txt', 'code': '# Heading\n# Another'}
+        self.assertEqual(generate.visual_errors(1, [prose]), [])
+        py = {'type': 'code', 'language': 'python', 'title': 'a.py', 'code': '# one\n# two\nprint(1)'}
+        self.assertTrue(generate.visual_errors(1, [py]))
+        bad = copy.deepcopy(VALID)
+        bad['hook_visual'] = explain
+        self.assertIn('hook_visual code is mostly comments', ' '.join(generate.validate(bad)))
+
+    def test_the_evening_rotation_drops_the_beginner_series(self):
+        # 2026-10-19: "Next.js from zero" averaged 86% skip over 4 reels; Explained (CORS, JWT) took its place.
+        days = [date(2026, 10, 1) + timedelta(days=i) for i in range(90)]
+        self.assertNotIn('series', generate.SLOT3_FORMATS)
+        with mock.patch.dict(os.environ, {'SLOT': '3'}):
+            picked = {generate.pillar_for(d)[2] for d in days}
+        self.assertIn('Explained', picked)
+        self.assertNotIn('Next.js from zero', picked)
+        with mock.patch.dict(os.environ, {'SLOT': '3', 'REEL_FORMAT': 'series'}):
+            self.assertEqual(generate.pillar_for(date(2026, 10, 6))[2], 'Next.js from zero')  # still by hand
 
     def test_the_closing_card_matches_the_ending(self):
         share = copy.deepcopy(VALID)

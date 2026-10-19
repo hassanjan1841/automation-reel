@@ -37,6 +37,20 @@ What our own numbers say (42 reels measured, 2026-10-14; they outrank the studie
 - Shares push a reel past its first test audience; watch time alone did not (a reel held at 26% skip still
   stopped at 142 views with no shares). Aim each reel at a surprise people want to send on.
 
+Update, 30 reels from 2026-10-05 to 10-18 (measured 2026-10-19):
+- The second breakout was a myth too: "*await* doesn't pause everything" reached 1,938 views in its first day at
+  46.6% skip, 10 seconds watched of 19, 6 saves and 2 shares. Its first frame was a 7-line code puzzle (A, await,
+  C, then B outside the function): people stayed to find out the real print order, which a stepper then showed.
+- Both breakouts share one shape: a famous basic, a statement hook that flips what people assume ("Your X isn't
+  Y", "X doesn't Y"), real code on screen from frame 0, and a reveal that proves it. Use that shape.
+- Myths, explainers and X vs Y (11 reels): median 172 views, 67% skip, 19 saves and shares. Everything else (19
+  reels): median 112 views, 85% skip, 3 saves and shares. Beginner lessons ("Next.js from zero") averaged 86%
+  skip; client and freelance topics 91%.
+- The first frame decides it: reels that opened on code averaged 72% skip and 4.7 seconds watched; reels whose
+  first frame ended up as text alone averaged 84% skip, 2.6 seconds, and not one save or share.
+- A "guess the output" opening works when the myth is about what code does: 3 to 8 lines, an outcome most
+  developers get wrong, the real output proven later. Never a made-up output.
+
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 
 In the first second a viewer must know four things:
