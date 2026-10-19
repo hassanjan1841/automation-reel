@@ -45,7 +45,6 @@ jobs:
 
       - name: Update docs
         id: sync
-        env:
         run: python docs_sync.py ${{ inputs.force && '--force' || '' }}
 
       # Always a pull request, never a direct push, so every doc change gets a human review.
