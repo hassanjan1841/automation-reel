@@ -291,6 +291,90 @@ class ExperimentTest(Sandbox):
 
 # ---------- the news writer and the daily performance lines ----------
 
+class TopicTestTest(Sandbox):
+    """The topic test (2026-10-19): famous basics against AI coding tools, both as myths proven on screen. The AI side
+    may use only the verified facts in ai_facts.md and must cite their official pages; news reels sit it out."""
+    AI = {'hook': '.claudeignore does *nothing*', 'payoff': 'Move .claudeignore entries into Read deny rules',
+          'voiceover': ['[urgent] Your .claudeignore file is not hiding anything from Claude Code.'] + VALID['voiceover'][1:],
+          'sources': ['https://code.claude.com/docs/en/permissions']}
+
+    def test_both_options_check_the_topic(self):
+        basics, ai = {**VALID, 'test': {'name': 'topic', 'arm': 'basics'}}, {**VALID, **self.AI, 'test': {'name': 'topic', 'arm': 'ai_tool'}}
+        self.assertEqual(generate.experiment_errors(basics), [])
+        self.assertEqual(generate.experiment_errors(ai), [])
+        self.assertIn('famous web development basic', ' '.join(generate.experiment_errors({**ai, 'test': basics['test']})))
+        self.assertIn('AI coding tool', ' '.join(generate.experiment_errors({**basics, 'test': ai['test']})))
+        for sources in ([], ['https://example.com/blog'], ['https://code.claude.com/docs/en/permissions', 'https://x.com/a']):
+            self.assertTrue(generate.experiment_errors({**ai, 'sources': sources}), sources)  # official pages only
+
+    def test_ai_words(self):
+        for text, ai in (('Your SQL cursor is slow', False), ('Cursor rules skip Tab', True), ('Your CORS header', False),
+                         ('Your CLAUDE.md isn\'t a rule', True), ('.claudeignore does nothing', True),
+                         ('AI review won\'t block merges', True), ('Your JWT tokens expire', False),
+                         ('A malicious MCP server', True), ('mail the admin', False)):
+            self.assertEqual(bool(generate.AI_TOPIC.search(text)), ai, text)
+        code = {**VALID, 'hook_visual': {**VALID['hook_visual'], 'code': 'const prompt = ask()'}}
+        self.assertNotIn('prompt', generate.topic_text(code))  # code on screen does not decide the topic
+
+    def test_news_sits_out_and_the_ai_side_gets_the_facts(self):
+        history.save_experiments({'active': {'name': 'topic', 'since': '2026-10-20'}, 'done': []})
+        self.assertIsNotNone(generate.experiment_today(date(2026, 10, 20)))
+        self.assertIsNone(generate.experiment_today(date(2026, 10, 20), news=True))
+        self.assertEqual(generate.experiment_note(news=True), '')
+        with mock.patch.object(generate, 'experiment_today', return_value={'name': 'topic', 'arm': 'ai_tool'}):
+            self.assertIn('https://code.claude.com/docs/en/checkpointing', generate.experiment_note())
+        with mock.patch.object(generate, 'experiment_today', return_value={'name': 'topic', 'arm': 'basics'}):
+            self.assertNotIn('https://', generate.experiment_note())
+        history.save_experiments({'active': {'name': 'cta_style', 'since': '2026-10-15'}, 'done': []})
+        self.assertIsNotNone(generate.experiment_today(date(2026, 10, 20), news=True))  # other tests still apply
+
+    def test_a_news_reel_is_not_held_to_the_topic(self):
+        history.save_experiments({'active': {'name': 'topic', 'since': '2026-10-20'}, 'done': []})
+        option = {'reach_score': 9, 'reason': 'big', 'sources': ['https://example.com/a'],
+                  'reel': {**copy.deepcopy(VALID), **{k: v for k, v in self.AI.items() if k != 'sources'}}}
+        with mock.patch.object(trends, 'collect', return_value=([{'title': str(i)} for i in range(12)], [])), \
+                mock.patch.object(trends, 'pick', return_value={'options': [option]}), \
+                mock.patch.object(trends, 'fact_check', side_effect=lambda r, s: {'verdict': 'pass', 'problems': [], 'reel': r}), \
+                mock.patch.object(generate, 'repair', return_value=None), contextlib.redirect_stdout(io.StringIO()):
+            reel = trends.timely_reel([], perf=[])
+        self.assertIsNotNone(reel)
+        self.assertNotIn('test', reel)
+
+    def test_the_facts_stay_when_the_ai_side_becomes_a_rule(self):
+        captured = []
+        with mock.patch.object(generate, 'learned', return_value=generate.EXPERIMENTS['topic']['ai_tool'][0]), \
+                mock.patch.object(generate, 'experiment_today', return_value=None), \
+                mock.patch.object(generate, 'generate', side_effect=lambda *a, **k: captured.append(k['context']) or [VALID]):
+            generate.today([])
+        self.assertIn('https://code.claude.com/docs/en/permissions', captured[0])
+        with mock.patch.object(generate, 'learned', return_value='Open on real code.'), \
+                mock.patch.object(generate, 'experiment_today', return_value=None), \
+                mock.patch.object(generate, 'generate', side_effect=lambda *a, **k: captured.append(k['context']) or [VALID]):
+            generate.today([])
+        self.assertNotIn('code.claude.com', captured[1])
+
+    def test_screenshots_find_docs_text_with_typographic_quotes(self):
+        # The Claude Code docs print can’t; the writer types can't. The proof slide fell back to text (2026-10-19).
+        import visuals
+        self.assertIn("An allow rule can\u2019t carve", visuals.find_variants("An allow rule can't carve"))
+        self.assertIn("can't do", visuals.find_variants("can\u2019t do"))
+        self.assertIn('say \u201chi\u201d now', visuals.find_variants('say "hi" now'))
+        self.assertEqual(visuals.find_variants('plain text'), ['plain text'])
+        self.assertEqual(visuals.find_variants("it's")[0], "it's")  # as typed first
+
+    def test_it_runs_after_cta_style_and_the_facts_are_official_pages(self):
+        names = list(generate.EXPERIMENTS)
+        self.assertEqual(names.index('topic'), names.index('cta_style') + 1)
+        done = [{'name': n, 'since': '2026-10-01', 'until': '2026-10-05', 'result': 'x'} for n in ('hook_style', 'hook_pace', 'cta_style')]
+        exp, _ = learn.run_experiment({'active': None, 'done': done}, [], [], date(2026, 10, 25))
+        self.assertEqual(exp['active']['name'], 'topic')
+        urls = generate.fact_pages()
+        self.assertFalse(generate.fact_sources({'sources': ['https://example.com/evil-location']}))  # quoted, not cited
+        self.assertGreaterEqual(len(urls), 10)
+        self.assertTrue(all(re.match(r'https://(code\.claude\.com|docs\.github\.com|cursor\.com|modelcontextprotocol\.io|'
+                                     r'platform\.claude\.com)/', u) for u in urls), urls)
+
+
 class TrendsTest(Sandbox):
     def test_timely_reel_carries_and_enforces_the_test(self):
         option = {'reach_score': 9, 'reason': 'big', 'sources': ['https://example.com/a'], 'reel': copy.deepcopy(VALID)}
