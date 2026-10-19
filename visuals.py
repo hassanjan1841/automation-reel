@@ -340,9 +340,20 @@ class Diff(Card):
         self.heights = [plain.height, marked.height, new.height]
         self.sounds = [(0.9, 'tick'), (1.9, 'swish')]
 
+    @property
+    def marked(self):
+        """(from, to) of the red stage (removed lines struck through, fully faded in) in the card's own timeline.
+        qa.frames shows the reviewer this stage beside the end, because the end alone (only the green "after") was
+        rejected as "not a before/after" on 12 of 17 diff hooks (2026-10-19), so those reels opened on text."""
+        return 1.2, self.switch - 0.05
+
+    @property
+    def switch(self):
+        return max(1.8, self.duration * 0.45)
+
     def layer(self, t):
         # plain until 0.9s, red marks until ~45% of the slide, then the new code
-        switch = max(1.8, self.duration * 0.45)
+        switch = self.switch
         if t < 0.9:
             k, mix, nxt = 0, 0.0, 1
         elif t < switch:

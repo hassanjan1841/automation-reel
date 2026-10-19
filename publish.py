@@ -213,7 +213,7 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     """Have Claude look at the rendered frames. A dishonest claim stops the post; a visual that fails is replaced
     by the point's next choice, or by its text, and the reel is rendered again."""
     shown = reel
-    for _ in range(rounds):
+    for round_ in range(rounds):
         try:
             verdict = qa.review(path, shown, slides)
             results = verdict['slides']
@@ -255,9 +255,28 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             if i in rejected:
                 choices = [c for c in choices if c != rejected[i]]
             points.append({**{k: v for k, v in point.items() if k != 'visual'}, **({'visual': choices} if choices else {})})
-        shown = {**({k: v for k, v in shown.items() if k != 'hook_visual'} if drop_proof else shown), 'points': points}
+        shown = {**(without_proof(shown, retry=round_ < rounds - 1) if drop_proof else shown), 'points': points}
         path, slides = render.render_reel(shown, voice=clips)
     return path, slides
+
+
+def without_proof(reel, retry=True):
+    """The reel after its hook proof was rejected. A diff gets a second chance as a plain code card of its "after"
+    (its added lines highlighted), because a text-only first frame lost the most viewers (84% skip against 72%
+    with code, 2026-10-19); anything else, that code card rejected too, or no review round left to check it
+    (retry False), leaves the hook alone."""
+    proof = reel.get('hook_visual') or {}
+    rest = {k: v for k, v in reel.items() if k != 'hook_visual'}
+    if not retry or proof.get('type') != 'diff' or not proof.get('after', '').strip():
+        return rest
+    import difflib
+    before, after = proof.get('before', '').rstrip('\n').split('\n'), proof['after'].rstrip('\n').split('\n')
+    added = [j + 1 for op, _, _, j1, j2 in difflib.SequenceMatcher(None, before, after).get_opcodes()
+             if op in ('replace', 'insert') for j in range(j1, j2)]
+    code = {'type': 'code', 'code': proof['after'], 'language': proof.get('language') or 'text',
+            'title': proof.get('title', ''), 'highlight': added[:1]}
+    print('Trying the hook proof again as a code card of its "after"')
+    return {**rest, 'hook_visual': code}
 
 
 def shown(slides):
