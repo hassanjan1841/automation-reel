@@ -126,7 +126,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS`, `backup_skip`, `ranked`, `GROUP_FIELDS`, `CLEAR_SKIP`, `CLEAR_WATCHED`, `MAX_RULE_WORDS`, `MAX_NEW_RULES`, `MAX_ACTIVE_RULES`, `RULE_TRIAL_DAYS`, `RULE_GIVE_UP_DAYS`, `EXPERIMENT_MAX_DAYS`, `IDEA_DAYS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `save_experiments`, `ideas`, `save_ideas`, `learnings_text`, `key`, `save_report`, `last_report`, `SETTLED_DAYS` |
 | `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `start`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `due_study`, `SLOT_STARTS`, `WEEKLY_START`, `STUDY_START`, `LEARN_START`, `MAX_ATTEMPTS`, `active_slots`, `DEFAULT_SLOTS`, `due_extra`, `waiting_extras`, `EXTRA_LEAD`, `EXTRA_LATE` |
-| `motion.py` | 2D explainer animations: SVG built by our own engine (eases, spring, seeked timeline, glow, one sweep) in headless Chromium, captured as transparent frames like scene3d; the page reports its length, `settle` frame and sound moments | `render_motion`, `prepare`, `tokens`, `words`, `morph_plan`, `PAGE`, `TYPES`, `EXAMPLES`, `MAX_SECONDS`, `FRAMES` |
+| `motion.py` | 2D explainer animations: SVG built by our own engine (eases, spring, seeked timeline, glow, one sweep) in headless Chromium, captured as transparent frames like scene3d; the page reports its length, `settle` frame and sound moments | `render_motion`, `prepare`, `predict_answer`, `tokens`, `words`, `morph_plan`, `PAGE`, `TYPES`, `EXAMPLES`, `MAX_SECONDS`, `FRAMES` |
 | `test_motion.py` | morph plan tests and a real render of every template (transparent, sized, settles, sounds, motion) | `MorphPlan`, `Render` |
 | `study.py` | Deep study of other creators' videos: download, measure, Claude breakdown into adoptable / not adoptable patterns; saved in studies/ | `sources_in`, `fetch`, `search`, `channel_outliers`, `relevant`, `auto_picks`, `week_topics`, `digest`, `TOPICS`, `probe`, `motion`, `measure`, `breakdown`, `empty_fields`, `report`, `save`, `study`, `studied`, `ours`, `main`, `CHANNELS`, `MAX_CHANNELS` |
 | `test_study.py` | Offline tests of study.py on synthetic ffmpeg videos, fake Claude and YouTube | `make_video`, `Measure`, `Breakdown`, `Main` |
@@ -208,7 +208,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
   ],                                // visual: optional, 1-3 choices best first: code, diff (before/after), terminal,
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
-                                    // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
+                                    // animations: stepper, predict, flow, morph, git, eventloop, structure, sequence, states,
                                     // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint, command, palette, statement, quotes (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
@@ -334,6 +334,14 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     1-3 real posts typed onto dark cards (initials chip, never a photo) then piled. `quotes` is a quote: same rules
     (`generate.quote_errors`, plus max `QUOTES_TOTAL` characters in all), credited by `publish.credits`, counted by
     `trends.quotes_allowed`.
+  - `predict` (motion.py, 2026-10-19, research into the Opus 5.5 motion wave plus our await reel: a code puzzle on
+    frame 0 revealed by an animation held 10 s of 19): code, 2-3 answer chips and an empty console ("Guess first...")
+    at settle; a ring counts down, the output prints, wrong chips get a hand-drawn red strike and the matching chip a
+    green stamp ring and a thud. The right chip is never the writer's pick: `motion.predict_answer` marks the choice
+    equal to `output` joined by spaces, and `generate.motion_errors` requires exactly one such choice. It is in
+    `REVEAL_VISUALS` but not `HOOK_VISUALS` (a 3-4 s hook slide would rush the quiz and spoil it): the puzzle sits
+    under the hook as code and the quiz runs on the reveal point. The green tint is a separate rect over the dark chip,
+    so it reads on the light theme. `test_motion.py` checks green lands only on the matching chip and only at the end.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `inspect` and `variants` (motion.py): selection boxes with label pills on code lines, and one card swapping

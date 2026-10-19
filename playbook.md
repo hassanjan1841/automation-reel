@@ -49,7 +49,10 @@ Update, 30 reels from 2026-10-05 to 10-18 (measured 2026-10-19):
 - The first frame decides it: reels that opened on code averaged 72% skip and 4.7 seconds watched; reels whose
   first frame ended up as text alone averaged 84% skip, 2.6 seconds, and not one save or share.
 - A "guess the output" opening works when the myth is about what code does: 3 to 8 lines, an outcome most
-  developers get wrong, the real output proven later. Never a made-up output.
+  developers get wrong, the real output proven later. Never a made-up output. The predict animation is made for
+  it: the same code with the usual wrong guess and the real output as answer chips, a short countdown during the
+  held beat, then the real output and the right chip stamped. A quiz gives people a reason to stay (find out if
+  they were right) and to send it on (quiz a friend).
 
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 

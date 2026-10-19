@@ -1641,7 +1641,7 @@ class MotionTest(Sandbox):
         return copy.deepcopy(motion.EXAMPLES)
 
     def test_every_example_is_valid_and_every_type_checks_something(self):
-        broken = {'stepper': {'trace': [{'line': 99, 'vars': []}]}, 'flow': {'hops': [{'from': 'app', 'to': 'nowhere'}]},
+        broken = {'stepper': {'trace': [{'line': 99, 'vars': []}]}, 'predict': {'output': ['C', 'B', 'A']}, 'flow': {'hops': [{'from': 'app', 'to': 'nowhere'}]},
                   'morph': {'after': 'same'}, 'git': {'head': 'nobranch'}, 'eventloop': {'cards': []},
                   'structure': {'ops': [{'op': 'set', 'at': 'k', 'value': 'v'}]},
                   'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
@@ -1680,6 +1680,29 @@ class MotionTest(Sandbox):
         errors = ' | '.join(generate.validate(reel))
         self.assertIn('point 2 needs a code, diff, terminal or screenshot choice after its animation', errors)
         self.assertIn('2 animations; use at most one per reel', errors)
+
+    def test_predict_stamps_only_the_real_output(self):
+        # The guess-the-output quiz (2026-10-19, the shape of the 1,938-view await reel): the chip stamped as right
+        # is computed from the output, never picked by the writer, and exactly one chip must match it.
+        import motion
+        ex = self.examples()['predict']
+        self.assertEqual(motion.predict_answer(ex), 1)                                     # "A C B"
+        self.assertEqual(motion.predict_answer({**ex, 'output': ['A', ' C', 'B ']}), 1)    # spacing ignored
+        self.assertEqual(motion.predict_answer({**ex, 'output': ['B']}), -1)
+        with mock.patch.object(motion, 'tokens', return_value=[]):  # CI's learning job has no pygments
+            self.assertEqual(motion.prepare(ex, 900)['answer'], 1)
+        for bad, why in (({'choices': ['A B C']}, '2 or 3 different'), ({'choices': ['A C B', 'A  C B']}, '2 or 3 different'),
+                         ({'choices': ['A B C', 'A C B', 'B A C', 'C B A']}, '2 or 3 different'),
+                         ({'choices': ['A B C', 'a choice far too long']}, '2 or 3 different'),
+                         ({'output': []}, '"output"'), ({'output': ['x' * 30]}, '"output"'),
+                         ({'output': ['B', 'A', 'C']}, 'exactly one choice'),
+                         ({'code': '\n'.join(['x()'] * 9)}, 'max 8 lines'), ({'language': ''}, 'max 8 lines')):
+            self.assertIn(why, ' '.join(generate.motion_errors(2, {**ex, **bad})), bad)
+        reel = copy.deepcopy(VALID)
+        reel['points'][1]['visual'] = [ex, reel['points'][1]['visual'][0]]
+        self.assertEqual(generate.validate({**reel, 'reveal': 2}), [])  # the quiz is a result worth a held beat
+        self.assertIn('hook_visual must be one', ' '.join(generate.validate({**VALID, 'hook_visual': ex})))
+        self.assertIn('the console prints A / C / B', publish.qa.describe(ex))
 
     def test_morph_and_stepper_can_be_the_hooks_proof(self):
         ex = self.examples()

@@ -51,8 +51,9 @@ PILLARS = {
                      'highlighted word, never a question. The hook_visual is code: when the myth is about what code '
                      'does, a short puzzle of 3 to 8 lines whose real output most developers guess wrong (the order '
                      'of the logs, a surprising value); line 1 says what most devs expect, and the point that shows '
-                     'the real output (a stepper, terminal or outputmap, with "reveal") proves it. The output shown '
-                     'must be exactly what the code really prints', 'Myth vs fact'),
+                     'the real output proves it: best a predict animation (the same code, the usual wrong guess and '
+                     'the real output as its choices) with "reveal", or a stepper, terminal or outputmap. The output '
+                     'shown must be exactly what the code really prints', 'Myth vs fact'),
     3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
                      'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
@@ -276,7 +277,7 @@ def playbook():
 
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
-MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+MOTION = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
           'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 QUOTES_TOTAL = 200  # the quotes animation types its text on and must fit MAX_SECONDS
@@ -309,6 +310,19 @@ def motion_errors(i, v):
                                    for s in trace for x in s.get('vars', [])) \
                 or any(s.get('out') is not None and not short(s['out'], 24) for s in trace):
             e.append(f'point {i} stepper shows max 4 variables (names of 10, values of 16 characters), outputs of 24')
+    elif kind == 'predict':
+        lines, choices, out = v.get('code', '').rstrip('\n').split('\n'), v.get('choices', []), v.get('output', [])
+        norm_ = lambda s: ' '.join(str(s).split())
+        if not v.get('code', '').strip() or not v.get('language') or len(lines) > 8 or max(len(l) for l in lines) > 34:
+            e.append(f'point {i} predict needs code (max 8 lines of 34 characters) and a language')
+        elif not 2 <= len(choices) <= 3 or any(not short(c, 14) for c in choices) \
+                or len({norm_(c) for c in choices}) != len(choices):
+            e.append(f'point {i} predict needs 2 or 3 different answer choices of max 14 characters')
+        elif not 1 <= len(out) <= 4 or any(not short(o, 24) for o in out):
+            e.append(f'point {i} predict needs "output": the 1 to 4 lines the code really prints, max 24 characters')
+        elif sum(norm_(c) == norm_(' '.join(out)) for c in choices) != 1:
+            e.append(f'point {i} predict: exactly one choice must equal the output lines joined by spaces '
+                     f'("{norm_(" ".join(out))}"); the others are the guesses people get wrong')
     elif kind == 'flow':
         ids = {n.get('id') for n in v.get('nodes', [])}
         if not 2 <= len(v.get('nodes', [])) <= 5 or any(not short(n.get('label'), 12) for n in v.get('nodes', [])):
@@ -506,7 +520,7 @@ def motion_reel_errors(reel):
 
 
 # A point whose result finishes on screen while the voice holds a beat (voice.hold), then the voice lands the result.
-REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'ide', 'bars')
+REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'predict', 'ide', 'bars')
 
 
 def reveal_errors(reel):
@@ -782,6 +796,7 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'to'],
             'properties': {'name': {'type': 'string'}, 'to': {'type': 'string'}}}},
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
+        'choices': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
         'marks': {'type': 'array', 'items': {
@@ -1225,6 +1240,13 @@ numbers only from a cited page.
 - stepper: the code runs line by line while a panel shows variables changing. "language", "code" (max 10 lines of 34
   characters), "trace" (2 to 6 steps: "line" 1-based, "vars" [{"name", "value"}] after that line ran, optional "out"
   what it prints). Best for closures, loops, async order, off-by-one bugs.
+- predict: guess the output. The code, 2 or 3 answer chips and an empty console are on screen; a ring counts down,
+  the real output prints, the wrong chips are struck through and the chip that equals the output is stamped.
+  "language", "code" (max 8 lines of 34 characters, the same snippet as the hook_visual when the hook is the puzzle),
+  "choices" (2 or 3, max 14 characters each: the real output as one line, e.g. "A C B", and the guesses most
+  developers make), "output" (1 to 4 lines, exactly what the code prints; exactly one choice must equal them joined
+  by spaces). Best with "reveal" on its point, for "guess the output" myths: event loop order, closures in loops,
+  typeof, equality, sort, floating point. Never invent an output: run it in your head step by step and be sure.
 - flow: a request travelling between parts. "nodes" (2 to 5, as for diagram), "hops" (1 to 6: "from", "to", optional
   "label" of max 14 characters like "cache miss" or "GET /user"). Best for caching, auth, webhooks, "why it is slow".
 - morph: "before" code turns into "after"; unchanged tokens glide, removed fade red, added arrive green. "language",
