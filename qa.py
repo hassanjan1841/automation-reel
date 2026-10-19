@@ -144,6 +144,9 @@ def describe(visual):
                                              for b in visual.get('bars', []))
                      + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
              'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
+             'predict': 'a guess-the-output quiz: the code, answer chips ' + ' / '.join(visual.get('choices', []))
+                        + ', a countdown, then the console prints ' + ' / '.join(visual.get('output', []))
+                        + ' and the matching chip is stamped (check that output is exactly what the code prints)',
              'stepper': 'an animation stepping through code line by line with its variables changing '
                         '(check the values are what the code really does)',
              'flow': 'an animated request travelling between ' + ', '.join(n.get('label', '') for n in visual.get('nodes', [])),

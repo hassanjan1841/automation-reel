@@ -204,6 +204,24 @@ class Render(unittest.TestCase):
         ink = (last[..., 3] > 160) & (last[..., :3].max(axis=2) < 70)
         self.assertGreater(ink.mean(), 0.002)
 
+    def test_predict_stamps_the_chip_that_matches_the_output(self):
+        # The example's output "A C B" is the right-hand chip: green lands only there, after the countdown, and the
+        # left chip is struck through in red. Nothing green on the chips at settle: the answer is never given away.
+        folder, meta = self.out['predict']
+        frames = sorted(folder.glob('*.png'))
+
+        def marks(f):
+            a = np.asarray(Image.open(f).convert('RGBA')).astype(int)
+            r, g, b, seen = a[..., 0], a[..., 1], a[..., 2], a[..., 3] > 200
+            xs_g = np.nonzero(seen & (g - np.maximum(r, b) > 60))[1] / a.shape[1]
+            xs_r = np.nonzero(seen & (r - np.maximum(g, b) > 80))[1] / a.shape[1]
+            return (xs_g > 0.55).sum(), ((xs_g > 0.2) & (xs_g < 0.45)).sum(), (xs_r < 0.5).sum()
+        start, end = marks(frames[round(meta['settle'] * motion.FPS)]), marks(frames[-1])
+        self.assertEqual(start[0], 0)
+        self.assertGreater(end[0], 1000)
+        self.assertLess(end[1], 50)
+        self.assertGreater(end[2], start[2] + 1000)
+
     def test_hook_proofs_are_whole_at_settle(self):
         # morph and stepper may sit under a hook from frame 0: at their settle frame the code is already there.
         for kind in ('morph', 'stepper'):
