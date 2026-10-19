@@ -1689,7 +1689,8 @@ class MotionTest(Sandbox):
         self.assertEqual(motion.predict_answer(ex), 1)                                     # "A C B"
         self.assertEqual(motion.predict_answer({**ex, 'output': ['A', ' C', 'B ']}), 1)    # spacing ignored
         self.assertEqual(motion.predict_answer({**ex, 'output': ['B']}), -1)
-        self.assertEqual(motion.prepare(ex, 900)['answer'], 1)
+        with mock.patch.object(motion, 'tokens', return_value=[]):  # CI's learning job has no pygments
+            self.assertEqual(motion.prepare(ex, 900)['answer'], 1)
         for bad, why in (({'choices': ['A B C']}, '2 or 3 different'), ({'choices': ['A C B', 'A  C B']}, '2 or 3 different'),
                          ({'choices': ['A B C', 'A C B', 'B A C', 'C B A']}, '2 or 3 different'),
                          ({'choices': ['A B C', 'a choice far too long']}, '2 or 3 different'),
