@@ -267,12 +267,14 @@ HOOK_TYPES = ('problem', 'before_after', 'shortcut', 'mistake', 'test', 'news')
 # once; a terminal types itself out and a recording or a 3D scene needs time to start).
 HOOK_VISUALS = ('code', 'diff', 'screenshot', 'morph', 'stepper', 'build')
 PLAYBOOK = render.ROOT / 'playbook.md'
+DIRECTOR = render.ROOT / 'director.md'
 
 
 def playbook():
-    """The researched rules for hooks, scripts and visuals (playbook.md), read by the writer, the hook judge and
-    the frame review."""
-    return PLAYBOOK.read_text().strip() if PLAYBOOK.exists() else ''
+    """The researched rules for hooks, scripts and visuals (playbook.md) and the creator's rules for how a reel looks,
+    moves and sounds (director.md), read by the writer, the hook judge and the frame review."""
+    parts = [p.read_text().strip() for p in (PLAYBOOK, DIRECTOR) if p.exists()]
+    return '\n\n'.join(parts)
 
 
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice

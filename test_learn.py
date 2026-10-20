@@ -1304,6 +1304,16 @@ class PlaybookTest(Sandbox):
     """The playbook's rules (playbook.md): one payoff, a short hook with its proof from frame 0, the strongest of
     four hooks, no invented chats or posts, and the frame review of frame 0."""
 
+    def test_writers_and_reviewer_read_the_director_file(self):
+        rules = generate.playbook()
+        self.assertIn('# Reel playbook', rules)
+        self.assertIn('# Director', rules)
+        self.assertIn('## Creator notes', rules)
+        import qa
+        self.assertIn('# Director', qa.SYSTEM)  # the frame review judges by the creator's rules too
+        self.assertIn('# Director', generate.HOOK_JUDGE)
+        self.assertIn('# Director', generate.SYSTEM)
+
     def test_validate_holds_new_reels_to_the_playbook(self):
         self.assertEqual(generate.validate(VALID), [])
         broken = {**VALID, 'payoff': '', 'hook_type': 'clickbait', 'hook_visual': {'type': 'terminal', 'commands': ['ls']},

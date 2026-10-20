@@ -234,6 +234,7 @@ MUTANTS = [
     ('generate.py', "                  lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),",
      "                  lambda r: True,", 'the share ending is never checked'),
     ('render.py', "        return 'Send it to them'", "        return 'Comment below'", 'the card says comment under a send'),
+    ('generate.py', "for p in (PLAYBOOK, DIRECTOR)", "for p in (PLAYBOOK,)", 'the director file is never read'),
     # The premium look (2026-10-20).
     ('visuals.py', ", layout_engine=ImageFont.Layout.BASIC)", ")", 'code drawn with ligatures', 'test_motion.py'),
     ('motion.py', "font-variant-ligatures:none;", "", 'motion code drawn with ligatures', 'test_motion.py'),

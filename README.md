@@ -47,6 +47,7 @@ Posts one Instagram Reel a day to @hassanjan.k with no manual work.
 | `docs_check.py` | Fails when the docs no longer match the code. No dependencies. |
 | `docs_sync.py` | Has Claude update the docs to match the code. `--force` reviews them even if nothing changed. |
 | `playbook.md` | The researched reel rules, read by the writer, the hook judge and the frame review. See [What makes a reel work](#what-makes-a-reel-work). |
+| `director.md` | The creator's rules for how a reel looks, moves and sounds (pacing, motion, composition, captions, sound, truth on screen), with a dated log of his notes. Read with the playbook by the same three. Every note on a reel becomes a rule here. |
 | `carousels.json` | The record of every posted carousel. |
 | `studies/` | What the video study saved: one report per video, `index.jsonl`, digests and the watched channels. |
 | `tests/` | End-to-end runs and the mutation check used by the verify skill: `tests/e2e_learn.py`, `tests/e2e_publish.py`, `tests/e2e_writer.py`, `tests/mutants.py`, and `tests/stray-uhh.wav` for `test_voice.py --verify`. |
