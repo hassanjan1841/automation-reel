@@ -1833,14 +1833,51 @@ class StageTest(Sandbox):
             plan = stage.plan(STAGED, slides, words)
         hook, read, steps, docs, cta = plan['scenes']
         said = lambda i, w: next(a for x, a, _ in words[i] if stage._norm(x) == w)
-        self.assertEqual(hook['beat'], said(0, 'old'))            # "at" names the word the main move lands on
+        self.assertEqual(hook['beat'], min(said(0, 'old'), hook['latest']))  # on the "at" word, unless too late to land
         self.assertTrue(hook['ready'] and hook['start'] == 0 and hook['type_at'] < 0)  # the hook is whole on frame 0
-        self.assertEqual(read['beat'], said(1, 'cache'))
-        self.assertEqual(steps['times'][1], said(2, 'database'))  # each step lights as its label is said
+        self.assertEqual(read['beat'], min(said(1, 'cache'), read['latest']))
+        self.assertEqual(steps['times'][1], min(said(2, 'database'), steps['latest']))  # each step on its label
         self.assertTrue(slides[2].start < steps['times'][0] < steps['times'][2] < slides[3].start + 0.01)
         self.assertEqual(cta['rows'][1][1][:2], ['wait?', True])   # *word* is the accent
         self.assertAlmostEqual(cta['end'], plan['total'] - stage.RETURN)
         self.assertEqual(read['start'], slides[1].start)
+
+    def test_every_move_lands_before_the_cut(self):
+        # 2026-10-20 dry run: a terminal timed to the line's last word ("then timeout last") was still printing when the
+        # frame review looked, so a true reel fell back to the classic slides.
+        stage, slides, words = self.timed()
+        last = words[2][-1][0]
+        reel = copy.deepcopy(STAGED)
+        reel['scenes'][2] = {'kind': 'terminal', 'command': 'node timer.js', 'output': ['A', 'C', 'B'], 'at': last}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            plan = stage.plan(reel, slides, words)
+        term = plan['scenes'][2]
+        self.assertLessEqual(term['beat'], slides[3].start - stage.LAND + 1e-6)
+        self.assertEqual(term['latest'], max(term['start'] + 0.4, slides[3].start - stage.LAND))
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            staged = stage.plan(STAGED, slides, words)
+        self.assertTrue(all(t <= staged['scenes'][4]['latest'] + 0.4 + 1e-6 for row in staged['scenes'][4]['rows']
+                            for _, _, t in row))                       # big words are all in before the cut
+        for sc in staged['scenes'][:-1]:
+            self.assertLessEqual(sc['beat'], sc['latest'] + 1e-6)
+            for t in sc.get('times', []):
+                self.assertLessEqual(t, sc['latest'] + 1e-6)
+
+    def test_the_review_looks_at_a_stage_scene_once_it_has_landed(self):
+        import qa
+        import stage
+        slides = [SimpleNamespace(visual=stage.Shown(STAGED['scenes'][1]), start=4.0, end=8.0, lead=0.0),
+                  SimpleNamespace(visual=None, start=8.0, end=12.0, lead=0.0)]
+        times = []
+        with mock.patch.object(qa, 'grab', side_effect=lambda video, t, path: times.append(t)):
+            qa.frames('v.mp4', slides, self.tmp)
+        self.assertAlmostEqual(times[0], 8.0 - 0.45)          # the stage scene: just before the cut
+        self.assertAlmostEqual(times[1], 8.0 + 3.1)           # a classic slide keeps its own moment
+        times.clear()
+        slides[1] = SimpleNamespace(visual=stage.Shown(STAGED['scenes'][4]), start=8.0, end=12.0, lead=0.0)
+        with mock.patch.object(qa, 'grab', side_effect=lambda video, t, path: times.append(t)):
+            qa.frames('v.mp4', slides, self.tmp)
+        self.assertLess(times[1], 12.0 - stage.RETURN)        # the closing words, before the glide back to the opening
 
     def test_caption_groups(self):
         stage, slides, words = self.timed()
@@ -1869,6 +1906,8 @@ class StageTest(Sandbox):
         self.assertIn(DOCS, meant)
         self.assertIn('check the quote', meant)
         self.assertIn('database', qa.describe(stage.Shown(STAGED['scenes'][2]).spec))
+        code = qa.describe(stage.Shown(STAGED['scenes'][0]).spec)
+        self.assertIn("2 ('const u = await cache.get(key)')", code)   # which line is marked, so the review can check it
 
     def test_a_rejected_scene_falls_back_to_the_classic_slides(self):
         import publish

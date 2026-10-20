@@ -27,6 +27,8 @@ CSS_W, CSS_H = render.W // 2, render.H // 2
 MAX_CODE_LINES, MAX_CODE_COLS = 10, 38
 LINE_WORDS = 9            # a caption group closes at a sentence end or after this many words
 RETURN = 1.0              # the last seconds glide back to the opening scene, so a replay continues seamlessly
+LAND = 1.9                # a scene's main move lands at least this long before its slide ends, so the result holds
+                          # still for a screenshot and the frame review sees it complete (director.md, section 1)
 JPEG_QUALITY = 92
 
 
@@ -169,6 +171,11 @@ class Shown:
         self.sounds, self.lead, self.marked = [], 0.0, None
 
 
+def _line(spec, n):
+    rows = str(spec.get('code', '')).split('\n')
+    return rows[n - 1].strip() if 1 <= n <= len(rows) else ''
+
+
 def describe(spec):
     """What a stage scene is meant to show, in words for the frame reviewer (qa.describe)."""
     kind = spec.get('kind')
@@ -176,8 +183,9 @@ def describe(spec):
         'file': f"an editor window '{spec.get('title')}' listing: " + ' / '.join(spec.get('lines') or [])
                 + (' (the lines get struck through' + (f", tagged {spec.get('tag')}" if spec.get('tag') else '') + ')'
                    if spec.get('strike') else ''),
-        'code': f"code typing itself in '{spec.get('title')}'" + (', the marked line highlighted and the rest dimmed'
-                                                                  if spec.get('highlight') else ''),
+        'code': f"code in '{spec.get('title')}' (typing itself, or already complete on the hook)" + (
+            '; once it lands, line(s) ' + ', '.join(f"{n} ({_line(spec, n)!r})" for n in spec['highlight'])
+            + ' get a soft red bar on the left and the other lines dim' if spec.get('highlight') else ''),
         'docs': f"a card of the page {spec.get('url')} ('{spec.get('title')}') quoting: \"{spec.get('text')}\", with "
                 f"\"{spec.get('mark')}\" highlighted (check the quote is what that page says)",
         'steps': 'ordered steps lighting up one by one: ' + ' → '.join(i.get('label', '') for i in spec.get('items') or [])
@@ -256,7 +264,9 @@ def plan(reel, slides, words):
         end = slides[i + 1].start if i + 1 < len(slides) else total - RETURN
         sc = dict(spec, start=0.0 if i == 0 else s.start, end=end, ready=i == 0)
         at = _match(ws, spec['at']) if spec.get('at') else None
-        sc['beat'] = at if at is not None else _beat(ws, sc['start'], end)
+        latest = max(sc['start'] + 0.4, end - LAND)
+        sc['latest'] = latest
+        sc['beat'] = min(at if at is not None else _beat(ws, sc['start'], end), latest)
         kind = spec['kind']
         sc['font'] = font_size(_text(spec).split('\n') if kind != 'terminal'
                                else ['$ ' + spec['command']] + list(spec['output']))
@@ -267,7 +277,7 @@ def plan(reel, slides, words):
             sc['type_at'], sc['step'] = (-1.0, 0.0) if sc['ready'] else (sc['start'] + 0.3, step)
         elif kind == 'docs':
             m = _match(ws, spec['mark'])
-            sc['mark_at'] = m if m is not None else sc['beat']
+            sc['mark_at'] = min(m if m is not None else sc['beat'], latest)
             k = spec['text'].index(spec['mark'])
             sc['parts'] = [spec['text'][:k], spec['mark'], spec['text'][k + len(spec['mark']):]]
         elif kind == 'steps':
@@ -276,7 +286,7 @@ def plan(reel, slides, words):
             for j, item in enumerate(spec['items']):
                 m = _match(ws, item['label'], after)
                 even = sc['start'] + 0.6 + (end - sc['start'] - 1.4) * (j + 1) / (n + 1)
-                times.append(m if m is not None else even)
+                times.append(min(m if m is not None else even, latest))
                 after = times[-1]
             sc['times'] = times
         elif kind == 'words':
@@ -286,6 +296,7 @@ def plan(reel, slides, words):
                 for w in str(line).split():
                     m = _match(ws, w.replace('*', ''), after)
                     t = m if m is not None else (row[-1][2] + 0.12 if row else after + 0.15)
+                    t = min(t, latest + 0.4)  # all the words are in well before the cut
                     row.append([w.replace('*', ''), w.startswith('*'), t])
                     after = t
                 times.append(row)
@@ -477,7 +488,7 @@ K.steps = (s, box, nc) => {
   s.times.forEach(x => snd(x, 'tick'));
   let req, res, hitAt;
   if (s.stop) { req = el('div', 'req', s.stop.request); res = el('div', 'res', s.stop.result); wrap.appendChild(req); wrap.appendChild(res);
-    hitAt = Math.max(s.times[s.times.length - 1] + .4, s.end - 1.3); snd(hitAt, 'thud'); }
+    hitAt = Math.min(Math.max(s.times[s.times.length - 1] + .4, s.end - 1.6), s.latest + .3); snd(hitAt, 'thud'); }
   return t => {
     rows.forEach((r, i) => { const p = expo(prog(t, s.start + .15 + i * .12, .55)); r.style.opacity = p;
       r.style.transform = `translateY(${(1 - p) * 60}px) scale(${.92 + .08 * p})`;
@@ -512,7 +523,8 @@ K.terminal = (s, box, nc) => {
   const w = win('Terminal'); w.classList.add('term'); const c = el('div', 'code'); w.appendChild(c); box.appendChild(w); sizeCode(c, s);
   const cmd = el('div'); cmd.innerHTML = '<span class="prompt">$ </span><span class="cmd"></span>'; c.appendChild(cmd);
   const outs = s.output.map(o => { const d = el('div', 'out'); d.innerHTML = withCarry(o, nc, 'carry-src') || ' '; c.appendChild(d); return d; });
-  const t0 = s.ready ? -10 : s.start + .3, per = .035, done = t0 + s.command.length * per, show = Math.max(done + .3, s.beat);
+  const t0 = s.ready ? -10 : s.start + .3, per = .035, done = t0 + s.command.length * per,
+    show = Math.min(Math.max(done + .3, s.beat), s.latest);  // the real output is on screen well before the cut
   for (let k = 0; k < s.command.length; k += 3) snd(t0 + k * per, 'key'); snd(show, 'pop');
   return t => { const n = Math.floor(clamp((t - t0) / per, 0, s.command.length)); cmd.querySelector('.cmd').textContent = s.command.slice(0, n);
     outs.forEach((d, i) => { const p = s.ready && t <= 0 ? 1 : prog(t, show + i * .12, .2); d.style.opacity = p; }); };
