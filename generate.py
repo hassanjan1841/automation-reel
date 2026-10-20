@@ -1576,6 +1576,9 @@ def pick_hook(reel):
     chosen = options[best - 1]
     swapped = {**reel, 'hook': chosen['hook'], 'hook_type': chosen['hook_type'], 'voiceover': [chosen['spoken']] + vo[1:],
                'alternatives': [o for k, o in enumerate(options, 1) if k != best]}
+    if reel.get('scenes'):
+        # The hook scene's beat word was picked from the writer's line; with a new line it lands on its default beat.
+        swapped['scenes'] = [{k: v for k, v in reel['scenes'][0].items() if k != 'at'}] + reel['scenes'][1:]
     errors = validate(swapped)
     if errors:
         print(f"  the judge's pick breaks the rules ({'; '.join(errors)[:200]}); keeping the writer's hook")

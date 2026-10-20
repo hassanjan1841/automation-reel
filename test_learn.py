@@ -1882,6 +1882,16 @@ class StageTest(Sandbox):
         self.assertEqual(rendered[0]['hook_visual'], STAGED['hook_visual'])
         self.assertIs(out, classic)
 
+    def test_the_hook_judge_can_still_swap_a_stage_hook(self):
+        # The writer's "at" word ("old") is not in the picked line; the swap must still go through.
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'scores': [5, 6, 9, 4], 'best': 3,
+                                                                                    'why': ''}}), stderr='')
+        with mock.patch.object(generate.subprocess, 'run', return_value=out), contextlib.redirect_stdout(io.StringIO()):
+            picked = generate.pick_hook(copy.deepcopy(STAGED))
+        self.assertEqual(picked['hook'], STAGED['alternatives'][1]['hook'])
+        self.assertNotIn('at', picked['scenes'][0])
+        self.assertEqual(picked['scenes'][1:], STAGED['scenes'][1:])
+
     def test_the_days_draw(self):
         with mock.patch.dict(os.environ, {'STAGE': '', 'STAGE_CHANCE': ''}):
             days = [date(2026, 11, 1) + timedelta(days=k) for k in range(60)]
