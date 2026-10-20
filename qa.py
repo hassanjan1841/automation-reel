@@ -127,6 +127,9 @@ def side_by_side(left, right, out):
 
 def describe(visual):
     """What a slide's visual is meant to show, in words for the reviewer."""
+    if str(visual.get('type', '')).startswith('stage-'):
+        import stage
+        return stage.describe(visual)
     return {'code': 'a code window', 'terminal': 'a terminal typing commands',
              'diff': 'code before and after, shown as two frames side by side: left, the before with its removed '
                      'lines struck through in red; right, the after with its added lines green',

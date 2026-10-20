@@ -234,6 +234,7 @@ MUTANTS = [
     ('generate.py', "                  lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),",
      "                  lambda r: True,", 'the share ending is never checked'),
     ('render.py', "        return 'Send it to them'", "        return 'Comment below'", 'the card says comment under a send'),
+    ('generate.py', "for p in (PLAYBOOK, DIRECTOR)", "for p in (PLAYBOOK,)", 'the director file is never read'),
     # The premium look (2026-10-20).
     ('visuals.py', ", layout_engine=ImageFont.Layout.BASIC)", ")", 'code drawn with ligatures', 'test_motion.py'),
     ('motion.py', "font-variant-ligatures:none;", "", 'motion code drawn with ligatures', 'test_motion.py'),
@@ -247,6 +248,51 @@ MUTANTS = [
     ('visuals.py', "        card.glow = (", "        card.glow = None and (", 'cards lose their glow', 'test_motion.py'),
     ('visuals.py', "                    rgb[y0:y1, 4:-4] += (BG - rgb[y0:y1, 4:-4]) * 0.55 * p", "                    pass",
      'the marked line gets no focus', 'test_motion.py'),
+    # Stage reels (2026-10-20).
+    ('stage.py', "            if s.get('url') not in sources:\n                errors.append(f'{where}: docs url", "            if False:\n                errors.append(f'{where}: docs url",
+     'a docs quote without its page'),
+    ('stage.py', "        if i == 0 and kind not in HOOK_KINDS:", "        if False:", 'a stage hook without its proof'),
+    ('stage.py', "    if light > 2:", "    if False:", 'any number of light scenes'),
+    ('stage.py', "            if not s.get('illustration') and s.get('source') not in sources:", "            if False:",
+     'bars of made-up numbers'),
+    ('stage.py', "        if a >= after and _norm(w) == key:", "        if False:", 'moves ignore the spoken words'),
+    ('stage.py', "[[w, 'key' if k else '', -1] for w, k in hook]", "[[w, 'key' if k else '', 0.5] for w, k in hook]",
+     'the stage hook fades in after frame 0'),
+    ('stage.py', "const nextStart = i => i + 1 < S.length ? S[i + 1].start : T - 1.0;",
+     "const nextStart = i => i + 1 < S.length ? S[i + 1].start : T + 9;", 'the stage reel never glides back to its opening',
+     'test_motion.py'),
+    ('render.py', "    if reel.get('scenes'):\n        # A stage reel", "    if False:\n        # A stage reel",
+     'stage reels drawn as classic slides', 'test_motion.py'),
+    ('publish.py', "        if shown.get('scenes') and failed:", "        if False:", 'a rejected scene keeps the stage reel'),
+    ('generate.py', "    if forced in ('on', 'off'):\n        return forced == 'on'\n    day = day or datetime.now(timezone.utc).date()\n    chance = float(os.environ.get('STAGE_CHANCE'",
+     "    day = day or datetime.now(timezone.utc).date()\n    chance = float(os.environ.get('STAGE_CHANCE'", 'STAGE=on|off ignored'),
+    ('generate.py', "        errors += stage.scene_errors(reel)", "        pass", 'scenes never checked'),
+    ('learn.py', "    look = 'stage' if shown and str(shown[0]).startswith('stage-') else 'classic'", "    look = 'classic'",
+     'the learning loop cannot tell stage reels apart'),
+    # The weekly showcase (2026-10-20).
+    ('showcase.py', "        if NUMBERS.search(text):", "        if False:", 'numbers in a showcase'),
+    ('showcase.py', "    if beats and beats[0].get('motif') not in ('spark', 'ring'):", "    if False:", 'a showcase opening on nothing'),
+    ('showcase.py', "    if light > 1:", "    if False:", 'any number of light beats'),
+    ('showcase.py', "    out, at = [], start + (0.0 if start == 0 else 0.45)\n    for w in text.split():\n        key = w.startswith('*') or w.endswith('*') or w.strip('*.,!?') != w.strip('.,!?')\n        out.append([w.replace('*', ''), key, -1.0 if start == 0 else round(at, 3)])",
+     "    out, at = [], start + (0.0 if start == 0 else 0.45)\n    for w in text.split():\n        key = w.startswith('*') or w.endswith('*') or w.strip('*.,!?') != w.strip('.,!?')\n        out.append([w.replace('*', ''), key, round(at, 3)])",
+     'the first showcase words fade in after frame 0'),
+    ('showcase.py', "    if posted_today(log) and os.environ.get('FORCE_POST') != 'true':", "    if False:", 'two showcases in a day'),
+    ('showcase.py', "    if not verdict.get('ok'):", "    if False:", 'a showcase posted after a failed review'),
+    ('scheduler.py', "    return now.weekday() in days and now.time() >= SHOWCASE_START and not showcase_runs_today",
+     "    return now.weekday() in days and not showcase_runs_today", 'the showcase starts before its time'),
+    ('scheduler.py', "    if (value or '').strip().lower() == 'off':\n        return set()", "    if False:\n        return set()",
+     'SHOWCASE_DAYS=off ignored'),
+    ('showcase.py', "  if (back > 0) pts = lerp(pts, shapes[0](0).pts, inout(back));", "", 'the showcase never glides back',
+     'test_motion.py'),
+    # LinkedIn (2026-10-20).
+    ('linkedin.py', "    if entry.get('linkedin_id'):", "    if False:", 'a LinkedIn post twice'),
+    ('linkedin.py', "    if dry:\n        print('DRY_RUN: not posting to LinkedIn')", "    if False:\n        print('DRY_RUN: not posting to LinkedIn')",
+     'a LinkedIn dry run posts'),
+    ('linkedin.py', "    if resp.status_code == 401:", "    if False:", 'an expired LinkedIn token leaves no alert'),
+    ('linkedin.py', "        parts.append(RESERVED.sub(r'\\\\\\1', text[last:m.start()]))", "        parts.append(text[last:m.start()])",
+     'LinkedIn text not escaped'),
+    ('linkedin.py', "    if COMMENT_BAIT.search(text):", "    if False:", 'comment bait on LinkedIn'),
+    ('linkedin.py', "            etags.append(resp.headers.get('ETag', '').strip('\"'))", "            pass", 'a LinkedIn video never finalised'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
@@ -266,7 +312,7 @@ def main():
                 survived.append(label)
                 continue
             f.write_text(text.replace(old, new))
-            proc = subprocess.run([sys.executable, test[0] if test else TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=900)
+            proc = subprocess.run([sys.executable, test[0] if test else TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=2400)
             caught = proc.returncode != 0
             print(f"{'caught  ' if caught else 'SURVIVED'} {label}")
             if not caught:

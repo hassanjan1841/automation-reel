@@ -736,6 +736,18 @@ class Captions:
                 return
 
 
+def spoken_words(voice, slides):
+    """Each slide's spoken words as (word, start, end) in reel time; empty lists without word timings."""
+    if not getattr(voice, 'words', None):
+        return [[] for _ in slides]
+    out, at = [], VOICE_LEAD
+    for i, (s, ws) in enumerate(zip(slides, voice.words)):
+        off = at if voice.continuous else s.start + VOICE_LEAD
+        out.append([(w, a + off, b + off) for w, a, b in ws])
+        at += len(voice[i]) / SR
+    return out + [[] for _ in slides[len(out):]]
+
+
 def speech_beats(slides, voice):
     """When each spoken sentence starts, in reel time: the camera punches on these instead of on a timer, so the
     picture moves with what is being said. Empty without word timings."""
@@ -1016,7 +1028,9 @@ def scribble_sound(rng, length=0.5):
     return s / (np.sqrt(np.mean(s ** 2)) or 1.0)
 
 
-def build_audio(slides, path, voice=None):
+def build_audio(slides, path, voice=None, stage_sounds=None):
+    """The sound track: the voice, a whoosh into each slide, and the effects. A stage reel (stage.py) passes its own
+    effects as (time, kind) in reel time; they replace the camera's and the visuals' sounds."""
     total = slides[-1].end
     track = np.zeros(int(SR * (total + 0.5)))
     rng = np.random.default_rng(42)
@@ -1038,15 +1052,20 @@ def build_audio(slides, path, voice=None):
     for s in slides[1:]:
         place(whoosh_sound(rng), s.start - 0.3, whoosh_gain)
     kit = sound_kit(rng)
+    for at, kind in stage_sounds or []:
+        place(kit[kind](), at, SOUND_GAIN[kind])
     # The camera's own moves: a breath of air on mid-slide punches (slide changes already whoosh), a thud on shakes.
-    camera = Camera(slides, beats=speech_beats(slides, voice))
+    punches, shakes = [], []
+    if stage_sounds is None:
+        camera = Camera(slides, beats=speech_beats(slides, voice))
+        punches, shakes = camera.punches, camera.shakes
     starts = {round(s.start, 3) for s in slides}
-    for at, _ in camera.punches:
+    for at, _ in punches:
         if round(at, 3) not in starts:
             place(kit['air'](), at - 0.05, SOUND_GAIN['air'])
-    for at, _ in camera.shakes:
+    for at, _ in shakes:
         place(kit['thud'](), at, SOUND_GAIN['thud'])
-    for s in slides:
+    for s in slides if stage_sounds is None else []:
         for at, kind in getattr(s.visual, 'sounds', []):
             at -= s.lead  # a visual already in place at frame 0 skips the sounds of its entrance
             if 0 <= at and s.start + at < s.end - EXIT:
@@ -1121,6 +1140,18 @@ def render_reel(reel, out_path=None, voice=None):
     ensure_fonts()
     OUT_DIR.mkdir(exist_ok=True)
     out_path = Path(out_path or OUT_DIR / f"reel-{reel['id']}.mp4")
+    if reel.get('scenes'):
+        # A stage reel (stage.py): the slides only time the reel to the voice; the page draws every frame.
+        import stage
+        timing = {k: v for k, v in reel.items() if k not in ('hook_visual', 'scenes')}
+        timing['points'] = [{k: v for k, v in p.items() if k != 'visual'} for p in reel.get('points', [])]
+        slides, _ = build_slides(timing, voice)
+        for s, spec in zip(slides, reel['scenes']):
+            s.visual = stage.Shown(spec)
+        stage.render_stage(reel, slides, voice, out_path)
+        make_cover(reel, out_path.with_name(out_path.stem + '-cover.jpg'))
+        print(f'Rendered stage reel {out_path} ({slides[-1].end:.1f}s, {out_path.stat().st_size / 1e6:.1f} MB)')
+        return out_path, slides
     slides, theme = build_slides(reel, voice)
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / 'sfx.wav'

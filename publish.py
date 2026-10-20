@@ -19,6 +19,7 @@ Env:
   YOUTUBE_API_KEY       the trend scan, see trends.py
   CLAUDE_MODEL          optional model for the frame review and the trend scan (the writer uses generate.MODEL)
   THREE_D=on|off, THREE_D_CHANCE   3D today, see generate.three_d_today (default: random, chance 0.5)
+  STAGE=on|off, STAGE_CHANCE       a stage reel today (stage.py), see generate.stage_today (default: random, 0.5)
   EXPERIMENT            off stops the running test; a test name forces it, see generate.experiment_today
   VOICE_ENGINE, VOICE, VOICE_SPEED, VOICE_PITCH, FISH_API_KEY, FISH_MODEL   voiceover settings, see voice.py;
                         VOICE=none for sound effects only
@@ -233,6 +234,15 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             # Honesty is a hard line: better no post today than a misleading one.
             raise Dishonest('the review found a dishonest claim: '
                              + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in dishonest))
+        failed = [r for r in results if r.get('visual_ok') is False and r['slide'] < len(slides) and slides[r['slide']].visual]
+        if shown.get('scenes') and failed:
+            # A stage reel draws every slide as one piece; a scene that misses its point sends the whole reel back to
+            # the classic slides (its hook proof and point visuals, if the writer gave any).
+            print('Stage scene rejected (' + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in failed)
+                  + '); rendering the classic slides instead')
+            shown = {k: v for k, v in shown.items() if k != 'scenes'}
+            path, slides = render.render_reel(shown, voice=clips)
+            continue
         rejected, drop_proof = {}, False
         for r in results:
             i = r['slide']
@@ -308,7 +318,8 @@ def todays_reel(reels):
     reel = research_reel(reels)
     if reel.get('alternatives'):
         reel = generate.pick_hook(reel)
-    return reel if generate.three_d_today() else generate.strip_3d(reel)
+    reel = reel if generate.three_d_today() else generate.strip_3d(reel)
+    return reel if generate.stage_today() else generate.strip_stage(reel)
 
 
 def research_reel(reels):
@@ -418,6 +429,7 @@ def main():
         tip = generate.today(reels, [])
         tip = generate.pick_hook(tip) if tip and tip.get('alternatives') else tip
         tip = tip if not tip or generate.three_d_today() else generate.strip_3d(tip)
+        tip = tip if not tip or generate.stage_today() else generate.strip_stage(tip)
         if not tip:
             raise SystemExit('ERROR: could not write a replacement reel today.')
         name, episode = generate.series_label(reels, datetime.now(timezone.utc).date())

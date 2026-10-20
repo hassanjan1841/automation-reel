@@ -38,7 +38,10 @@ daily-reel.yml, three crons a day; the slots in REEL_SLOTS post (scheduler.activ
   3b. voice.synthesize()      Fish (one continuous take, cut per slide with Whisper word times) or Kokoro
                              (one clip per line); takes are transcribed with Whisper, misheard words get
                              Claude respellings or phonemes, fixes saved to pronounce.json per engine
-  4. render.render_reel()    Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps) + cover jpg:
+  4. render.render_reel()    a reel with "scenes" (stage day): build_slides only times it, stage.render_stage draws
+                             every frame as one page in Chromium (captions building at the top, scenes on the
+                             spoken words) and build_audio(stage_sounds=...) mixes the voice and its effects;
+                             otherwise Pillow frames -> ffmpeg -> out/reel-<id>.mp4 (1080x1920, 30fps) + cover jpg:
                              camera motion, captions from the voiceover word times, point visuals from
                              visuals.build() (recorded demos come from demos.record at this point)
   4b. publish.check_visuals()  qa.review() with the reel's sources: Claude reads one frame per slide, plus frame 0
@@ -69,6 +72,14 @@ weekly.yml (Sun 10:00 UTC)
   refresh_token.py   refreshes IG_TOKEN (60-day expiry) and writes it back with gh secret set
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
                      (a manual run posts it only with the post_carousel input ticked)
+
+After each Instagram post (daily-reel.yml, weekly.yml carousel job, showcase.yml): linkedin.py posts the same piece
+to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry
+
+showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase)
+  showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page that morphs
+                     a glowing line between motifs (stage.film) -> SFX only (sound_track) -> Claude frame review ->
+                     Instagram REELS, logged in showcases.json (posts once a day; DRY_RUN renders and reviews only)
 
 dm.yml (scheduler.py, every 10 min; cron backup)  dm.py   keyword comments -> post's dm_guide as a private reply + public
                      "Sent you a DM" (the dedupe marker); every other new comment -> dm.triage (one Claude call per
@@ -126,6 +137,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learn.py` | Learning loop (daily by default): measure, score against the usual, judge rules and the test, new rules, report | `main`, `measure`, `looks`, `slot_of`, `table`, `groups`, `verdict`, `clearly`, `evaluate_rules`, `run_experiment`, `check_new_rules`, `topic_ideas`, `review_openings`, `write_up`, `report`, `views_curve`, `views_life`, `SCORE_MIN_DAYS`, `HARD_RULES`, `RULE_FIELDS`, `MIN_EVIDENCE`, `MIN_AGE_HOURS`, `backup_skip`, `ranked`, `GROUP_FIELDS`, `CLEAR_SKIP`, `CLEAR_WATCHED`, `MAX_RULE_WORDS`, `MAX_NEW_RULES`, `MAX_ACTIVE_RULES`, `RULE_TRIAL_DAYS`, `RULE_GIVE_UP_DAYS`, `EXPERIMENT_MAX_DAYS`, `IDEA_DAYS` |
 | `history.py` | The learning loop's files: metrics snapshots, rules, the test, ideas, reports; learnings.md from rules | `snapshots`, `append_snapshots`, `by_post`, `settled`, `snapshot_due`, `value_at`, `DAILY_DAYS`, `rules`, `active`, `save_rules`, `import_learnings`, `experiments`, `save_experiments`, `ideas`, `save_ideas`, `learnings_text`, `key`, `save_report`, `last_report`, `SETTLED_DAYS` |
 | `scheduler.py` | Catch-up for dropped GitHub schedules: slot windows, what posted today, start what is due | `main`, `start`, `window`, `slot_of`, `posted_slots`, `due_reel`, `due_weekly`, `started_in_window`, `learn_days`, `due_learn`, `due_study`, `SLOT_STARTS`, `WEEKLY_START`, `STUDY_START`, `LEARN_START`, `MAX_ATTEMPTS`, `active_slots`, `DEFAULT_SLOTS`, `due_extra`, `waiting_extras`, `EXTRA_LEAD`, `EXTRA_LATE` |
+| `stage.py` | Stage reels: the whole reel as one animated page (scene kit `KINDS`: file, code, docs, steps, counter, bars, terminal, repo, words; `HOOK_KINDS` for slide 0), timed to the voice's words (`plan`, `caption_groups`, `_match`), rendered frame by frame (`render_stage`, JPEG frames into the standard encoding) | `scene_errors`, `plan`, `caption_groups`, `describe` (qa), `Shown`, `render_stage`, `RETURN`, `LINE_WORDS` |
 | `motion.py` | 2D explainer animations: SVG built by our own engine (eases, spring, seeked timeline, glow, one sweep) in headless Chromium, captured as transparent frames like scene3d; the page reports its length, `settle` frame and sound moments | `render_motion`, `prepare`, `predict_answer`, `tokens`, `words`, `morph_plan`, `PAGE`, `TYPES`, `EXAMPLES`, `MAX_SECONDS`, `FRAMES` |
 | `test_motion.py` | morph plan tests and a real render of every template (transparent, sized, settles, sounds, motion) | `MorphPlan`, `Render` |
 | `study.py` | Deep study of other creators' videos: download, measure, Claude breakdown into adoptable / not adoptable patterns; saved in studies/ | `sources_in`, `fetch`, `search`, `channel_outliers`, `relevant`, `auto_picks`, `week_topics`, `digest`, `TOPICS`, `probe`, `motion`, `measure`, `breakdown`, `empty_fields`, `report`, `save`, `study`, `studied`, `ours`, `main`, `CHANNELS`, `MAX_CHANNELS` |
@@ -135,6 +147,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `qa.py` | Claude reviews one frame per slide after rendering: ok, visual_ok, honest (with the reel's sources); and frame 0 and the payoff against the playbook | `review`, `describe`, `frames`, `grab`, `sharpness`, `side_by_side`, `first_frame`, `SYSTEM`, `SCHEMA` |
 | `ai_facts.md` | Verified AI-coding-tool facts with their official pages: the only facts the topic test's ai_tool reels may use | data, read by `generate.ai_facts` |
 | `playbook.md` | The researched rules for hooks, scripts, visuals and sound; read by the writer, the hook judge and qa | data, read by `generate.playbook` |
+| `director.md` | The creator's taste as rules: pacing, motion, composition, captions, sound, truth on screen, never-list, and a dated "Creator notes" log; appended to the playbook for the same readers | data, read by `generate.playbook` (`generate.DIRECTOR`) |
 | `render.py` | Slides, camera motion, captions, finishing, SFX, ffmpeg, cover | `build_slides`, `Background` (living mesh + faint grid, refreshed every 3 frames; `make_background` is its first frame for stills), `Camera`, `speech_beats`, `Captions` (no box: halo + accent pill wipe), `finishing`, `render_frames`, `build_audio`, `sound_kit`, `make_cover`, `render_reel`, `load_reel`, `ensure_fonts`, `Slide`, `THEMES`, `SAFE_TOP`, `SAFE_BOTTOM`, `MARGIN`, `VOICE_LEAD`, `VOICE_TAIL`, `KEYWORD_SIZE`, `HOLD_TICK`, `GLIDE`, `exit_progress` |
 | `voice.py` | Fish/Kokoro voiceover + Whisper listen-back | `COMMON_RULES`, `KOKORO_RULES`, `CUE`, `strip_cues`, `lexicon`, `speakable`, `script`, `engine`, `Fish`, `Kokoro`, `synthesize`, `say_whole`, `say_checked`, `clean_take`, `verify`, `islands`, `mute`, `report`, `split`, `learn`, `misheard`, `heard_alone`, `BEAT`, `FINAL_TAKES`, `ask_respellings`, `align`, `by_line`, `transcribe`, `Voiceover`, `hold`, `tempo`, `HOLD`, `FAST_HOOK` |
 | `test_voice.py` | Pronunciation and voice-verifier regression test | `SPEAKABLE`, `MISHEARD`, `SENTENCES`, `KNOWN`, `STRAY`, `check_verifier` |
@@ -142,6 +155,9 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learnings.md` | The active rules, read by the writers (reels, news, carousel) | data, generated from `rules.json` by `history.save_rules` |
 | `rules.json`, `experiments.json`, `ideas.json`, `metrics/`, `reports/` | The learning loop's data | data, written by `learn.py` only |
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
+| `showcase.py` | The weekly showcase: abstract motion piece, no voice | `write`, `errors`, `timeline`, `page`, `render_showcase`, `sound_track`, `review`, `posted_today`, `MOTIFS`, `BEAT`, `BACK` |
+| `showcases.json` | Posted showcases | data, written by `showcase.py` (showcase.yml) |
+| `linkedin.py` | Cross-posts to LinkedIn (Share on LinkedIn, `w_member_social`): reel and showcase as video (`/rest/videos` initializeUpload, parts, finalizeUpload), carousel as a PDF document (`/rest/documents`), `/rest/posts` with the text in little text format; Claude writes the text, `text_errors` checks it; records `linkedin_id`; a 401 leaves `out/linkedin-alert.md` | `post`, `write_text`, `text_errors`, `little`, `upload_video`, `upload_document`, `create_post`, `pdf`, `LoginExpired`, `ALERT`, `VERSION` |
 | `dm.py` | Comment replies on recent reels, carousels and extras: keyword guide by DM, Claude triage of the rest | `main`, `posts`, `asks`, `comments`, `answer`, `triage`, `send_guide`, `inbox`, `to_inbox`, `clean`, `claude`, `SYSTEM`, `KINDS`, `INBOX`, `REPLY_LIMIT`, `ABOUT`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
 | `refresh_token.py` | IG token refresh | script |
@@ -223,6 +239,10 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
   "caption": "Line one.\nLine two.\nA question to end on? 👇",
   "hashtags": ["#nextjs", "..."],   // 3-5, unique, ^#[A-Za-z0-9_]+$ (older posted reels have 8-12)
   "voiceover": ["..."],             // 5 spoken lines (hook, 3 points, cta); required on unposted reels
+  "scenes": [{"kind": "docs", "url": "https://...", "title": "...", "text": "...", "mark": "..."}, ...],
+                                    // stage days only (generate.stage_today): one scene per slide, kinds in
+                                    // stage.KINDS, checked by stage.scene_errors; hook_visual and visuals stay as
+                                    // the fallback when the review rejects a scene (publish.check_visuals)
   "sources": ["https://..."],       // timely reels, primary source first (blocks reposting a story); and the topic
                                     // test's ai_tool reels: official pages from ai_facts.md (generate.fact_sources)
   "posted_at": null,                // ISO timestamp, set by publish.py
@@ -267,8 +287,8 @@ Pillar and series come from `generate.pillar_for`: each slot rotates its series 
 
 ## Secrets and variables
 
-Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_2` (optional backup), `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: myth, news, trick, versus, explained, series or build), `REEL_SLOTS` (the slots that post, default `1,3`), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`.
+Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_2` (optional backup), `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write), `LINKEDIN_TOKEN` (optional: linkedin.py; 60-day token, no refresh for self-serve apps).
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: myth, news, trick, versus, explained, series or build), `REEL_SLOTS` (the slots that post, default `1,3`), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `STAGE`, `STAGE_CHANCE` (stage reels, `generate.stage_today`), `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`, `LINKEDIN_AUTHOR`, `LINKEDIN_VERSION` (linkedin.py).
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas
