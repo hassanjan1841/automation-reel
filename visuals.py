@@ -58,7 +58,8 @@ def mono(size):
     MONO.parent.mkdir(exist_ok=True)
     if not MONO.exists():
         urllib.request.urlretrieve(MONO_URL, MONO)
-    return ImageFont.truetype(str(MONO), size)
+    # Basic layout: no shaping, so code shows exactly as typed (JetBrains Mono would join => into an arrow).
+    return ImageFont.truetype(str(MONO), size, layout_engine=ImageFont.Layout.BASIC)
 
 
 def hex_rgb(h):
@@ -189,11 +190,21 @@ class Card:
         first frame (the hook's proof) is drawn from this point in its own timeline."""
         return self.TILT
 
+    glow = None               # set by build(): a soft light of the theme's colour behind the card, for depth
+    GLOW_BLUR, GLOW_DROP = 56, 30
+
     def draw(self, frame, t, alpha, dy):
         if alpha <= 0.003:
             return
         rgb, mask = self.layer(t)
         p = min(1.0, max(0.0, t / self.TILT))
+        if self.glow is not None:
+            if not hasattr(self, '_glow'):
+                self._glow = render.glow_mask(self.mask, self.GLOW_BLUR)
+            g, gx, gy = self._glow
+            color, strength = self.glow
+            render.composite(frame, render.El(g, color, 0, 0, 0), alpha * strength * p, self.x + gx,
+                             self.y + dy + gy + self.GLOW_DROP)
         if p < 1:
             e = 1 - render.ease_out(p)
             rgb, mask = tilted(rgb, mask, self.TILT_X * e, self.TILT_Y * e)
@@ -303,9 +314,11 @@ class Code(Card):
         p = render.ease_out(min(1.0, max(0.0, (t - done) / 0.4)))
         if p > 0 and self.highlights:
             rgb = rgb.copy()
-            for i in self.highlights:
-                y0, y1 = self.rows[i]
-                rgb[y0:y1, 4:-4] += (255 - rgb[y0:y1, 4:-4]) * 0.08 * p
+            for i, (y0, y1) in enumerate(self.rows):
+                if i in self.highlights:
+                    rgb[y0:y1, 4:-4] += (255 - rgb[y0:y1, 4:-4]) * 0.08 * p
+                else:  # focus: the other lines step back
+                    rgb[y0:y1, 4:-4] += (BG - rgb[y0:y1, 4:-4]) * 0.55 * p
             # The first highlighted line gets circled by hand.
             stroke(rgb, self.circle, (t - done - 0.25) / 0.55, self.accent, 5)
         return rgb, mask
@@ -1115,6 +1128,15 @@ class Screenshot(Card):
 
 
 def build(visual, theme, box):
+    card = make(visual, theme, box)
+    if isinstance(card, Card):
+        accent = render.rgb(theme['accent'])
+        dark = theme is render.THEMES['dark']
+        card.glow = (accent * 0.6 + render.rgb('#3B5BDB') * 0.4, 0.30) if dark else (accent, 0.16)
+    return card
+
+
+def make(visual, theme, box):
     kind = (visual or {}).get('type')
     try:
         if kind == 'code':

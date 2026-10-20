@@ -57,7 +57,7 @@ MAX_SECONDS = 12.0
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}
-text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}.serif{font-family:'Instrument Serif'}
+text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono';font-variant-ligatures:none;font-feature-settings:'calt' 0,'liga' 0}.serif{font-family:'Instrument Serif'}
 </style></head><body><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg><script>
 const P = window.PARAMS, S = P.spec, W = P.w, H = P.h;
 const C = {panel: '#1E2230', bar: '#161A25', text: '#E6E9F2', dim: '#8A91A5', line: 'rgba(230,233,242,0.18)',
