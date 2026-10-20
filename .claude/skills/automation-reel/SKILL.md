@@ -73,6 +73,11 @@ weekly.yml (Sun 10:00 UTC)
   carousel.py        weekly cheat-sheet carousel -> Instagram CAROUSEL, logged in carousels.json
                      (a manual run posts it only with the post_carousel input ticked)
 
+showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase)
+  showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page that morphs
+                     a glowing line between motifs (stage.film) -> SFX only (sound_track) -> Claude frame review ->
+                     Instagram REELS, logged in showcases.json (posts once a day; DRY_RUN renders and reviews only)
+
 dm.yml (scheduler.py, every 10 min; cron backup)  dm.py   keyword comments -> post's dm_guide as a private reply + public
                      "Sent you a DM" (the dedupe marker); every other new comment -> dm.triage (one Claude call per
                      post): guide, answer or thanks (public reply), spam (hidden), needs_you (dm.INBOX issue)
@@ -147,6 +152,8 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `learnings.md` | The active rules, read by the writers (reels, news, carousel) | data, generated from `rules.json` by `history.save_rules` |
 | `rules.json`, `experiments.json`, `ideas.json`, `metrics/`, `reports/` | The learning loop's data | data, written by `learn.py` only |
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
+| `showcase.py` | The weekly showcase: abstract motion piece, no voice | `write`, `errors`, `timeline`, `page`, `render_showcase`, `sound_track`, `review`, `posted_today`, `MOTIFS`, `BEAT`, `BACK` |
+| `showcases.json` | Posted showcases | data, written by `showcase.py` (showcase.yml) |
 | `dm.py` | Comment replies on recent reels, carousels and extras: keyword guide by DM, Claude triage of the rest | `main`, `posts`, `asks`, `comments`, `answer`, `triage`, `send_guide`, `inbox`, `to_inbox`, `clean`, `claude`, `SYSTEM`, `KINDS`, `INBOX`, `REPLY_LIMIT`, `ABOUT`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
 | `refresh_token.py` | IG token refresh | script |

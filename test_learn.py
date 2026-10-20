@@ -1139,10 +1139,12 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
-    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None):
+    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None,
+                      showcased=None):
         learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
         studied = [run(now)] if studied is None else studied   # and the Sunday study
         dms = [run(now, 'in_progress')] if dms is None else dms  # and the comment replies are running
+        showcased = [run(now)] if showcased is None else showcased  # and a showcase day's showcase
         os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
@@ -1151,7 +1153,7 @@ class SchedulerTest(Sandbox):
             calls.append(args)
             if args[:2] == ('run', 'list'):
                 return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned,
-                                   'study.yml': studied, 'dm.yml': dms}[args[3]])
+                                   'study.yml': studied, 'dm.yml': dms, 'showcase.yml': showcased}[args[3]])
             return ''
 
         class Now(datetime):
@@ -1235,6 +1237,28 @@ class SchedulerTest(Sandbox):
         started = [c[2] for c in calls if c[:2] == ('workflow', 'run')]
         self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml', 'dm.yml'])
         self.assertIn('Could not start daily-reel.yml: workflow is disabled', out.getvalue())
+
+    def test_showcase_days(self):
+        wednesday = date(2026, 9, 30)
+        self.assertEqual(scheduler.showcase_days(''), {2, 5})            # Wednesday and Saturday
+        self.assertEqual(scheduler.showcase_days('off'), set())
+        self.assertEqual(scheduler.showcase_days('mon, fri'), {0, 4})
+        with self.assertRaises(SystemExit):
+            scheduler.showcase_days('someday')
+        days = scheduler.showcase_days('')
+        self.assertTrue(scheduler.due_showcase(at(15, 50, wednesday), [], days))
+        self.assertFalse(scheduler.due_showcase(at(15, 30, wednesday), [], days))          # before its time
+        self.assertFalse(scheduler.due_showcase(at(15, 50, wednesday), [run(at(15, 41, wednesday))], days))
+        self.assertFalse(scheduler.due_showcase(at(15, 50), [], days))                     # a Monday
+        os.environ['SHOWCASE_DAYS'] = ''
+        started = self.run_scheduler(at(15, 50, wednesday), [], [], [], showcased=[])
+        self.assertIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'), started)
+        self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
+                         self.run_scheduler(at(15, 50, wednesday), [], [], []))            # it already ran today
+        os.environ['SHOWCASE_DAYS'] = 'off'
+        self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
+                         self.run_scheduler(at(15, 50, wednesday), [], [], [], showcased=[]))
+        os.environ['SHOWCASE_DAYS'] = ''
 
     def test_learn_days(self):
         self.assertEqual(scheduler.learn_days(''), set(range(7)))
@@ -1869,6 +1893,85 @@ class StageTest(Sandbox):
                 self.assertIn(kind, note)
         self.assertNotIn('scenes', generate.strip_stage(STAGED))
         self.assertEqual(generate.strip_stage(VALID), VALID)
+
+
+SHOWCASE = {'title': 'How an AI agent works', 'beats': [
+    {'text': 'Start with a *goal*', 'motif': 'spark'},
+    {'text': 'The agent makes a *plan*', 'motif': 'ring'},
+    {'text': 'It *acts* on your files', 'motif': 'flow', 'labels': ['read', 'edit', 'run']},
+    {'text': 'Then it *checks* the result', 'motif': 'card', 'labels': ['tests pass'], 'light': True},
+    {'text': 'And it *repeats*', 'motif': 'loop'}],
+    'caption': 'How an AI coding agent works.\nWhich step do you trust least? 👇', 'hashtags': ['#ai', '#code', '#motion']}
+
+
+class ShowcaseTest(Sandbox):
+    """The weekly showcase (showcase.py): the writer's checks, the beat timing, and the post-once rule."""
+
+    def test_a_valid_showcase_passes(self):
+        import showcase
+        self.assertEqual(showcase.errors(SHOWCASE), [])
+
+    def test_checks(self):
+        import showcase
+        def errs(i=None, **change):
+            spec = copy.deepcopy(SHOWCASE)
+            if i is None:
+                spec.update(change)
+            else:
+                spec['beats'][i] = {k: v for k, v in {**spec['beats'][i], **change}.items() if v is not None}
+            return ' | '.join(showcase.errors(spec))
+        self.assertIn('4 to 6', errs(beats=SHOWCASE['beats'][:3]))
+        self.assertIn('2 to 6 words', errs(1, text='*Plan*'))
+        self.assertIn('one key word', errs(1, text='The agent makes a plan'))
+        self.assertIn('no numbers', errs(1, text='Make *3* plans'))
+        self.assertIn('motif must be', errs(1, motif='face'))
+        self.assertIn('flow needs', errs(2, labels=None))
+        self.assertIn('card needs', errs(3, labels=['a', 'b']))
+        self.assertIn('beat 1 stays dark', errs(0, light=True))
+        self.assertIn('at most one light', errs(4, light=True))
+        self.assertIn('spark or a ring', errs(0, motif='blob'))
+        self.assertIn('caption', errs(caption='Just one line'))
+        self.assertIn('hashtags', errs(hashtags=['#a']))
+
+    def test_beats_and_words(self):
+        import showcase
+        beats, total = showcase.timeline(SHOWCASE)
+        self.assertAlmostEqual(total, 5 * showcase.BEAT + showcase.BACK)
+        self.assertEqual([b['start'] for b in beats], [k * showcase.BEAT for k in range(5)])
+        self.assertTrue(all(at == -1.0 for _, _, at in beats[0]['words']))   # the first words are there on frame 0
+        self.assertEqual([w for w, k, _ in beats[0]['words'] if k], ['goal'])  # *word* is the key word
+        later = [at for _, _, at in beats[1]['words']]
+        self.assertTrue(beats[1]['start'] < later[0] and later == sorted(later))
+
+    def test_posts_once_a_day(self):
+        import showcase
+        today = datetime.now(timezone.utc).date()
+        self.assertFalse(showcase.posted_today([]))
+        self.assertFalse(showcase.posted_today([{'media_id': None, 'posted_at': f'{today}T16:00:00+00:00'}]))
+        self.assertTrue(showcase.posted_today([{'media_id': '1', 'posted_at': f'{today}T16:00:00+00:00'}]))
+        self.assertFalse(showcase.posted_today([{'media_id': '1', 'posted_at': '2020-01-01T16:00:00+00:00'}]))
+        written = []
+        with mock.patch.object(showcase, 'load', return_value=[{'media_id': '1', 'posted_at': f'{today}T16:00:00+00:00'}]), \
+                mock.patch.object(showcase, 'write', side_effect=lambda log: written.append(1)), \
+                mock.patch.dict(os.environ, {'FORCE_POST': ''}), mock.patch('publish.output'), \
+                mock.patch.object(sys, 'argv', ['showcase.py']), contextlib.redirect_stdout(io.StringIO()):
+            showcase.main()
+        self.assertEqual(written, [])                                          # nothing written twice in a day
+
+    def test_a_failed_review_posts_nothing(self):
+        import showcase
+        uploads = []
+        with mock.patch.object(showcase, 'load', return_value=[]), \
+                mock.patch.object(showcase, 'write', return_value=copy.deepcopy(SHOWCASE)), \
+                mock.patch.object(showcase, 'render_showcase', return_value=(Path(self.tmp) / 's.mp4', 14.9)), \
+                mock.patch.object(showcase, 'review', return_value={'ok': False, 'problem': 'a face'}), \
+                mock.patch('publish.upload', side_effect=lambda *a, **k: uploads.append(a)), mock.patch('publish.output'), \
+                mock.patch.dict(os.environ, {'DRY_RUN': '', 'FORCE_POST': ''}), mock.patch.object(showcase, 'LOG', Path(self.tmp) / 'showcases.json'), \
+                mock.patch.object(render, 'OUT_DIR', Path(self.tmp)), \
+                mock.patch.object(sys, 'argv', ['showcase.py']), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                showcase.main()
+        self.assertEqual(uploads, [])
 
 
 class MotionTest(Sandbox):

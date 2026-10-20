@@ -14,6 +14,8 @@ so this decides what should be running right now and starts it with workflow_dis
   Ready-made video: an extras.json entry with a post_at time and no media_id is started with post-video.yml from
   EXTRA_LEAD before that time (post_video.py waits for the minute itself), while no Post a video run is active,
   at most MAX_ATTEMPTS times, and not when more than EXTRA_LATE late.
+  Showcase: on each day in SHOWCASE_DAYS (Wednesday and Saturday by default; "off" for never) from 15:41 UTC, if no
+  Showcase run has started today, start showcase.yml (it posts the week's animated showcase, showcase.py).
   Comment replies: on every run, start dm.yml (mode send) unless one is queued or running, so new comments are
   answered within about 10 minutes (its own 15-minute cron fires every few hours at best).
 
@@ -23,7 +25,8 @@ Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any 
 scheduler.yml. Standard library only; uses the gh CLI.
 
 Env: GH_TOKEN (Actions write), GITHUB_REPOSITORY, LEARN_DAYS (days the learning loop runs: empty or "daily" for
-     every day, or day names such as "sun,wed"), REEL_SLOTS (the slots that post: empty for "1,3", or e.g. "1,2,3")
+     every day, or day names such as "sun,wed"), REEL_SLOTS (the slots that post: empty for "1,3", or e.g. "1,2,3"),
+     SHOWCASE_DAYS (days the showcase posts: empty for "wed,sat", "off" for never, or day names)
 Usage: python scheduler.py          start whatever is due
        python scheduler.py --dry    only print the decision
 """
@@ -45,6 +48,8 @@ SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
 STUDY_START = time(8, 0)    # Sundays: the weekly study of other creators (study.yml)
 LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by then
+SHOWCASE_START = time(15, 41)  # the showcase's cron; it posts when ready, around 16:00 UTC
+SHOWCASE_DAYS = 'wed,sat'
 DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 ACTIVE = ('queued', 'in_progress', 'waiting', 'requested', 'pending')
 MAX_ATTEMPTS = 2  # runs started in one slot's window; a slot that keeps failing is left for a person to look at
@@ -156,6 +161,22 @@ def learn_days(value):
     return {DAYS.index(n) for n in names}
 
 
+def showcase_days(value):
+    """The weekdays (0 is Monday) the showcase posts on, from SHOWCASE_DAYS: empty for Wednesday and Saturday, "off"
+    for none."""
+    if (value or '').strip().lower() == 'off':
+        return set()
+    names = [d.strip().lower()[:3] for d in (value or SHOWCASE_DAYS).replace(' ', ',').split(',') if d.strip()]
+    unknown = [n for n in names if n not in DAYS]
+    if unknown:
+        raise SystemExit(f'SHOWCASE_DAYS has unknown days: {", ".join(unknown)} (use e.g. "wed,sat" or "off")')
+    return {DAYS.index(n) for n in names}
+
+
+def due_showcase(now, showcase_runs_today, days):
+    return now.weekday() in days and now.time() >= SHOWCASE_START and not showcase_runs_today
+
+
 def due_learn(now, learn_runs_today, days):
     return now.weekday() in days and now.time() >= LEARN_START and not learn_runs_today
 
@@ -211,6 +232,14 @@ def main():
         print('Starting the weekly study of other creators')
         if not dry:
             start('study.yml', '-f', 'auto=true')
+    days = showcase_days(os.environ.get('SHOWCASE_DAYS'))
+    showcase_today = [r for r in runs('showcase.yml') if r['createdAt'][:10] == now.date().isoformat()] \
+        if now.weekday() in days else []
+    showcase = due_showcase(now, showcase_today, days)
+    if showcase:
+        print('Starting the Showcase (its schedule did not run)')
+        if not dry:
+            start('showcase.yml', '-f', 'dry_run=false')
     extras = json.loads(EXTRAS.read_text()) if EXTRAS.exists() else []
     extra = due_extra(now, extras, runs('post-video.yml')) if waiting_extras(now, extras) else None
     if extra:
@@ -218,7 +247,7 @@ def main():
         if not dry:
             start('post-video.yml', '-f', f"video={extra['video']}", '-f', f"caption={extra['caption_file']}",
                   '-f', f"cover={extra.get('cover', '')}", '-f', 'dry_run=false')
-    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra:
+    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra and not showcase:
         print('Nothing to start')
     if due_dms(runs('dm.yml')) and not dry:
         start('dm.yml', '-f', 'mode=send')

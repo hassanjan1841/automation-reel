@@ -1,0 +1,95 @@
+name: Showcase
+
+# The weekly showcase reels (showcase.py): a fully animated piece with no voice, written, rendered, reviewed and
+# posted on Wednesdays and Saturdays around 16:00 UTC (repo variable SHOWCASE_DAYS; "off" stops them). scheduler.py
+# starts a run GitHub's schedule dropped.
+on:
+  schedule:
+    - cron: '41 15 * * 3,6' # Wednesdays and Saturdays, 15:41 UTC; posts when ready, around 16:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Render and review only, do not post
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reels-queue
+  cancel-in-progress: false
+
+jobs:
+  showcase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Download fonts
+        run: python render.py --fonts
+
+      - name: Cache screenshot browser
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: Install screenshot browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Install Claude Code
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
+
+      - name: Write, render, review and post
+        id: showcase
+        if: github.event_name == 'workflow_dispatch' || vars.SHOWCASE_DAYS != 'off'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+        run: python showcase.py
+
+      - name: Upload video
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: showcase-${{ github.run_number }}
+          path: |
+            out/showcase-*.mp4
+            out/showcase-*.jpg
+            out/showcase-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record it
+        if: always() && steps.showcase.outputs.posted == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add showcases.json
+          git commit -m 'Posted a showcase'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

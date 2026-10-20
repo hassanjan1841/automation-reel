@@ -595,48 +595,58 @@ def html(reel, slides, words):
                         + json.dumps(params).replace('</', '<\\/') + ';</script>', 1), params
 
 
+def film(page_html, total, frames_path, label='stage'):
+    """Every frame of a page that draws itself with window.renderAt(t), encoded to frames_path (video only, film grain
+    and a soft vignette, the standard encoding). Returns the page's sound effects, [(time, kind)]. Shared with
+    showcase.py."""
+    from playwright.sync_api import sync_playwright
+    enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'image2pipe', '-vcodec', 'mjpeg',
+                            '-framerate', str(render.FPS), '-i', '-',
+                            '-vf', 'noise=alls=4:allf=t,vignette=PI/9', '-c:v', 'libx264', '-preset', 'slow',
+                            '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
+                            '-maxrate', '5M', '-bufsize', '10M', '-g', str(render.FPS * 2), str(frames_path)],
+                           stdin=subprocess.PIPE)
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page(viewport={'width': CSS_W, 'height': CSS_H}, device_scale_factor=2)
+            errors = []
+            page.on('pageerror', lambda e: errors.append(str(e)))
+            page.set_content(page_html, wait_until='domcontentloaded')
+            try:
+                page.wait_for_function('window.READY === true || window.ERROR', timeout=30000)
+            except Exception:
+                raise RuntimeError(f'{label} page did not load: {errors or "no error reported"}') from None
+            if errors or page.evaluate('window.ERROR || null'):
+                raise RuntimeError(f"{label} page failed: {(errors or [page.evaluate('window.ERROR')])[0][:300]}")
+            sounds = page.evaluate('window.SOUNDS')
+            for f in range(round(total * render.FPS)):
+                page.evaluate(f'window.renderAt({f / render.FPS})')
+                enc.stdin.write(page.screenshot(type='jpeg', quality=JPEG_QUALITY))
+        finally:
+            browser.close()
+            enc.stdin.close()
+    if enc.wait() != 0:
+        raise RuntimeError(f'ffmpeg failed on the {label} frames')
+    return sounds
+
+
+def mux(frames_path, wav, out_path):
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(frames_path), '-i', str(wav),
+                    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-ar', str(render.SR), '-shortest',
+                    '-movflags', '+faststart', str(out_path)], check=True)
+
+
 def render_stage(reel, slides, voice, out_path):
     """Draw every frame of the stage reel in Chromium and encode it with the voice and the scenes' sound effects."""
-    from playwright.sync_api import sync_playwright
     words = render.spoken_words(voice, slides)
     page_html, params = html(reel, slides, words)
-    total = params['total']
     with tempfile.TemporaryDirectory() as tmp:
-        frames_mp4 = Path(tmp) / 'frames.mp4'
-        enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'image2pipe', '-vcodec', 'mjpeg',
-                                '-framerate', str(render.FPS), '-i', '-',
-                                # film grain and a soft vignette, then the same encoding as every other reel
-                                '-vf', 'noise=alls=4:allf=t,vignette=PI/9', '-c:v', 'libx264', '-preset', 'slow',
-                                '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
-                                '-maxrate', '5M', '-bufsize', '10M', '-g', str(render.FPS * 2), str(frames_mp4)],
-                               stdin=subprocess.PIPE)
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page(viewport={'width': CSS_W, 'height': CSS_H}, device_scale_factor=2)
-                errors = []
-                page.on('pageerror', lambda e: errors.append(str(e)))
-                page.set_content(page_html, wait_until='domcontentloaded')
-                try:
-                    page.wait_for_function('window.READY === true || window.ERROR', timeout=30000)
-                except Exception:
-                    raise RuntimeError(f'stage page did not load: {errors or "no error reported"}') from None
-                if errors or page.evaluate('window.ERROR || null'):
-                    raise RuntimeError(f"stage page failed: {(errors or [page.evaluate('window.ERROR')])[0][:300]}")
-                sounds = page.evaluate('window.SOUNDS')
-                for f in range(round(total * render.FPS)):
-                    page.evaluate(f'window.renderAt({f / render.FPS})')
-                    enc.stdin.write(page.screenshot(type='jpeg', quality=JPEG_QUALITY))
-            finally:
-                browser.close()
-                enc.stdin.close()
-        if enc.wait() != 0:
-            raise RuntimeError('ffmpeg failed on the stage frames')
+        frames = Path(tmp) / 'frames.mp4'
+        sounds = film(page_html, params['total'], frames)
         wav = Path(tmp) / 'audio.wav'
         render.build_audio(slides, wav, voice, stage_sounds=sounds)
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(frames_mp4), '-i', str(wav),
-                        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-ar', str(render.SR), '-shortest',
-                        '-movflags', '+faststart', str(out_path)], check=True)
+        mux(frames, wav, out_path)
     return out_path
 
 

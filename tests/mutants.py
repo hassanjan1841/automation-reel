@@ -269,6 +269,21 @@ MUTANTS = [
     ('generate.py', "        errors += stage.scene_errors(reel)", "        pass", 'scenes never checked'),
     ('learn.py', "    look = 'stage' if shown and str(shown[0]).startswith('stage-') else 'classic'", "    look = 'classic'",
      'the learning loop cannot tell stage reels apart'),
+    # The weekly showcase (2026-10-20).
+    ('showcase.py', "        if NUMBERS.search(text):", "        if False:", 'numbers in a showcase'),
+    ('showcase.py', "    if beats and beats[0].get('motif') not in ('spark', 'ring'):", "    if False:", 'a showcase opening on nothing'),
+    ('showcase.py', "    if light > 1:", "    if False:", 'any number of light beats'),
+    ('showcase.py', "    out, at = [], start + (0.0 if start == 0 else 0.45)\n    for w in text.split():\n        key = w.startswith('*') or w.endswith('*') or w.strip('*.,!?') != w.strip('.,!?')\n        out.append([w.replace('*', ''), key, -1.0 if start == 0 else round(at, 3)])",
+     "    out, at = [], start + (0.0 if start == 0 else 0.45)\n    for w in text.split():\n        key = w.startswith('*') or w.endswith('*') or w.strip('*.,!?') != w.strip('.,!?')\n        out.append([w.replace('*', ''), key, round(at, 3)])",
+     'the first showcase words fade in after frame 0'),
+    ('showcase.py', "    if posted_today(log) and os.environ.get('FORCE_POST') != 'true':", "    if False:", 'two showcases in a day'),
+    ('showcase.py', "    if not verdict.get('ok'):", "    if False:", 'a showcase posted after a failed review'),
+    ('scheduler.py', "    return now.weekday() in days and now.time() >= SHOWCASE_START and not showcase_runs_today",
+     "    return now.weekday() in days and not showcase_runs_today", 'the showcase starts before its time'),
+    ('scheduler.py', "    if (value or '').strip().lower() == 'off':\n        return set()", "    if False:\n        return set()",
+     'SHOWCASE_DAYS=off ignored'),
+    ('showcase.py', "  if (back > 0) pts = lerp(pts, shapes[0](0).pts, inout(back));", "", 'the showcase never glides back',
+     'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

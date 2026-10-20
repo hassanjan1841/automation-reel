@@ -3,7 +3,7 @@ of every animation template in headless Chromium (transparent frames, a sane len
 the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
 readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword; and the
 look (`Look`): the living background, code drawn without ligatures, titles rising out of their line, captions with
-no box; and a real stage reel (`Stage`).
+no box; a real stage reel (`Stage`) and a real showcase (`Showcase`).
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -386,6 +386,37 @@ class Stage(unittest.TestCase):
             self.assertGreater((zero[560:1440] > 120).sum(), 5000)     # its proof (the code card) already in place
             self.assertGreater(chapter.mean(), zero.mean() + 60)        # the light chapter
             self.assertLess(np.abs(last - zero).mean(), 25)             # it glides back to the opening for the loop
+
+
+class Showcase(unittest.TestCase):
+    """The weekly showcase (showcase.py) rendered for real: its length, a sound track and its cover, light and words
+    on frame 0, the light beat, and the glide back to the opening."""
+
+    def test_renders_a_showcase(self):
+        import json
+        import subprocess
+        import showcase
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_learn import SHOWCASE
+        spec = {**SHOWCASE, 'beats': SHOWCASE['beats'][:4]}
+        with tempfile.TemporaryDirectory() as tmp:
+            out, total = showcase.render_showcase(spec, Path(tmp) / 'showcase-test.mp4')
+            self.assertTrue((Path(tmp) / 'showcase-test-cover.jpg').exists())
+            info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
+                                              '-of', 'json', str(out)], capture_output=True, text=True, check=True).stdout)
+            self.assertAlmostEqual(float(info['format']['duration']), 4 * showcase.BEAT + showcase.BACK, delta=0.2)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            grab = {}
+            for name, t in (('zero', 0.0), ('light', 3 * showcase.BEAT + 1.4), ('end', total - 0.1)):
+                png = Path(tmp) / f'{name}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(out), '-frames:v', '1', str(png)],
+                               check=True)
+                grab[name] = np.asarray(Image.open(png).convert('L'), dtype=np.float32)
+            zero = grab['zero']
+            self.assertGreater((zero[1280:1400] > 180).sum(), 1500)   # the first words, on frame 0
+            self.assertGreater(zero[700:1000, 400:680].max(), 200)    # the spark's light
+            self.assertGreater(grab['light'].mean(), zero.mean() + 100)  # the light beat
+            self.assertLess(np.abs(grab['end'] - zero).mean(), 20)    # back to the opening for the loop
 
 
 if __name__ == '__main__':

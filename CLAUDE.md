@@ -7,7 +7,7 @@ Daily Instagram Reel pipeline for @hassanjan.k. Python 3.12 + ffmpeg, run by Git
 - Use `.venv/bin/python`. Never post for real while testing: use `DRY_RUN=true` with `publish.py` and `carousel.py`.
 - The creator's hard rules: no music ever (sound effects only); everything halal and honest (no invented results,
   stories, numbers or quotes, nothing of anyone else's presented as his); never Reddit; no faces or animals in visuals (3D scenes too: `scene3d.ANIMAL_LOGOS` blocks mascot logos).
-- `reels.json` and `pronounce.json` (daily workflow) and `carousels.json` (weekly.yml) are live state the bots commit to. Edit `reels.json` only when the task is about reels, and run `generate.py --check` after.
+- `reels.json` and `pronounce.json` (daily workflow) and `carousels.json` (weekly.yml) and `showcases.json` (showcase.yml) are live state the bots commit to. Edit `reels.json` only when the task is about reels, and run `generate.py --check` after.
 - `extras.json` is the record `post_video.py` (post-video.yml) commits after posting a ready-made video from `extras/`; such one-offs skip the writer and the frame review, so the creator decides on them himself. An entry with `post_at` and `media_id` null is queued: scheduler.py starts it at that time.
 - The learning loop's files (`metrics/`, `rules.json`, `experiments.json`, `ideas.json`, `reports/`, `learnings.md`) are live state the learning job (learn.yml, daily by default) writes. `learnings.md` is generated from `rules.json`; change a rule there, and only when the task is about rules.
 - `build` visuals (`visuals.Build`) render only the given HTML and CSS, with scripts off and the network blocked; keep it that way (`generate.BUILD_BLOCKED`).

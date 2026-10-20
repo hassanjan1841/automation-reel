@@ -32,4 +32,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           LEARN_DAYS: ${{ vars.LEARN_DAYS }}
           REEL_SLOTS: ${{ vars.REEL_SLOTS }}
+          SHOWCASE_DAYS: ${{ vars.SHOWCASE_DAYS }}
         run: python scheduler.py
