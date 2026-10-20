@@ -7062,5 +7062,141 @@
     ],
     "slot": 1,
     "seconds": 20.4
+  },
+  {
+    "id": 83,
+    "style": "light",
+    "payoff": "setTimeout(fn, 0) never fires immediately: it queues fn behind every pending synchronous line, so logging A, scheduling B, then logging C always prints A, C, B.",
+    "kicker": "Myth vs fact #10",
+    "hook": "Your *zero* second delay lies",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "order.js",
+      "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+      "highlight": [
+        2,
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "setTimeout zero still *waits*",
+        "spoken": "[grinning, punchy] Most developers assume a zero millisecond timeout runs instantly, (break) [confident] where you call it.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "What you *expect* vs reality",
+        "spoken": "[confident] You'd expect A, B, C printed in order, (break) [surprised, fast] reality is A, C, B.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "We *ran* the zero delay",
+        "spoken": "[fired up] We actually ran this zero millisecond timeout in Node, (break) [amused] the order surprised everyone.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "Looks instant",
+        "body": "It still waits behind your synchronous code",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "order.js",
+            "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+            "highlight": [
+              2,
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Stack clears first",
+        "body": "Both logs finish before the timer can fire",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "order.js",
+            "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+            "highlight": [
+              1,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real run proof",
+        "body": "node prints A, C, B every time",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node order.js",
+            "output": [
+              "A",
+              "C",
+              "B"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node order.js"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know someone who still thinks it's *instant*?",
+    "caption": "JavaScript setTimeout zero delay explained\nZero milliseconds does not mean instant\nWhat does your console actually print first? 👇",
+    "hashtags": [
+      "#javascript",
+      "#settimeout",
+      "#eventloop",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Your zero millisecond timeout still waits, (break) [serious, fast] it never actually runs right away.",
+      "[knowing] It just queues up instead of firing.",
+      "[confident and fast] Both logs finish first, (break) [excited] then it fires.",
+      "[amused] Run it yourself, (break) [emphasis] the real order is A, C, B.",
+      "[warm, curious] Send this to the friend who swears it's instant."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 10,
+    "posted_at": "2026-10-20T20:00:46+00:00",
+    "media_id": "18122589413515018",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "text",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.8
   }
 ]
