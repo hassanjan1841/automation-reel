@@ -171,6 +171,11 @@ class Shown:
         self.sounds, self.lead, self.marked = [], 0.0, None
 
 
+def _line(spec, n):
+    rows = str(spec.get('code', '')).split('\n')
+    return rows[n - 1].strip() if 1 <= n <= len(rows) else ''
+
+
 def describe(spec):
     """What a stage scene is meant to show, in words for the frame reviewer (qa.describe)."""
     kind = spec.get('kind')
@@ -178,8 +183,9 @@ def describe(spec):
         'file': f"an editor window '{spec.get('title')}' listing: " + ' / '.join(spec.get('lines') or [])
                 + (' (the lines get struck through' + (f", tagged {spec.get('tag')}" if spec.get('tag') else '') + ')'
                    if spec.get('strike') else ''),
-        'code': f"code typing itself in '{spec.get('title')}'" + (', the marked line highlighted and the rest dimmed'
-                                                                  if spec.get('highlight') else ''),
+        'code': f"code in '{spec.get('title')}' (typing itself, or already complete on the hook)" + (
+            '; once it lands, line(s) ' + ', '.join(f"{n} ({_line(spec, n)!r})" for n in spec['highlight'])
+            + ' get a soft red bar on the left and the other lines dim' if spec.get('highlight') else ''),
         'docs': f"a card of the page {spec.get('url')} ('{spec.get('title')}') quoting: \"{spec.get('text')}\", with "
                 f"\"{spec.get('mark')}\" highlighted (check the quote is what that page says)",
         'steps': 'ordered steps lighting up one by one: ' + ' → '.join(i.get('label', '') for i in spec.get('items') or [])
@@ -290,6 +296,7 @@ def plan(reel, slides, words):
                 for w in str(line).split():
                     m = _match(ws, w.replace('*', ''), after)
                     t = m if m is not None else (row[-1][2] + 0.12 if row else after + 0.15)
+                    t = min(t, latest + 0.4)  # all the words are in well before the cut
                     row.append([w.replace('*', ''), w.startswith('*'), t])
                     after = t
                 times.append(row)

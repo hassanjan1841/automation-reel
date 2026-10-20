@@ -1856,6 +1856,8 @@ class StageTest(Sandbox):
         self.assertEqual(term['latest'], max(term['start'] + 0.4, slides[3].start - stage.LAND))
         with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
             staged = stage.plan(STAGED, slides, words)
+        self.assertTrue(all(t <= staged['scenes'][4]['latest'] + 0.4 + 1e-6 for row in staged['scenes'][4]['rows']
+                            for _, _, t in row))                       # big words are all in before the cut
         for sc in staged['scenes'][:-1]:
             self.assertLessEqual(sc['beat'], sc['latest'] + 1e-6)
             for t in sc.get('times', []):
@@ -1904,6 +1906,8 @@ class StageTest(Sandbox):
         self.assertIn(DOCS, meant)
         self.assertIn('check the quote', meant)
         self.assertIn('database', qa.describe(stage.Shown(STAGED['scenes'][2]).spec))
+        code = qa.describe(stage.Shown(STAGED['scenes'][0]).spec)
+        self.assertIn("2 ('const u = await cache.get(key)')", code)   # which line is marked, so the review can check it
 
     def test_a_rejected_scene_falls_back_to_the_classic_slides(self):
         import publish
