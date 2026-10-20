@@ -248,6 +248,27 @@ MUTANTS = [
     ('visuals.py', "        card.glow = (", "        card.glow = None and (", 'cards lose their glow', 'test_motion.py'),
     ('visuals.py', "                    rgb[y0:y1, 4:-4] += (BG - rgb[y0:y1, 4:-4]) * 0.55 * p", "                    pass",
      'the marked line gets no focus', 'test_motion.py'),
+    # Stage reels (2026-10-20).
+    ('stage.py', "            if s.get('url') not in sources:\n                errors.append(f'{where}: docs url", "            if False:\n                errors.append(f'{where}: docs url",
+     'a docs quote without its page'),
+    ('stage.py', "        if i == 0 and kind not in HOOK_KINDS:", "        if False:", 'a stage hook without its proof'),
+    ('stage.py', "    if light > 2:", "    if False:", 'any number of light scenes'),
+    ('stage.py', "            if not s.get('illustration') and s.get('source') not in sources:", "            if False:",
+     'bars of made-up numbers'),
+    ('stage.py', "        if a >= after and _norm(w) == key:", "        if False:", 'moves ignore the spoken words'),
+    ('stage.py', "[[w, 'key' if k else '', -1] for w, k in hook]", "[[w, 'key' if k else '', 0.5] for w, k in hook]",
+     'the stage hook fades in after frame 0'),
+    ('stage.py', "const nextStart = i => i + 1 < S.length ? S[i + 1].start : T - 1.0;",
+     "const nextStart = i => i + 1 < S.length ? S[i + 1].start : T + 9;", 'the stage reel never glides back to its opening',
+     'test_motion.py'),
+    ('render.py', "    if reel.get('scenes'):\n        # A stage reel", "    if False:\n        # A stage reel",
+     'stage reels drawn as classic slides', 'test_motion.py'),
+    ('publish.py', "        if shown.get('scenes') and failed:", "        if False:", 'a rejected scene keeps the stage reel'),
+    ('generate.py', "    if forced in ('on', 'off'):\n        return forced == 'on'\n    day = day or datetime.now(timezone.utc).date()\n    chance = float(os.environ.get('STAGE_CHANCE'",
+     "    day = day or datetime.now(timezone.utc).date()\n    chance = float(os.environ.get('STAGE_CHANCE'", 'STAGE=on|off ignored'),
+    ('generate.py', "        errors += stage.scene_errors(reel)", "        pass", 'scenes never checked'),
+    ('learn.py', "    look = 'stage' if shown and str(shown[0]).startswith('stage-') else 'classic'", "    look = 'classic'",
+     'the learning loop cannot tell stage reels apart'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

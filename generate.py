@@ -12,7 +12,8 @@ Usage:
   python generate.py --visuals  pick code, terminal or screenshot visuals for queued reels that have none
 
 Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
-Env (also read when publish.py writes the day's reel): SLOT (1, 2 or 3), THREE_D=on|off, THREE_D_CHANCE,
+Env (also read when publish.py writes the day's reel): SLOT (1, 2 or 3), THREE_D=on|off, THREE_D_CHANCE, STAGE=on|off,
+STAGE_CHANCE,
 EXPERIMENT=off|<name>; REEL_FORMAT forces reel 3's format (local only: no workflow passes it).
 """
 
@@ -165,6 +166,9 @@ def validate(reel):
         errors.append('hook_word must be one word from the hook, 2 to 10 letters')
     if three_d_count(reel) > 2:
         errors.append(f'{three_d_count(reel)} 3D moments; use at most 2 (hook_word and 3D visuals together)')
+    if reel.get('scenes') is not None:
+        import stage
+        errors += stage.scene_errors(reel)
 
     cta = reel.get('cta', '').strip()
     spans = highlights(cta)
@@ -544,6 +548,9 @@ def reveal_errors(reel):
 NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
 SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
+# 2026-10-20: stage reels (stage.py), the explainer style the creator picked as the bar, on a random share of days;
+# learn.py compares them with the classic slides ("look").
+STAGE_CHANCE = 0.5
 
 
 # Each slot rotates through its own series (indexes into PILLARS) by weekday. Reel 1 is Myth vs fact every day:
@@ -614,6 +621,44 @@ def three_d_today(day=None):
     day = day or datetime.now(timezone.utc).date()
     chance = float(os.environ.get('THREE_D_CHANCE', '').strip() or THREE_D_CHANCE)
     return random.Random(f'3d-{day.isoformat()}' + (f'-{slot()}' if slot() > 1 else '')).random() < chance
+
+
+def stage_today(day=None):
+    """Whether today's reel is a stage reel (stage.py). Like three_d_today: random, fixed per date and slot.
+    STAGE=on or off overrides; STAGE_CHANCE sets the odds."""
+    forced = os.environ.get('STAGE', '').strip().lower()
+    if forced in ('on', 'off'):
+        return forced == 'on'
+    day = day or datetime.now(timezone.utc).date()
+    chance = float(os.environ.get('STAGE_CHANCE', '').strip() or STAGE_CHANCE)
+    return random.Random(f'stage-{day.isoformat()}-{slot()}').random() < chance
+
+
+def stage_note():
+    import stage
+    if not stage_today():
+        return 'Leave "scenes" out today: this reel uses the classic slides.'
+    return ('''Today this is a stage reel: add "scenes", exactly one per slide (hook, each point, cta), drawn as one
+animated piece in the director's style (director.md). Keep hook_visual and the point visuals as well: they are the
+fallback if a scene fails the review. Each scene is an object with "kind" and that kind's fields:
+- file: title, lines (1 to 7, at most 40 characters each), strike (true to strike the lines out on the beat), tag
+  (a short label that pops on, like "NO EFFECT").
+- code: title (the file name), language, code (at most ''' + f'{stage.MAX_CODE_LINES} lines of {stage.MAX_CODE_COLS}' + '''
+  columns), highlight (line numbers of the line that matters).
+- docs: url (one of "sources"), title (the page's heading), text (the page's exact words, 20 to 240 characters),
+  mark (the phrase of text that proves the point; it is highlighted as it is said).
+- steps: items (2 to 4, each {label of at most 14 characters, note}); each lights up as its label is said. stop
+  (optional): {request, result (at most 12 characters, like "BLOCKED"), at (the index of the item that stops it)}.
+- counter: label, value (the real number), prefix, suffix, source (one of "sources"); it ticks up to the value.
+- bars: title, items (2 to 5 {label, value}), unit, and source (one of "sources") for real numbers, or
+  illustration: true when the bars only sketch an idea (they are tagged so on screen).
+- terminal: command, output (1 to 6 lines the command really prints).
+- repo: name (owner/repo), description, stars (its real star count), url (one of "sources").
+- words: lines (1 to 3 of at most 18 characters); a *word* is the accent. Best for the cta.
+Any scene may add: at (one word of that slide's voiceover where its main move lands), light (true for the one light
+chapter: at most 2 scenes, never the hook), carry (short text shown on the previous scene and this one; it flies
+across). The hook's scene shows its proof from frame 0: file, code, docs, terminal, repo or counter. Every value is
+real; never a made-up number, output or quote.''')
 
 
 def three_d_note():
@@ -761,6 +806,11 @@ def three_d_count(reel):
     firsts = [(p.get('visual') or [None]) for p in reel.get('points', [])]
     firsts = [f if isinstance(f, list) else [f] for f in firsts]
     return bool(reel.get('hook_word')) + sum(1 for f in firsts if f and f[0] and f[0].get('type') in SCENES_3D)
+
+
+def strip_stage(reel):
+    """The same reel as classic slides, for a day that is not a stage day (the writer is told; this is the net)."""
+    return {k: v for k, v in reel.items() if k != 'scenes'}
 
 
 def strip_3d(reel):
@@ -1152,6 +1202,26 @@ def build_errors(i, v):
     return []
 
 
+_TEXT, _NUM = {'type': 'string'}, {'type': 'number'}
+SCENE_SCHEMA = {  # stage.py scenes; stage.scene_errors checks each kind's fields
+    'type': 'object', 'additionalProperties': False, 'required': ['kind'],
+    'properties': {
+        'kind': {'type': 'string', 'enum': ['file', 'code', 'docs', 'steps', 'counter', 'bars', 'terminal', 'repo',
+                                            'words']},
+        'title': _TEXT, 'lines': {'type': 'array', 'items': _TEXT}, 'strike': {'type': 'boolean'}, 'tag': _TEXT,
+        'language': _TEXT, 'code': _TEXT, 'highlight': {'type': 'array', 'items': {'type': 'integer'}},
+        'url': _TEXT, 'text': _TEXT, 'mark': _TEXT,
+        'items': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
+                                             'properties': {'label': _TEXT, 'note': _TEXT, 'value': _NUM}}},
+        'stop': {'type': 'object', 'additionalProperties': False,
+                 'properties': {'request': _TEXT, 'result': _TEXT, 'at': {'type': 'integer'}}},
+        'label': _TEXT, 'value': _NUM, 'prefix': _TEXT, 'suffix': _TEXT, 'source': _TEXT, 'unit': _TEXT,
+        'illustration': {'type': 'boolean'}, 'command': _TEXT, 'output': {'type': 'array', 'items': _TEXT},
+        'name': _TEXT, 'description': _TEXT, 'stars': {'type': 'integer'},
+        'at': _TEXT, 'light': {'type': 'boolean'}, 'carry': _TEXT,
+    },
+}
+
 SCHEMA = {
     'type': 'object',
     'properties': {
@@ -1183,6 +1253,7 @@ SCHEMA = {
                     'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
                     'reveal': {'type': 'integer'},
                     'sources': {'type': 'array', 'items': {'type': 'string'}},
+                    'scenes': {'type': 'array', 'items': SCENE_SCHEMA},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
@@ -1662,6 +1733,7 @@ def today(reels, performance=()):
     if asked():
         parts.append(asked())
     parts.append(three_d_note())
+    parts.append(stage_note())
     test = experiment_today()
     if test:
         parts.append(experiment_note())

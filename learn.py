@@ -69,11 +69,11 @@ IDEA_DAYS = 14              # comments on posts from the last two weeks become t
 HARD_RULES = re.compile(r'\b(music|songs?|soundtrack|melod\w*|reddit|faces?|talking head|animals?|mascots?|fake|'
                         r'invent\w*|made.up|comment below|follow (me|us|for))\b', re.I)
 GROUP_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'hook_type', 'opening', 'reveal', 'offer',
-                'slot', 'test')
+                'look', 'slot', 'test')
 # What the writer controls. A rule rests only on these; the slot (posting time) is a setting for the creator's
 # decision, not something the writer can act on.
 RULE_FIELDS = ('pillar', 'series', 'visuals', 'hook_word', 'three_d', 'hook_type', 'opening', 'reveal', 'offer',
-               'test')
+               'look', 'test')
 
 
 def redact(error, token):
@@ -142,13 +142,15 @@ def looks(reel):
     """The reel's visual types, whether its hook word spun in as 3D text, whether it had any 3D at all, its hook
     type (playbook.md) and its opening: "proof" when a code, diff or screenshot sat under the hook from frame 0,
     else "text"; whether a point held a silent beat while its result landed (reveal) and whether the reel ended
-    on a comment-to-DM freebie (offer). Uses what was actually shown (publish.shown) when recorded; older reels fall back to each
+    on a comment-to-DM freebie (offer), and its look: "stage" when it was drawn as one animated piece (stage.py), else
+    "classic". Uses what was actually shown (publish.shown) when recorded; older reels fall back to each
     point's first choice."""
     shown = reel.get('shown')
+    look = 'stage' if shown and str(shown[0]).startswith('stage-') else 'classic'
     if shown:
         visuals = sorted({t for t in shown[1:1 + len(reel['points'])] if t != 'text'})
         hook_3d = shown[0] == 'word'
-        opening = 'proof' if shown[0] in generate.HOOK_VISUALS else 'text'
+        opening = 'proof' if shown[0] in generate.HOOK_VISUALS or look == 'stage' else 'text'
     else:
         visuals = sorted({v['type'] for p in reel['points'] for v in (p.get('visual') or [])[:1]})
         hook_3d = bool(reel.get('hook_word'))
@@ -157,7 +159,7 @@ def looks(reel):
     return {'visuals': visuals or ['text'], 'hook_word': '3D word' if hook_3d else 'text only',
             'three_d': '3D' if three_d else 'flat', 'hook_type': reel.get('hook_type') or 'untagged',
             'opening': opening, 'reveal': 'held beat' if reel.get('reveal') else 'no beat',
-            'offer': 'freebie' if reel.get('dm_keyword') else 'question'}
+            'offer': 'freebie' if reel.get('dm_keyword') else 'question', 'look': look}
 
 
 def slot_of(reel):
@@ -504,7 +506,7 @@ Return:
 - new_rules: at most 3 instructions the writer can follow while writing a reel (hook, words, structure, visuals,
   topics), each tied to the averages by group: one sentence of at most 30 words, stating only what the numbers
   show, no guessed reasons. Never about posting times, slots or settings: those belong in decision. For each, "evidence" names the groups it rests on:
-  {"field": one of pillar, series, visuals, hook_word, three_d, hook_type, opening, reveal, offer, test; "better": the group that did better;
+  {"field": one of pillar, series, visuals, hook_word, three_d, hook_type, opening, reveal, offer, look, test; "better": the group that did better;
   "worse": the group it beat}. A rule without two groups of at least 5 reels that clearly differ is thrown away,
   so return none rather than guess. Not a rule that already exists.
 - summary: a short, friendly summary for the creator in plain words: what worked, what did not, what the test
@@ -524,7 +526,7 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['new_rul
 
 def write_up(rows, summary, rules, test, ideas, openings, last):
     keep = ('id', 'kind', 'hook', 'title', 'posted_at', 'pillar', 'series', 'visuals', 'hook_word', 'three_d',
-            'hook_type', 'opening',
+            'hook_type', 'opening', 'look',
             'slot', 'test', 'seconds', 'age_days', 'views_1d', 'views_3d', 'views_7d', 'late_views', 'reels_skip_rate', 'skip_vs_usual', 'watched_share',
             'watched_vs_usual', 'saved', 'shares', 'dm_asks', 'follows', 'profile_visits')
     prompt = ('Per-post results:\n' + json.dumps([{k: r[k] for k in keep if r.get(k) is not None} for r in rows],

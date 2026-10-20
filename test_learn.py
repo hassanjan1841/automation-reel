@@ -652,7 +652,7 @@ class MeasureTest(Sandbox):
 class ScoreTest(Sandbox):
     def test_looks(self):
         base = reel(1, datetime(2026, 9, 1, tzinfo=timezone.utc))
-        plain = {'reveal': 'no beat', 'offer': 'question'}
+        plain = {'reveal': 'no beat', 'offer': 'question', 'look': 'classic'}
         self.assertEqual(learn.looks(base), {'visuals': ['text'], 'hook_word': 'text only', 'three_d': 'flat',
                                              'hook_type': 'untagged', 'opening': 'text', **plain})
         self.assertEqual(learn.looks({**base, 'shown': ['word', 'diagram', 'terminal', 'text', 'text']}),
@@ -668,6 +668,9 @@ class ScoreTest(Sandbox):
         fell_back = {**base, 'hook_word': 'RLS', 'shown': ['text', 'code', 'text', 'text', 'text']}
         fell_back['points'][0]['visual'] = [{'type': 'diagram'}, {'type': 'code'}]
         self.assertEqual(learn.looks(fell_back)['three_d'], 'flat')
+        # A stage reel (stage.py): its hook scene is always a proof from frame 0.
+        staged = learn.looks({**base, 'shown': ['stage-file', 'stage-docs', 'stage-code', 'stage-steps', 'stage-words']})
+        self.assertEqual((staged['look'], staged['opening']), ('stage', 'proof'))
         self.assertEqual(learn.looks({k: v for k, v in fell_back.items() if k != 'shown'})['three_d'], '3D')
 
     def test_slot_of(self):
@@ -1724,6 +1727,148 @@ class QuotesTypeTest(Sandbox):
         spec['quotes'][0]['text'] = 'x' * 190
         self.assertIn('together is max', ' '.join(generate.motion_errors(1, spec)))
         self.assertTrue(generate.motion_errors(1, {'type': 'quotes', 'quotes': []}))
+
+
+DOCS = 'https://redis.io/docs/latest/commands/del/'
+STAGED = {**VALID, 'sources': [DOCS], 'scenes': [
+    {'kind': 'code', 'title': 'profile.ts', 'language': 'ts',
+     'code': "await db.update(user)\nconst u = await cache.get(key)", 'highlight': [2], 'at': 'old'},
+    {'kind': 'file', 'title': 'read path', 'lines': ['cache.get(key)', 'db.query(id)'], 'at': 'cache'},
+    {'kind': 'steps', 'items': [{'label': 'write'}, {'label': 'database'}, {'label': 'cache'}], 'light': True},
+    {'kind': 'docs', 'url': DOCS, 'title': 'DEL', 'text': 'Removes the specified keys. A key is ignored if it does not exist.',
+     'mark': 'Removes the specified keys', 'carry': None},
+    {'kind': 'words', 'lines': ['Clear keys', 'or *wait?*']}]}
+STAGED['scenes'][3] = {k: v for k, v in STAGED['scenes'][3].items() if v is not None}
+
+
+class StageTest(Sandbox):
+    """Stage reels (stage.py): the scene kit's checks, the timing worked out from the spoken words, the frame
+    review's descriptions, the classic fallback, and the day's draw."""
+
+    def test_a_valid_stage_reel_passes(self):
+        import stage
+        self.assertEqual(stage.scene_errors(STAGED), [])
+        self.assertEqual(generate.validate(STAGED), [])
+        self.assertEqual(stage.scene_errors(VALID), [])  # a classic reel has no scenes to check
+
+    def test_scene_checks(self):
+        import stage
+        def errs(i, **change):
+            scenes = copy.deepcopy(STAGED['scenes'])
+            scenes[i] = {k: v for k, v in {**scenes[i], **change}.items() if v is not None}
+            return ' | '.join(stage.scene_errors({**STAGED, 'scenes': scenes}))
+        self.assertIn('exactly 5', ' '.join(stage.scene_errors({**STAGED, 'scenes': STAGED['scenes'][:4]})))
+        self.assertIn('frame 0', errs(0, kind='words', lines=['Hi there']))
+        self.assertIn('kind must be one of', errs(1, kind='video'))
+        self.assertIn('1 to 10 lines', errs(0, code='\n'.join('x' for _ in range(11))))
+        self.assertIn('1 to 10 lines', errs(0, code='x' * 39))
+        self.assertIn('highlight', errs(0, highlight=[9]))
+        self.assertIn('sources', errs(3, url='https://example.com/other'))           # a quote names its page
+        self.assertIn('phrase of the text', errs(3, mark='not on the page'))
+        self.assertIn('2 to 4 items', errs(2, items=[{'label': 'only'}]))
+        self.assertIn('14 characters', errs(2, items=[{'label': 'a label far too long'}, {'label': 'b'}]))
+        self.assertIn('stop needs', errs(2, stop={'request': 'r', 'result': 'BLOCKED', 'at': 7}))
+        self.assertIn('counter source', errs(1, kind='counter', value=12, label='stars', source='https://made.up'))
+        self.assertIn('illustration', errs(1, kind='bars', title='speed', items=[{'label': 'a', 'value': 1},
+                                                                                 {'label': 'b', 'value': 2}]))
+        self.assertEqual(errs(1, kind='bars', title='speed', illustration=True,
+                              items=[{'label': 'a', 'value': 1}, {'label': 'b', 'value': 2}], at=None), '')
+        self.assertIn('real output', errs(1, kind='terminal', command='ls', output=[]))
+        self.assertIn('owner/repo', errs(1, kind='repo', name='not a repo', description='d', stars=3, url=DOCS))
+        self.assertIn('real star count', errs(1, kind='repo', name='a/b', description='d', stars=2.5, url=DOCS))
+        self.assertIn('18 characters', errs(4, lines=['a line that is far too long']))
+        self.assertIn('word of that slide', errs(1, at='nonsense'))
+        self.assertIn('hook stays dark', errs(0, light=True))
+        self.assertIn('carry', errs(3, carry='not on either card'))
+        self.assertEqual(errs(4, carry='cache'), ' | '.join(stage.scene_errors({**STAGED, 'scenes': [
+            *STAGED['scenes'][:4], {**STAGED['scenes'][4], 'carry': 'cache'}]})))
+        three = copy.deepcopy(STAGED['scenes'])
+        for sc in three[1:4]:
+            sc['light'] = True
+        self.assertIn('at most 2 light', ' '.join(stage.scene_errors({**STAGED, 'scenes': three})))
+        self.assertIn('scenes', ' '.join(generate.validate({**STAGED, 'scenes': STAGED['scenes'][:2]})))
+
+    def timed(self):
+        import stage
+        sys.path.insert(0, str(ROOT / 'tests'))
+        from e2e_publish import silent_voice
+        v = silent_voice(STAGED['voiceover'])
+        timing = {k: v2 for k, v2 in STAGED.items() if k not in ('hook_visual', 'scenes')}
+        timing['points'] = [{k: v2 for k, v2 in p.items() if k != 'visual'} for p in STAGED['points']]
+        slides, _ = render.build_slides(timing, v)
+        return stage, slides, render.spoken_words(v, slides)
+
+    def test_moves_land_on_spoken_words(self):
+        stage, slides, words = self.timed()
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):  # CI's job has no pygments
+            plan = stage.plan(STAGED, slides, words)
+        hook, read, steps, docs, cta = plan['scenes']
+        said = lambda i, w: next(a for x, a, _ in words[i] if stage._norm(x) == w)
+        self.assertEqual(hook['beat'], said(0, 'old'))            # "at" names the word the main move lands on
+        self.assertTrue(hook['ready'] and hook['start'] == 0 and hook['type_at'] < 0)  # the hook is whole on frame 0
+        self.assertEqual(read['beat'], said(1, 'cache'))
+        self.assertEqual(steps['times'][1], said(2, 'database'))  # each step lights as its label is said
+        self.assertTrue(slides[2].start < steps['times'][0] < steps['times'][2] < slides[3].start + 0.01)
+        self.assertEqual(cta['rows'][1][1][:2], ['wait?', True])   # *word* is the accent
+        self.assertAlmostEqual(cta['end'], plan['total'] - stage.RETURN)
+        self.assertEqual(read['start'], slides[1].start)
+
+    def test_caption_groups(self):
+        stage, slides, words = self.timed()
+        groups = stage.caption_groups(STAGED, slides, words)
+        first = groups[0]
+        self.assertEqual([w for w, *_ in first['words']], ['Your', 'cache', 'serves', 'old', 'data'])
+        self.assertEqual(first['words'][1][1:], ['key', -1])       # the hook is complete and selected on frame 0
+        self.assertEqual(first['end'], slides[1].start)
+        spoken = [g for g in groups[1:]]
+        self.assertTrue(all(len(g['words']) <= stage.LINE_WORDS for g in spoken))
+        self.assertTrue(all(g['start'] < g['end'] for g in spoken))
+        self.assertTrue(all(a <= b for a, b in zip([g['start'] for g in spoken], [g['start'] for g in spoken][1:])))
+        self.assertTrue(all(w[-1:] not in '.?!' for g in spoken for w, *_ in g['words'][:-1]))  # a sentence ends a group
+
+    def test_frame_review_reads_the_scenes(self):
+        import qa
+        import stage
+        docs = stage.Shown(STAGED['scenes'][3]).spec
+        self.assertEqual(docs['type'], 'stage-docs')
+        meant = qa.describe(docs)
+        self.assertIn(DOCS, meant)
+        self.assertIn('check the quote', meant)
+        self.assertIn('database', qa.describe(stage.Shown(STAGED['scenes'][2]).spec))
+
+    def test_a_rejected_scene_falls_back_to_the_classic_slides(self):
+        import publish
+        import stage
+        slides = [SimpleNamespace(visual=stage.Shown(s), start=i * 3.0, end=i * 3.0 + 3) for i, s in
+                  enumerate(STAGED['scenes'])]
+        verdict = {'slides': [{'slide': 2, 'ok': True, 'visual_ok': False, 'honest': True, 'problem': 'unclear'}],
+                   'first_frame': {}, 'payoff': {}}
+        rendered = []
+        classic = [SimpleNamespace(visual=None, start=0.0, end=3.0)]
+        with mock.patch('qa.review', side_effect=[verdict, {'slides': [], 'first_frame': {}, 'payoff': {}}]), \
+                mock.patch('render.render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v.mp4', classic)):
+            path, out = publish.check_visuals(copy.deepcopy(STAGED), None, 'v.mp4', slides)
+        self.assertEqual(len(rendered), 1)
+        self.assertNotIn('scenes', rendered[0])                    # the same reel, as classic slides
+        self.assertEqual(rendered[0]['hook_visual'], STAGED['hook_visual'])
+        self.assertIs(out, classic)
+
+    def test_the_days_draw(self):
+        with mock.patch.dict(os.environ, {'STAGE': '', 'STAGE_CHANCE': ''}):
+            days = [date(2026, 11, 1) + timedelta(days=k) for k in range(60)]
+            draws = [generate.stage_today(d) for d in days]
+            self.assertEqual(draws, [generate.stage_today(d) for d in days])  # fixed per date: reruns agree
+            self.assertTrue(10 < sum(draws) < 50)
+        with mock.patch.dict(os.environ, {'STAGE': 'off'}):
+            self.assertFalse(generate.stage_today())
+            self.assertIn('Leave "scenes" out', generate.stage_note())
+        with mock.patch.dict(os.environ, {'STAGE': 'on'}):
+            self.assertTrue(generate.stage_today())
+            note = generate.stage_note()
+            for kind in ('file:', 'code:', 'docs:', 'steps:', 'counter:', 'bars:', 'terminal:', 'repo:', 'words:'):
+                self.assertIn(kind, note)
+        self.assertNotIn('scenes', generate.strip_stage(STAGED))
+        self.assertEqual(generate.strip_stage(VALID), VALID)
 
 
 class MotionTest(Sandbox):

@@ -26,6 +26,11 @@ on:
         type: choice
         options: [random, 'on', 'off']
         default: random
+      stage:
+        description: 'Stage reel today (random: repo variable STAGE, else STAGE_CHANCE)'
+        type: choice
+        options: [random, 'on', 'off']
+        default: random
 
 permissions:
   contents: write
@@ -100,6 +105,8 @@ jobs:
           TRENDING: ${{ vars.TRENDING }}
           THREE_D: ${{ github.event_name == 'workflow_dispatch' && inputs.three_d != 'random' && inputs.three_d || vars.THREE_D }}
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}
+          STAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.stage != 'random' && inputs.stage || vars.STAGE }}
+          STAGE_CHANCE: ${{ vars.STAGE_CHANCE }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}

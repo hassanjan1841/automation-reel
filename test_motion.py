@@ -3,7 +3,7 @@ of every animation template in headless Chromium (transparent frames, a sane len
 the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
 readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword; and the
 look (`Look`): the living background, code drawn without ligatures, titles rising out of their line, captions with
-no box.
+no box; and a real stage reel (`Stage`).
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -351,6 +351,41 @@ class Look(unittest.TestCase):
         accent = np.abs(frame - render.rgb(render.THEMES['dark']['accent'])).max(axis=2) < 8
         self.assertTrue(accent.any())                 # the spoken word sits on the accent pill
         self.assertGreater(cols.max() - cols.min(), 150)
+
+
+class Stage(unittest.TestCase):
+    """A real stage reel (stage.py) rendered in Chromium with a silent stand-in voice: the whole length, a sound
+    track, the hook complete on frame 0, and the scenes moving."""
+
+    def test_renders_a_stage_reel(self):
+        import subprocess
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'tests'))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from e2e_publish import silent_voice
+        from test_learn import STAGED
+        reel = {**STAGED, 'id': 99901}
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'stage.mp4'
+            path, slides = render.render_reel(reel, out_path=out, voice=silent_voice(reel['voiceover']))
+            self.assertEqual([s.visual.spec['type'] for s in slides],
+                             ['stage-code', 'stage-file', 'stage-steps', 'stage-docs', 'stage-words'])
+            probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
+                                    '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout
+            import json
+            info = json.loads(probe)
+            self.assertAlmostEqual(float(info['format']['duration']), slides[-1].end, delta=0.25)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            frames = []
+            for t in (0.0, slides[2].start + 1.5, slides[-1].end - 0.4):
+                png = Path(tmp) / f'{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(path), '-frames:v', '1',
+                                str(png)], check=True)
+                frames.append(np.asarray(Image.open(png).convert('L'), dtype=np.float32))
+            zero, chapter, last = frames
+            self.assertGreater((zero[244:330] > 200).sum(), 2000)      # the hook's words, white, on frame 0
+            self.assertGreater((zero[560:1440] > 120).sum(), 5000)     # its proof (the code card) already in place
+            self.assertGreater(chapter.mean(), zero.mean() + 60)        # the light chapter
+            self.assertLess(np.abs(last - zero).mean(), 25)             # it glides back to the opening for the loop
 
 
 if __name__ == '__main__':
