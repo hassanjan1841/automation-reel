@@ -6927,5 +6927,140 @@
     ],
     "slot": 3,
     "seconds": 17.8
+  },
+  {
+    "id": 82,
+    "style": "dark",
+    "payoff": "typeof null returns the string 'object' (a 40-year-old JS bug kept for compatibility), so never trust typeof alone for null checks: compare directly with value === null.",
+    "kicker": "Myth vs fact #9",
+    "hook": "typeof null isn't *null*",
+    "hook_type": "test",
+    "reveal": 2,
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "quirk.js",
+      "code": "console.log(typeof null);\nconsole.log(typeof undefined);\nconsole.log(typeof 42);",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *object* check lies",
+        "hook_type": "mistake",
+        "spoken": "[urgent] Your typeof check for objects breaks silently. (break) [serious] The moment a value is null."
+      },
+      {
+        "hook": "Null check: *wrong*, then right",
+        "hook_type": "before_after",
+        "spoken": "[confident] Most null checks using typeof are wrong. (break) [sharp] Until you add one simple fix."
+      },
+      {
+        "hook": "Your *null* check has a hole",
+        "hook_type": "problem",
+        "spoken": "[blunt] If you test typeof for objects, null slips through. (break) [sharp] Undetected, every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The Assumption",
+        "body": "Most devs expect typeof null to equal null",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "guess.js",
+            "code": "console.log(typeof null);\nconsole.log(typeof undefined);\nconsole.log(typeof 42);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The Real Output",
+        "body": "It actually prints the string object",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "console.log(typeof null);",
+            "choices": [
+              "null",
+              "object"
+            ],
+            "output": [
+              "object"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "output.js",
+            "code": "typeof null; // \"object\"\ntypeof undefined; // \"undefined\"\ntypeof 42; // \"number\"",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The Fix",
+        "body": "Compare directly to null, not typeof",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "check.js",
+            "before": "if (typeof value === 'object') {\n  useObject(value);\n}",
+            "after": "if (value !== null &&\n    typeof value === 'object') {\n  useObject(value);\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "What does *your* null check look like?",
+    "caption": "typeof null in JavaScript explained\nA famous bug kept for backward compatibility\nWhere does your code check for null? 👇",
+    "hashtags": [
+      "#javascript",
+      "#typeof",
+      "#jsbugs",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[blunt] Quick test, guess what typeof null actually prints. (break) [sharp] Right now, in JavaScript.",
+      "[knowing] Everyone assumes it, since the value is null.",
+      "[hyped] But it prints object, a decades old bug.",
+      "[serious] So never trust typeof alone. (break) [firm] Add a strict null check.",
+      "[warm, curious] Where do you check for null today?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 9,
+    "posted_at": "2026-10-20T12:00:44+00:00",
+    "media_id": "17975872136940587",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.4
   }
 ]
