@@ -234,6 +234,19 @@ MUTANTS = [
     ('generate.py', "                  lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),",
      "                  lambda r: True,", 'the share ending is never checked'),
     ('render.py', "        return 'Send it to them'", "        return 'Comment below'", 'the card says comment under a send'),
+    # The premium look (2026-10-20).
+    ('visuals.py', ", layout_engine=ImageFont.Layout.BASIC)", ")", 'code drawn with ligatures', 'test_motion.py'),
+    ('motion.py', "font-variant-ligatures:none;", "", 'motion code drawn with ligatures', 'test_motion.py'),
+    ('render.py', "        mask = mask[:max(0, el.clip - y)]", "        pass", 'titles show below their line', 'test_motion.py'),
+    ('render.py', "    SCALE, CELL, EVERY = 8, 72, 3", "    SCALE, CELL, EVERY = 8, 72, 1", 'background redrawn every frame',
+     'test_motion.py'),
+    ('render.py', "        return self.cached[1].copy()", "        return self.cached[1]", 'drawing on a frame dirties the background',
+     'test_motion.py'),
+    ('render.py', "                        color = self.WHITE", "                        pass", 'spoken word not lifted off the pill',
+     'test_motion.py'),
+    ('visuals.py', "        card.glow = (", "        card.glow = None and (", 'cards lose their glow', 'test_motion.py'),
+    ('visuals.py', "                    rgb[y0:y1, 4:-4] += (BG - rgb[y0:y1, 4:-4]) * 0.55 * p", "                    pass",
+     'the marked line gets no focus', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

@@ -317,6 +317,20 @@ class Look(unittest.TestCase):
         render.draw_element(done, el, 1.0)
         self.assertGreater(done[200:240, 100:160].min(), 250)   # fully in place once it lands
 
+    def test_cards_glow_and_the_marked_line_takes_focus(self):
+        import visuals
+        spec = {'type': 'code', 'language': 'python', 'code': 'a = 1\nb = 2\nc = 3\nd = 4', 'highlight': [1]}
+        card = visuals.build(spec, render.THEMES['dark'], (90, 600, 900, 700))
+        self.assertIsNotNone(card.glow)
+        frame = np.zeros((render.H, render.W, 3), dtype=np.float32)
+        card.draw(frame, 3.0, 1.0, 0)
+        self.assertGreater(frame[card.y + card.h + 20, card.x + card.w // 2].max(), 2)   # light below the card
+        (b0, b1), (a0, a1) = card.rows[0], card.rows[3]   # the marked line, and one clear of its circle
+        before, after = card.layer(card.settle)[0], card.layer(3.0)[0]
+        ink = lambda img, y0, y1: np.abs(img[y0:y1, 40:-40] - visuals.BG).mean()
+        self.assertLess(ink(after, a0, a1), ink(before, a0, a1) * 0.6)    # other lines step back
+        self.assertGreaterEqual(ink(after, b0, b1), ink(before, b0, b1))  # the marked line does not
+
     def test_captions_have_no_box(self):
         class Voice(list):
             continuous = True
