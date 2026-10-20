@@ -284,6 +284,15 @@ MUTANTS = [
      'SHOWCASE_DAYS=off ignored'),
     ('showcase.py', "  if (back > 0) pts = lerp(pts, shapes[0](0).pts, inout(back));", "", 'the showcase never glides back',
      'test_motion.py'),
+    # LinkedIn (2026-10-20).
+    ('linkedin.py', "    if entry.get('linkedin_id'):", "    if False:", 'a LinkedIn post twice'),
+    ('linkedin.py', "    if dry:\n        print('DRY_RUN: not posting to LinkedIn')", "    if False:\n        print('DRY_RUN: not posting to LinkedIn')",
+     'a LinkedIn dry run posts'),
+    ('linkedin.py', "    if resp.status_code == 401:", "    if False:", 'an expired LinkedIn token leaves no alert'),
+    ('linkedin.py', "        parts.append(RESERVED.sub(r'\\\\\\1', text[last:m.start()]))", "        parts.append(text[last:m.start()])",
+     'LinkedIn text not escaped'),
+    ('linkedin.py', "    if COMMENT_BAIT.search(text):", "    if False:", 'comment bait on LinkedIn'),
+    ('linkedin.py', "            etags.append(resp.headers.get('ETag', '').strip('\"'))", "            pass", 'a LinkedIn video never finalised'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
@@ -303,7 +312,7 @@ def main():
                 survived.append(label)
                 continue
             f.write_text(text.replace(old, new))
-            proc = subprocess.run([sys.executable, test[0] if test else TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=900)
+            proc = subprocess.run([sys.executable, test[0] if test else TESTS.get(path, 'test_learn.py')], cwd=copy, capture_output=True, text=True, timeout=2400)
             caught = proc.returncode != 0
             print(f"{'caught  ' if caught else 'SURVIVED'} {label}")
             if not caught:

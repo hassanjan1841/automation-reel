@@ -1814,12 +1814,17 @@ class StageTest(Sandbox):
 
     def timed(self):
         import stage
-        sys.path.insert(0, str(ROOT / 'tests'))
-        from e2e_publish import silent_voice
-        v = silent_voice(STAGED['voiceover'])
+        from PIL import ImageFont
+        from voice import Voiceover, strip_cues
+        lines = [strip_cues(l).split() for l in STAGED['voiceover']]
+        words = [[(w, 0.1 + i * 0.38, 0.43 + i * 0.38) for i, w in enumerate(ws)] for ws in lines]
+        v = Voiceover([np.zeros(int(render.SR * (0.3 + len(ws) * 0.38)), dtype=np.float32) for ws in lines], words,
+                      continuous=True)
         timing = {k: v2 for k, v2 in STAGED.items() if k not in ('hook_visual', 'scenes')}
         timing['points'] = [{k: v2 for k, v2 in p.items() if k != 'visual'} for p in STAGED['points']]
-        slides, _ = render.build_slides(timing, v)
+        # Pillow's built-in font: CI has no Poppins, and only timing is checked.
+        with mock.patch.object(render, 'font', lambda weight, size: ImageFont.load_default(size)):
+            slides, _ = render.build_slides(timing, v)
         return stage, slides, render.spoken_words(v, slides)
 
     def test_moves_land_on_spoken_words(self):
@@ -1972,6 +1977,154 @@ class ShowcaseTest(Sandbox):
             with self.assertRaises(SystemExit):
                 showcase.main()
         self.assertEqual(uploads, [])
+
+
+LI_TEXT = ('Your cache can serve old data after every update.\n\nReads go to the cache first, but writes only touch the '
+           'database, so the cached row stays stale until it expires.\n\nThe fix is one line: delete the cached key on '
+           'every write. Readers then miss once and load the new row from the database.\n\nHow do you invalidate yours?'
+           '\n#webdev #redis')
+
+
+class FakeLinkedIn:
+    """Answers LinkedIn's upload and post calls the way the docs describe, and records them."""
+
+    def __init__(self, status=200):
+        self.calls, self.status = [], status
+
+    def response(self, status=200, body=None, headers=None):
+        r = SimpleNamespace(status_code=status, ok=status < 400, headers=headers or {}, text=json.dumps(body or {}))
+        r.json = lambda: body or {}
+        return r
+
+    def post(self, url, **kw):
+        self.calls.append(('POST', url, kw.get('json')))
+        if self.status == 401:
+            return self.response(401)
+        if 'videos?action=initializeUpload' in url:
+            size = kw['json']['initializeUploadRequest']['fileSizeBytes']
+            parts = [{'uploadUrl': f'https://up/{k}', 'firstByte': k * 4, 'lastByte': min(size, (k + 1) * 4) - 1}
+                     for k in range((size + 3) // 4)]
+            return self.response(body={'value': {'uploadInstructions': parts, 'video': 'urn:li:video:V1', 'uploadToken': 't'}})
+        if 'documents?action=initializeUpload' in url:
+            return self.response(body={'value': {'uploadUrl': 'https://up/doc', 'document': 'urn:li:document:D1'}})
+        if url.endswith('/rest/posts'):
+            return self.response(201, headers={'x-restli-id': 'urn:li:share:42'})
+        return self.response()
+
+    def put(self, url, **kw):
+        self.calls.append(('PUT', url, len(kw.get('data') or b'')))
+        return self.response(headers={'ETag': f'"etag-{url[-1]}"'})
+
+    def get(self, url, **kw):
+        self.calls.append(('GET', url, None))
+        return self.response(body={'status': 'AVAILABLE', 'sub': 'abc'})
+
+
+class LinkedInTest(Sandbox):
+    """linkedin.py: the post text's checks and LinkedIn's little text format, the upload and post calls against a
+    fake LinkedIn, the expired-token alert, and never posting twice."""
+
+    def setUp(self):
+        super().setUp()
+        import linkedin
+        self.li = linkedin
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(linkedin, 'ALERT', out / 'linkedin-alert.md')):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_text_checks_and_escaping(self):
+        li = self.li
+        self.assertEqual(li.text_errors(LI_TEXT), [])
+        self.assertIn('characters', ' '.join(li.text_errors('Too short?')))
+        self.assertIn('question', ' '.join(li.text_errors(LI_TEXT.replace('How do you invalidate yours?', 'That is all.'))))
+        self.assertIn('hashtags', ' '.join(li.text_errors(LI_TEXT + ' #a #b')))
+        self.assertIn('comment', ' '.join(li.text_errors(LI_TEXT.replace('How do', 'Comment CACHE and how do'))))
+        self.assertIn('Source', ' '.join(li.text_errors(LI_TEXT, ['https://redis.io/docs'])))
+        self.assertEqual(li.little('Use Read(./.env) [now] #webdev'), 'Use Read\\(./.env\\) \\[now\\] {hashtag|\\#|webdev}')
+        self.assertEqual(li.little('a_b *c* @me'), 'a\\_b \\*c\\* \\@me')
+
+    def fixture(self, reels):
+        render.QUEUE.write_text(json.dumps(reels))
+        (render.OUT_DIR / 'reel-7.mp4').write_bytes(b'0123456789')  # 10 bytes: three upload parts of 4
+
+    def test_posts_a_reel_and_records_it(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7, 'sources': [], 'posted_at': '2026-10-20T12:00:00+00:00'}])
+        fake = FakeLinkedIn()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'LINKEDIN_AUTHOR': '', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.time, 'sleep'), \
+                mock.patch.object(li.requests, 'post', fake.post), mock.patch.object(li.requests, 'put', fake.put), \
+                mock.patch.object(li.requests, 'get', fake.get), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(li.post('reel', '7'), 'urn:li:share:42')
+        kinds = [(m, u.split('?')[0].replace('https://api.linkedin.com', '')) for m, u, _ in fake.calls]
+        self.assertEqual(kinds[0], ('GET', '/v2/userinfo'))                     # who the token posts as
+        self.assertEqual(kinds[1], ('POST', '/rest/videos'))                    # initializeUpload
+        self.assertEqual([k for k in kinds if k[0] == 'PUT'], [('PUT', 'https://up/0'), ('PUT', 'https://up/1'), ('PUT', 'https://up/2')])
+        final = next(j for m, u, j in fake.calls if 'finalizeUpload' in u)
+        self.assertEqual(final['finalizeUploadRequest']['uploadedPartIds'], ['etag-0', 'etag-1', 'etag-2'])
+        body = next(j for m, u, j in fake.calls if u.endswith('/rest/posts'))
+        self.assertEqual((body['author'], body['content']['media']['id'], body['visibility']),
+                         ('urn:li:person:abc', 'urn:li:video:V1', 'PUBLIC'))
+        self.assertIn('{hashtag|\\#|webdev}', body['commentary'])
+        saved = json.loads(render.QUEUE.read_text())[0]
+        self.assertEqual(saved['linkedin_id'], 'urn:li:share:42')
+        # Never twice: a second run sees the recorded id and sends nothing.
+        fake.calls.clear()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', side_effect=AssertionError('not again')), \
+                mock.patch.object(li.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            li.post('reel', '7')
+        self.assertEqual(fake.calls, [])
+
+    def test_no_token_or_dry_run_sends_nothing(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7}])
+        fake = FakeLinkedIn()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': ''}), mock.patch.object(li.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(li.post('reel', '7'))
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'DRY_RUN': 'true'}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(li.post('reel', '7'))
+        self.assertEqual(fake.calls, [])
+        self.assertNotIn('linkedin_id', json.loads(render.QUEUE.read_text())[0])
+
+    def test_an_expired_token_leaves_an_alert(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7}])
+        li.ALERT.unlink(missing_ok=True)
+        fake = FakeLinkedIn(status=401)
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'old', 'LINKEDIN_AUTHOR': 'urn:li:person:x', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.requests, 'post', fake.post), \
+                mock.patch.object(sys, 'argv', ['linkedin.py', 'reel', '7']), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                li.main()
+        self.assertIn('LINKEDIN_TOKEN', li.ALERT.read_text())
+        li.ALERT.unlink()
+
+    def test_posts_the_carousel_as_a_document(self):
+        from PIL import Image
+        li = self.li
+        folder = render.OUT_DIR / 'carousel'
+        folder.mkdir(parents=True, exist_ok=True)
+        for k in range(3):
+            Image.new('RGB', (108, 135), (k * 80, 20, 20)).save(folder / f'slide-{k:02d}.jpg')
+        log = Path(self.tmp) / 'carousels.json'
+        log.write_text(json.dumps([{'title': 'Git cheat sheet', 'media_id': '9'}]))
+        fake = FakeLinkedIn()
+        with mock.patch.object(li, 'CAROUSELS', log), mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 't', 'LINKEDIN_AUTHOR': 'urn:li:person:x', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.time, 'sleep'), \
+                mock.patch.object(li.requests, 'post', fake.post), mock.patch.object(li.requests, 'put', fake.put), \
+                mock.patch.object(li.requests, 'get', fake.get), contextlib.redirect_stdout(io.StringIO()):
+            li.post('carousel')
+        self.assertTrue((folder / 'carousel.pdf').read_bytes().startswith(b'%PDF'))
+        self.assertIn(('PUT', 'https://up/doc'), [(m, u) for m, u, _ in fake.calls])
+        body = next(j for m, u, j in fake.calls if u.endswith('/rest/posts'))
+        self.assertEqual(body['content']['media']['id'], 'urn:li:document:D1')
+        self.assertEqual(json.loads(log.read_text())[0]['linkedin_id'], 'urn:li:share:42')
 
 
 class MotionTest(Sandbox):
