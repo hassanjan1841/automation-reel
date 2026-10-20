@@ -84,6 +84,10 @@ def frames(video, slides, folder):
     paths = []
     for i, s in enumerate(slides):
         t = s.start + max(min(1.2, s.end - s.start - 0.3), s.end - s.start - 0.9)
+        if str((getattr(s.visual, 'spec', None) or {}).get('type', '')).startswith('stage-'):
+            # A stage scene has landed by then (stage.LAND) and the next one has not arrived; the last one is caught
+            # before the reel glides back to its opening (stage.RETURN).
+            t = min(s.end - 0.45, slides[-1].end - 1.3)
         path = Path(folder) / f'slide-{i}.png'
         grab(video, t, path)
         marked = getattr(s.visual, 'marked', None) if s.visual else None

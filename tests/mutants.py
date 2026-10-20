@@ -293,6 +293,9 @@ MUTANTS = [
      'LinkedIn text not escaped'),
     ('linkedin.py', "    if COMMENT_BAIT.search(text):", "    if False:", 'comment bait on LinkedIn'),
     ('linkedin.py', "            etags.append(resp.headers.get('ETag', '').strip('\"'))", "            pass", 'a LinkedIn video never finalised'),
+    ('stage.py', "        sc['beat'] = min(at if at is not None else _beat(ws, sc['start'], end), latest)",
+     "        sc['beat'] = at if at is not None else _beat(ws, sc['start'], end)", 'a stage move lands as the slide cuts'),
+    ('qa.py', "            t = min(s.end - 0.45, slides[-1].end - 1.3)", "            pass", 'the review sees a stage scene mid-move'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
