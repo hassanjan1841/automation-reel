@@ -419,6 +419,8 @@ class Showcase(unittest.TestCase):
             self.assertGreater(zero[700:1000, 400:680].max(), 200)    # the spark's light
             self.assertGreater(grab['light'].mean(), zero.mean() + 100)  # the light beat
             self.assertLess(np.abs(grab['end'] - zero).mean(), 20)    # back to the opening for the loop
+            shape = lambda f: (f[620:1060, 320:760] > 150).sum()       # the light line around the centre
+            self.assertLess(shape(grab['end']), 3000)                  # the last shape has folded back into the spark
 
 
 if __name__ == '__main__':
