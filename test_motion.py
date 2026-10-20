@@ -1,7 +1,9 @@
 """Tests for motion.py: the code-morph token plan, each template reads only fields its spec has, and a real render
 of every animation template in headless Chromium (transparent frames, a sane length, a settle frame inside it, sounds
 the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
-readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword.
+readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword; and the
+look (`Look`): the living background, code drawn without ligatures, titles rising out of their line, captions with
+no box.
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -274,6 +276,67 @@ class Cards(unittest.TestCase):
         without, _ = render.build_slides({k: v for k, v in reel.items() if k != 'dm_keyword'}, clips)
         biggest = lambda s: max(e.mask.shape[0] for e in s.elements)
         self.assertGreater(biggest(slides[-1]), biggest(without[-1]) * 1.5)
+
+
+class Look(unittest.TestCase):
+    """The premium look: a living background, code drawn as typed, titles rising out of their line, captions with
+    no box."""
+
+    def test_background_moves_slowly_and_hands_out_fresh_arrays(self):
+        bg = render.Background(render.THEMES['dark'])
+        a, b = bg.at(0.0), bg.at(1 / render.FPS)
+        self.assertTrue(np.array_equal(a, b))        # refreshed every few frames, reused in between
+        a[:] = 0
+        self.assertGreater(bg.at(0.0).mean(), 5)     # drawing on a frame never touches the cache
+        later = bg.at(6.0)
+        self.assertGreater(np.abs(later - bg.at(0.0)).max(), 3)   # it moves
+        self.assertLess(np.abs(bg.at(3 / render.FPS) - bg.at(0.0)).max(), 6)   # but slowly
+        self.assertTrue(np.array_equal(render.make_background(render.THEMES['dark']), bg.at(0.0)))
+
+    def test_code_is_drawn_as_typed(self):
+        import visuals
+        from PIL import ImageDraw
+        f = visuals.mono(40)
+        for pair in ('=>', '<=', '!=', '->'):
+            whole, parts = Image.new('L', (200, 80)), Image.new('L', (200, 80))
+            ImageDraw.Draw(whole).text((10, 10), pair, font=f, fill=255)
+            d = ImageDraw.Draw(parts)
+            d.text((10, 10), pair[0], font=f, fill=255)
+            d.text((10 + f.getlength(pair[0]), 10), pair[1], font=f, fill=255)
+            self.assertTrue(np.array_equal(np.asarray(whole), np.asarray(parts)), pair)
+        self.assertIn('font-variant-ligatures:none', motion.PAGE)
+
+    def test_title_word_rises_out_of_its_line(self):
+        mask = np.ones((40, 60), dtype=np.float32)
+        el = render.El(mask, np.full(3, 255.0, dtype=np.float32), 100, 200, 0.0, dur=0.4, rise=44, clip=240)
+        early = np.zeros((render.H, render.W, 3), dtype=np.float32)
+        render.draw_element(early, el, 0.05)
+        self.assertGreater(early.max(), 0)
+        self.assertEqual(early[240:].max(), 0)        # nothing below the line's bottom edge
+        done = np.zeros_like(early)
+        render.draw_element(done, el, 1.0)
+        self.assertGreater(done[200:240, 100:160].min(), 250)   # fully in place once it lands
+
+    def test_captions_have_no_box(self):
+        class Voice(list):
+            continuous = True
+        voice = Voice([np.zeros(render.SR * 3)])
+        voice.words = [[('Hello', 0.0, 0.4), ('world', 0.5, 0.9)]]
+        slide = render.Slide('hook', 0.0, 3.0)
+        caps = render.Captions(voice, [slide], render.THEMES['dark'])
+        frame = np.full((render.H, render.W, 3), 40.0, dtype=np.float32)
+        caps.draw(frame, render.VOICE_LEAD + 0.7)
+        changed = np.abs(frame - 40).max(axis=2) > 1
+        rows = np.where(changed.any(axis=1))[0]
+        self.assertTrue(len(rows))
+        band = changed[rows.min():rows.max() + 1]
+        cols = np.where(band.any(axis=0))[0]
+        # Halos fade out: the corners of the caption's band stay background, where a box would have filled them.
+        self.assertFalse(band[:4, :8].any() or band[-4:, -8:].any())
+        self.assertLess(band.mean(), 0.85)
+        accent = np.abs(frame - render.rgb(render.THEMES['dark']['accent'])).max(axis=2) < 8
+        self.assertTrue(accent.any())                 # the spoken word sits on the accent pill
+        self.assertGreater(cols.max() - cols.min(), 150)
 
 
 if __name__ == '__main__':

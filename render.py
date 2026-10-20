@@ -169,6 +169,7 @@ class El:
     grow: bool = False
     slide: tuple = (0.0, 1e9)
     frames: list = None       # masks that replace `mask` over COUNT seconds (a number counting up)
+    clip: int = None          # a bottom edge the element is cut at: it rises into view out of its line, no fade
 
 
 COUNT = 1.1
@@ -212,6 +213,10 @@ def ease_out(p):
 
 def ease_in(p):
     return p ** 3
+
+
+def expo_out(p):
+    return 1.0 if p >= 1 else 1 - 2 ** (-10 * p)
 
 
 def back_out(p, overshoot=1.7):
@@ -273,8 +278,10 @@ def add_words(slide, lines, fnt, size, line_h, top, t_start, theme, color_key='i
         run = None
         for word, hl, x, w in line:
             mask, pad, ascent = text_mask(word, fnt)
-            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t, dur=anim,
-                            frames=count_frames(word, fnt)))
+            # Each word rises out of its own line, cut at the line's bottom edge, like a title in a film edit.
+            words.append(El(mask, accent if hl else ink, round(MARGIN + x - pad), baseline - ascent, t,
+                            dur=anim, rise=round(size * 1.05), frames=count_frames(word, fnt),
+                            clip=baseline + round(size * 0.3)))
             slide.clicks.append(t)
             if hl:
                 ul_end = x + fnt.getlength(word.rstrip(',.;:!?'))
@@ -466,20 +473,68 @@ def build_slides(reel, voice=None):
 
 # ---------- frame rendering ----------
 
+class Background:
+    """A living backdrop: soft colour fields drifting slowly on slow loops (a gradient mesh), over a faint grid
+    that fades out from the upper middle, so even a still slide breathes. The mesh is worked out at 1/8 size and
+    scaled up, which keeps it smooth and cheap."""
+    SCALE, CELL, EVERY = 8, 72, 3
+    # (colour, strength light, strength dark, radius as a share of the width, centre path: x, y, x/y amplitude,
+    # seconds per loop)
+    BLOBS = (
+        ('accent', 0.11, 0.17, 0.46, 0.82, 0.18, 0.10, 0.06, 23.0),
+        ('#3B5BDB', 0.06, 0.14, 0.50, 0.10, 0.86, 0.12, 0.05, 29.0),
+        ('#7A5AF8', 0.04, 0.07, 0.36, 0.30, 0.42, 0.18, 0.12, 19.0),
+    )
+
+    def __init__(self, theme, seed=7):
+        dark = theme is THEMES['dark']
+        self.bg = rgb(theme['bg'])
+        lw, lh = W // self.SCALE, H // self.SCALE
+        self.yy, self.xx = np.mgrid[0:lh, 0:lw].astype(np.float32) * self.SCALE
+        self.blobs = []
+        for i, (color, light, darks, radius, cx, cy, amp_x, amp_y, period) in enumerate(self.BLOBS):
+            c = rgb(theme['accent']) if color == 'accent' else rgb(color)
+            if dark and color == 'accent':
+                c = c * 0.55 + rgb('#3B5BDB') * 0.45
+            self.blobs.append((c, darks if dark else light, W * radius, cx, cy, amp_x, amp_y, period, i * 1.7))
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        lines = ((xx % self.CELL) < 1.5) | ((yy % self.CELL) < 1.5)
+        fade = np.exp(-(((xx - W * 0.5) / (W * 0.62)) ** 2 + ((yy - H * 0.3) / (H * 0.34)) ** 2))
+        grid = (lines * fade * (0.05 if dark else 0.045)).astype(np.float32)[..., None]
+        # Static triangular dither so the gradients do not band after 8-bit quantisation.
+        rng = np.random.default_rng(seed)
+        dither = rng.random((H, W, 1), dtype=np.float32) - rng.random((H, W, 1), dtype=np.float32)
+        # frame * keep + add == the grid blended over the mesh, plus the dither.
+        self.keep = 1 - grid
+        self.add = grid * rgb(theme['ink']) + dither
+        self.cached = (None, None)
+
+    def at(self, t):
+        """The background at time t, a fresh array the caller may draw on. The mesh moves under a pixel a frame,
+        so it is refreshed every EVERY frames and reused in between."""
+        step = math.floor(t * FPS / self.EVERY + 1e-6)
+        if self.cached[0] != step:
+            self.cached = (step, self.mesh(step * self.EVERY / FPS))
+        return self.cached[1].copy()
+
+    def mesh(self, t):
+        low = np.broadcast_to(self.bg, (*self.xx.shape, 3)).copy()
+        for c, strength, r, cx, cy, ax, ay, period, phase in self.blobs:
+            a = 2 * math.pi * t / period + phase
+            x = W * (cx + ax * math.sin(a))
+            y = H * (cy + ay * math.sin(a * 0.8 + 1.3))
+            g = strength * np.exp(-((self.xx - x) ** 2 + (self.yy - y) ** 2) / (2 * r * r))
+            low += (c - low) * g[..., None]
+        # 8-bit is enough for the scale-up: the dither hides the steps.
+        up = Image.fromarray(np.clip(low + 0.5, 0, 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)
+        frame = np.asarray(up, dtype=np.float32) * self.keep
+        frame += self.add
+        return frame
+
+
 def make_background(theme, seed=7):
-    bg = rgb(theme['bg'])
-    accent = rgb(theme['accent'])
-    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    dark = theme is THEMES['dark']
-    glow_color = accent if not dark else accent * 0.55 + rgb('#3B5BDB') * 0.45
-    g1 = np.exp(-(((xx - W * 0.82) ** 2 + (yy - H * 0.2) ** 2) / (2 * 520.0 ** 2)))
-    g2 = np.exp(-(((xx - W * 0.1) ** 2 + (yy - H * 0.9) ** 2) / (2 * 600.0 ** 2)))
-    strength = (0.10 if not dark else 0.20) * g1 + (0.05 if not dark else 0.10) * g2
-    frame = bg[None, None, :] * (1 - strength[..., None]) + glow_color[None, None, :] * strength[..., None]
-    # Static triangular dither so the gradient does not band after 8-bit quantisation.
-    rng = np.random.default_rng(seed)
-    frame += (rng.random((H, W, 1), dtype=np.float32) - rng.random((H, W, 1), dtype=np.float32))
-    return frame
+    """The background's first frame, for stills (the cover and carousel slides)."""
+    return Background(theme, seed).at(0.0)
 
 
 def composite(frame, el, a, x, y, mask=None):
@@ -506,6 +561,9 @@ def draw_element(frame, el, t):
     p = ease_out(lin)
     a = el.alpha * (p if not el.grow else 1.0)
     dy = (1 - back_out(lin)) * el.rise
+    if el.clip is not None:
+        a = el.alpha * min(1.0, lin * 5)
+        dy = (1 - expo_out(lin)) * el.rise
     q = exit_progress(t, el.slide[1])
     if q > 0:
         e = ease_in(q)
@@ -520,7 +578,12 @@ def draw_element(frame, el, t):
     if el.grow:
         cols = max(1, round(mask.shape[1] * p))
         mask = mask[:, :cols]
-    composite(frame, el, a, el.x, round(el.y + dy), mask)
+    y = round(el.y + dy)
+    if el.clip is not None and q == 0:
+        mask = mask[:max(0, el.clip - y)]
+        if not mask.size:
+            return
+    composite(frame, el, a, el.x, y, mask)
 
 
 def border_mask(mask, width=2):
@@ -568,13 +631,18 @@ def blend(frame, img, mask, a, x, y):
 
 
 class Captions:
-    """Spoken words shown up to 3 at a time on a dark pill near the bottom, the word being said on an accent
-    highlight."""
-    SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 56, 3, 0.35, 30, 15
-    TEXT, BOX, BOX_ALPHA = rgb('#FFFFFF'), rgb('#101421'), 0.62
+    """Spoken words shown up to 3 at a time near the bottom, with no box: each word pops in as it is said, on a
+    soft halo that keeps it readable over anything, and the word being said sits on an accent pill that wipes in.
+    Dark reels get white words on a dark halo, light reels ink words on a light one."""
+    SIZE, MAX_WORDS, GAP, PAD_X, PAD_Y = 62, 3, 0.35, 30, 15
+    WHITE = rgb('#FFFFFF')
 
     def __init__(self, voice, slides, theme):
         self.accent = rgb(theme['accent'])
+        dark = theme is THEMES['dark']
+        self.text = self.WHITE if dark else rgb(theme['ink'])
+        self.halo = rgb('#05070D') if dark else rgb(theme['bg'])
+        self.halo_alpha = 0.7 if dark else 0.9
         self.cache = {}
         words, at = [], VOICE_LEAD
         for i, (s, ws) in enumerate(zip(slides, voice.words)):
@@ -596,7 +664,7 @@ class Captions:
             end = chunks[k + 1][0][1] if k + 1 < len(chunks) else chunk[-1][2] + 0.5
             # Never carry a line's caption across the beat into the next slide.
             end = min(end, chunk[-1][2] + 0.6, next((b for b in bounds if b > start + 0.05), end))
-            self.chunks.append((start, end, *self.layout(chunk)))
+            self.chunks.append((start, end, self.layout(chunk)))
 
     def layout(self, chunk):
         shown = [w.rstrip('.,;:') for w, *_ in chunk]
@@ -609,27 +677,21 @@ class Captions:
                 break
             size -= 4
         ascent, descent = fnt.getmetrics()
-        box_h = ascent + descent + 2 * self.PAD_Y
-        # The box grows as words are spoken; one box per number of words shown, left edge fixed.
-        x0 = (W - width) / 2
-        boxes = []
-        for k in range(1, len(shown) + 1):
-            part = sum(fnt.getlength(w) for w in shown[:k]) + space * (k - 1)
-            m = rounded_rect_mask(round(part + 2 * self.PAD_X), box_h, 22)
-            boxes.append((m, round(x0 - self.PAD_X), CAPTION_BOTTOM - box_h, shadow_layers(m), border_mask(m)))
-        box = boxes
-        x, baseline = x0, CAPTION_BOTTOM - self.PAD_Y - descent
+        x, baseline = (W - width) / 2, CAPTION_BOTTOM - self.PAD_Y - descent
         placed = []
         for (w, a, b), text in zip(chunk, shown):
             mask, pad, asc = text_mask(text, fnt)
             tw = round(fnt.getlength(text))
-            hl_mask = rounded_rect_mask(tw + 20, ascent + descent + 4, 12)
-            hl = (hl_mask, round(x) - 10, baseline - ascent - 2, glow_mask(hl_mask, 16))
-            placed.append((mask, round(x - pad), baseline - asc, a, b, hl))
+            hl_mask = rounded_rect_mask(tw + 28, ascent + descent + 6, 16)
+            # Two halos: a wide soft one that lifts the word off busy content, and a tight one for crisp edges.
+            halos = (glow_mask(mask, 14), glow_mask(mask, 4))
+            placed.append((mask, round(x - pad), baseline - asc, a, b,
+                           (hl_mask, round(x) - 14, baseline - ascent - 3, glow_mask(hl_mask, 12)), halos))
             x += fnt.getlength(text) + space
-        return box, placed
+        return placed
 
     POP = 0.16
+    WIPE = 0.12
 
     def scaled(self, key, mask, scale):
         """A mask resized for the pop, cached per (chunk, word, layer) key and scale step."""
@@ -651,26 +713,26 @@ class Captions:
                   round(x + (w - m.shape[1]) / 2), round(y + (h - m.shape[0]) / 2))
 
     def draw(self, frame, t):
-        for c, (start, end, boxes, placed) in enumerate(self.chunks):
+        for c, (start, end, placed) in enumerate(self.chunks):
             if start <= t < end:
                 p = ease_out(min(1.0, (t - start) / 0.12))
                 dy = round((1 - back_out(min(1.0, (t - start) / 0.2))) * 14)
-                box_mask, bx, by, shadows, border = boxes[max(0, sum(1 for w in placed if w[3] <= t) - 1)]
-                for m, ox, oy, a in shadows:
-                    composite(frame, El(m, rgb('#000000'), 0, 0, 0), a * p, bx + ox, by + dy + oy)
-                frost(frame, box_mask, bx, by + dy, p)
-                composite(frame, El(box_mask, self.BOX, 0, 0, 0), self.BOX_ALPHA * p, bx, by + dy)
-                composite(frame, El(border, self.TEXT, 0, 0, 0), 0.22 * p, bx, by + dy)
-                for i, (mask, x, y, a, b, (hl_mask, hx, hy, glow)) in enumerate(placed):
+                for i, (mask, x, y, a, b, (hl_mask, hx, hy, glow), halos) in enumerate(placed):
                     if t < a:
                         break  # words appear as they are spoken
+                    q = p * min(1.0, (t - a) / self.POP)
+                    for (g, gx, gy), alpha in zip(halos, (self.halo_alpha * 0.8, self.halo_alpha * 0.6)):
+                        composite(frame, El(g, self.halo, 0, 0, 0), alpha * q, x + gx, y + dy + gy)
                     nxt = placed[i + 1][3] if i + 1 < len(placed) else end
+                    color = self.text
                     if t < nxt:
                         g, gx, gy = glow
-                        pulse = 0.35 + 0.15 * math.sin((t - a) * 9)
-                        composite(frame, El(g, self.accent, 0, 0, 0), pulse * p, hx + gx, hy + dy + gy)
-                        self.pop(frame, (c, i, 'hl'), hl_mask, self.accent, hx, hy + dy, a, t, p)
-                    self.pop(frame, (c, i, 'word'), mask, self.TEXT, x, y + dy, a, t, p)
+                        composite(frame, El(g, self.accent, 0, 0, 0), 0.35 * p, hx + gx, hy + dy + gy)
+                        wipe = ease_out(min(1.0, (t - a) / self.WIPE))
+                        cols = max(1, round(hl_mask.shape[1] * wipe))
+                        composite(frame, El(hl_mask, self.accent, 0, 0, 0), p, hx, hy + dy, hl_mask[:, :cols])
+                        color = self.WHITE
+                    self.pop(frame, (c, i, 'word'), mask, color, x, y + dy, a, t, p)
                 return
 
 
@@ -830,7 +892,7 @@ def build_chrome(reel, theme, n_slides):
 
 
 def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
-    bg = make_background(theme)
+    bg = Background(theme)
     bars, bar_mask, statics = build_chrome(reel, theme, len(slides))
     ink = rgb(theme['ink'])
     total = slides[-1].end
@@ -840,7 +902,7 @@ def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
     vignette, grain = finishing(theme)
     for f in range(n):
         t = f / FPS
-        frame = bg.copy()
+        frame = bg.at(t)
         for s in slides:
             if s.start <= t < s.end + GLIDE:
                 if s.visual:
