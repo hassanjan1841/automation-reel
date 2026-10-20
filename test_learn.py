@@ -1854,6 +1854,11 @@ class StageTest(Sandbox):
         self.assertTrue(all(g['start'] < g['end'] for g in spoken))
         self.assertTrue(all(a <= b for a, b in zip([g['start'] for g in spoken], [g['start'] for g in spoken][1:])))
         self.assertTrue(all(w[-1:] not in '.?!' for g in spoken for w, *_ in g['words'][:-1]))  # a sentence ends a group
+        # A long sentence splits evenly: 10 words make 5 + 5, never 9 + a lone word.
+        line = 'one two three four five six seven eight nine ten.'
+        long = [[(w, k * 0.3 + 5, k * 0.3 + 5.2) for k, w in enumerate(line.split())]]
+        split = stage.caption_groups({**STAGED, 'voiceover': ['x', line]}, slides[:2] + slides[1:2], [[]] + long)
+        self.assertEqual([len(g['words']) for g in split[1:]], [5, 5])
 
     def test_frame_review_reads_the_scenes(self):
         import qa

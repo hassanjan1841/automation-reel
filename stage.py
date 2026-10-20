@@ -218,6 +218,15 @@ def _beat(words, start, end, frac=0.55):
     return start + (end - start) * frac
 
 
+def font_size(rows):
+    """The mono font size (CSS px) that fills the card without wrapping: short code reads big, like the classic
+    code cards (visuals.code_image)."""
+    cols = max([len(r) for r in rows] + [1])
+    by_width = 448 / (cols * 0.6)            # JetBrains Mono is 0.6 em wide
+    by_height = 330 / (max(len(rows), 1) * 1.62)
+    return int(max(17, min(30, by_width, by_height)))
+
+
 def tokens(code, language):
     """Each line of the code as [[text, colour], ...], coloured like the editor cards."""
     import visuals
@@ -249,6 +258,8 @@ def plan(reel, slides, words):
         at = _match(ws, spec['at']) if spec.get('at') else None
         sc['beat'] = at if at is not None else _beat(ws, sc['start'], end)
         kind = spec['kind']
+        sc['font'] = font_size(_text(spec).split('\n') if kind != 'terminal'
+                               else ['$ ' + spec['command']] + list(spec['output']))
         if kind == 'code':
             sc['lines'] = tokens(spec['code'], spec.get('language'))
             n = sum(len(line) for line in sc['lines'])
@@ -301,15 +312,17 @@ def caption_groups(reel, slides, words):
         if i < len(lines):
             stress = {_norm(m) for m in re.findall(r'\[emphasis\]\s*(\S+)', lines[i])}
         end = slides[i + 1].start if i + 1 < len(slides) else slides[-1].end - RETURN
-        cur = []
-        for w, a, _ in ws:
+        sentence = []
+        for k, (w, a, _) in enumerate(ws):
             cls = 'key' if _norm(w) in keys else 'em' if _norm(w) in stress else ''
-            cur.append([w, cls, a])
-            if w[-1:] in '.?!' or len(cur) >= LINE_WORDS:
-                groups.append({'start': cur[0][2], 'words': cur})
-                cur = []
-        if cur:
-            groups.append({'start': cur[0][2], 'words': cur})
+            sentence.append([w, cls, a])
+            if w[-1:] in '.?!' or k == len(ws) - 1:
+                # A long sentence splits into even parts, never leaving one word alone on the screen.
+                parts = -(-len(sentence) // LINE_WORDS)
+                size = -(-len(sentence) // parts)
+                for j in range(0, len(sentence), size):
+                    groups.append({'start': sentence[j][2], 'words': sentence[j:j + size]})
+                sentence = []
         for g in groups:
             g.setdefault('slide_end', end)
     for k, g in enumerate(groups):
@@ -351,7 +364,7 @@ body.lit{--now:#14161D;--past:#A3A6AE}
 .code{font:500 19px/31px 'JetBrains Mono';padding:16px 20px;white-space:pre;font-variant-ligatures:none;font-feature-settings:'calt' 0,'liga' 0}
 .code .ln{position:relative}
 .code .hl{position:absolute;left:-12px;right:-12px;top:0;bottom:0;border-radius:6px;background:rgba(255,106,61,.14);box-shadow:inset 3px 0 0 var(--accent);transform:scaleX(0);transform-origin:0 50%}
-.strike{position:absolute;left:-4px;top:15px;height:2px;background:var(--accent);width:0;box-shadow:0 0 8px var(--accent)}
+.strike{position:absolute;left:-4px;top:50%;height:2px;background:var(--accent);width:0;box-shadow:0 0 8px var(--accent)}
 .tag{position:absolute;right:14px;top:44px;font:600 11px Poppins;letter-spacing:.08em;padding:5px 9px;border-radius:999px;background:rgba(255,106,61,.16);color:var(--accent);border:1px solid rgba(255,106,61,.4);opacity:0}
 .doc{background:#FBFAF7;color:#1B1D24}
 .doc .bar{background:#EFEDE7;border-bottom:1px solid #E2DFD7} .doc .bar span{color:#7A7D86}
@@ -416,9 +429,11 @@ function win(title, light) {
   b.innerHTML = '<i></i><i></i><i></i>'; b.appendChild(el('span', '', title)); w.appendChild(b); return w;
 }
 const world = document.getElementById('world');
+const sizeCode = (c, s) => { c.style.fontSize = s.font + 'px'; c.style.lineHeight = Math.round(s.font * 1.62) + 'px';
+  c.style.padding = `${Math.round(s.font * .9)}px ${Math.round(s.font)}px`; };
 const K = {};  // per kind: build(scene, box, next carry) -> draw(t)
 K.file = (s, box, nc) => {
-  const w = win(s.title), c = el('div', 'code'); w.appendChild(c); box.appendChild(w);
+  const w = win(s.title), c = el('div', 'code'); w.appendChild(c); box.appendChild(w); sizeCode(c, s);
   const rows = s.lines.map(line => { const d = el('div', 'ln'); d.innerHTML = withCarry(line, nc, 'carry-src');
     const st = el('b', 'strike'); d.appendChild(st); c.appendChild(d); return st; });
   const tag = s.tag ? el('div', 'tag', s.tag) : null; if (tag) w.appendChild(tag);
@@ -431,7 +446,7 @@ K.file = (s, box, nc) => {
   };
 };
 K.code = (s, box, nc) => {
-  const w = win(s.title), c = el('div', 'code'); w.appendChild(c); box.appendChild(w);
+  const w = win(s.title), c = el('div', 'code'); w.appendChild(c); box.appendChild(w); sizeCode(c, s);
   const toks = [], hls = [];
   s.lines.forEach((line, i) => { const d = el('div', 'ln'), hl = el('div', 'hl'); d.appendChild(hl); hls.push([i + 1, hl, d]);
     line.forEach(([txt, col]) => { const sp = el('span'); sp.style.color = col; sp.innerHTML = withCarry(txt, s.carry, 'carry-dst');
@@ -494,7 +509,7 @@ K.bars = (s, box) => {
     r.querySelector('b').textContent = fmt(x.value * p, Number.isInteger(x.value) ? 0 : 1) + (s.unit ? ' ' + s.unit : ''); });
 };
 K.terminal = (s, box, nc) => {
-  const w = win('Terminal'); w.classList.add('term'); const c = el('div', 'code'); w.appendChild(c); box.appendChild(w);
+  const w = win('Terminal'); w.classList.add('term'); const c = el('div', 'code'); w.appendChild(c); box.appendChild(w); sizeCode(c, s);
   const cmd = el('div'); cmd.innerHTML = '<span class="prompt">$ </span><span class="cmd"></span>'; c.appendChild(cmd);
   const outs = s.output.map(o => { const d = el('div', 'out'); d.innerHTML = withCarry(o, nc, 'carry-src') || ' '; c.appendChild(d); return d; });
   const t0 = s.ready ? -10 : s.start + .3, per = .035, done = t0 + s.command.length * per, show = Math.max(done + .3, s.beat);

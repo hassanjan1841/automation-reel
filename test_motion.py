@@ -386,6 +386,8 @@ class Stage(unittest.TestCase):
             self.assertGreater((zero[560:1440] > 120).sum(), 5000)     # its proof (the code card) already in place
             self.assertGreater(chapter.mean(), zero.mean() + 60)        # the light chapter
             self.assertLess(np.abs(last - zero).mean(), 25)             # it glides back to the opening for the loop
+            ghost = (last[560:1440] > 200) & (zero[560:1440] < 100)      # the closing words gone, not left over it
+            self.assertLess(ghost.sum(), 2000)
 
 
 class Showcase(unittest.TestCase):
