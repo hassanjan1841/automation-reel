@@ -25,6 +25,7 @@ KINDS = ('file', 'code', 'edit', 'docs', 'steps', 'checklist', 'counter', 'bars'
 HOOK_KINDS = ('file', 'code', 'docs', 'terminal', 'repo', 'counter')  # complete on frame 0, like a hook_visual
 CSS_W, CSS_H = render.W // 2, render.H // 2
 MAX_CODE_LINES, MAX_CODE_COLS = 10, 38
+MOTIFS = ('wave', 'brackets', 'rings')   # abstract shapes a words scene may pulse behind its words
 EDIT_COLS = 34          # an edit scene's lines, before and after the edit
 TYPE_STEP = 0.06        # seconds per typed character in an edit scene
 LINE_WORDS = 9            # a caption group closes at a sentence end or after this many words
@@ -194,6 +195,10 @@ def scene_errors(reel):
             if not isinstance(lines, list) or not 1 <= len(lines) <= 3 \
                     or not all(_short(str(x).replace('*', ''), 18) for x in lines):
                 errors.append(f'{where}: words needs 1 to 3 lines of at most 18 characters')
+            if s.get('label') is not None and not _short(s.get('label'), 24):
+                errors.append(f'{where}: a words label is one small line over the words, at most 24 characters')
+            if s.get('motif') is not None and s.get('motif') not in MOTIFS:
+                errors.append(f'{where}: a words motif is one of {", ".join(MOTIFS)}')
         at = s.get('at')
         if at is not None and (not _short(at, 30) or i >= len(spoken)
                                or _norm(at.split()[0]) not in [_norm(w) for w in spoken[i].split()]):
@@ -265,7 +270,10 @@ def describe(spec):
                     + ' (check this is what the command really prints)',
         'repo': f"a GitHub repo card {spec.get('name')} with {spec.get('stars')} stars (check the count at "
                 f"{spec.get('url')})",
-        'words': 'big words: ' + ' / '.join(str(x).replace('*', '') for x in spec.get('lines') or []),
+        'words': (f"a small label '{spec['label']}' over " if spec.get('label') else '') + 'big words: '
+                 + ' / '.join(str(x).replace('*', '') for x in spec.get('lines') or [])
+                 + ' (each word lands as an outline, then its letters fill in one by one)'
+                 + (f", with an abstract {spec['motif']} shape pulsing behind them" if spec.get('motif') else ''),
         'checklist': f"a checklist '{spec.get('title')}': " + ', '.join(
             ('✓ ' if i.get('ok') else '✗ ') + str(i.get('label', '')) for i in spec.get('items') or [])
             + ', then stamped ' + ('PASSED' if all(i.get('ok') for i in spec.get('items') or []) else 'FAILED')
@@ -502,6 +510,16 @@ body.acc{--now:#fff;--past:rgba(255,255,255,.62)}
 .kin .r{font:400 var(--fs,78px)/1.0 Anton,Poppins;letter-spacing:.005em;text-transform:uppercase;color:var(--now)}
 .kin .r span{display:inline-block;margin:0 .08em}
 .kin .r span.k{color:var(--accent)}
+.kin{position:relative}
+.kin .r span b{font-weight:400;-webkit-text-stroke:1.6px var(--now);color:transparent}
+.kin .r span.k b{-webkit-text-stroke-color:var(--accent)}
+.kin .lab{font:600 21px Poppins;color:var(--past);letter-spacing:.01em;margin-bottom:6px;opacity:0}
+.motif{position:absolute;left:50%;top:50%;width:460px;height:300px;margin:-150px 0 0 -230px;z-index:-1;pointer-events:none}
+.motif i{position:absolute;display:block}
+body.acc .motif i{color:#14161D!important;border-color:#14161D!important;background-color:transparent}
+body.acc .motif.wave i{background-color:#14161D!important}
+#leak{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:0;z-index:4}
+body.acc .kin .r span.k b{-webkit-text-stroke-color:#14161D}
 body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}
 #acc{position:absolute;inset:0;background:var(--accent);opacity:0}
 .frame i{position:absolute;width:16px;height:16px;border-color:var(--past);border-style:solid;opacity:.7}
@@ -510,8 +528,8 @@ body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}
 #tc{position:absolute;right:30px;top:100px;font:500 10px 'JetBrains Mono';color:var(--past);letter-spacing:.06em}
 #chapchip{position:absolute;left:30px;top:100px;font:600 10px 'JetBrains Mono';color:var(--accent);letter-spacing:.14em;opacity:0}
 #chap{position:absolute;left:0;right:0;top:400px;text-align:center;opacity:0;pointer-events:none}
-#chap b{display:block;font:400 120px/1 Anton,Poppins;color:var(--accent)}
-#chap span{display:block;font:400 40px/1.1 Anton,Poppins;color:var(--now);text-transform:uppercase;letter-spacing:.02em}
+#chap b{display:block;font:600 22px/1 Poppins;color:var(--now);letter-spacing:.02em;margin-bottom:6px}
+#chap span{display:block;font:400 110px/1 Anton,Poppins;color:var(--accent);text-transform:uppercase;letter-spacing:.01em}
 #orb{position:absolute;left:0;top:0;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#FFE3D6;box-shadow:0 0 10px 3px var(--accent),0 0 28px 8px var(--accent)}
 .check{width:100%;border-radius:18px;background:#FBFAF7;color:#16181F;padding:22px 24px;box-shadow:0 30px 70px rgba(0,0,0,.45);position:relative}
 .check h4{margin:0 0 14px;font:400 30px/1 Anton,Poppins;text-transform:uppercase;letter-spacing:.01em;display:flex;justify-content:space-between;align-items:baseline}
@@ -533,7 +551,7 @@ body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}
 <canvas id="bg" width="540" height="960"></canvas><div id="light"></div><div id="acc"></div><div class="grid" id="gridD"></div><div class="grid" id="gridL"></div>
 <div class="frame"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div id="tc"></div><div id="chapchip"></div>
 <div id="chrome"><span id="kicker"></span><span id="handle"></span></div>
-<div id="cam"><div id="world"></div></div><div id="chap"><b></b><span></span></div><div id="orb"></div><div id="chip"></div><div id="cap"></div>
+<div id="cam"><div id="world"></div></div><div id="chap"><b></b><span></span></div><div id="orb"></div><div id="chip"></div><div id="leak"></div><div id="cap"></div>
 <script>
 const P = window.PARAMS, S = P.scenes, T = P.total, SOUNDS = [];
 document.documentElement.style.setProperty('--accent', P.accent);
@@ -688,10 +706,29 @@ K.repo = (s, box) => {
   return t => { const p = s.ready && t <= 0 ? 1 : out3(prog(t, s.beat, 1.4)); n.textContent = fmt(Math.round(s.stars * p), 0); };
 };
 K.words = (s, box) => {
+  // Each word lands as an outline and its letters fill in one by one; an optional small label sits over the words
+  // and an optional abstract motif pulses behind them.
   const k = el('div', 'kin'); box.appendChild(k); k.style.setProperty('--fs', s.font + 'px');
-  const spans = []; s.rows.forEach(row => { const r = el('div', 'r'); row.forEach(([w, key, at]) => { const sp = el('span', key ? 'k' : '', w); r.appendChild(sp); spans.push([sp, at]); snd(at, 'pop'); }); k.appendChild(r); });
-  return t => spans.forEach(([sp, at]) => { const p = prog(t, at, .3); sp.style.opacity = p;
-    sp.style.transform = `scale(${1.35 - .35 * expo(p)})`; sp.style.filter = `blur(${((1 - p) * 8).toFixed(1)}px)`; });
+  const first = s.rows[0][0][2], lab = s.label ? el('div', 'lab', s.label) : null; if (lab) k.appendChild(lab);
+  const spans = []; s.rows.forEach(row => { const r = el('div', 'r'); row.forEach(([w, key, at]) => { const sp = el('span', key ? 'k' : '');
+    const ls = [...w].map(ch => { const b = el('b', '', ch); sp.appendChild(b); return b; }); r.appendChild(sp); spans.push([sp, at, ls]); snd(at, 'pop'); }); k.appendChild(r); });
+  const mot = s.motif ? el('div', 'motif ' + s.motif) : null, parts = [];
+  if (mot) { k.appendChild(mot);
+    if (s.motif === 'wave') for (let j = 0; j < 36; j++) { const b = el('i'); b.style.cssText = `left:${j * 12.8}px;width:6px;border-radius:3px;background:var(--accent)`; mot.appendChild(b); parts.push(b); }
+    if (s.motif === 'brackets') ['{', '}'].forEach((c, j) => { const b = el('i', '', c); b.style.cssText = `top:-40px;${j ? 'right' : 'left'}:-10px;font:300 300px/1 'JetBrains Mono';color:var(--accent)`; mot.appendChild(b); parts.push(b); });
+    if (s.motif === 'rings') for (let j = 0; j < 3; j++) { const b = el('i'); b.style.cssText = 'left:50%;top:50%;border-radius:50%;border:2px solid var(--accent)'; mot.appendChild(b); parts.push(b); } }
+  return t => {
+    spans.forEach(([sp, at, ls]) => { const p = prog(t, at, .3); sp.style.opacity = p;
+      sp.style.transform = `scale(${1.35 - .35 * expo(p)})`; sp.style.filter = `blur(${((1 - p) * 8).toFixed(1)}px)`;
+      ls.forEach((b, j) => { b.style.color = t >= at + .22 + j * .045 ? 'inherit' : 'transparent'; }); });
+    if (lab) { const p = prog(t, first - .15, .3); lab.style.opacity = p; lab.style.transform = `translateY(${(1 - out3(p)) * 8}px)`; }
+    if (mot) { const on = expo(prog(t, first - .1, .6));
+      mot.style.opacity = .35 * on;
+      if (s.motif === 'wave') parts.forEach((b, j) => { const h = 20 + 120 * on * Math.abs(Math.sin(t * 3.1 + j * .55) * Math.sin(t * 1.7 + j * .23)); b.style.height = h.toFixed(1) + 'px'; b.style.top = (150 - h / 2).toFixed(1) + 'px'; });
+      if (s.motif === 'brackets') parts.forEach((b, j) => { b.style.transform = `translateX(${((j ? 1 : -1) * (40 * (1 - on) + 6 * Math.sin(t * 2))).toFixed(1)}px)`; });
+      if (s.motif === 'rings') parts.forEach((b, j) => { const r = 60 + ((t * 70 + j * 90) % 270); b.style.width = b.style.height = (2 * r) + 'px'; b.style.margin = `${-r}px 0 0 ${-r}px`; b.style.opacity = 1 - (r - 60) / 270; });
+    }
+  };
 };
 K.checklist = (s, box) => {
   const c = el('div', 'check'), passed = s.items.every(x => x.ok);
@@ -758,10 +795,12 @@ const chap = document.getElementById('chap'), chipEl = document.getElementById('
 S.forEach(s => { if (s.chapter) snd(s.start, 'pop'); });
 function chapters(t) {
   chap.style.opacity = 0; let name = '';
-  S.forEach((s, i) => { const n = nextStart(i); if (s.chapter && t >= s.start && t < n) name = `${s.number} · ${s.chapter.toUpperCase()}`;
+  S.forEach((s, i) => { const n = nextStart(i); if (s.chapter && t >= s.start && t < n) name = `NO.${+s.number} · ${s.chapter.toUpperCase()}`;
     if (!s.chapter || t < s.start || t >= s.enter + .35) return;
     const a = expo(prog(t, s.start, .25)), out = inout(prog(t, s.enter - .1, .4));
-    chap.querySelector('b').textContent = s.number; chap.querySelector('span').textContent = s.chapter;
+    // "No.2" small over the chapter's name, giant (the size fits the name across the frame).
+    chap.querySelector('b').textContent = 'No.' + (+s.number); const nm = chap.querySelector('span');
+    nm.textContent = s.chapter; nm.style.fontSize = Math.min(110, 470 / (s.chapter.length * .47)).toFixed(0) + 'px';
     chap.style.opacity = a * (1 - out); chap.style.transform = `translateY(${(-260 * out).toFixed(1)}px) scale(${(1.12 - .12 * a - .5 * out).toFixed(3)})`; });
   chipEl.textContent = name; chipEl.style.opacity = name ? 1 : 0;
   const f = Math.round(t * 30), sec = Math.floor(f / 30); tc.textContent = `00:00:${String(sec).padStart(2, '0')}:${String(f % 30).padStart(2, '0')}`;
@@ -799,7 +838,17 @@ function bg(t) { cx.fillStyle = '#07080C'; cx.fillRect(0, 0, 540, 960); cx.globa
   blobs.forEach(([x, y, r, c, a], i) => { const px = 540 * (x + .08 * Math.sin(t * .27 + i * 1.7)), py = 960 * (y + .05 * Math.sin(t * .21 + i * 2.3 + 1));
     const g = cx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); cx.fillStyle = g; cx.fillRect(0, 0, 540, 960); });
   cx.globalCompositeOperation = 'source-over'; }
-window.renderAt = t => { bg(t); light(t); place(t); carry(t); captions(t); chapters(t); orbAt(t); };
+// ---------- light leaks: a warm flare sweeps across each cut (a white burn on the accent flip) ----------
+const leakEl = document.getElementById('leak');
+S.forEach((s, i) => { if (i) snd(s.start - .12, 'swish'); });
+function leaks(t) {
+  let best = 0, x = 0, white = 0;
+  S.forEach((s, i) => { if (!i) return; const p = prog(t, s.start - .35, .8); if (p <= 0 || p >= 1) return;
+    const a = Math.sin(Math.PI * p); if (a > best) { best = a; x = -30 + 160 * p; white = s.accent ? a : 0; } });
+  leakEl.style.opacity = best.toFixed(3);
+  leakEl.style.background = best > 0 ? `radial-gradient(ellipse 70% 55% at ${x.toFixed(1)}% 45%, rgba(255,${180 + 60 * white | 0},${110 + 130 * white | 0},.95), rgba(255,96,32,.55) 38%, rgba(160,40,10,0) 72%)` : 'none';
+}
+window.renderAt = t => { bg(t); light(t); place(t); carry(t); captions(t); chapters(t); orbAt(t); leaks(t); };
 document.fonts.ready.then(() => { window.renderAt(0); window.SOUNDS = SOUNDS.filter(x => x[0] < T).sort((a, b) => a[0] - b[0]); window.READY = true; })
   .catch(e => { window.ERROR = String(e); });
 window.onerror = (m) => { window.ERROR = String(m); };

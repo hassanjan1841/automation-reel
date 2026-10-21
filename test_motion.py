@@ -392,6 +392,8 @@ class Stage(unittest.TestCase):
             self.assertGreater(blue(selecting), 3 * 2500)               # all three matches selected
             self.assertGreater(green(typed), 3 * 600)                   # TODO typed at all three cursors
             self.assertLess(blue(typed), blue(selecting) / 4)            # the selections were replaced
+            warm = lambda f: float((f[..., 0] - f[..., 2]).mean())
+            self.assertGreater(warm(rgb_at(slides[1].start + 0.05)), warm(rgb_at(slides[1].start + 0.9)) + 15)  # light leak
             probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
                                     '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout
             import json
@@ -414,6 +416,8 @@ class Stage(unittest.TestCase):
             self.assertGreater(r, g + 60)                               # the accent flip fills the screen
             ink = flip_rgb[560:1440].sum(axis=2) < 200
             self.assertGreater(ink.sum(), 2000)                          # the accent word turns dark on it, still readable
+            filled = flip_rgb[560:1440].min(axis=2) > 230
+            self.assertGreater(filled.sum(), 25000)                      # the outlined words have filled in, solid white
             self.assertGreater(flip.mean(), zero.mean() + 40)
             self.assertGreater((checked[560:1440] > 200).sum(), (zero[560:1440] > 200).sum())  # the checklist card
             png = Path(tmp) / 'card.png'
@@ -461,6 +465,14 @@ class Showcase(unittest.TestCase):
                 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(out), '-frames:v', '1', str(png)],
                                check=True)
                 grab[name] = np.asarray(Image.open(png).convert('L'), dtype=np.float32)
+            leak = []
+            for t in (showcase.BEAT + 0.05, showcase.BEAT + 0.8):      # a warm light leak sweeps across the cut
+                png = Path(tmp) / f'leak-{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(out), '-frames:v', '1', str(png)],
+                               check=True)
+                f = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)
+                leak.append(float((f[..., 0] - f[..., 2]).mean()))
+            self.assertGreater(leak[0], leak[1] + 15)
             zero = grab['zero']
             self.assertGreater((zero[1280:1400] > 180).sum(), 1500)   # the first words, on frame 0
             self.assertGreater(zero[700:1000, 400:680].max(), 200)    # the spark's light

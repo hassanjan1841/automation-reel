@@ -664,7 +664,9 @@ fallback if a scene fails the review. Each scene is an object with "kind" and th
 - terminal: command, output (1 to 6 lines the command really prints).
 - repo: name (owner/repo), description, stars (its real star count), url (one of "sources").
 - words: lines (1 to 3 of at most 18 characters), set huge in a condensed capital face; a *word* is the accent.
-  Best for the cta or a turn.
+  Each word lands as an outline and fills in letter by letter. label (optional, at most 24 characters): one small
+  word or two over the big words ("unnecessary" over "EXPOSURE"). motif (optional: wave, brackets or rings): an
+  abstract shape pulsing behind them that fits the words (brackets for code). Best for the cta or a turn.
 Any scene may add: at (one word of that slide's voiceover where its main move lands), light (true for the one light
 chapter: at most 2 scenes, never the hook), accent (true for one bold full-colour beat, at the reel's turn; never
 the hook, never with light), carry (short text shown on the previous scene and this one; it flies across). A point
@@ -1222,7 +1224,7 @@ SCENE_SCHEMA = {  # stage.py scenes; stage.scene_errors checks each kind's field
     'properties': {
         'kind': {'type': 'string', 'enum': ['file', 'code', 'edit', 'docs', 'steps', 'checklist', 'counter', 'bars',
                                             'terminal', 'repo', 'words']},
-        'find': _TEXT, 'typed': _TEXT, 'key': _TEXT,
+        'find': _TEXT, 'typed': _TEXT, 'key': _TEXT, 'motif': _TEXT,
         'title': _TEXT, 'lines': {'type': 'array', 'items': _TEXT}, 'strike': {'type': 'boolean'}, 'tag': _TEXT,
         'language': _TEXT, 'code': _TEXT, 'highlight': {'type': 'array', 'items': {'type': 'integer'}},
         'url': _TEXT, 'text': _TEXT, 'mark': _TEXT,

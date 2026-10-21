@@ -283,6 +283,15 @@ function frame(t) {
     cx.beginPath(); cx.arc(x, y, r * (1 + .25 * Math.sin(t * 4 + x)) * pop, 0, TAU); cx.shadowColor = `rgba(${P.accentRgb},1)`; cx.shadowBlur = 26;
     cx.fillStyle = lit > .5 ? `rgb(${P.accentRgb})` : '#FFF4EC'; cx.fill(); cx.shadowBlur = 0; });
   cx.setTransform(2, 0, 0, 2, 0, 0);
+  // a warm light leak sweeps across each cut (a white burn into the light beat), and into the glide back
+  cx.globalCompositeOperation = 'screen';
+  [...B.slice(1).map(b => [b.start, b.light]), [T - P.back, false]].forEach(([at, white]) => {
+    const p = prog(t, at - .3, .75); if (p <= 0 || p >= 1) return; const a = Math.sin(Math.PI * p), x = -160 + 860 * p;
+    const lk = cx.createRadialGradient(x, 430, 0, x, 430, 400);
+    lk.addColorStop(0, white ? `rgba(255,250,240,${.95 * a})` : `rgba(255,190,120,${.85 * a})`);
+    lk.addColorStop(.4, `rgba(255,96,32,${.45 * a})`); lk.addColorStop(1, 'rgba(160,40,10,0)');
+    cx.fillStyle = lk; cx.fillRect(0, 0, 540, 960); });
+  cx.globalCompositeOperation = 'source-over';
   // labels
   const labs = document.getElementById('labs'); labs.innerHTML = '';
   if (sm) (cur.labels || []).forEach(([l, x, y]) => { const d = document.createElement('div'); d.className = 'lab'; d.textContent = l; d.style.left = x + 'px'; d.style.top = y + 'px';

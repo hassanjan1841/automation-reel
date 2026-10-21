@@ -233,8 +233,11 @@ def main():
         if not dry:
             start('study.yml', '-f', 'auto=true')
     days = showcase_days(os.environ.get('SHOWCASE_DAYS'))
-    showcase_today = [r for r in runs('showcase.yml') if r['createdAt'][:10] == now.date().isoformat()] \
-        if now.weekday() in days else []
+    # Only runs from its start time on count: a dry run earlier the same day is not the day's showcase (2026-10-21, a
+    # morning dry run kept the scheduler from starting the missed 15:41 run).
+    since = f'{now.date().isoformat()}T{SHOWCASE_START:%H:%M}'
+    showcase_today = [r for r in runs('showcase.yml') if r['createdAt'][:10] == now.date().isoformat()
+                      and r['createdAt'][:16] >= since] if now.weekday() in days else []
     showcase = due_showcase(now, showcase_today, days)
     if showcase:
         print('Starting the Showcase (its schedule did not run)')
