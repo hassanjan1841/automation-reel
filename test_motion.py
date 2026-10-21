@@ -416,6 +416,8 @@ class Stage(unittest.TestCase):
             self.assertGreater(r, g + 60)                               # the accent flip fills the screen
             ink = flip_rgb[560:1440].sum(axis=2) < 200
             self.assertGreater(ink.sum(), 2000)                          # the accent word turns dark on it, still readable
+            filled = flip_rgb[560:1440].min(axis=2) > 230
+            self.assertGreater(filled.sum(), 25000)                      # the outlined words have filled in, solid white
             self.assertGreater(flip.mean(), zero.mean() + 40)
             self.assertGreater((checked[560:1440] > 200).sum(), (zero[560:1440] > 200).sum())  # the checklist card
             png = Path(tmp) / 'card.png'
