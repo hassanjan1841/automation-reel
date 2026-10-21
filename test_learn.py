@@ -1255,6 +1255,8 @@ class SchedulerTest(Sandbox):
         self.assertIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'), started)
         self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
                          self.run_scheduler(at(15, 50, wednesday), [], [], []))            # it already ran today
+        started = self.run_scheduler(at(16, 27, wednesday), [], [], [], showcased=[run(at(8, 29, wednesday))])
+        self.assertIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'), started)  # a morning dry run is not it
         os.environ['SHOWCASE_DAYS'] = 'off'
         self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
                          self.run_scheduler(at(15, 50, wednesday), [], [], [], showcased=[]))

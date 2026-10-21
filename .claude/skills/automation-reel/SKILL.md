@@ -76,7 +76,7 @@ weekly.yml (Sun 10:00 UTC)
 After each Instagram post (daily-reel.yml, weekly.yml carousel job, showcase.yml): linkedin.py posts the same piece
 to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry
 
-showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase)
+showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase starts it if no run since 15:41; an earlier dry run does not count)
   showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page where a 3D
                      swarm of 1000 particles morphs between motifs, shockwave + camera punch + light leak per beat (stage.film) ->
                      SFX only: fx_kit riser/impact/swirl/sparkle + noise bed (sound_track) -> Claude frame review ->

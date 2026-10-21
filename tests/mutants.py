@@ -295,6 +295,8 @@ MUTANTS = [
      'the edit scene never shows its cursors', 'test_motion.py'),
     ('stage.py', "m.nw.textContent = typing ? s.typed.slice(0, k) : '';", "m.nw.textContent = '';",
      'the edit scene never types', 'test_motion.py'),
+    ('scheduler.py', "                      and r['createdAt'][:16] >= since]", "                      ]",
+     'a morning dry run blocks the missed showcase'),
     # From @ibrahimm_aali's reel (2026-10-21): light leaks, outline-then-fill words, label and motif.
     ('stage.py', "  leakEl.style.opacity = best.toFixed(3);", "  leakEl.style.opacity = 0;", 'stage cuts with no light leak',
      'test_motion.py'),
