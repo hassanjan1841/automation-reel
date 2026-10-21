@@ -7388,5 +7388,127 @@
     ],
     "slot": 1,
     "seconds": 19.0
+  },
+  {
+    "id": 85,
+    "style": "light",
+    "payoff": "cd - jumps you back to whatever directory you were just in, no retyping the path, and you can chain it to bounce between two folders instantly",
+    "kicker": "Quick trick #5",
+    "hook": "Full path *twice*, then one key",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "terminal",
+      "code": "cd ~/code/app/src/components\ncd ~/code/app/server/routes\ncd -",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Teleport to your *last* folder",
+        "spoken": "[grinning, punchy] This terminal command jumps you back to your last folder (break) [confident] no retyping.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Retyping the *same* path again",
+        "hook_type": "problem",
+        "spoken": "[exasperated] You keep retyping the same folder path (break) [annoyed] every time you switch terminals."
+      },
+      {
+        "hook": "You keep typing *cd* twice",
+        "hook_type": "mistake",
+        "spoken": "[fired up] Most developers still type cd then the full path again (break) [urgent] every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "Long paths",
+        "body": "Typing the full path every switch",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/code/app/src/components",
+              "cd ~/code/app/server/routes"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One shortcut",
+        "body": "cd - jumps back instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/code/app/src/components",
+              "cd -"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Bounce between",
+        "body": "Chain it to swap folders instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd -",
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "How many times do you *retype* a path today?",
+    "caption": "The cd - command in your terminal\nJump back to your last folder without retyping the path\nHow many times do you retype a path today? 👇",
+    "hashtags": [
+      "#bash",
+      "#terminal",
+      "#cli",
+      "#devtips",
+      "#productivity"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[mock outraged] You used to type the full path twice (break) [confident] one shortcut fixes it.",
+      "[exasperated] Switching folders usually means retyping full paths.",
+      "[excited] Typing cd then a dash jumps you right back.",
+      "[knowing] Chain it to bounce between folders with zero retyping.",
+      "[warm, curious] How often do you retype the same folder path."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 5,
+    "posted_at": "2026-10-21T20:00:57+00:00",
+    "media_id": "18122249650944611",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "cd - jumping back is shown in the terminal, but chaining cd - to bounce between two folders is only claimed in text (slide 3), never actually demonstrated running in the terminal."
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.8
   }
 ]
