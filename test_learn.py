@@ -1775,6 +1775,45 @@ class StageTest(Sandbox):
         self.assertEqual(generate.validate(STAGED), [])
         self.assertEqual(stage.scene_errors(VALID), [])  # a classic reel has no scenes to check
 
+    def test_checklist_chapters_and_the_accent_flip(self):
+        import stage
+        def errs(change):
+            scenes = copy.deepcopy(STAGED['scenes'])
+            for i, extra in change.items():
+                scenes[i] = {k: v for k, v in {**scenes[i], **extra}.items() if v is not None}
+            return ' | '.join(stage.scene_errors({**STAGED, 'scenes': scenes}))
+        check = {'kind': 'checklist', 'title': 'Done means', 'items': [{'label': 'Key deleted on write', 'ok': True},
+                                                                      {'label': 'Old row served', 'ok': False}]}
+        self.assertEqual(errs({1: {**check, 'lines': None, 'at': None}}), '')
+        self.assertIn('checklist needs', errs({1: {**check, 'items': [{'label': 'only one', 'ok': True}], 'lines': None}}))
+        self.assertIn('checklist needs', errs({1: {**check, 'items': [{'label': 'a', 'ok': 'yes'}, {'label': 'b', 'ok': True}]}}))
+        chapters = {1: {'chapter': 'Reads'}, 2: {'chapter': 'Writes'}, 3: {'chapter': 'The fix'}}
+        self.assertEqual(errs(chapters), '')
+        self.assertIn('every point scene a chapter', errs({1: {'chapter': 'Reads'}}))
+        self.assertIn('chapter is', errs({**chapters, 4: {'chapter': 'Ask'}}))          # never on the cta
+        self.assertIn('chapter is', errs({1: {'chapter': 'A name far too long'}, 2: {'chapter': 'b'}, 3: {'chapter': 'c'}}))
+        self.assertEqual(errs({4: {'accent': True}}), '')
+        self.assertIn('accent flip comes after the hook', errs({0: {'accent': True}}))
+        self.assertIn('accent flip comes after the hook', errs({2: {'accent': True}}))  # scene 2 is the light one
+        self.assertIn('at most 1 accent', errs({1: {'accent': True}, 4: {'accent': True}}))
+        # The chapter card takes the first moment; the scene arrives after it, and so do its moves.
+        stage_, slides, words = self.timed()
+        reel = copy.deepcopy(STAGED)
+        for i, extra in chapters.items():
+            reel['scenes'][i].update(extra)
+        reel['scenes'][1] = {**check, 'chapter': 'Reads'}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            plan = stage.plan(reel, slides, words)
+        one = plan['scenes'][1]
+        self.assertEqual((one['number'], one['enter']), ('01', one['start'] + stage.CHAPTER))
+        self.assertTrue(all(one['enter'] <= t <= one['latest'] + 1e-6 for t in one['times']))
+        self.assertNotIn('number', plan['scenes'][0])
+        meant = stage.describe(reel['scenes'][1])
+        self.assertIn('✗ Old row served', meant)
+        self.assertIn('FAILED', meant)                 # one false check: the stamp says so
+        self.assertIn("chapter card 'Reads'", meant)
+        self.assertIn('PASSED', stage.describe({**check, 'items': [{'label': 'a', 'ok': True}, {'label': 'b', 'ok': True}]}))
+
     def test_scene_checks(self):
         import stage
         def errs(i, **change):

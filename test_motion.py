@@ -363,12 +363,18 @@ class Stage(unittest.TestCase):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from e2e_publish import silent_voice
         from test_learn import STAGED
-        reel = {**STAGED, 'id': 99901}
+        import copy
+        reel = {**copy.deepcopy(STAGED), 'id': 99901}
+        # The whole kit: chapter cards on the points, a checklist, and the accent flip on the closing words.
+        reel['scenes'][1] = {'kind': 'checklist', 'title': 'Done means', 'chapter': 'Reads',
+                             'items': [{'label': 'Key deleted on write', 'ok': True}, {'label': 'Old row served', 'ok': False}]}
+        reel['scenes'][2]['chapter'], reel['scenes'][3]['chapter'] = 'Writes', 'The fix'
+        reel['scenes'][4]['accent'] = True
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / 'stage.mp4'
             path, slides = render.render_reel(reel, out_path=out, voice=silent_voice(reel['voiceover']))
             self.assertEqual([s.visual.spec['type'] for s in slides],
-                             ['stage-code', 'stage-file', 'stage-steps', 'stage-docs', 'stage-words'])
+                             ['stage-code', 'stage-checklist', 'stage-steps', 'stage-docs', 'stage-words'])
             probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
                                     '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout
             import json
@@ -376,12 +382,29 @@ class Stage(unittest.TestCase):
             self.assertAlmostEqual(float(info['format']['duration']), slides[-1].end, delta=0.25)
             self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
             frames = []
-            for t in (0.0, slides[2].start + 1.5, slides[-1].end - 0.4):
+            for t in (0.0, slides[2].start + 1.5, slides[-1].end - 0.4, slides[-1].start + 1.0, slides[1].end - 0.5,
+                      slides[1].start + 0.3):
                 png = Path(tmp) / f'{t:.2f}.png'
                 subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(path), '-frames:v', '1',
                                 str(png)], check=True)
                 frames.append(np.asarray(Image.open(png).convert('L'), dtype=np.float32))
-            zero, chapter, last = frames
+            zero, chapter, last, flip, checked, _ = frames
+            png = Path(tmp) / 'flip.png'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{slides[-1].end - 1.3:.2f}', '-i', str(path),
+                            '-frames:v', '1', str(png)], check=True)                # every closing word is in
+            flip_rgb = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)
+            r, g, b = flip_rgb[400:1400].mean(axis=(0, 1))
+            self.assertGreater(r, g + 60)                               # the accent flip fills the screen
+            ink = flip_rgb[560:1440].sum(axis=2) < 200
+            self.assertGreater(ink.sum(), 2000)                          # the accent word turns dark on it, still readable
+            self.assertGreater(flip.mean(), zero.mean() + 40)
+            self.assertGreater((checked[560:1440] > 200).sum(), (zero[560:1440] > 200).sum())  # the checklist card
+            png = Path(tmp) / 'card.png'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{slides[1].start + 0.3:.2f}', '-i', str(path),
+                            '-frames:v', '1', str(png)], check=True)
+            rgb = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)[760:1100]
+            orange = (rgb[..., 0] > 200) & (rgb[..., 1] < 160) & (rgb[..., 2] < 120)
+            self.assertGreater(orange.sum(), 3000)                      # the chapter card's big orange number
             self.assertGreater((zero[244:330] > 200).sum(), 2000)      # the hook's words, white, on frame 0
             self.assertGreater((zero[560:1440] > 120).sum(), 5000)     # its proof (the code card) already in place
             self.assertGreater(chapter.mean(), zero.mean() + 60)        # the light chapter

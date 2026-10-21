@@ -647,6 +647,10 @@ fallback if a scene fails the review. Each scene is an object with "kind" and th
   columns), highlight (line numbers of the line that matters).
 - docs: url (one of "sources"), title (the page's heading), text (the page's exact words, 20 to 240 characters),
   mark (the phrase of text that proves the point; it is highlighted as it is said).
+- checklist: title, items (2 to 5, each {label of at most 28 characters, ok}); each item ticks (ok true) or crosses
+  (ok false) as it is said, then the card is stamped PASSED or FAILED. Every tick or cross must be proven on screen
+  in this same reel (real output in a terminal or code scene, or the docs line); never tick a result the reel does
+  not show, like a production build it never runs. Best for "what done looks like" or a fix verified.
 - steps: items (2 to 4, each {label of at most 14 characters, note}); each lights up as its label is said. stop
   (optional): {request, result (at most 12 characters, like "BLOCKED"), at (the index of the item that stops it)}.
 - counter: label, value (the real number), prefix, suffix, source (one of "sources"); it ticks up to the value.
@@ -654,10 +658,13 @@ fallback if a scene fails the review. Each scene is an object with "kind" and th
   illustration: true when the bars only sketch an idea (they are tagged so on screen).
 - terminal: command, output (1 to 6 lines the command really prints).
 - repo: name (owner/repo), description, stars (its real star count), url (one of "sources").
-- words: lines (1 to 3 of at most 18 characters); a *word* is the accent. Best for the cta.
+- words: lines (1 to 3 of at most 18 characters), set huge in a condensed capital face; a *word* is the accent.
+  Best for the cta or a turn.
 Any scene may add: at (one word of that slide's voiceover where its main move lands), light (true for the one light
-chapter: at most 2 scenes, never the hook), carry (short text shown on the previous scene and this one; it flies
-across). The hook's scene shows its proof from frame 0: file, code, docs, terminal, repo or counter. Every value is
+chapter: at most 2 scenes, never the hook), accent (true for one bold full-colour beat, at the reel's turn; never
+the hook, never with light), carry (short text shown on the previous scene and this one; it flies across). A point
+scene may add chapter (its short name, at most 14 characters, like "Toolbox"): a big numbered card opens it; give
+all three points a chapter or none, for reels that are a method in steps. The hook's scene shows its proof from frame 0: file, code, docs, terminal, repo or counter. Every value is
 real; never a made-up number, output or quote.''')
 
 
@@ -1206,19 +1213,20 @@ _TEXT, _NUM = {'type': 'string'}, {'type': 'number'}
 SCENE_SCHEMA = {  # stage.py scenes; stage.scene_errors checks each kind's fields
     'type': 'object', 'additionalProperties': False, 'required': ['kind'],
     'properties': {
-        'kind': {'type': 'string', 'enum': ['file', 'code', 'docs', 'steps', 'counter', 'bars', 'terminal', 'repo',
-                                            'words']},
+        'kind': {'type': 'string', 'enum': ['file', 'code', 'docs', 'steps', 'checklist', 'counter', 'bars', 'terminal',
+                                            'repo', 'words']},
         'title': _TEXT, 'lines': {'type': 'array', 'items': _TEXT}, 'strike': {'type': 'boolean'}, 'tag': _TEXT,
         'language': _TEXT, 'code': _TEXT, 'highlight': {'type': 'array', 'items': {'type': 'integer'}},
         'url': _TEXT, 'text': _TEXT, 'mark': _TEXT,
         'items': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
-                                             'properties': {'label': _TEXT, 'note': _TEXT, 'value': _NUM}}},
+                                             'properties': {'label': _TEXT, 'note': _TEXT, 'value': _NUM,
+                                                            'ok': {'type': 'boolean'}}}},
         'stop': {'type': 'object', 'additionalProperties': False,
                  'properties': {'request': _TEXT, 'result': _TEXT, 'at': {'type': 'integer'}}},
         'label': _TEXT, 'value': _NUM, 'prefix': _TEXT, 'suffix': _TEXT, 'source': _TEXT, 'unit': _TEXT,
         'illustration': {'type': 'boolean'}, 'command': _TEXT, 'output': {'type': 'array', 'items': _TEXT},
         'name': _TEXT, 'description': _TEXT, 'stars': {'type': 'integer'},
-        'at': _TEXT, 'light': {'type': 'boolean'}, 'carry': _TEXT,
+        'at': _TEXT, 'light': {'type': 'boolean'}, 'carry': _TEXT, 'chapter': _TEXT, 'accent': {'type': 'boolean'},
     },
 }
 

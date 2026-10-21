@@ -21,12 +21,13 @@ from pathlib import Path
 
 import render
 
-KINDS = ('file', 'code', 'docs', 'steps', 'counter', 'bars', 'terminal', 'repo', 'words')
+KINDS = ('file', 'code', 'docs', 'steps', 'checklist', 'counter', 'bars', 'terminal', 'repo', 'words')
 HOOK_KINDS = ('file', 'code', 'docs', 'terminal', 'repo', 'counter')  # complete on frame 0, like a hook_visual
 CSS_W, CSS_H = render.W // 2, render.H // 2
 MAX_CODE_LINES, MAX_CODE_COLS = 10, 38
 LINE_WORDS = 9            # a caption group closes at a sentence end or after this many words
 RETURN = 1.0              # the last seconds glide back to the opening scene, so a replay continues seamlessly
+CHAPTER = 0.6             # seconds a chapter card ("02 TOOLBOX") holds the stage before its scene arrives
 LAND = 1.9                # a scene's main move lands at least this long before its slide ends, so the result holds
                           # still for a screenshot and the frame review sees it complete (director.md, section 1)
 JPEG_QUALITY = 92
@@ -53,6 +54,8 @@ def _text(scene):
         return '\n'.join(str(i.get('label', '')) for i in scene.get('items') or [] if isinstance(i, dict))
     if kind == 'words':
         return '\n'.join(str(x).replace('*', '') for x in scene.get('lines') or [])
+    if kind == 'checklist':
+        return '\n'.join(str(i.get('label', '')) for i in scene.get('items') or [] if isinstance(i, dict))
     if kind == 'repo':
         return f"{scene.get('name', '')}\n{scene.get('description', '')}"
     return ''
@@ -73,7 +76,8 @@ def scene_errors(reel):
     sources = set(reel.get('sources') or [])
     import voice
     spoken = [voice.strip_cues(line) for line in (reel.get('voiceover') or [])]
-    errors, light = [], 0
+    errors, light, accent = [], 0, 0
+    points = len(reel.get('points') or [])
     for i, s in enumerate(scenes):
         where = f'scenes[{i}]'
         if not isinstance(s, dict) or s.get('kind') not in KINDS:
@@ -114,6 +118,12 @@ def scene_errors(reel):
                                          and _short(stop.get('result'), 12) and isinstance(stop.get('at'), int)
                                          and isinstance(items, list) and 0 <= stop['at'] < len(items)):
                 errors.append(f'{where}: steps stop needs request (24 chars), result (12 chars) and at (an item index)')
+        elif kind == 'checklist':
+            items = s.get('items')
+            if not _short(s.get('title'), 40) or not isinstance(items, list) or not 2 <= len(items) <= 5 or not all(
+                    isinstance(x, dict) and _short(x.get('label'), 28) and isinstance(x.get('ok'), bool) for x in items):
+                errors.append(f'{where}: checklist needs a title and 2 to 5 items, each a label (28 chars) and ok '
+                              '(true when that check really passes in what the reel shows)')
         elif kind == 'counter':
             if not isinstance(s.get('value'), (int, float)) or s['value'] < 0 or not _short(s.get('label'), 40):
                 errors.append(f'{where}: counter needs a real value (a number) and a label')
@@ -154,12 +164,24 @@ def scene_errors(reel):
             light += 1
             if i == 0:
                 errors.append(f'{where}: the hook stays dark; a light chapter comes later')
+        if s.get('accent'):
+            accent += 1
+            if i == 0 or s.get('light'):
+                errors.append(f'{where}: an accent flip comes after the hook, and not on a light scene')
+        chapter = s.get('chapter')
+        if chapter is not None and (not 1 <= i <= points or not _short(chapter, 14)):
+            errors.append(f'{where}: chapter is a point\'s short name (14 chars), only on the point scenes')
         carry = s.get('carry')
         if carry is not None and (i == 0 or not _short(carry, 24) or not isinstance(scenes[i - 1], dict)
                                   or carry not in _text(scenes[i - 1]) or carry not in _text(s)):
             errors.append(f'{where}: carry must be text shown on both the previous scene and this one')
     if light > 2:
         errors.append('scenes: at most 2 light scenes (one light chapter)')
+    if accent > 1:
+        errors.append('scenes: at most 1 accent flip')
+    chaptered = [bool(isinstance(x, dict) and x.get('chapter')) for x in scenes[1:1 + points]]
+    if any(chaptered) and not all(chaptered):
+        errors.append('scenes: give every point scene a chapter, or none')
     return errors
 
 
@@ -202,8 +224,16 @@ def describe(spec):
         'repo': f"a GitHub repo card {spec.get('name')} with {spec.get('stars')} stars (check the count at "
                 f"{spec.get('url')})",
         'words': 'big words: ' + ' / '.join(str(x).replace('*', '') for x in spec.get('lines') or []),
+        'checklist': f"a checklist '{spec.get('title')}': " + ', '.join(
+            ('✓ ' if i.get('ok') else '✗ ') + str(i.get('label', '')) for i in spec.get('items') or [])
+            + ', then stamped ' + ('PASSED' if all(i.get('ok') for i in spec.get('items') or []) else 'FAILED')
+            + ' (check each tick or cross matches what the reel really shows)',
     }
     out = lines.get(kind, 'a scene')
+    if spec.get('chapter'):
+        out = f"a chapter card '{spec['chapter']}' opens it, then " + out
+    if spec.get('accent'):
+        out += ' (on a full accent-colour background)'
     if spec.get('carry'):
         out += f"; the text '{spec['carry']}' flies in from the previous card"
     return out
@@ -263,8 +293,12 @@ def plan(reel, slides, words):
         ws = words[i] if i < len(words) else []
         end = slides[i + 1].start if i + 1 < len(slides) else total - RETURN
         sc = dict(spec, start=0.0 if i == 0 else s.start, end=end, ready=i == 0)
+        # A chapter card takes the first moment; the scene arrives just after it.
+        sc['enter'] = sc['start'] + (CHAPTER if spec.get('chapter') else 0.0)
+        if spec.get('chapter'):
+            sc['number'] = f'{i:02d}'
         at = _match(ws, spec['at']) if spec.get('at') else None
-        latest = max(sc['start'] + 0.4, end - LAND)
+        latest = max(sc['enter'] + 0.4, end - LAND)
         sc['latest'] = latest
         sc['beat'] = min(at if at is not None else _beat(ws, sc['start'], end), latest)
         kind = spec['kind']
@@ -274,18 +308,18 @@ def plan(reel, slides, words):
             sc['lines'] = tokens(spec['code'], spec.get('language'))
             n = sum(len(line) for line in sc['lines'])
             step = min(0.06, 0.45 * (end - sc['start']) / max(n, 1))
-            sc['type_at'], sc['step'] = (-1.0, 0.0) if sc['ready'] else (sc['start'] + 0.3, step)
+            sc['type_at'], sc['step'] = (-1.0, 0.0) if sc['ready'] else (sc['enter'] + 0.3, step)
         elif kind == 'docs':
             m = _match(ws, spec['mark'])
             sc['mark_at'] = min(m if m is not None else sc['beat'], latest)
             k = spec['text'].index(spec['mark'])
             sc['parts'] = [spec['text'][:k], spec['mark'], spec['text'][k + len(spec['mark']):]]
-        elif kind == 'steps':
-            times, after = [], sc['start']
+        elif kind in ('steps', 'checklist'):
+            times, after = [], sc['enter']
             n = len(spec['items'])
             for j, item in enumerate(spec['items']):
                 m = _match(ws, item['label'], after)
-                even = sc['start'] + 0.6 + (end - sc['start'] - 1.4) * (j + 1) / (n + 1)
+                even = sc['enter'] + 0.6 + (end - sc['enter'] - 1.4) * (j + 1) / (n + 1)
                 times.append(min(m if m is not None else even, latest))
                 after = times[-1]
             sc['times'] = times
@@ -301,6 +335,9 @@ def plan(reel, slides, words):
                     after = t
                 times.append(row)
             sc['rows'] = times
+            # Anton capitals are about 0.47 em wide: the longest line fills the card without running off it.
+            longest = max(len(str(x).replace('*', '')) for x in spec['lines'])
+            sc['font'] = int(max(40, min(96, 470 / (longest * 0.47))))
         scenes.append(sc)
     return {'scenes': scenes, 'captions': caption_groups(reel, slides, words), 'total': total,
             'kicker': reel.get('kicker', ''), 'handle': render.HANDLE, 'accent': render.THEMES['dark']['accent']}
@@ -365,6 +402,7 @@ html,body{margin:0;width:540px;height:960px;overflow:hidden;background:#07080C;f
 .w.key::after{right:-8px;bottom:-6px} .w.key i{left:-8px;top:-5px}
 body{--now:#fff;--past:#5D6475}
 body.lit{--now:#14161D;--past:#A3A6AE}
+body.acc{--now:#fff;--past:rgba(255,255,255,.62)}
 #cam{position:absolute;inset:0;perspective:1200px;perspective-origin:50% 50%}
 #world{position:absolute;inset:0;transform-style:preserve-3d}
 .scene{position:absolute;left:24px;right:24px;top:270px;height:450px;display:flex;align-items:center;justify-content:center;transform-style:preserve-3d}
@@ -408,14 +446,32 @@ body.lit{--now:#14161D;--past:#A3A6AE}
 .repo .st{font:600 18px Poppins;color:#E6EDF3;display:flex;gap:8px;align-items:center}
 .repo .st i{color:#E3B341;font-style:normal}
 .kin{text-align:center;width:100%}
-.kin .r{font:700 54px/1.12 Poppins;letter-spacing:-.02em;color:var(--now)}
-.kin .r span{display:inline-block;margin:0 .1em}
+.kin .r{font:400 var(--fs,78px)/1.0 Anton,Poppins;letter-spacing:.005em;text-transform:uppercase;color:var(--now)}
+.kin .r span{display:inline-block;margin:0 .08em}
 .kin .r span.k{color:var(--accent)}
+body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}
+#acc{position:absolute;inset:0;background:var(--accent);opacity:0}
+.frame i{position:absolute;width:16px;height:16px;border-color:var(--past);border-style:solid;opacity:.7}
+.frame .a{left:18px;top:70px;border-width:1.5px 0 0 1.5px}.frame .b{right:18px;top:70px;border-width:1.5px 1.5px 0 0}
+.frame .c{left:18px;top:744px;border-width:0 0 1.5px 1.5px}.frame .d{right:18px;top:744px;border-width:0 1.5px 1.5px 0}
+#tc{position:absolute;right:30px;top:100px;font:500 10px 'JetBrains Mono';color:var(--past);letter-spacing:.06em}
+#chapchip{position:absolute;left:30px;top:100px;font:600 10px 'JetBrains Mono';color:var(--accent);letter-spacing:.14em;opacity:0}
+#chap{position:absolute;left:0;right:0;top:400px;text-align:center;opacity:0;pointer-events:none}
+#chap b{display:block;font:400 120px/1 Anton,Poppins;color:var(--accent)}
+#chap span{display:block;font:400 40px/1.1 Anton,Poppins;color:var(--now);text-transform:uppercase;letter-spacing:.02em}
+#orb{position:absolute;left:0;top:0;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#FFE3D6;box-shadow:0 0 10px 3px var(--accent),0 0 28px 8px var(--accent)}
+.check{width:100%;border-radius:18px;background:#FBFAF7;color:#16181F;padding:22px 24px;box-shadow:0 30px 70px rgba(0,0,0,.45);position:relative}
+.check h4{margin:0 0 14px;font:400 30px/1 Anton,Poppins;text-transform:uppercase;letter-spacing:.01em;display:flex;justify-content:space-between;align-items:baseline}
+.check h4 small{font:600 10px 'JetBrains Mono';letter-spacing:.14em;color:var(--accent)}
+.item{display:flex;align-items:center;gap:14px;font:600 19px/1.3 Poppins;margin:12px 0}
+.box{width:24px;height:24px;border-radius:6px;border:2px solid #C9CCD3;display:flex;align-items:center;justify-content:center;font:700 16px Poppins;color:#fff;flex:none}
+.stamp{position:absolute;right:18px;bottom:16px;font:400 34px/1 Anton,Poppins;letter-spacing:.04em;padding:6px 14px;border:3px solid currentColor;border-radius:8px;transform:rotate(-8deg);opacity:0}
 #chip{position:absolute;left:0;top:0;z-index:5;font:500 17px 'JetBrains Mono';color:#E8EAF0;background:#1B1F2B;border:1px solid rgba(255,255,255,.14);padding:4px 10px;border-radius:8px;opacity:0;box-shadow:0 10px 30px rgba(0,0,0,.4);white-space:pre}
 </style></head><body>
-<canvas id="bg" width="540" height="960"></canvas><div id="light"></div><div class="grid" id="gridD"></div><div class="grid" id="gridL"></div>
+<canvas id="bg" width="540" height="960"></canvas><div id="light"></div><div id="acc"></div><div class="grid" id="gridD"></div><div class="grid" id="gridL"></div>
+<div class="frame"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div id="tc"></div><div id="chapchip"></div>
 <div id="chrome"><span id="kicker"></span><span id="handle"></span></div>
-<div id="cam"><div id="world"></div></div><div id="chip"></div><div id="cap"></div>
+<div id="cam"><div id="world"></div></div><div id="chap"><b></b><span></span></div><div id="orb"></div><div id="chip"></div><div id="cap"></div>
 <script>
 const P = window.PARAMS, S = P.scenes, T = P.total, SOUNDS = [];
 document.documentElement.style.setProperty('--accent', P.accent);
@@ -490,7 +546,7 @@ K.steps = (s, box, nc) => {
   if (s.stop) { req = el('div', 'req', s.stop.request); res = el('div', 'res', s.stop.result); wrap.appendChild(req); wrap.appendChild(res);
     hitAt = Math.min(Math.max(s.times[s.times.length - 1] + .4, s.end - 1.6), s.latest + .3); snd(hitAt, 'thud'); }
   return t => {
-    rows.forEach((r, i) => { const p = expo(prog(t, s.start + .15 + i * .12, .55)); r.style.opacity = p;
+    rows.forEach((r, i) => { const p = expo(prog(t, s.enter + .15 + i * .12, .55)); r.style.opacity = p;
       r.style.transform = `translateY(${(1 - p) * 60}px) scale(${.92 + .08 * p})`;
       const on = prog(t, s.times[i], .2), dot = r.querySelector('.dot'), col = cols[i % cols.length];
       dot.style.background = on > 0 ? col : '#D7D9DE'; dot.style.boxShadow = on > 0 ? `0 0 0 ${6 * on}px ${col}22` : 'none';
@@ -523,7 +579,7 @@ K.terminal = (s, box, nc) => {
   const w = win('Terminal'); w.classList.add('term'); const c = el('div', 'code'); w.appendChild(c); box.appendChild(w); sizeCode(c, s);
   const cmd = el('div'); cmd.innerHTML = '<span class="prompt">$ </span><span class="cmd"></span>'; c.appendChild(cmd);
   const outs = s.output.map(o => { const d = el('div', 'out'); d.innerHTML = withCarry(o, nc, 'carry-src') || ' '; c.appendChild(d); return d; });
-  const t0 = s.ready ? -10 : s.start + .3, per = .035, done = t0 + s.command.length * per,
+  const t0 = s.ready ? -10 : s.enter + .3, per = .035, done = t0 + s.command.length * per,
     show = Math.min(Math.max(done + .3, s.beat), s.latest);  // the real output is on screen well before the cut
   for (let k = 0; k < s.command.length; k += 3) snd(t0 + k * per, 'key'); snd(show, 'pop');
   return t => { const n = Math.floor(clamp((t - t0) / per, 0, s.command.length)); cmd.querySelector('.cmd').textContent = s.command.slice(0, n);
@@ -535,10 +591,25 @@ K.repo = (s, box) => {
   return t => { const p = s.ready && t <= 0 ? 1 : out3(prog(t, s.beat, 1.4)); n.textContent = fmt(Math.round(s.stars * p), 0); };
 };
 K.words = (s, box) => {
-  const k = el('div', 'kin'); box.appendChild(k);
+  const k = el('div', 'kin'); box.appendChild(k); k.style.setProperty('--fs', s.font + 'px');
   const spans = []; s.rows.forEach(row => { const r = el('div', 'r'); row.forEach(([w, key, at]) => { const sp = el('span', key ? 'k' : '', w); r.appendChild(sp); spans.push([sp, at]); snd(at, 'pop'); }); k.appendChild(r); });
   return t => spans.forEach(([sp, at]) => { const p = prog(t, at, .3); sp.style.opacity = p;
     sp.style.transform = `scale(${1.35 - .35 * expo(p)})`; sp.style.filter = `blur(${((1 - p) * 8).toFixed(1)}px)`; });
+};
+K.checklist = (s, box) => {
+  const c = el('div', 'check'), passed = s.items.every(x => x.ok);
+  c.innerHTML = `<h4>${esc(s.title)}<small>DONE MEANS</small></h4>`;
+  const rows = s.items.map(x => { const r = el('div', 'item'); r.innerHTML = `<span class="box"></span><span>${esc(x.label)}</span>`; c.appendChild(r); return [r, x]; });
+  const stamp = el('div', 'stamp', passed ? 'PASSED' : 'FAILED'); stamp.style.color = passed ? '#1F9D55' : '#E5484D'; c.appendChild(stamp); box.appendChild(c);
+  const stampAt = Math.min(s.times[s.times.length - 1] + .45, s.latest + .5);
+  s.times.forEach(x => snd(x, 'tick')); snd(stampAt, 'thud');
+  return t => {
+    rows.forEach(([r, x], i) => { const p = s.ready && t <= 0 ? 0 : prog(t, s.times[i], .18), b = r.querySelector('.box');
+      b.style.background = p > 0 ? (x.ok ? '#1F9D55' : '#E5484D') : 'transparent'; b.style.borderColor = p > 0 ? 'transparent' : '#C9CCD3';
+      b.textContent = p > 0 ? (x.ok ? '✓' : '✕') : ''; b.style.transform = `scale(${p > 0 ? 1 + .3 * Math.sin(Math.PI * p) : 1})`;
+      r.style.opacity = .55 + .45 * (p > 0 ? 1 : 0); });
+    const q = prog(t, stampAt, .25); stamp.style.opacity = q; stamp.style.transform = `rotate(-8deg) scale(${1.6 - .6 * expo(q)})`;
+  };
 };
 // ---------- scenes: build, then each frame place them in depth ----------
 const scenes = S.map((s, i) => { const box = el('div', 'scene'); world.appendChild(box);
@@ -546,7 +617,7 @@ const scenes = S.map((s, i) => { const box = el('div', 'scene'); world.appendChi
 const nextStart = i => i + 1 < S.length ? S[i + 1].start : T - 1.0;
 function place(t) {
   scenes.forEach(({s, box, draw}, i) => {
-    const e = s.ready ? 1 : expo(prog(t, s.start, .8)), n = nextStart(i), k = inout(prog(t, n - .15, .7)), g = prog(t, n + .55, .5);
+    const e = s.ready ? 1 : expo(prog(t, s.enter, .8)), n = nextStart(i), k = inout(prog(t, n - .15, .7)), g = prog(t, n + .55, .5);
     let op = e * (1 - .7 * k) * (1 - g), z = -60 * (1 - e) - 260 * k, y = (1 - e) * 220 - 120 * k, rx = -18 * (1 - e), blur = 5 * k;
     let local = t;
     if (i === 0) { const r = expo(prog(t, T - 1.0, .8)); if (r > 0) { op = r; z = -260 * (1 - r); y = -120 * (1 - r); blur = 5 * (1 - r); rx = 0; local = 0; } }
@@ -573,13 +644,38 @@ function carry(t) {
     chip.style.filter = `blur(${(v * 2.2).toFixed(2)}px)`; });
 }
 scenes.forEach(({s}, i) => { if (s.carry && i) { snd(s.start + .55, 'swish'); snd(s.start + 1.25, 'pop'); } });
-// ---------- light chapter ----------
-const lit = S.map(s => s.light ? 1 : 0);
+// ---------- light chapter and accent flip ----------
+function tone(flag) { const v = S.map(s => s[flag] ? 1 : 0);
+  return t => { let m = v[0]; S.forEach((s, i) => { if (i) m += (v[i] - v[i - 1]) * prog(t, s.start, flag === 'accent' ? .25 : .5); });
+    return m - m * prog(t, T - 1.0, .5); }; }
+const litAt = tone('light'), accAt = tone('accent');
+S.forEach((s, i) => { if (i && s.accent) snd(s.start, 'thud'); });
 function light(t) {
-  let m = lit[0]; S.forEach((s, i) => { if (i) m += (lit[i] - lit[i - 1]) * prog(t, s.start, .5); });
-  m -= m * prog(t, T - 1.0, .5);
-  document.getElementById('light').style.opacity = m; document.getElementById('gridL').style.opacity = m; document.getElementById('gridD').style.opacity = 1 - m;
-  document.body.classList.toggle('lit', m > .5);
+  const m = litAt(t), a = accAt(t);
+  document.getElementById('light').style.opacity = m; document.getElementById('acc').style.opacity = a;
+  document.getElementById('gridL').style.opacity = m; document.getElementById('gridD').style.opacity = 1 - m;
+  document.body.classList.toggle('lit', m > .5); document.body.classList.toggle('acc', a > .5);
+}
+// ---------- chapter cards, the film frame's timecode and chapter name ----------
+const chap = document.getElementById('chap'), chipEl = document.getElementById('chapchip'), tc = document.getElementById('tc');
+S.forEach(s => { if (s.chapter) snd(s.start, 'pop'); });
+function chapters(t) {
+  chap.style.opacity = 0; let name = '';
+  S.forEach((s, i) => { const n = nextStart(i); if (s.chapter && t >= s.start && t < n) name = `${s.number} · ${s.chapter.toUpperCase()}`;
+    if (!s.chapter || t < s.start || t >= s.enter + .35) return;
+    const a = expo(prog(t, s.start, .25)), out = inout(prog(t, s.enter - .1, .4));
+    chap.querySelector('b').textContent = s.number; chap.querySelector('span').textContent = s.chapter;
+    chap.style.opacity = a * (1 - out); chap.style.transform = `translateY(${(-260 * out).toFixed(1)}px) scale(${(1.12 - .12 * a - .5 * out).toFixed(3)})`; });
+  chipEl.textContent = name; chipEl.style.opacity = name ? 1 : 0;
+  const f = Math.round(t * 30), sec = Math.floor(f / 30); tc.textContent = `00:00:${String(sec).padStart(2, '0')}:${String(f % 30).padStart(2, '0')}`;
+}
+// ---------- the signature: one glowing dot that travels the frame's top edge from scene to scene ----------
+const orb = document.getElementById('orb');
+function orbAt(t) {
+  let x = 70; S.forEach((s, i) => { const to = i % 2 ? 470 : 70, from = i ? ((i - 1) % 2 ? 470 : 70) : 70, p = inout(prog(t, s.start, .9)); if (t >= s.start) x = from + (to - from) * p; });
+  const back = inout(prog(t, T - 1.0, .8)); x += (70 - x) * back;
+  let pulse = 0; S.forEach(s => { pulse = Math.max(pulse, Math.sin(Math.PI * prog(t, s.beat, .5))); });
+  orb.style.transform = `translate(${x.toFixed(1)}px,${(256 + 3 * Math.sin(t * 1.3)).toFixed(1)}px) scale(${(1 + .7 * pulse).toFixed(3)})`;
 }
 // ---------- captions ----------
 const cap = document.getElementById('cap');
@@ -606,7 +702,7 @@ function bg(t) { cx.fillStyle = '#07080C'; cx.fillRect(0, 0, 540, 960); cx.globa
   blobs.forEach(([x, y, r, c, a], i) => { const px = 540 * (x + .08 * Math.sin(t * .27 + i * 1.7)), py = 960 * (y + .05 * Math.sin(t * .21 + i * 2.3 + 1));
     const g = cx.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); cx.fillStyle = g; cx.fillRect(0, 0, 540, 960); });
   cx.globalCompositeOperation = 'source-over'; }
-window.renderAt = t => { bg(t); light(t); place(t); carry(t); captions(t); };
+window.renderAt = t => { bg(t); light(t); place(t); carry(t); captions(t); chapters(t); orbAt(t); };
 document.fonts.ready.then(() => { window.renderAt(0); window.SOUNDS = SOUNDS.filter(x => x[0] < T).sort((a, b) => a[0] - b[0]); window.READY = true; })
   .catch(e => { window.ERROR = String(e); });
 window.onerror = (m) => { window.ERROR = String(m); };

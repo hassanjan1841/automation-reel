@@ -296,6 +296,17 @@ MUTANTS = [
     ('stage.py', "        sc['beat'] = min(at if at is not None else _beat(ws, sc['start'], end), latest)",
      "        sc['beat'] = at if at is not None else _beat(ws, sc['start'], end)", 'a stage move lands as the slide cuts'),
     ('qa.py', "            t = min(s.end - 0.45, slides[-1].end - 1.3)", "            pass", 'the review sees a stage scene mid-move'),
+    # Stage kit round 2 (2026-10-21): checklist, chapter cards, accent flip, condensed words.
+    ('stage.py', "    if accent > 1:", "    if False:", 'any number of accent flips'),
+    ('stage.py', "    if any(chaptered) and not all(chaptered):", "    if False:", 'chapters on some points only'),
+    ('stage.py', "        sc['enter'] = sc['start'] + (CHAPTER if spec.get('chapter') else 0.0)", "        sc['enter'] = sc['start']",
+     'a scene arrives under its chapter card'),
+    ('stage.py', "            + ', then stamped ' + ('PASSED' if all(i.get('ok') for i in spec.get('items') or []) else 'FAILED')",
+     "            + ', then stamped PASSED'", 'the review is told a failed checklist passed'),
+    ('stage.py', "                isinstance(x, dict) and _short(x.get('label'), 28) and isinstance(x.get('ok'), bool) for x in items):",
+     "                isinstance(x, dict) and _short(x.get('label'), 28) for x in items):", 'a checklist item without its result'),
+    ('stage.py', "body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}", "",
+     'the accent word vanishes on the accent flip', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
