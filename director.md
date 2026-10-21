@@ -24,6 +24,8 @@ made by a motion designer, never like slides a beginner put together.
 
 - Show the trick happening, never only tell it: an editor shortcut is performed on screen (the key, a press
   counter, a cursor landing on each match, the text typed at every cursor), not listed as steps.
+- A warm light leak sweeps across each cut (a white burn into the accent flip or the light beat): it hides the cut
+  and lifts the energy, in stage reels and the showcase alike.
 - One continuous world per chapter. Things transform rather than cut: the circle around a logo becomes the next
   scene's circle, the line a viewer just read flies into the file where it belongs, the same card stays and changes.
   A hard cut is used at most once, on purpose, at the reel's turn.
@@ -35,7 +37,7 @@ made by a motion designer, never like slides a beginner put together.
 - Nothing is ever frozen: the background drifts slowly (`render.Background`), and the camera breathes.
 - A light/dark flip once per reel, at its turn ("but", "here is the catch"), wakes the viewer up; one bold full
   accent-colour beat may punch the turn or the close instead.
-- A method in steps gets numbered chapter cards ("01 INTERVIEW", "02 TOOLBOX"), and its proof can be a "done means"
+- A method in steps gets numbered chapter cards ("No.1" small over a giant "INTERVIEW"), and its proof can be a "done means"
   checklist that ticks off to a PASSED or FAILED stamp (only checks the reel really shows: 2026-10-21 a draft
   ticked "logs once in production" without ever running a production build, and the honesty review stopped it).
 - Every stage reel wears the same frame: corner marks, a running timecode, the chapter name, and one glowing dot that
@@ -91,6 +93,10 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-10-21: Liked @ibrahimm_aali's "Halal video editing" reel (its talking head and stock eyes are not for us):
+  warm light leaks over the cuts, giant words landing as outlines that fill letter by letter, a small label over a
+  big word, an abstract motif behind it, "No.1" over each chapter's name. "Go for all": in the stage kit (light
+  leaks, words label and motif, chapter cards as "No.1" over the giant name) and the showcase (light leaks).
 - 2026-10-21: On the multi-cursor reel ("Three edits become one"): "not that good, we need more improvements". It
   only told the trick (cards listing Ctrl+D), said "twice" for three matches, and ended on an output typing once
   could not give. Now an edit scene performs the trick on screen, its result worked out by the code; code reads

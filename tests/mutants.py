@@ -295,6 +295,16 @@ MUTANTS = [
      'the edit scene never shows its cursors', 'test_motion.py'),
     ('stage.py', "m.nw.textContent = typing ? s.typed.slice(0, k) : '';", "m.nw.textContent = '';",
      'the edit scene never types', 'test_motion.py'),
+    # From @ibrahimm_aali's reel (2026-10-21): light leaks, outline-then-fill words, label and motif.
+    ('stage.py', "  leakEl.style.opacity = best.toFixed(3);", "  leakEl.style.opacity = 0;", 'stage cuts with no light leak',
+     'test_motion.py'),
+    ('showcase.py', "    const p = prog(t, at - .3, .75); if (p <= 0 || p >= 1) return; const a = Math.sin(Math.PI * p), x = -160 + 860 * p;",
+     "    const p = 0; if (p <= 0 || p >= 1) return; const a = Math.sin(Math.PI * p), x = -160 + 860 * p;",
+     'showcase cuts with no light leak', 'test_motion.py'),
+    ('stage.py', "      ls.forEach((b, j) => { b.style.color = t >= at + .22 + j * .045 ? 'inherit' : 'transparent'; }); });",
+     "      ls.forEach((b, j) => { b.style.color = 'transparent'; }); });", 'big words never fill in', 'test_motion.py'),
+    ('stage.py', "            if s.get('motif') is not None and s.get('motif') not in MOTIFS:", "            if False:",
+     'any shape behind the words'),
     # Showcase particles and sound design (2026-10-21).
     ('showcase.py', "  if (i) { snd(b.start - .85, 'riser'); snd(b.start - .05, 'swirl'); snd(b.start, 'impact'); }",
      "  if (i) { snd(b.start - .05, 'swirl'); }", 'showcase beats land with no impact or riser', 'test_motion.py'),

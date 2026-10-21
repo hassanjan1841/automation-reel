@@ -1851,6 +1851,19 @@ class StageTest(Sandbox):
         self.assertIn('at most 2 light', ' '.join(stage.scene_errors({**STAGED, 'scenes': three})))
         self.assertIn('scenes', ' '.join(generate.validate({**STAGED, 'scenes': STAGED['scenes'][:2]})))
 
+    def test_words_label_and_motif(self):
+        import stage
+        words = dict(STAGED['scenes'][4])
+        errs = lambda w: ' | '.join(stage.scene_errors({**STAGED, 'scenes': STAGED['scenes'][:4] + [w]}))
+        self.assertEqual(errs({**words, 'label': 'be honest', 'motif': 'brackets'}), '')
+        self.assertIn('words label', errs({**words, 'label': 'a label far too long to sit over'}))
+        self.assertIn('words motif', errs({**words, 'motif': 'a face'}))         # only the abstract shapes
+        self.assertEqual(set(stage.MOTIFS), {'wave', 'brackets', 'rings'})
+        said = stage.describe({**words, 'label': 'be honest', 'motif': 'rings'})
+        self.assertIn("label 'be honest'", said)
+        self.assertIn('rings shape pulsing', said)
+        self.assertIn('outline', stage.describe(words))
+
     def test_the_edit_scene_does_what_the_keys_do(self):
         import stage
         edit = {'kind': 'edit', 'title': '.env', 'lines': ['API_URL=CHANGE_ME', 'DB_URL=CHANGE_ME', 'SECRET=CHANGE_ME'],
