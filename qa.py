@@ -52,7 +52,9 @@ Judge each frame:
   broken, captions readable.
 - honest: false only for deception: claimed results that are not real (income, revenue, followers, metrics),
   an invented scene presented as a real event, "I tested/built" without the reel showing it, someone else's
-  work shown as the creator's own, or a claim that the listed sources contradict. News claims that the
+  work shown as the creator's own, a claim that the listed sources contradict, or a result that could not come
+  from the steps the reel shows (a key pressed fewer times than the matches it selects, different text on each
+  line after typing once with several cursors, output the files on screen could not give). News claims that the
   sources support are honest even if dramatic. A visual that does not match what is said is not dishonest:
   mark visual_ok false instead. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.

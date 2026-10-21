@@ -284,6 +284,17 @@ MUTANTS = [
      'SHOWCASE_DAYS=off ignored'),
     ('showcase.py', "    if (home) { const m = inout(prog(back, q.d * .6, .7))", "    if (false) { const m = inout(prog(back, q.d * .6, .7))",
      'the showcase never glides back', 'test_motion.py'),
+    # The edit scene (2026-10-21): the trick performed on screen, its result worked out.
+    ('stage.py', "    return lines, [x.replace(find, typed) if find else x for x in lines]", "    return lines, lines",
+     'an edit scene whose result is not what the keys do'),
+    ('stage.py', "            sc['presses'] = [round(min(first + j * gap, sc['type_at'] - 0.3), 3) for j in range(len(hits))]",
+     "            sc['presses'] = [round(first, 3)]", 'one key press for every match'),
+    ('stage.py', "            elif not _short(s.get('find'), 20) or not 2 <= len(matches(s)) <= 8:",
+     "            elif not _short(s.get('find'), 20):", 'an edit scene with one match'),
+    ('stage.py', "      m.sel.style.opacity = on && !typing ? p : 0;", "      m.sel.style.opacity = 0;",
+     'the edit scene never shows its cursors', 'test_motion.py'),
+    ('stage.py', "m.nw.textContent = typing ? s.typed.slice(0, k) : '';", "m.nw.textContent = '';",
+     'the edit scene never types', 'test_motion.py'),
     # Showcase particles and sound design (2026-10-21).
     ('showcase.py', "  if (i) { snd(b.start - .85, 'riser'); snd(b.start - .05, 'swirl'); snd(b.start, 'impact'); }",
      "  if (i) { snd(b.start - .05, 'swirl'); }", 'showcase beats land with no impact or riser', 'test_motion.py'),

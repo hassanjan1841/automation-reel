@@ -10,6 +10,7 @@ import sys
 import voice
 
 SPEAKABLE = [
+    ('Ctrl D three times, or Cmd+D on a Mac.', 'control D three times, or command D on a Mac.'),
     ('half the price of GPT-5.6 Luna', 'half the price of GPT-5 point 6 Luna'),
     ('Edge runtime and 15.x untouched', 'Edge runtime and 15 point x untouched'),
     ('Luna costs $0.10 per million', 'Luna costs 10 cents per million'),
@@ -18,6 +19,9 @@ SPEAKABLE = [
 ]
 
 MISHEARD = [
+    ('Press Ctrl D three times.', 'Press control D three times.', []),
+    ('Press Ctrl D three times.', 'Press Ctrl D three times.', []),
+    ('Press Ctrl D three times.', 'Press D three times.', ['Ctrl']),
     ('Redis caches the hot data.', 'Redis cashes the hot data.', []),
     ('Supabase runs on Postgres.', 'Super Bass runs on PostgreSQL.', ['Postgres', 'Supabase']),
     ('Put secrets in your .env file.', 'Put secrets in your .n file.', ['.env']),

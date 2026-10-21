@@ -61,6 +61,21 @@ KOKORO_RULES = [
     (r'\bog\b', 'O G'),
 ]
 
+# Shortcut keys, said as their names: Kokoro dropped or mumbled "Ctrl D" (2026-10-21). The listen-back check
+# expects the names too (misheard).
+KEY_RULES = [
+    (r'\bCtrl\b\+?', 'control '),
+    (r'\bCmd\b\+?', 'command '),
+    (r'\bAlt\b\+', 'alt '),
+]
+
+
+def said_keys(text):
+    for pattern, repl in KEY_RULES:
+        text = re.sub(pattern, repl, text)
+    return text
+
+
 # Written forms every voice reads badly: numbers, prices and symbols.
 COMMON_RULES = [
     (r'\be\.g\.', 'for example'),
@@ -71,6 +86,7 @@ COMMON_RULES = [
     (r'\b(\d+)\.x\b', r'\1 point x'),
     (r'\$0\.(\d\d)\b', lambda m: f'{int(m.group(1))} cents'),
     (r'\band/or\b', 'and or'),
+    *KEY_RULES,
     (r'(?<=\w)@(?=\w)', ' at '),
     (r'(?<=\w)/(?=\w)', ' slash '),
     (r'\$(\d+(?:\.\d+)?)([KMB]?)\b', lambda m: m.group(1) + {'K': ' thousand', 'M': ' million', 'B': ' billion', '': ''}[m.group(2)] + ' dollars'),
@@ -271,7 +287,7 @@ def tokens(text):
 def misheard(written, heard):
     """Words of the written line that did not come back in the transcript. Numbers are skipped:
     they are handled by the rules above and transcripts write them in too many ways."""
-    a, b = tokens(written), tokens(heard)
+    a, b = tokens(said_keys(written)), tokens(said_keys(heard))  # "Ctrl" or "control", whichever is written
     global _written_lower
     written = strip_cues(written)
     _written_lower = set(re.findall(r'\b[a-z]+\b', plain(written)))
@@ -290,7 +306,7 @@ def misheard(written, heard):
         bad += [w for w in a[i1:i2] if not w.isdigit() and w not in NUMBER_WORDS]
     # Map lowercased tokens back to how the word is written in the line, keeping a leading dot (".env").
     written_words = [w.rstrip('.') for w in re.findall(r"[\w.'-]+", plain(written))]
-    return sorted({next((w for w in written_words if t in tokens(w)), t) for t in bad})
+    return sorted({next((w for w in written_words if t in tokens(w) or t in tokens(said_keys(w))), t) for t in bad})
 
 
 def common(word):
@@ -499,15 +515,17 @@ def verify(audio, text):
       voice invented, 2026-09-27), returned in strays as (heard, start, end) so it can be cut out;
     - the bursts' words together: an everyday word missing from either listen without the hint is a fault.
     faults are written words; an empty result is a clean take."""
-    script = strip_cues(plain(text))
+    script = said_keys(strip_cues(plain(text)))  # "control" is a word of the script, not a stray sound
     bad = misheard(text, transcribe(audio, context=text))
     loose = [w for w in misheard(text, transcribe(audio)) if plain_word(w)]
     wanted = set(tokens(script))
     strays, alone = [], []
     for a, b in islands(audio):
         said = heard_alone(audio, a, b)
-        heard = tokens(said)
-        hits = [t for t in heard if t in wanted]
+        # "D3 time" for "D three times": letters and digits apart, a digit counts as its number word, plurals match.
+        heard = [x for t in tokens(said_keys(said)) for x in re.findall(r'[a-z]+|\d+', t)]
+        stems = {w.rstrip('s') for w in wanted}
+        hits = [t for t in heard if t in wanted or t.rstrip('s') in stems or (t.isdigit() and wanted & NUMBER_WORDS)]
         # Mostly script words, one of them a real word: "you" alone does not make "Thank you" part of the script.
         if not heard or len(hits) < 0.6 * len(heard) or not any(t not in SMALL_WORDS for t in hits):
             strays.append((said or 'sound', a, b))

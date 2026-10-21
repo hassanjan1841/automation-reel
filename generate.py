@@ -645,6 +645,11 @@ fallback if a scene fails the review. Each scene is an object with "kind" and th
   (a short label that pops on, like "NO EFFECT").
 - code: title (the file name), language, code (at most ''' + f'{stage.MAX_CODE_LINES} lines of {stage.MAX_CODE_COLS}' + '''
   columns), highlight (line numbers of the line that matters).
+- edit: title (the file name), lines (2 to 7, at most 34 characters), find (text that appears 2 to 8 times in the
+  lines), typed (what is typed once), key (the shortcut, default Ctrl+D). The trick is performed on screen: the key
+  is pressed once per match (a counter shows 1/3, 2/3, 3/3), each press adds a cursor, then typed lands at every
+  cursor at once. The result is worked out from these fields, so say the real count ("three times" for three
+  matches). Best for any editor trick: show it happening, never only tell it.
 - docs: url (one of "sources"), title (the page's heading), text (the page's exact words, 20 to 240 characters),
   mark (the phrase of text that proves the point; it is highlighted as it is said).
 - checklist: title, items (2 to 5, each {label of at most 28 characters, ok}); each item ticks (ok true) or crosses
@@ -665,7 +670,9 @@ chapter: at most 2 scenes, never the hook), accent (true for one bold full-colou
 the hook, never with light), carry (short text shown on the previous scene and this one; it flies across). A point
 scene may add chapter (its short name, at most 14 characters, like "Toolbox"): a big numbered card opens it; give
 all three points a chapter or none, for reels that are a method in steps. The hook's scene shows its proof from frame 0: file, code, docs, terminal, repo or counter. Every value is
-real; never a made-up number, output or quote.''')
+real; never a made-up number, output or quote. Every result must follow from the steps the reel shows: a key
+pressed the number of times it really takes, typed text that is the same on every cursor, a command's output that
+the files on screen would really give.''')
 
 
 def three_d_note():
@@ -1213,8 +1220,9 @@ _TEXT, _NUM = {'type': 'string'}, {'type': 'number'}
 SCENE_SCHEMA = {  # stage.py scenes; stage.scene_errors checks each kind's fields
     'type': 'object', 'additionalProperties': False, 'required': ['kind'],
     'properties': {
-        'kind': {'type': 'string', 'enum': ['file', 'code', 'docs', 'steps', 'checklist', 'counter', 'bars', 'terminal',
-                                            'repo', 'words']},
+        'kind': {'type': 'string', 'enum': ['file', 'code', 'edit', 'docs', 'steps', 'checklist', 'counter', 'bars',
+                                            'terminal', 'repo', 'words']},
+        'find': _TEXT, 'typed': _TEXT, 'key': _TEXT,
         'title': _TEXT, 'lines': {'type': 'array', 'items': _TEXT}, 'strike': {'type': 'boolean'}, 'tag': _TEXT,
         'language': _TEXT, 'code': _TEXT, 'highlight': {'type': 'array', 'items': {'type': 'integer'}},
         'url': _TEXT, 'text': _TEXT, 'mark': _TEXT,
