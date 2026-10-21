@@ -22,6 +22,8 @@ made by a motion designer, never like slides a beginner put together.
 
 ## 2. Motion
 
+- Show the trick happening, never only tell it: an editor shortcut is performed on screen (the key, a press
+  counter, a cursor landing on each match, the text typed at every cursor), not listed as steps.
 - One continuous world per chapter. Things transform rather than cut: the circle around a logo becomes the next
   scene's circle, the line a viewer just read flies into the file where it belongs, the same card stays and changes.
   A hard cut is used at most once, on purpose, at the reel's turn.
@@ -73,6 +75,9 @@ made by a motion designer, never like slides a beginner put together.
 
 - Every value shown is real: real program output, real star and view counts at the time, numbers quoted from the
   source. A counter ticks up to the real number, never past it.
+- Every result follows from the steps on screen: the key pressed as many times as it really takes, typing once at
+  several cursors puts the same text on every line, a command prints what the files shown would give. An edit
+  scene's result is worked out by the code (`stage.edited`), not written.
 - A value that only illustrates an idea (probabilities in a diagram, a sketch of a curve) carries a small
   "illustration" tag.
 - The source is on screen when a fact comes from a page (its address, small, near the bottom).
@@ -86,6 +91,10 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-10-21: On the multi-cursor reel ("Three edits become one"): "not that good, we need more improvements". It
+  only told the trick (cards listing Ctrl+D), said "twice" for three matches, and ended on an output typing once
+  could not give. Now an edit scene performs the trick on screen, its result worked out by the code; code reads
+  bigger; the honesty review rejects results the steps could not give (sections 2 and 6).
 - 2026-10-21: On the showcase: "it should be very interesting, not some sho sho sounds and simple boring": the
   showcase is now a 3D swarm of glowing particles with a shockwave and camera punch on every beat, and full sound
   design (section 5).

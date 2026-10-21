@@ -1851,6 +1851,36 @@ class StageTest(Sandbox):
         self.assertIn('at most 2 light', ' '.join(stage.scene_errors({**STAGED, 'scenes': three})))
         self.assertIn('scenes', ' '.join(generate.validate({**STAGED, 'scenes': STAGED['scenes'][:2]})))
 
+    def test_the_edit_scene_does_what_the_keys_do(self):
+        import stage
+        edit = {'kind': 'edit', 'title': '.env', 'lines': ['API_URL=CHANGE_ME', 'DB_URL=CHANGE_ME', 'SECRET=CHANGE_ME'],
+                'find': 'CHANGE_ME', 'typed': 'TODO'}
+        errs = lambda e: ' | '.join(stage.scene_errors({**STAGED, 'scenes': [STAGED['scenes'][0], e] + STAGED['scenes'][2:]}))
+        self.assertEqual(errs(edit), '')
+        self.assertIn('appearing 2 to 8 times', errs({**edit, 'find': 'API_URL'}))       # one match is no trick
+        self.assertIn('appearing 2 to 8 times', errs({**edit, 'find': 'NOPE'}))
+        self.assertIn('not the same as find', errs({**edit, 'typed': 'CHANGE_ME'}))
+        self.assertIn('within 34 characters', errs({**edit, 'typed': 'x' * 20, 'lines': ['A=CHANGE_ME' + 'y' * 20, 'B=CHANGE_ME']}))
+        self.assertIn('key is the shortcut', errs({**edit, 'key': 'Press control and D together'}))
+        # The result is worked out, never written: one match per press, the same text at every cursor.
+        self.assertEqual(stage.matches(edit), [(0, 8), (1, 7), (2, 7)])
+        self.assertEqual(stage.edited(edit)[1], ['API_URL=TODO', 'DB_URL=TODO', 'SECRET=TODO'])
+        two = {**edit, 'lines': ['a = X + X', 'b = X'], 'find': 'X', 'typed': 'Y'}
+        self.assertEqual(stage.matches(two), [(0, 4), (0, 8), (1, 4)])
+        self.assertIn('pressed 3 times', stage.describe(two))
+        self.assertIn('a = Y + Y / b = Y', stage.describe(two))
+        # Timing: one press per match, all before the typing, which ends before the cut.
+        stage_, slides, words = self.timed()
+        reel = {**STAGED, 'scenes': [STAGED['scenes'][0], edit] + STAGED['scenes'][2:]}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            sc = stage.plan(reel, slides, words)['scenes'][1]
+        self.assertEqual(len(sc['presses']), 3)
+        self.assertEqual(sc['presses'], sorted(sc['presses']))
+        self.assertGreater(sc['presses'][0], sc['enter'])
+        self.assertLess(sc['presses'][-1], sc['type_at'])
+        self.assertLessEqual(sc['type_at'] + len('TODO') * sc['step'], sc['latest'] + 0.31)
+        self.assertEqual(sc['after'], ['API_URL=TODO', 'DB_URL=TODO', 'SECRET=TODO'])
+
     def timed(self):
         import stage
         from PIL import ImageFont

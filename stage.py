@@ -21,10 +21,12 @@ from pathlib import Path
 
 import render
 
-KINDS = ('file', 'code', 'docs', 'steps', 'checklist', 'counter', 'bars', 'terminal', 'repo', 'words')
+KINDS = ('file', 'code', 'edit', 'docs', 'steps', 'checklist', 'counter', 'bars', 'terminal', 'repo', 'words')
 HOOK_KINDS = ('file', 'code', 'docs', 'terminal', 'repo', 'counter')  # complete on frame 0, like a hook_visual
 CSS_W, CSS_H = render.W // 2, render.H // 2
 MAX_CODE_LINES, MAX_CODE_COLS = 10, 38
+EDIT_COLS = 34          # an edit scene's lines, before and after the edit
+TYPE_STEP = 0.06        # seconds per typed character in an edit scene
 LINE_WORDS = 9            # a caption group closes at a sentence end or after this many words
 RETURN = 1.0              # the last seconds glide back to the opening scene, so a replay continues seamlessly
 CHAPTER = 0.6             # seconds a chapter card ("02 TOOLBOX") holds the stage before its scene arrives
@@ -46,6 +48,8 @@ def _text(scene):
         return '\n'.join(map(str, scene.get('lines') or []))
     if kind == 'code':
         return str(scene.get('code', ''))
+    if kind == 'edit':
+        return '\n'.join(edited(scene)[0] + edited(scene)[1])
     if kind == 'docs':
         return str(scene.get('text', ''))
     if kind == 'terminal':
@@ -59,6 +63,27 @@ def _text(scene):
     if kind == 'repo':
         return f"{scene.get('name', '')}\n{scene.get('description', '')}"
     return ''
+
+
+def edited(scene):
+    """An edit scene's lines before and after its edit, worked out here rather than written by the writer, so the
+    result on screen is what the keys really do: one press of the key per match of `find` (each adds a cursor), then
+    `typed` is typed once and lands at every cursor."""
+    lines = [str(x) for x in scene.get('lines') or []]
+    find, typed = str(scene.get('find') or ''), str(scene.get('typed') or '')
+    return lines, [x.replace(find, typed) if find else x for x in lines]
+
+
+def matches(scene):
+    """(line, column) of each match of `find`, in the order the key selects them."""
+    find = str(scene.get('find') or '')
+    out = []
+    for r, line in enumerate(str(x) for x in scene.get('lines') or []):
+        c = line.find(find) if find else -1
+        while c >= 0:
+            out.append((r, c))
+            c = line.find(find, c + len(find))
+    return out
 
 
 def _short(v, n):
@@ -100,6 +125,19 @@ def scene_errors(reel):
                 errors.append(f'{where}: code needs a title (the file name)')
             if any(not isinstance(n, int) or not 1 <= n <= len(rows) for n in s.get('highlight') or []):
                 errors.append(f'{where}: highlight lists line numbers of the code')
+        elif kind == 'edit':
+            lines, after = edited(s)
+            if not _short(s.get('title'), 40) or not isinstance(s.get('lines'), list) or not 2 <= len(lines) <= 7 \
+                    or not all(isinstance(x, str) and len(x) <= EDIT_COLS for x in s['lines']):
+                errors.append(f'{where}: edit needs a title and 2 to 7 lines of at most {EDIT_COLS} characters')
+            elif not _short(s.get('find'), 20) or not 2 <= len(matches(s)) <= 8:
+                errors.append(f'{where}: edit needs find (at most 20 characters) appearing 2 to 8 times in its lines')
+            elif not isinstance(s.get('typed'), str) or len(s['typed']) > 20 or s['typed'] == s['find'] \
+                    or any(len(x) > EDIT_COLS for x in after):
+                errors.append(f'{where}: edit needs typed (at most 20 characters, not the same as find) and its lines '
+                              f'must stay within {EDIT_COLS} characters after the edit')
+            if s.get('key') is not None and not _short(s.get('key'), 14):
+                errors.append(f'{where}: edit key is the shortcut, at most 14 characters, like Ctrl+D')
         elif kind == 'docs':
             text, mark = str(s.get('text') or ''), str(s.get('mark') or '')
             if s.get('url') not in sources:
@@ -208,6 +246,10 @@ def describe(spec):
         'code': f"code in '{spec.get('title')}' (typing itself, or already complete on the hook)" + (
             '; once it lands, line(s) ' + ', '.join(f"{n} ({_line(spec, n)!r})" for n in spec['highlight'])
             + ' get a soft red bar on the left and the other lines dim' if spec.get('highlight') else ''),
+        'edit': (lambda n, after: f"an editor '{spec.get('title')}' where {spec.get('key') or 'Ctrl+D'} is pressed {n} "
+                 f"times (a counter shows each press), adding a cursor on each of the {n} matches of "
+                 f"'{spec.get('find')}'; then '{spec.get('typed')}' is typed once and appears at every cursor, ending "
+                 "as: " + ' / '.join(after))(len(matches(spec)), edited(spec)[1]),
         'docs': f"a card of the page {spec.get('url')} ('{spec.get('title')}') quoting: \"{spec.get('text')}\", with "
                 f"\"{spec.get('mark')}\" highlighted (check the quote is what that page says)",
         'steps': 'ordered steps lighting up one by one: ' + ' → '.join(i.get('label', '') for i in spec.get('items') or [])
@@ -260,9 +302,9 @@ def font_size(rows):
     """The mono font size (CSS px) that fills the card without wrapping: short code reads big, like the classic
     code cards (visuals.code_image)."""
     cols = max([len(r) for r in rows] + [1])
-    by_width = 448 / (cols * 0.6)            # JetBrains Mono is 0.6 em wide
+    by_width = 492 / (cols * 0.6 + 2)        # JetBrains Mono is 0.6 em wide; the card's side padding is 1 em each
     by_height = 330 / (max(len(rows), 1) * 1.62)
-    return int(max(17, min(30, by_width, by_height)))
+    return int(max(17, min(36, by_width, by_height)))
 
 
 def tokens(code, language):
@@ -309,6 +351,17 @@ def plan(reel, slides, words):
             n = sum(len(line) for line in sc['lines'])
             step = min(0.06, 0.45 * (end - sc['start']) / max(n, 1))
             sc['type_at'], sc['step'] = (-1.0, 0.0) if sc['ready'] else (sc['enter'] + 0.3, step)
+        elif kind == 'edit':
+            hits, typed = matches(spec), str(spec['typed'])
+            sc['hits'] = [list(h) for h in hits]
+            sc['after'] = edited(spec)[1]
+            first = sc['enter'] + 0.5
+            sc['type_at'] = max(first + 0.3, min(max(sc['beat'], first + 0.3 * len(hits) + 0.3),
+                                                 latest + 0.3 - TYPE_STEP * len(typed)))
+            gap = max(0.1, min(0.38, (sc['type_at'] - 0.35 - first) / max(len(hits) - 1, 1)))
+            sc['presses'] = [round(min(first + j * gap, sc['type_at'] - 0.3), 3) for j in range(len(hits))]
+            sc['step'] = TYPE_STEP
+            sc['font'] = font_size(edited(spec)[0] + edited(spec)[1])
         elif kind == 'docs':
             m = _match(ws, spec['mark'])
             sc['mark_at'] = min(m if m is not None else sc['beat'], latest)
@@ -466,6 +519,15 @@ body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}
 .item{display:flex;align-items:center;gap:14px;font:600 19px/1.3 Poppins;margin:12px 0}
 .box{width:24px;height:24px;border-radius:6px;border:2px solid #C9CCD3;display:flex;align-items:center;justify-content:center;font:700 16px Poppins;color:#fff;flex:none}
 .stamp{position:absolute;right:18px;bottom:16px;font:400 34px/1 Anton,Poppins;letter-spacing:.04em;padding:6px 14px;border:3px solid currentColor;border-radius:8px;transform:rotate(-8deg);opacity:0}
+.ed .m{position:relative;white-space:pre}
+.ed .sel{position:absolute;left:-2px;right:-2px;top:-2px;bottom:-2px;border-radius:4px;background:rgba(76,141,255,.35);box-shadow:0 0 0 1.5px #4C8DFF inset;opacity:0}
+.ed .cur{position:absolute;top:-3px;bottom:-3px;width:2.5px;margin-left:-1px;background:#7FB0FF;box-shadow:0 0 10px #4C8DFF;opacity:0}
+.ed .nw{color:#5AD17E}
+.edwrap{width:100%;display:flex;flex-direction:column;align-items:center;gap:34px}
+.keycap{display:flex;align-items:center;gap:14px;opacity:0}
+.keycap b{font:700 30px 'JetBrains Mono';color:#14161D;background:#F3F4F7;padding:10px 18px;border-radius:12px;box-shadow:0 6px 0 #9DA2AE,0 18px 40px rgba(0,0,0,.45)}
+.keycap span{font:400 46px/1 Anton,Poppins;color:var(--accent);min-width:90px}
+.edtag{position:absolute;right:14px;top:44px;font:600 12px Poppins;letter-spacing:.08em;padding:5px 10px;border-radius:999px;background:rgba(90,209,126,.16);color:#5AD17E;border:1px solid rgba(90,209,126,.45);opacity:0}
 #chip{position:absolute;left:0;top:0;z-index:5;font:500 17px 'JetBrains Mono';color:#E8EAF0;background:#1B1F2B;border:1px solid rgba(255,255,255,.14);padding:4px 10px;border-radius:8px;opacity:0;box-shadow:0 10px 30px rgba(0,0,0,.4);white-space:pre}
 </style></head><body>
 <canvas id="bg" width="540" height="960"></canvas><div id="light"></div><div id="acc"></div><div class="grid" id="gridD"></div><div class="grid" id="gridL"></div>
@@ -526,6 +588,41 @@ K.code = (s, box, nc) => {
     toks.forEach((sp, i) => { const p = s.type_at < 0 ? 1 : prog(t, s.type_at + i * s.step, .18); sp.style.opacity = p; sp.style.transform = `translateY(${(1 - p) * 5}px)`; sp.style.display = 'inline-block'; });
     const f = expo(prog(t, s.beat, .45));
     hls.forEach(([n, hl, d]) => { if (marked.has(n)) { hl.style.transform = `scaleX(${f})`; d.style.opacity = 1; } else { hl.style.display = 'none'; d.style.opacity = marked.size ? 1 - .5 * f : 1; } });
+  };
+};
+K.edit = (s, box) => {
+  // The edit happens on screen: each press of the key adds a cursor on the next match (the counter shows which),
+  // then the typed text lands at every cursor at once. The end state is s.after, worked out by stage.edited.
+  const wrap = el('div', 'edwrap'), w = win(s.title), c = el('div', 'code ed'); w.appendChild(c); wrap.appendChild(w);
+  box.appendChild(wrap); sizeCode(c, s);
+  const L = s.find.length, ms = [];
+  const rows = {}; s.hits.forEach(([r, col], j) => { (rows[r] = rows[r] || []).push([col, j]); });
+  s.lines.forEach((line, r) => { const d = el('div', 'ln'); let at = 0;
+    (rows[r] || []).forEach(([col, j]) => { d.appendChild(el('span', '', line.slice(at, col)));
+      const m = el('span', 'm'), sel = el('i', 'sel'), old = el('span', '', s.find), nw = el('span', 'nw'), cur = el('i', 'cur');
+      m.append(sel, old, nw, cur); d.appendChild(m); ms[j] = {sel, old, nw, cur, m}; at = col + L; });
+    d.appendChild(el('span', '', line.slice(at) || (at ? '' : ' '))); c.appendChild(d); });
+  const cap = el('div', 'keycap'); cap.innerHTML = `<b>${esc(s.key || 'Ctrl+D')}</b><span></span>`; wrap.appendChild(cap);
+  const cnt = cap.querySelector('span'), n = s.hits.length, done = s.type_at + s.typed.length * s.step;
+  const tag = el('div', 'edtag', `${n} CURSORS, 1 EDIT`); w.appendChild(tag);
+  s.presses.forEach(p => snd(p, 'click'));
+  for (let k = 0; k < s.typed.length; k += 2) snd(s.type_at + k * s.step, 'key'); snd(done + .05, 'pop');
+  return t => {
+    const pressed = s.presses.filter(p => t >= p).length, typing = t >= s.type_at;
+    const k = Math.floor(clamp((t - s.type_at) / s.step, 0, s.typed.length));
+    ms.forEach((m, j) => { const on = t >= s.presses[j], p = expo(prog(t, s.presses[j], .25));
+      m.sel.style.opacity = on && !typing ? p : 0; m.sel.style.transform = `scale(${.6 + .4 * p})`;
+      m.old.style.display = typing ? 'none' : 'inline'; m.nw.textContent = typing ? s.typed.slice(0, k) : '';
+      m.nw.style.display = typing ? 'inline' : 'none';
+      const blink = typing && t < done ? 1 : (Math.sin(t * 9) > -.2 ? 1 : .15);
+      m.cur.style.opacity = on && t < done + .8 ? blink : 0;
+      m.cur.style.left = typing ? `${m.nw.offsetWidth}px` : `${m.old.offsetWidth}px`; });
+    const show = s.ready && t <= 0 ? 0 : expo(prog(t, s.presses[0] - .2, .3)) * (1 - prog(t, done + .5, .4));
+    const last = s.presses[Math.max(0, pressed - 1)], bump = pressed ? Math.sin(Math.PI * prog(t, last, .18)) : 0;
+    cap.style.opacity = show; cap.style.transform = `translateY(${(-6 * bump).toFixed(1)}px) scale(${(1 + .08 * bump).toFixed(3)})`;
+    cap.querySelector('b').style.boxShadow = bump > .3 ? '0 2px 0 #9DA2AE,0 10px 30px rgba(0,0,0,.45)' : '';
+    cnt.textContent = typing ? '' : `${pressed}/${n}`;
+    const g = prog(t, done + .1, .3); tag.style.opacity = g; tag.style.transform = `scale(${.6 + .4 * back(g)})`;
   };
 };
 K.docs = (s, box, nc) => {

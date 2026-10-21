@@ -370,11 +370,28 @@ class Stage(unittest.TestCase):
                              'items': [{'label': 'Key deleted on write', 'ok': True}, {'label': 'Old row served', 'ok': False}]}
         reel['scenes'][2]['chapter'], reel['scenes'][3]['chapter'] = 'Writes', 'The fix'
         reel['scenes'][4]['accent'] = True
+        # The edit scene performs its trick: a cursor per match (blue selections), then the typed text (green).
+        reel['scenes'][3] = {'kind': 'edit', 'title': '.env', 'chapter': 'The fix', 'find': 'CHANGE_ME', 'typed': 'TODO',
+                             'lines': ['API_URL=CHANGE_ME', 'DB_URL=CHANGE_ME', 'SECRET=CHANGE_ME']}
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / 'stage.mp4'
             path, slides = render.render_reel(reel, out_path=out, voice=silent_voice(reel['voiceover']))
             self.assertEqual([s.visual.spec['type'] for s in slides],
-                             ['stage-code', 'stage-checklist', 'stage-steps', 'stage-docs', 'stage-words'])
+                             ['stage-code', 'stage-checklist', 'stage-steps', 'stage-edit', 'stage-words'])
+            import stage
+            plan = stage.plan(reel, slides, render.spoken_words(silent_voice(reel['voiceover']), slides))['scenes'][3]
+            def rgb_at(t):
+                png = Path(tmp) / f'edit-{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(path), '-frames:v', '1',
+                                str(png)], check=True)
+                return np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)[400:1500]
+            blue = lambda f: ((f[..., 2] > 150) & (f[..., 2] > f[..., 0] + 60)).sum()
+            green = lambda f: ((f[..., 1] > 150) & (f[..., 1] > f[..., 0] + 50) & (f[..., 1] > f[..., 2] + 20)).sum()
+            selecting = rgb_at((plan['presses'][-1] + plan['type_at']) / 2)
+            typed = rgb_at(plan['type_at'] + 4 * plan['step'] + 0.3)
+            self.assertGreater(blue(selecting), 3 * 2500)               # all three matches selected
+            self.assertGreater(green(typed), 3 * 600)                   # TODO typed at all three cursors
+            self.assertLess(blue(typed), blue(selecting) / 4)            # the selections were replaced
             probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
                                     '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout
             import json
