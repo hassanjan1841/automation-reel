@@ -161,7 +161,7 @@ html,body{margin:0;width:540px;height:960px;overflow:hidden;background:#050608;f
 canvas{position:absolute;left:0;top:0;width:540px;height:960px}
 #txt{position:absolute;left:30px;right:30px;top:650px;text-align:center;font:600 30px/1.2 Poppins;letter-spacing:-.01em}
 #txt span{display:inline-block;margin:0 .12em;color:var(--ink)}
-#txt span.k{font:italic 400 38px/1 'Instrument Serif';color:var(--accent)}
+#txt span.k{font:italic 400 40px/1 'Instrument Serif';color:var(--accent);text-shadow:0 0 18px rgba(255,106,61,.55)}
 #handle{position:absolute;left:0;right:0;top:770px;text-align:center;font:500 13px Poppins;color:var(--mute);opacity:0;letter-spacing:.04em}
 .lab{position:absolute;font:600 13px Poppins;color:var(--ink);transform:translate(-50%,0);white-space:nowrap;letter-spacing:.02em}
 body{--ink:#F2F3F7;--mute:#6C7284}
@@ -171,7 +171,7 @@ body.lit{--ink:#16181F;--mute:#8B8F99}
 const P = window.PARAMS, B = P.beats, T = P.total, BEAT = P.beat, N = 240, SOUNDS = [];
 document.documentElement.style.setProperty('--accent', P.accent);
 document.getElementById('handle').textContent = P.handle;
-const cv = document.getElementById('c'), cx = cv.getContext('2d'); cx.scale(2, 2);
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), prog = (t, a, d) => clamp((t - a) / d);
 const expo = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p), inout = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
 const snd = (t, k) => { if (t >= 0 && t < T) SOUNDS.push([+t.toFixed(3), k]); };
@@ -208,53 +208,92 @@ const M = {
     return {pts: along(path), dots: [], glass: [x0, y0, w, h, r], labels: [[(b.labels || [''])[0], CX, CY - 12]], big: true}; },
 };
 const shapes = B.map(b => (u => M[b.motif](u, b)));
-B.forEach((b, i) => { if (i) { snd(b.start - .05, 'swish'); } b.words.forEach(([w, k, at]) => { if (k && at >= 0) snd(at, 'pop'); }); if (b.light) snd(b.start, 'air'); });
-snd(T - P.back, 'swish');
+// ---------- sound cues: a riser builds into every beat, an impact lands it, the morph swirls, sparkles as things appear
+B.forEach((b, i) => {
+  if (i) { snd(b.start - .85, 'riser'); snd(b.start - .05, 'swirl'); snd(b.start, 'impact'); }
+  b.words.forEach(([w, k, at]) => { if (k && at >= 0) snd(at + .05, 'sparkle'); });
+  if (b.light) snd(b.start + .02, 'air');
+  snd(b.start + .75, 'sparkle');
+});
+snd(0.02, 'sparkle'); snd(0, 'impact'); snd(T - P.back - .8, 'riser'); snd(T - P.back, 'swirl');
 const lerp = (a, b, f) => a.map((p, i) => [p[0] + (b[i][0] - p[0]) * f, p[1] + (b[i][1] - p[1]) * f]);
+// ---------- particles: a swarm of light that forms each shape (all pure functions of time) ----------
+const NP = 1000, hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const PART = [...Array(NP)].map((_, j) => ({i: j % N, r: hash(j), a: hash(j + 7) * TAU, z: (hash(j + 13) - .5) * 80,
+  sw: (hash(j + 29) - .5) * 160, d: hash(j + 41) * .32, s: .7 + hash(j + 53) * 1.9, w: hash(j + 61)}));
+const DUST = [...Array(170)].map((_, j) => ({x: hash(j + 101) * 540, y: hash(j + 211) * 960, v: 4 + hash(j + 307) * 14, s: .4 + hash(j + 401) * 1.4, p: hash(j + 503) * TAU}));
+function beatAt(t) { let k = 0; B.forEach((b, i) => { if (t >= b.start) k = i; }); return k; }
+// Where every particle is at time tt: the morph sweeps across the swarm, each particle on its own swirling arc,
+// pushed out by the burst of each new beat, the whole shape turning in 3D.
+function swarm(tt) {
+  const k = beatAt(tt), S = B[k].start, u = tt - S, cur = shapes[k](u).pts;
+  const prev = k > 0 ? shapes[k - 1](u + BEAT).pts : null, back = prog(tt, T - P.back, P.back * .85), home = back > 0 ? shapes[0](0).pts : null;
+  const yaw = .38 * Math.sin(tt * .45 + k * 1.3), pitch = .22 * Math.sin(tt * .33 + .7), cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const burst = k > 0 ? 46 * Math.exp(-(tt - S) * 5) : 0, out = [];
+  for (const q of PART) {
+    let [x, y] = cur[q.i];
+    if (prev) { const m = inout(prog(tt, S + q.d, .62)); if (m < 1) { const [px, py] = prev[q.i], dx = x - px, dy = y - py, L = Math.hypot(dx, dy) || 1, arc = Math.sin(Math.PI * m) * q.sw;
+      x = px + dx * m - dy / L * arc; y = py + dy * m + dx / L * arc; } }
+    if (home) { const m = inout(prog(back, q.d * .6, .7)), [hx, hy] = home[q.i]; x += (hx - x) * m; y += (hy - y) * m; }
+    const spread = q.r * q.r * 9 + 1.2 * Math.sin(tt * 1.7 + q.a * 3);
+    x += Math.cos(q.a) * spread; y += Math.sin(q.a) * spread;
+    if (burst > .2) { const dx = x - CX, dy = y - CY, L = Math.hypot(dx, dy) || 1; x += dx / L * burst * (.4 + q.w); y += dy / L * burst * (.4 + q.w); }
+    const X = x - CX, Y = y - CY, z = q.z * (1 + .5 * Math.sin(tt + q.a));
+    const x1 = X * cy + z * sy, z1 = -X * sy + z * cy, y1 = Y * cp - z1 * sp, z2 = Y * sp + z1 * cp, f = 700 / (700 + z2);
+    out.push([CX + x1 * f, CY + y1 * f, f]);
+  }
+  return out;
+}
 function frame(t) {
-  // which beat, and the morph from the previous one
-  let k = 0; B.forEach((b, i) => { if (t >= b.start) k = i; });
-  const back = prog(t, T - P.back, P.back * .85);
-  const u = t - B[k].start, cur = shapes[k](u);
-  let pts = cur.pts, m = 1;
-  if (k > 0) { m = inout(prog(t, B[k].start, .7)); if (m < 1) pts = lerp(shapes[k - 1](u + BEAT).pts, cur.pts, m); }
-  if (back > 0) pts = lerp(pts, shapes[0](0).pts, inout(back));
-  // light chapter
-  let lit = 0; B.forEach((b, i) => { if (b.light) lit = Math.max(lit, prog(t, b.start, .45) * (1 - prog(t, b.start + BEAT - .1, .45))); });
+  const k = beatAt(t), back = prog(t, T - P.back, P.back * .85), u = t - B[k].start, cur = shapes[k](u);
+  const m = k > 0 ? inout(prog(t, B[k].start, .9)) : 1, sm = m >= 1 && back === 0 ? 1 : 0;
+  let lit = 0; B.forEach(b => { if (b.light) lit = Math.max(lit, prog(t, b.start, .3) * (1 - prog(t, b.start + BEAT - .1, .35))); });
   document.body.classList.toggle('lit', lit > .5);
-  const bg = [5 + (243 - 5) * lit, 6 + (239 - 6) * lit, 8 + (231 - 8) * lit];
-  cx.globalCompositeOperation = 'source-over'; cx.fillStyle = `rgb(${bg.map(Math.round)})`; cx.fillRect(0, 0, 540, 960);
-  // a soft glow under the shape, drifting
-  const g = cx.createRadialGradient(CX + 30 * Math.sin(t * .3), CY + 20 * Math.cos(t * .23), 0, CX, CY, 330);
-  g.addColorStop(0, `rgba(${P.accentRgb},${.16 * (1 - lit) + .10 * lit})`); g.addColorStop(1, `rgba(${P.accentRgb},0)`); cx.fillStyle = g; cx.fillRect(0, 0, 540, 960);
-  const line = lit > .5 ? '20,22,31' : P.accentRgb;
-  const sm = m < 1 || back > 0 ? 0 : 1;  // decorations only once a shape has settled
+  // camera: a punch-in on every beat, settling
+  let punch = 0; B.forEach((b, i) => { if (i && t >= b.start) punch += .09 * Math.exp(-(t - b.start) * 4.5); });
+  cx.setTransform(2, 0, 0, 2, 0, 0); cx.globalCompositeOperation = 'source-over';
+  cx.fillStyle = `rgb(${[5 + 238 * lit, 6 + 233 * lit, 9 + 222 * lit].map(Math.round)})`; cx.fillRect(0, 0, 540, 960);
+  // drifting dust, far behind
+  for (const d of DUST) { const y = ((d.y - t * d.v) % 960 + 960) % 960, tw = .5 + .5 * Math.sin(t * 2 + d.p);
+    cx.fillStyle = lit > .5 ? `rgba(20,22,31,${.12 * tw})` : `rgba(255,220,200,${.22 * tw})`; cx.fillRect(d.x, y, d.s, d.s); }
+  cx.translate(CX, CY); cx.scale(1 + punch, 1 + punch); cx.rotate(punch * .15); cx.translate(-CX, -CY);
+  // the glow under it all, and a shockwave on each beat
+  const g = cx.createRadialGradient(CX, CY, 0, CX, CY, 360); g.addColorStop(0, `rgba(${P.accentRgb},${.20 * (1 - lit) + .08 * lit})`); g.addColorStop(1, `rgba(${P.accentRgb},0)`);
+  cx.fillStyle = g; cx.fillRect(-100, -100, 740, 1160);
+  B.forEach((b, i) => { if (!i || t < b.start) return; const p = prog(t, b.start, .9); if (p >= 1) return;
+    cx.beginPath(); cx.arc(CX, CY, 30 + 300 * expo(p), 0, TAU); cx.strokeStyle = lit > .5 ? `rgba(20,22,31,${.35 * (1 - p)})` : `rgba(${P.accentRgb},${.55 * (1 - p)})`; cx.lineWidth = 2.5 * (1 - p) + .5; cx.stroke(); });
   const ink = lit > .5 ? 'rgba(20,22,31,' : `rgba(${P.accentRgb},`;
-  if (cur.fill && sm) { const f = cx.createRadialGradient(CX - 30, CY - 40, 10, CX, CY, 140); f.addColorStop(0, `rgba(${P.accent2Rgb},.95)`); f.addColorStop(1, `rgba(${P.accentRgb},.85)`);
-    cx.beginPath(); pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.closePath(); cx.shadowColor = `rgba(${P.accentRgb},.7)`; cx.shadowBlur = 40; cx.fillStyle = f; cx.fill(); cx.shadowBlur = 0; }
-  if (cur.glass && sm) { const [x0, y0, w, h] = cur.glass; const gl = cx.createLinearGradient(x0, y0, x0 + w, y0 + h); gl.addColorStop(0, `rgba(${P.accentRgb},.55)`); gl.addColorStop(1, `rgba(${P.accent2Rgb},.35)`);
-    cx.beginPath(); pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.closePath(); cx.fillStyle = gl; cx.shadowColor = `rgba(${P.accentRgb},.6)`; cx.shadowBlur = 50; cx.fill(); cx.shadowBlur = 0; }
+  if (cur.fill && sm) { const f = cx.createRadialGradient(CX - 30, CY - 40, 10, CX, CY, 150); f.addColorStop(0, `rgba(${P.accent2Rgb},.9)`); f.addColorStop(1, `rgba(${P.accentRgb},.75)`);
+    cx.beginPath(); cur.pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.closePath(); cx.shadowColor = `rgba(${P.accentRgb},.8)`; cx.shadowBlur = 50; cx.fillStyle = f; cx.fill(); cx.shadowBlur = 0; }
+  if (cur.glass && sm) { const [x0, y0, w, h] = cur.glass, gl = cx.createLinearGradient(x0, y0, x0 + w, y0 + h); gl.addColorStop(0, `rgba(${P.accentRgb},.5)`); gl.addColorStop(1, `rgba(${P.accent2Rgb},.3)`);
+    cx.beginPath(); cur.pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.closePath(); cx.fillStyle = gl; cx.shadowColor = `rgba(${P.accentRgb},.6)`; cx.shadowBlur = 50; cx.fill(); cx.shadowBlur = 0; }
   (cur.rings || []).forEach(r => { if (!sm) return; cx.beginPath(); cx.arc(CX, CY, r, 0, TAU); cx.strokeStyle = ink + '.25)'; cx.lineWidth = 1; cx.stroke(); });
   (cur.arcs || []).forEach(r => { if (!sm) return; cx.beginPath(); cx.arc(CX, CY + 60, r, Math.PI, TAU); cx.strokeStyle = ink + '.35)'; cx.lineWidth = 1.5; cx.stroke(); });
   if (cur.rip) for (let j = 0; j < 3; j++) { const p = ((t * .6 + j / 3) % 1); cx.beginPath(); cx.ellipse(CX, CY + 40, 30 + 150 * p, 8 + 28 * p, 0, 0, TAU); cx.strokeStyle = ink + `${(.45 * (1 - p)).toFixed(3)})`; cx.lineWidth = 1.2; cx.stroke(); }
-  // the line itself: a wide glow, then a bright core
-  cx.beginPath(); pts.forEach(([x, y], i) => i ? cx.lineTo(x, y) : cx.moveTo(x, y));
-  cx.lineJoin = 'round'; cx.lineCap = 'round';
-  cx.shadowColor = `rgba(${line},.9)`; cx.shadowBlur = lit > .5 ? 6 : 22; cx.strokeStyle = `rgba(${line},.95)`; cx.lineWidth = 3; cx.stroke();
-  cx.shadowBlur = 0; cx.strokeStyle = lit > .5 ? 'rgba(20,22,31,1)' : 'rgba(255,240,230,.9)'; cx.lineWidth = 1.2; cx.stroke();
-  // dots
-  if (sm || cur.rip) (cur.dots || []).forEach(([x, y, r]) => { cx.beginPath(); cx.arc(x, y, r, 0, TAU); cx.shadowColor = `rgba(${P.accentRgb},1)`; cx.shadowBlur = 18;
-    cx.fillStyle = lit > .5 ? `rgb(${P.accentRgb})` : '#FFF1E6'; cx.fill(); cx.shadowBlur = 0; });
+  // the swarm, with motion trails: the same particles a few hundredths of a second earlier, fainter
+  cx.globalCompositeOperation = lit > .5 ? 'source-over' : 'lighter';
+  [[.045, .14], [.03, .24], [.015, .42], [0, 1]].forEach(([dt, a]) => {
+    const pts = swarm(Math.max(0, t - dt));
+    pts.forEach(([x, y, f], j) => { const q = PART[j], hot = q.w > .82;
+      cx.fillStyle = lit > .5 ? `rgba(${hot ? P.accentRgb : '20,22,31'},${.85 * a})` : hot ? `rgba(255,244,236,${.95 * a})` : `rgba(${P.accentRgb},${.75 * a})`;
+      const sz = q.s * f * (hot ? 1.3 : 1); cx.fillRect(x - sz / 2, y - sz / 2, sz, sz); }); });
+  cx.globalCompositeOperation = 'source-over';
+  // the bright points of each shape
+  if (sm || cur.rip) (cur.dots || []).forEach(([x, y, r]) => { const pop = Math.min(1, prog(t, B[k].start + .65, .25) * 1.2 + (cur.rip ? 1 : 0));
+    cx.beginPath(); cx.arc(x, y, r * (1 + .25 * Math.sin(t * 4 + x)) * pop, 0, TAU); cx.shadowColor = `rgba(${P.accentRgb},1)`; cx.shadowBlur = 26;
+    cx.fillStyle = lit > .5 ? `rgb(${P.accentRgb})` : '#FFF4EC'; cx.fill(); cx.shadowBlur = 0; });
+  cx.setTransform(2, 0, 0, 2, 0, 0);
   // labels
   const labs = document.getElementById('labs'); labs.innerHTML = '';
   if (sm) (cur.labels || []).forEach(([l, x, y]) => { const d = document.createElement('div'); d.className = 'lab'; d.textContent = l; d.style.left = x + 'px'; d.style.top = y + 'px';
     if (cur.big) d.style.font = "600 22px Poppins"; d.style.opacity = prog(t, B[k].start + .6, .3); labs.appendChild(d); });
-  // words
+  // words: each one flips up into place, the key word glows
   const txt = document.getElementById('txt'), b = B[k], end = k + 1 < B.length ? B[k + 1].start : T - P.back;
   txt.innerHTML = ''; const q = prog(t, end - .3, .3);
   if (back === 0) b.words.forEach(([w, key, at]) => { const sp = document.createElement('span'); sp.textContent = w; if (key) sp.className = 'k';
-    const p = at < 0 ? 1 : prog(t, at, .35); sp.style.opacity = p * (1 - q); sp.style.transform = `translateY(${((1 - expo(p)) * 12 - q * 10).toFixed(1)}px)`;
-    sp.style.filter = p < 1 || q > 0 ? `blur(${((1 - p) * 8 + q * 6).toFixed(1)}px)` : 'none'; txt.appendChild(sp); });
+    const p = at < 0 ? 1 : prog(t, at, .4); sp.style.opacity = p * (1 - q);
+    sp.style.transform = `perspective(500px) translateY(${((1 - expo(p)) * 18 - q * 12).toFixed(1)}px) rotateX(${((1 - expo(p)) * 75).toFixed(1)}deg) scale(${(1 + .06 * Math.sin(Math.PI * p)).toFixed(3)})`;
+    sp.style.filter = p < 1 || q > 0 ? `blur(${((1 - p) * 9 + q * 6).toFixed(1)}px)` : 'none'; txt.appendChild(sp); });
   else B[0].words.forEach(([w, key]) => { const sp = document.createElement('span'); sp.textContent = w; if (key) sp.className = 'k'; sp.style.opacity = inout(back); txt.appendChild(sp); });
   document.getElementById('handle').style.opacity = k === B.length - 1 ? prog(t, B[k].start + 1, .5) * (1 - back) : 0;
 }
@@ -297,17 +336,72 @@ def render_showcase(spec, out_path):
     return out_path, total
 
 
+def band(rng, n, lo, hi):
+    """White noise kept only between lo and hi Hz (an FFT mask): the raw stuff every effect here is cut from."""
+    spec = np.fft.rfft(rng.standard_normal(n))
+    f = np.fft.rfftfreq(n, 1 / render.SR)
+    spec[(f < lo) | (f > hi)] = 0
+    out = np.fft.irfft(spec, n)
+    return out / (np.max(np.abs(out)) or 1.0)
+
+
+def fx_kit(rng):
+    """The showcase's effects, all shaped noise with no pitch or melody, so never music."""
+    sr = render.SR
+
+    def riser(dur=0.85):
+        n = int(sr * dur)
+        segs = 12
+        out = np.concatenate([band(rng, n // segs, 200 * 20 ** (k / segs), 600 * 7 ** (k / segs)) for k in range(segs)])
+        t = np.linspace(0, 1, len(out))
+        return out * t ** 2.5
+
+    def impact():
+        n = int(sr * 0.9)
+        t = np.arange(n) / sr
+        return (band(rng, n, 25, 90) * np.exp(-t * 6) * 1.0 + band(rng, n, 1500, 6000) * np.exp(-t * 60) * 0.5
+                + band(rng, n, 80, 400) * np.exp(-t * 4) * 0.35)
+
+    def sparkle(dur=0.5):
+        out = np.zeros(int(sr * dur))
+        click = int(sr * 0.004)
+        for k in range(18):
+            i = int(len(out) * (k / 18) ** 1.4)
+            c = band(rng, click * 4, 4000, 12000)[:click] * np.hanning(click) * (1 - k / 18)
+            out[i:i + click] += c[:len(out) - i]
+        return out
+
+    def swirl(dur=0.8):
+        n = int(sr * dur)
+        t = np.arange(n) / sr
+        return band(rng, n, 300, 3000) * np.sin(np.pi * t / dur) * (0.6 + 0.4 * np.sin(2 * np.pi * 14 * t))
+
+    old = render.sound_kit(rng)
+    return {'riser': riser, 'impact': impact, 'sparkle': sparkle, 'swirl': swirl, 'air': old['air']}
+
+
+FX_GAIN = {'impact': 0.55, 'riser': 0.25, 'sparkle': 0.18, 'swirl': 0.16, 'air': 0.1}
+BED_GAIN = 0.05
+
+
 def sound_track(sounds, total, wav):
-    """The effects alone (there is no voice): shaped noise from render.sound_kit, never music."""
+    """The effects alone (there is no voice): risers into each beat, impacts on it, swirls through the morphs,
+    sparkles as the particles land, over a soft noise bed. All shaped noise from fx_kit, never music."""
     import wave
-    kit = render.sound_kit(np.random.default_rng(11))
-    track = np.zeros(int(render.SR * (total + 0.5)))
+    rng = np.random.default_rng(11)
+    kit = fx_kit(rng)
+    n = int(render.SR * (total + 1.0))
+    t = np.arange(n) / render.SR
+    track = band(rng, n, 60, 500) * BED_GAIN * (0.7 + 0.3 * np.sin(2 * np.pi * t / 5.3))
     for at, kind in sounds:
-        s = kit[kind]() * render.SOUND_GAIN[kind] * 2.5
-        i = int(at * render.SR)
+        s = kit[kind]() * FX_GAIN[kind]
+        i = max(0, int(at * render.SR))
         track[i:i + len(s)] += s[:max(0, len(track) - i)]
+    track = track[:int(render.SR * total)]
+    fade = min(len(track), int(render.SR * 0.4))
+    track[-fade:] *= np.linspace(1, 0, fade)
     peak = np.max(np.abs(track)) or 1.0
-    track = (track / peak * 0.6)[:int(render.SR * total)]
+    track = track / peak * 0.8
     with wave.open(str(wav), 'wb') as w:
         w.setnchannels(1)
         w.setsampwidth(2)
@@ -322,8 +416,8 @@ REVIEW_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['
 REVIEW = """You review frames of a short abstract motion reel before it is posted on Instagram. Open each frame with
 the Read tool. ok is false if any frame shows a face, a person, a character, a mascot, an animal or a logo; if the
 words are cut off, overlap the shapes badly or cannot be read; if a frame is broken (blank, garbled, glitched); or
-if the words claim something untrue. Abstract glowing lines, dots, orbs and cards are expected. problem: one short
-sentence, or an empty string."""
+if the words claim something untrue. Abstract glowing lines, particle swarms, dots, orbs, rings and cards are
+expected. problem: one short sentence, or an empty string."""
 
 
 def review(path, spec, total):
