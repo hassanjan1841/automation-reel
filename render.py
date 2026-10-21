@@ -3,7 +3,7 @@
 Usage:
   python render.py <id>        render out/reel-<id>.mp4 without a voice (sound effects only, so no captions and no
                                hook_visual)
-  python render.py --fonts     download the Poppins and Instrument Serif fonts (JetBrains Mono is fetched on first use)
+  python render.py --fonts     download the Poppins, Instrument Serif and Anton fonts (JetBrains Mono is fetched on first use)
 """
 
 import json
@@ -59,6 +59,9 @@ FONT_URL = 'https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-{}.ttf'
 WEIGHTS = ('Bold', 'SemiBold', 'Regular')
 SERIF_URL = 'https://github.com/google/fonts/raw/main/ofl/instrumentserif/InstrumentSerif-{}.ttf'  # OFL, motion captions
 SERIF_STYLES = ('Regular', 'Italic')
+# OFL condensed display face for big-word moments on stage reels (stage.py); they fall back to Poppins without it.
+DISPLAY_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/anton/Anton-Regular.ttf'
+DISPLAY = FONT_DIR / 'Anton-Regular.ttf'
 
 
 def ensure_fonts():
@@ -78,6 +81,13 @@ def ensure_fonts():
             except Exception as e:  # only the board's captions use it; they fall back to a system serif
                 path.unlink(missing_ok=True)
                 print(f'Warning: could not download InstrumentSerif-{style}: {e}')
+    if not (DISPLAY.exists() and DISPLAY.stat().st_size > 10_000):
+        print('Downloading Anton')
+        try:
+            urllib.request.urlretrieve(DISPLAY_URL, DISPLAY)
+        except Exception as e:  # only stage reels' big words use it; they fall back to Poppins
+            DISPLAY.unlink(missing_ok=True)
+            print(f'Warning: could not download Anton: {e}')
 
 
 _font_cache = {}

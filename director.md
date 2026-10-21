@@ -31,7 +31,12 @@ made by a motion designer, never like slides a beginner put together.
   overshoot only on scale, never on position.
 - Things travel on arcs, not straight lines, with a little motion blur at full speed, and land sharply.
 - Nothing is ever frozen: the background drifts slowly (`render.Background`), and the camera breathes.
-- A light/dark flip once per reel, at its turn ("but", "here is the catch"), wakes the viewer up.
+- A light/dark flip once per reel, at its turn ("but", "here is the catch"), wakes the viewer up; one bold full
+  accent-colour beat may punch the turn or the close instead.
+- A method in steps gets numbered chapter cards ("01 INTERVIEW", "02 TOOLBOX"), and its proof can be a "done means"
+  checklist that ticks off to a PASSED or FAILED stamp (only checks the reel really shows).
+- Every stage reel wears the same frame: corner marks, a running timecode, the chapter name, and one glowing dot that
+  travels from scene to scene: the channel's signature, so the reels feel like one series.
 - Abstract shapes only (boxes, dots, lines, arrows, orbs, rings, code). Borrowed open-source effects are welcome when
   their licence allows it (for example brush strokes, hand-drawn lines, particles, physics).
 
@@ -49,7 +54,8 @@ made by a motion designer, never like slides a beginner put together.
   the word being said on an accent pill. Stage reels (the explainer and showcase formats): the sentence builds up
   word by word at the top, the word being said bright and the earlier words grey; stressed words switch to the serif
   italic; the one key word gets a "selected text" box.
-- On-screen text is a label or a few big words, never a paragraph. Code is shown exactly as typed (no ligatures).
+- On-screen text is a label or a few big words, never a paragraph. Big words are set in a condensed capital face
+  (Anton) that fills the card. Code is shown exactly as typed (no ligatures).
 - One accent colour per reel, plus the theme's ink. The serif italic is for emphasis only.
 
 ## 5. Sound
@@ -76,6 +82,9 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-10-21: Liked @borja.obeso's "AI delegation" reel: bold palette flips, a film frame with timecode, giant
+  condensed type, numbered chapter cards, a checklist stamped PASSED, one recurring glowing dot. "Go for all":
+  added to the stage kit (section 2, and big words in a condensed capital face, section 4).
 - 2026-10-20: "It should not look like some newbie is doing it": premium motion is the bar (sections 1 to 4).
   Loved every motion of @speedy_devv's explainer: word-synced counters and bars, building captions with a selection
   box, depth, chapter flips (sections 1, 2, 4). Wants a fully animated showcase reel once or twice a week.
