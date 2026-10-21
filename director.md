@@ -65,6 +65,9 @@ made by a motion designer, never like slides a beginner put together.
 - Sound starts on frame 0. Every effect means something: a whoosh when a scene moves, a pop when something arrives, a
   tick on a key word or a counter, a thud when something is blocked, key taps when code types. Always well under
   the voice; lower it rather than raise it.
+- With no voice (the showcase), the sound carries the piece and must be designed, never a few plain swishes: a riser
+  building into each beat, a deep impact on it, a swirl through the morph, sparkles as things land, over a soft noise
+  bed (`showcase.fx_kit`). Still shaped noise with no pitch or melody.
 
 ## 6. Truth on screen
 
@@ -83,6 +86,9 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-10-21: On the showcase: "it should be very interesting, not some sho sho sounds and simple boring": the
+  showcase is now a 3D swarm of glowing particles with a shockwave and camera punch on every beat, and full sound
+  design (section 5).
 - 2026-10-21: Liked @borja.obeso's "AI delegation" reel: bold palette flips, a film frame with timecode, giant
   condensed type, numbered chapter cards, a checklist stamped PASSED, one recurring glowing dot. "Go for all":
   added to the stage kit (section 2, and big words in a condensed capital face, section 4).

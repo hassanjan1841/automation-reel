@@ -2005,6 +2005,24 @@ SHOWCASE = {'title': 'How an AI agent works', 'beats': [
 class ShowcaseTest(Sandbox):
     """The weekly showcase (showcase.py): the writer's checks, the beat timing, and the post-once rule."""
 
+    def test_the_sound_design(self):
+        import wave
+        import numpy as np
+        import showcase
+        kit = showcase.fx_kit(np.random.default_rng(1))
+        for kind in showcase.FX_GAIN:                                   # every cue the page can ask for has a sound
+            self.assertGreater(np.abs(kit[kind]()).max(), 0.1, kind)
+        riser = kit['riser']()
+        self.assertGreater(np.abs(riser[-len(riser) // 5:]).mean(), 4 * np.abs(riser[:len(riser) // 5]).mean())  # it builds
+        wav = Path(self.tmp) / 'fx.wav'
+        showcase.sound_track([(1.0, 'impact')], 2.0, wav)
+        with wave.open(str(wav)) as w:
+            pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float)
+        sr = showcase.render.SR
+        hit, before = np.abs(pcm[sr:int(sr * 1.2)]).mean(), np.abs(pcm[int(sr * 0.6):int(sr * 0.9)]).mean()
+        self.assertGreater(before, 0)                                   # the soft bed is there
+        self.assertGreater(hit, 5 * before)                             # and the impact stands well above it
+
     def test_a_valid_showcase_passes(self):
         import showcase
         self.assertEqual(showcase.errors(SHOWCASE), [])

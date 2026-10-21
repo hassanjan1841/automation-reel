@@ -415,7 +415,7 @@ class Stage(unittest.TestCase):
 
 class Showcase(unittest.TestCase):
     """The weekly showcase (showcase.py) rendered for real: its length, a sound track and its cover, light and words
-    on frame 0, the light beat, and the glide back to the opening."""
+    on frame 0, the light beat, the glide back to the opening, and an impact with a riser into every beat."""
 
     def test_renders_a_showcase(self):
         import json
@@ -425,7 +425,14 @@ class Showcase(unittest.TestCase):
         from test_learn import SHOWCASE
         spec = {**SHOWCASE, 'beats': SHOWCASE['beats'][:4]}
         with tempfile.TemporaryDirectory() as tmp:
-            out, total = showcase.render_showcase(spec, Path(tmp) / 'showcase-test.mp4')
+            heard = []
+            real = showcase.sound_track
+            with mock.patch.object(showcase, 'sound_track', side_effect=lambda snd, *a: (heard.extend(snd), real(snd, *a))):
+                out, total = showcase.render_showcase(spec, Path(tmp) / 'showcase-test.mp4')
+            for k in range(1, 4):                                       # every beat after the first lands on an impact
+                start = k * showcase.BEAT                               # with a riser building into it
+                self.assertIn([round(start, 3), 'impact'], [[round(a, 3), b] for a, b in heard])
+                self.assertTrue(any(b == 'riser' and start - 1 < a < start for a, b in heard))
             self.assertTrue((Path(tmp) / 'showcase-test-cover.jpg').exists())
             info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
                                               '-of', 'json', str(out)], capture_output=True, text=True, check=True).stdout)

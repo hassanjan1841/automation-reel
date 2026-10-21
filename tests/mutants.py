@@ -282,8 +282,15 @@ MUTANTS = [
      "    return now.weekday() in days and not showcase_runs_today", 'the showcase starts before its time'),
     ('scheduler.py', "    if (value or '').strip().lower() == 'off':\n        return set()", "    if False:\n        return set()",
      'SHOWCASE_DAYS=off ignored'),
-    ('showcase.py', "  if (back > 0) pts = lerp(pts, shapes[0](0).pts, inout(back));", "", 'the showcase never glides back',
-     'test_motion.py'),
+    ('showcase.py', "    if (home) { const m = inout(prog(back, q.d * .6, .7))", "    if (false) { const m = inout(prog(back, q.d * .6, .7))",
+     'the showcase never glides back', 'test_motion.py'),
+    # Showcase particles and sound design (2026-10-21).
+    ('showcase.py', "  if (i) { snd(b.start - .85, 'riser'); snd(b.start - .05, 'swirl'); snd(b.start, 'impact'); }",
+     "  if (i) { snd(b.start - .05, 'swirl'); }", 'showcase beats land with no impact or riser', 'test_motion.py'),
+    ('showcase.py', "        return out * t ** 2.5", "        return out", 'a riser that never builds'),
+    ('showcase.py', "    track = band(rng, n, 60, 500) * BED_GAIN * (0.7 + 0.3 * np.sin(2 * np.pi * t / 5.3))",
+     "    track = np.zeros(n)", 'the showcase loses its sound bed'),
+    ('showcase.py', "FX_GAIN = {'impact': 0.55,", "FX_GAIN = {'impact': 0.02,", 'showcase impacts too quiet to hear'),
     # LinkedIn (2026-10-20).
     ('linkedin.py', "    if entry.get('linkedin_id'):", "    if False:", 'a LinkedIn post twice'),
     ('linkedin.py', "    if dry:\n        print('DRY_RUN: not posting to LinkedIn')", "    if False:\n        print('DRY_RUN: not posting to LinkedIn')",
