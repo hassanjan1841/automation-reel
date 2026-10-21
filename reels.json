@@ -7198,5 +7198,195 @@
     ],
     "slot": 3,
     "seconds": 20.8
+  },
+  {
+    "id": 84,
+    "style": "dark",
+    "payoff": "In development, React 18 Strict Mode double-fires useEffect on purpose — add a cleanup function instead of removing the empty dependency array.",
+    "kicker": "Myth vs fact #11",
+    "hook": "Expected once, logged *twice*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "App.jsx",
+      "language": "jsx",
+      "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+      "highlight": [
+        2,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "useEffect doesn't run *once*",
+        "spoken": "[fired up] Most developers think useEffect with an empty array fires (break) [urgent] only once, ever.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Your useEffect *lies*",
+        "spoken": "[mock outraged] You assume useEffect runs once, (break) [urgent] but Strict Mode proves you dead wrong.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your component *mounts* twice",
+        "spoken": "[exasperated] Ever wonder why console logs mount twice? (break) [knowing] Strict Mode's doing that.",
+        "hook_type": "problem"
+      }
+    ],
+    "points": [
+      {
+        "title": "The assumption",
+        "body": "Empty array should mean just once",
+        "visual": [
+          {
+            "type": "code",
+            "title": "App.jsx",
+            "language": "jsx",
+            "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Strict Mode remounts",
+        "body": "Dev console prints the log twice",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "jsx",
+            "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "choices": [
+              "mount",
+              "mount mount"
+            ],
+            "output": [
+              "mount",
+              "mount"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm run dev"
+            ],
+            "output": [
+              "mount",
+              "mount"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add a cleanup",
+        "body": "Make the effect safe to repeat",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "App.jsx",
+            "language": "jsx",
+            "before": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "after": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n    return () => {\n      console.log(\"cleanup\");\n    };\n  }, []);\n  return <h1>Hi</h1>;\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *believes* this?",
+    "caption": "React useEffect double render in Strict Mode\nDevelopment only — here's why, and the real fix\nStill think your effect fires only once? 👇",
+    "hashtags": [
+      "#react",
+      "#useeffect",
+      "#reactjs",
+      "#javascript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[grinning, punchy] You expect one mount log in development, (break) [amused] but React fires it twice.",
+      "[knowing] That's exactly what the empty array promises.",
+      "[urgent] But Strict Mode mounts, unmounts, and remounts it fast.",
+      "[confident and fast] Fix it with cleanup, not by removing the array.",
+      "[warm, curious] Send this to the dev who believes it's once."
+    ],
+    "reveal": 2,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          4
+        ],
+        "at": "promises"
+      },
+      {
+        "kind": "terminal",
+        "command": "npm run dev",
+        "output": [
+          "mount",
+          "mount"
+        ],
+        "accent": true,
+        "at": "remounts"
+      },
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n    return () => {\n      console.log(\"cleanup\");\n    };\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          4,
+          5
+        ],
+        "at": "cleanup"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Still think",
+          "*once*?"
+        ],
+        "at": "once"
+      }
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 11,
+    "posted_at": "2026-10-21T12:00:45+00:00",
+    "media_id": "18031733162906045",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The actual cleanup-function code is never shown on screen — slide 3 (the fix) is just the text 'Add a cleanup / Make the effect safe to repeat' with no code, so there's nothing to copy or screenshot for the promised fix."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
   }
 ]
