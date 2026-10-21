@@ -648,8 +648,9 @@ fallback if a scene fails the review. Each scene is an object with "kind" and th
 - docs: url (one of "sources"), title (the page's heading), text (the page's exact words, 20 to 240 characters),
   mark (the phrase of text that proves the point; it is highlighted as it is said).
 - checklist: title, items (2 to 5, each {label of at most 28 characters, ok}); each item ticks (ok true) or crosses
-  (ok false) as it is said, then the card is stamped PASSED or FAILED. Only checks the reel really shows to be true
-  or false; best for "what done looks like" or a fix verified.
+  (ok false) as it is said, then the card is stamped PASSED or FAILED. Every tick or cross must be proven on screen
+  in this same reel (real output in a terminal or code scene, or the docs line); never tick a result the reel does
+  not show, like a production build it never runs. Best for "what done looks like" or a fix verified.
 - steps: items (2 to 4, each {label of at most 14 characters, note}); each lights up as its label is said. stop
   (optional): {request, result (at most 12 characters, like "BLOCKED"), at (the index of the item that stops it)}.
 - counter: label, value (the real number), prefix, suffix, source (one of "sources"); it ticks up to the value.

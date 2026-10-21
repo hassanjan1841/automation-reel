@@ -34,7 +34,8 @@ made by a motion designer, never like slides a beginner put together.
 - A light/dark flip once per reel, at its turn ("but", "here is the catch"), wakes the viewer up; one bold full
   accent-colour beat may punch the turn or the close instead.
 - A method in steps gets numbered chapter cards ("01 INTERVIEW", "02 TOOLBOX"), and its proof can be a "done means"
-  checklist that ticks off to a PASSED or FAILED stamp (only checks the reel really shows).
+  checklist that ticks off to a PASSED or FAILED stamp (only checks the reel really shows: 2026-10-21 a draft
+  ticked "logs once in production" without ever running a production build, and the honesty review stopped it).
 - Every stage reel wears the same frame: corner marks, a running timecode, the chapter name, and one glowing dot that
   travels from scene to scene: the channel's signature, so the reels feel like one series.
 - Abstract shapes only (boxes, dots, lines, arrows, orbs, rings, code). Borrowed open-source effects are welcome when
