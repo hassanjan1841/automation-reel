@@ -176,6 +176,9 @@ def main():
             raise SystemExit('YouTube is not set up')
         resp = requests.get(CHANNELS_URL, params={'part': 'snippet', 'mine': 'true'}, timeout=60,
                             headers={'Authorization': f'Bearer {access_token()}'})
+        if resp.status_code == 403:  # a token with only the upload scope: the login works, the name is not readable
+            print('The login works (upload only: add the youtube.readonly scope to see the channel name)')
+            return
         resp.raise_for_status()
         print('Uploads to:', ', '.join(c['snippet']['title'] for c in resp.json().get('items', [])) or 'no channel')
         return

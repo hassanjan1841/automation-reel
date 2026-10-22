@@ -242,7 +242,7 @@ Set it up once (about 15 minutes, free):
 4. Open the [OAuth Playground](https://developers.google.com/oauthplayground) → gear icon → **Use your own OAuth credentials** → paste them → in the scope box paste the two scopes in `youtube.SCOPES` (upload, and read for `--check`) → **Authorize APIs** with the Google account that owns the channel → **Exchange authorization code for tokens** → copy the **refresh token**.
 5. GitHub → Settings → Secrets and variables → Actions → add the secrets `YT_CLIENT_ID`, `YT_CLIENT_SECRET` and `YT_REFRESH_TOKEN`.
 
-If YouTube later refuses the login, the run opens a **YouTube login expired** issue; repeat step 4. `python youtube.py --check` shows which channel it uploads to.
+If YouTube later refuses the login, the run opens a **YouTube login expired** issue; repeat step 4. `python youtube.py --check` shows which channel it uploads to (with only the upload scope it just confirms the login works).
 
 ## Local setup
 
