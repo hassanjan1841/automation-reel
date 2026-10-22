@@ -7641,5 +7641,197 @@
     "slot": 1,
     "seconds": 19.9,
     "youtube_id": "oq6It0yNjHg"
+  },
+  {
+    "id": 87,
+    "style": "light",
+    "payoff": "Array.prototype.sort() with no compare function sorts numbers as text, so [10,2,1].sort() prints [1,10,2]; pass (a,b) => a - b to sort numbers correctly.",
+    "kicker": "Myth vs fact #13",
+    "hook": "Numbers in, *strings* sort out",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "sort.js",
+      "language": "js",
+      "code": "const nums = [10, 2, 1];\nnums.sort();",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Array.sort breaks on *numbers*",
+        "spoken": "[mock outraged] Most developers assume sort puts numbers in order, (break) [deadpan] but it never does.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your array isn't *sorted* right",
+        "hook_type": "problem",
+        "spoken": "[fired up] If you think sort handles numbers correctly, (break) [deadpan] your own console output disagrees."
+      },
+      {
+        "hook": "We *tested* sort on three numbers",
+        "hook_type": "test",
+        "spoken": "[excited] We ran three numbers through sort, (break) [stunned] and the order came out wrong."
+      }
+    ],
+    "points": [
+      {
+        "title": "Sorts as text",
+        "body": "sort() compares values like strings",
+        "visual": [
+          {
+            "type": "code",
+            "title": "sort.js",
+            "language": "js",
+            "code": "const nums = [10, 2, 1];\nnums.sort();",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real output shown",
+        "body": "Ten, two, one turn into this",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "const nums = [10, 2, 1];\nnums.sort();",
+            "choices": [
+              "[ 1, 2, 10 ]",
+              "[ 1, 10, 2 ]"
+            ],
+            "output": [
+              "[ 1, 10, 2 ]"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node sort.js"
+            ],
+            "output": [
+              "[ 1, 10, 2 ]"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Fix with compare",
+        "body": "Pass a, b => a minus b",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "sort.js",
+            "language": "js",
+            "before": "const nums = [10, 2, 1];\nnums.sort();",
+            "after": "const nums = [10, 2, 1];\nnums.sort((a, b) => a - b);"
+          }
+        ]
+      }
+    ],
+    "cta": "Have you ever shipped a *sort* bug?",
+    "caption": "JavaScript Array.sort default sorting behavior explained\nIt turns numbers into strings unless you add a compare function\nEver shipped a hidden sort bug? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#arraymethods",
+      "#codingtips"
+    ],
+    "voiceover": [
+      "[grinning, punchy] You pass in numbers, (break) [deadpan] but sort quietly treats them as plain strings.",
+      "[knowing] It secretly compares every value as text.",
+      "[urgent] Watch ten, two, one turn into one, ten, two.",
+      "[confident and fast] Add a compare function so it subtracts, not compares.",
+      "[warm, curious] Did a sort bug ever slip into your app?"
+    ],
+    "reveal": 2,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort();",
+        "highlight": [
+          2
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort();",
+        "highlight": [
+          2
+        ],
+        "carry": "nums.sort();",
+        "at": "text"
+      },
+      {
+        "kind": "terminal",
+        "command": "node sort.js",
+        "output": [
+          "[ 1, 10, 2 ]"
+        ],
+        "at": "two"
+      },
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort((a, b) => a - b);",
+        "highlight": [
+          2
+        ],
+        "accent": true,
+        "at": "subtracts"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Check your",
+          "*sort* calls"
+        ],
+        "motif": "brackets",
+        "at": "bug"
+      }
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 13,
+    "posted_at": "2026-10-22T20:04:21+00:00",
+    "media_id": "17953714848271885",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-code",
+      "stage-terminal",
+      "stage-code",
+      "stage-words"
+    ],
+    "slot": 3,
+    "seconds": 20.8,
+    "youtube_id": "erZkrWJT4cQ",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18129539365848362"
+      }
+    ]
   }
 ]
