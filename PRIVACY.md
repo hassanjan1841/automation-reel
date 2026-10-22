@@ -14,7 +14,7 @@ anything else in the Google account.
 - The login (a refresh token) is kept as an encrypted GitHub Actions secret in this repository, readable only by its
   workflows.
 - After an upload it records the new video's id in this repository, so the same video is never uploaded twice.
-- It collects no data about viewers or any other person, and shares nothing with anyone.
+- It collects no data about the people who watch the videos, and sells or shares nothing with anyone.
 
 ## Instagram and LinkedIn
 
