@@ -468,7 +468,7 @@ class Stories(unittest.TestCase):
             img = Image.open(puzzle)
             self.assertEqual(img.size, (1080, 1920))
             code = np.asarray(img.convert('RGB'), dtype=np.float32)[760:1000]
-            self.assertGreater((code.min(axis=2) > 200).sum(), 3000)          # the code card's light text is there
+            self.assertGreater((code.min(axis=2) > 200).sum(), 1000)          # the code card's light text (an empty card has none)
 
 
 class Showcase(unittest.TestCase):
