@@ -7510,5 +7510,136 @@
     ],
     "slot": 3,
     "seconds": 19.8
+  },
+  {
+    "id": 86,
+    "style": "dark",
+    "payoff": "fetch(url, { credentials: 'include' }) is the line that actually makes the browser attach a cookie on a cross-origin request; without it your server never sees the cookie at all, no matter how real it looks in devtools.",
+    "kicker": "Myth vs fact #12",
+    "hook": "fetch doesn't *send* cookies",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "client.js",
+      "code": "fetch('https://api.foo.com/me')\n  .then(r => r.json())\n  .then(console.log)",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *cookie* never reaches the server",
+        "hook_type": "problem",
+        "spoken": "[urgent] Picture this, your login cookie exists. (break) [serious] But your backend never gets it."
+      },
+      {
+        "hook": "Add one flag, cookie *arrives*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Before, the cookie never shows up. (break) [excited] After one flag, it's right there."
+      },
+      {
+        "hook": "I *tested* cross-origin cookies live",
+        "hook_type": "test",
+        "spoken": "[fired up] I ran a real cross origin fetch test. (break) [excited] And logged exactly what arrived."
+      }
+    ],
+    "points": [
+      {
+        "title": "Cookies aren't automatic",
+        "body": "Cross-origin fetch skips cookies by default",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "client.js",
+            "code": "fetch('https://api.foo.com/me')\n  .then(r => r.json())\n  .then(console.log)",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add credentials include",
+        "body": "Server must allow it too",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "auth.js",
+            "before": "fetch('https://api.foo.com/me')\n  .then(r => r.json())",
+            "after": "fetch('https://api.foo.com/me', {\n  credentials: 'include'\n}).then(r => r.json())"
+          }
+        ]
+      },
+      {
+        "title": "Server sees it",
+        "body": "Server log proves the cookie arrived",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node server.js",
+            "output": [
+              "GET /me cookies {}",
+              "GET /me cookies { sid: 9f21ac }"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node server.js",
+              "curl https://api.foo.com/me -i"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev fighting *cookie* bugs?",
+    "caption": "Cross-origin cookies in JavaScript fetch requests\nMost broken logins live here, and it's not CORS alone\nWhich part trips you up most? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#cookies",
+      "#fetchapi",
+      "#cors"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[urgent] Your fetch call never sends the cookie. (break) [serious] Your server is still waiting for it.",
+      "[knowing] Cross origin fetch calls skip cookies by default.",
+      "[confident and fast] Add credentials include and it attaches instantly.",
+      "[excited] Watch the log flip from empty to real.",
+      "[warm, curious] Send this to the dev chasing that empty cookie."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 12,
+    "posted_at": "2026-10-22T12:01:17+00:00",
+    "media_id": "18116077073468142",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "diff",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.9,
+    "youtube_id": "oq6It0yNjHg"
   }
 ]
