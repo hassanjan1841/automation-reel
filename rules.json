@@ -168,5 +168,25 @@
     "evidence": "series Myth vs fact (6 reels) beat Freelance playbook (6 reels): skip rate +20.4 points",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 18,
+    "text": "Mistake-type hooks cut skip rate far more than untagged hooks: skip_vs_usual -12.0 vs +5.2, watched_vs_usual +0.114 vs +0.006 (6 vs 14 reels).",
+    "since": "2026-10-22",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "hook_type mistake (6 reels) beat untagged (14 reels): skip rate +17.2 points",
+    "verdict": "",
+    "checked": ""
+  },
+  {
+    "id": 19,
+    "text": "Diff visuals beat plain code visuals: skip_vs_usual -7.7 vs -4.0, watched_vs_usual +0.051 vs +0.032 (10 vs 40 reels).",
+    "since": "2026-10-22",
+    "status": "trial",
+    "source": "weekly",
+    "evidence": "visuals diff (10 reels) beat code (40 reels): skip rate +3.7 points",
+    "verdict": "",
+    "checked": ""
   }
 ]

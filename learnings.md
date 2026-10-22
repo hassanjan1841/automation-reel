@@ -7,3 +7,5 @@
 - Before/after hook_type reels average skip_vs_usual -3.2 versus +3.1 for untagged hooks (9 vs 14 reels); favor the before/after hook structure when the topic fits.
 - Ai-pillar reels average skip_vs_usual -0.8 (5 reels) and timely-pillar +0.9 (9 reels); freelance-pillar reels average +7.7 (8 reels); favor ai or timely topics.
 - Myth vs fact reels average skip_vs_usual -12.4 and watched_vs_usual +0.081 (6 reels), versus Freelance playbook's +8.0 and -0.037 (6 reels); favor myth-busting topics over freelance-advice topics.
+- Mistake-type hooks cut skip rate far more than untagged hooks: skip_vs_usual -12.0 vs +5.2, watched_vs_usual +0.114 vs +0.006 (6 vs 14 reels).
+- Diff visuals beat plain code visuals: skip_vs_usual -7.7 vs -4.0, watched_vs_usual +0.051 vs +0.032 (10 vs 40 reels).
