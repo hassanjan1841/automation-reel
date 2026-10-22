@@ -152,6 +152,32 @@ jobs:
             gh issue create --title 'LinkedIn login expired: posts are not going to LinkedIn' --body-file out/linkedin-alert.md
           fi
 
+      - name: Upload to YouTube Shorts
+        # The same reel as a YouTube Short (youtube.py; does nothing without the YT_ secrets). It may fail without
+        # stopping the record of the Instagram post below.
+        id: youtube
+        if: steps.publish.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY }}
+        run: python youtube.py reel ${{ steps.publish.outputs.reel_id }}
+
+      - name: Alert when YouTube refuses the login
+        if: steps.youtube.outcome == 'failure' && hashFiles('out/youtube-alert.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "YouTube login expired"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/youtube-alert.md
+          else
+            gh issue create --title 'YouTube login expired: Shorts are not going to YouTube' --body-file out/youtube-alert.md
+          fi
+
       - name: Pronunciation test
         run: python test_voice.py
 
