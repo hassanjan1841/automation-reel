@@ -1,17 +1,28 @@
-name: YouTube check
+name: YouTube
 
-# Checks the YouTube login (youtube.py --check) after the YT_ secrets are added or replaced: it gets an access token
-# with the refresh token and, when the token can read the channel, names it. Uploads nothing.
+# By hand from the Actions tab. With no input it checks the YouTube login (youtube.py --check) and uploads nothing.
+# With `video` (a videos/<name>.mp4 in the repo, its title, description and tags in videos/<name>.json) it uploads
+# that ready-made video and commits its youtube_id to the JSON, so it never goes up twice.
 on:
   workflow_dispatch:
+    inputs:
+      video:
+        description: 'A videos/<name>.mp4 to upload (empty: only check the login)'
+        type: string
+        default: ''
+      privacy:
+        description: Who can see it
+        type: choice
+        options: [public, unlisted, private]
+        default: public
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  check:
+  youtube:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -27,3 +38,25 @@ jobs:
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
         run: python youtube.py --check
+
+      - name: Upload the video
+        if: inputs.video != ''
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ inputs.privacy }}
+          VIDEO: ${{ inputs.video }}
+        run: python youtube.py file "$VIDEO"
+
+      - name: Record it
+        if: inputs.video != ''
+        env:
+          VIDEO: ${{ inputs.video }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "${VIDEO%.mp4}.json"
+          git commit -m "Uploaded $VIDEO to YouTube" || exit 0
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

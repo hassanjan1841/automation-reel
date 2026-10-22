@@ -1,0 +1,5 @@
+{
+  "title": "Inside an AI agent: how it works, in 60 seconds",
+  "description": "A 60-second animated tour of what happens after you ask an AI coding agent to fix a failing test.\n\n1. The prompt: you type what you want.\n2. Tokens: the text is split into tokens, and each token becomes a list of numbers.\n3. Attention: each token weighs the tokens before it.\n4. Prediction: the model predicts the next token, one at a time.\n5. Tools: the agent runs tools, like the tests, and reads the result.\n6. The loop: plan, act, check, repeat, until the checks pass.\n\nThe bars and numbers in the animation are an illustration, not real model values.\n\nAnimated in code with Claude, an AI assistant, by @hassanjan.k. Sound effects only, no music.\n\n#AI #AIAgents #LLM #Programming #Shorts",
+  "tags": ["AI agent", "how AI agents work", "LLM", "tokens", "attention", "AI coding", "programming", "machine learning"]
+}

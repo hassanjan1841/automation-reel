@@ -17,6 +17,8 @@ expired" issue. Without the three secrets this does nothing and exits 0.
 Usage:
   python youtube.py reel <id>     upload reel <id> (out/reel-<id>.mp4) and record it in reels.json
   python youtube.py showcase      upload the newest showcase (out/showcase-<id>.mp4)
+  python youtube.py file <x.mp4>  upload a ready-made video from videos/, with its title, description and tags from
+                                  the x.json beside it (where its youtube_id is then recorded, so it goes up once)
   python youtube.py --check       check the login and which channel it uploads to
 Env: YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN (secrets), YT_PRIVACY (public, unlisted or private; default
      public), DRY_RUN=true prints the title and description and uploads nothing.
@@ -141,6 +143,32 @@ def target(kind, arg=None):
     raise SystemExit(__doc__)
 
 
+def post_file(video):
+    """A ready-made video (videos/<name>.mp4) with its words in videos/<name>.json: {title, description, tags}."""
+    if not configured():
+        raise SystemExit('YouTube is not set up (no YT_CLIENT_ID, YT_CLIENT_SECRET and YT_REFRESH_TOKEN)')
+    video = Path(video)
+    meta_path = video.with_suffix('.json')
+    if not video.exists() or not meta_path.exists():
+        raise SystemExit(f'need {video} and {meta_path}')
+    meta = json.loads(meta_path.read_text())
+    if meta.get('youtube_id'):
+        print(f"Already on YouTube ({meta['youtube_id']})")
+        return meta['youtube_id']
+    title = title_for({'title': meta['title']}, 'file')
+    description = re.sub(r'[<>]', '', meta['description']).strip()[:MAX_DESCRIPTION]
+    privacy = os.environ.get('YT_PRIVACY', '').strip() or 'public'
+    print(f'YouTube upload ({privacy}): {title}\n{description}\n')
+    if os.environ.get('DRY_RUN', '').strip().lower() in ('1', 'true', 'yes'):
+        print('DRY_RUN: not uploading to YouTube')
+        return None
+    video_id = upload(access_token(), video, title, description, [str(t) for t in meta.get('tags', [])][:15], privacy)
+    meta['youtube_id'] = video_id
+    meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + '\n')
+    print(f'Uploaded to YouTube: https://youtube.com/watch?v={video_id}')
+    return video_id
+
+
 def configured():
     return all(os.environ.get(k, '').strip() for k in ('YT_CLIENT_ID', 'YT_CLIENT_SECRET', 'YT_REFRESH_TOKEN'))
 
@@ -182,9 +210,12 @@ def main():
         resp.raise_for_status()
         print('Uploads to:', ', '.join(c['snippet']['title'] for c in resp.json().get('items', [])) or 'no channel')
         return
-    if not args or args[0] not in ('reel', 'showcase') or (args[0] == 'reel' and len(args) != 2):
+    if not args or args[0] not in ('reel', 'showcase', 'file') or (args[0] in ('reel', 'file') and len(args) != 2):
         raise SystemExit(__doc__)
     try:
+        if args[0] == 'file':
+            post_file(args[1])
+            return
         post(args[0], args[1] if len(args) > 1 else None)
     except LoginExpired as e:
         raise SystemExit(f'ERROR: {e}; see {ALERT}')

@@ -299,6 +299,7 @@ MUTANTS = [
      'a morning dry run blocks the missed showcase'),
     # YouTube Shorts (2026-10-22).
     ('youtube.py', "    if entry.get('youtube_id'):", "    if False:", 'a YouTube Short uploaded twice'),
+    ('youtube.py', "    if meta.get('youtube_id'):", "    if False:", 'a ready-made video uploaded to YouTube twice'),
     ('youtube.py', "    if dry:\n        print('DRY_RUN: not uploading to YouTube')", "    if False:\n        print('DRY_RUN: not uploading to YouTube')",
      'a YouTube dry run uploads'),
     ('youtube.py', "        lines.append(AI_VOICE)", "        pass", 'the AI voice not said on YouTube'),
