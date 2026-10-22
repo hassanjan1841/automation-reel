@@ -1,0 +1,6 @@
+How an AI coding agent works, in 60 seconds
+Prompt, tokens, attention, the next token, tools, and the loop that repeats until the checks pass.
+The bars and numbers are an illustration, not real model values. Animated in code with Claude.
+Which step surprised you? 👇
+
+#ai #aiagents #llm #programming #webdev
