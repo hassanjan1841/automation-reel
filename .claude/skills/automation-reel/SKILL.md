@@ -77,7 +77,7 @@ After each Instagram post (daily-reel.yml, weekly.yml carousel job, showcase.yml
 to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry.
 After each reel and showcase post, youtube.py uploads the same video as a YouTube Short (title = hook, description =
 caption + sources + hashtags + "Narrated with an AI voice."; continue-on-error; "YouTube login expired" issue;
-youtube_id on the entry
+youtube_id on the entry; youtube.yml ("YouTube check", manual) runs youtube.py --check with the secrets
 
 showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase starts it if no run since 15:41; an earlier dry run does not count)
   showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page where a 3D
