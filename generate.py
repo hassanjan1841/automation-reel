@@ -69,6 +69,14 @@ PILLARS = {
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
 HASHTAG = re.compile(r'^#[A-Za-z0-9_]+$')
 SYMBOLS = re.compile(r'[/&%$#;()\[\]{}<>=_|\\]')
+# Worn-out phrases that make a reel sound like every other one: bad writing, refused wherever they appear (hook,
+# points, cta, voiceover, caption). A list of our own (2026-10-22, after reviewing an Instagram skills pack's lexicon).
+STOCK = re.compile(r"\b(in (today'?s|this) (video|reel)|stop scrolling|follow for more|let'?s dive in|dive (deep )?into|"
+                   r"game[- ]changer|you won'?t believe|tag (someone|a friend)|level up your|unlock the (power|secrets?)|"
+                   r"supercharge|mind[- ]blowing|secret sauce|run,? don'?t walk|the algorithm loves|must-have|"
+                   r"without further ado|buckle up|hidden gem)\b", re.I)
+# Instagram shows about the first 125 characters of a caption before "... more": the first line must fit in it.
+CAPTION_VISIBLE = 125
 # 36 to 46 words keeps a reel under 20 seconds (posted reels: about 0.5 s a word; at 48 words they averaged 19.6 s,
 # and reels of 23 s or more got half the views of shorter ones, 2026-10-14).
 VO_MIN_WORDS, VO_MAX_WORDS = 36, 46
@@ -187,6 +195,15 @@ def validate(reel):
         errors.append(f'caption needs 2 to 3 lines, got {len(lines)}')
     elif not (lines[-1].rstrip().endswith('👇') and ('?' in lines[-1] or (keyword and keyword in lines[-1]))):
         errors.append('caption must end with a question followed by 👇')
+    if lines and len(lines[0]) > CAPTION_VISIBLE:
+        errors.append(f'caption first line has {len(lines[0])} characters; it must fit the {CAPTION_VISIBLE} the feed '
+                      'shows before "... more"')
+    texts = [reel.get('hook', ''), cta, reel.get('caption', '')] + [f"{p.get('title', '')} {p.get('body', '')}"
+                                                                    for p in points if isinstance(p, dict)]
+    texts += [str(x) for x in reel.get('voiceover') or [] if isinstance(x, str)]
+    stock = sorted({m.group(0).lower() for t in texts for m in STOCK.finditer(str(t).replace('*', ''))})
+    if stock:
+        errors.append(f"stock phrase {', '.join(repr(s) for s in stock)}: worn out; say it plainly in your own words")
 
     vo = reel.get('voiceover')
     if not isinstance(vo, list) or len(vo) != 5:
@@ -1327,7 +1344,10 @@ Field rules:
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
   captions for topics more than hashtags, so fewer and precise beats many.
 - caption: the first line says the topic in plain searchable words (what someone would type into Instagram
-  search, e.g. "Zod schema validation in TypeScript"), not a teaser.
+  search, e.g. "Zod schema validation in TypeScript"), not a teaser, and fits the first 125 characters the feed
+  shows before "... more".
+- No worn-out stock phrases anywhere ("in this video", "stop scrolling", "game changer", "dive into", "level up
+  your", "must-have", "follow for more"): say it plainly.
 - voiceover: exactly 5 lines, what a narrator says out loud over the slides: one for the hook, one per point, one for the cta.
 
 Voiceover rules (it is heard, not read, while the viewer reads the slides):
@@ -1956,7 +1976,8 @@ def main():
         # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
         bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
                                                                                    or 'hashtags' in e or 'hook has' in e or 'body has' in e
-                                                                                   or 'title has' in e
+                                                                                   or 'title has' in e or 'stock phrase' in e
+                                                                                   or 'caption first line' in e
                                                                                    or any(k in e for k in NEW_FIELDS)))])
                for r in reels]
         bad = [(i, e) for i, e in bad if e]

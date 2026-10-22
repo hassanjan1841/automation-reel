@@ -297,6 +297,11 @@ MUTANTS = [
      'the edit scene never types', 'test_motion.py'),
     ('scheduler.py', "                      and r['createdAt'][:16] >= since]", "                      ]",
      'a morning dry run blocks the missed showcase'),
+    # From reviewing an Instagram skills pack (2026-10-22): stock phrases, the visible caption, rates per reach.
+    ('generate.py', "    if stock:\n        errors.append(", "    if False:\n        errors.append(", 'stock phrases allowed'),
+    ('generate.py', "    if lines and len(lines[0]) > CAPTION_VISIBLE:", "    if False:", 'a caption cut off before "... more"'),
+    ('learn.py', "            row[name] = round(value / reach * 1000, 1) \\", "            row[name] = value \\",
+     'shares counted raw, not per reach'),
     # From @ibrahimm_aali's reel (2026-10-21): light leaks, outline-then-fill words, label and motif.
     ('stage.py', "  leakEl.style.opacity = best.toFixed(3);", "  leakEl.style.opacity = 0;", 'stage cuts with no light leak',
      'test_motion.py'),
