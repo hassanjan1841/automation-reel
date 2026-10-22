@@ -297,6 +297,14 @@ MUTANTS = [
      'the edit scene never types', 'test_motion.py'),
     ('scheduler.py', "                      and r['createdAt'][:16] >= since]", "                      ]",
      'a morning dry run blocks the missed showcase'),
+    # Instagram stories (2026-10-22).
+    ('stories.py', "    if reel.get('stories'):", "    if False:", 'stories posted twice for a reel'),
+    ('stories.py', "    if code and not puzzled_today(reels, now):", "    if code:", 'more than one puzzle story a day'),
+    ('stories.py', "    if reel.get('series') != 'Myth vs fact' or hv.get('type') != 'code' or not PRINTS.search(code):",
+     "    if hv.get('type') != 'code':", 'a puzzle story with nothing to guess'),
+    ('stories.py', "    if dry:\n        print('DRY_RUN: not posting the stories')", "    if False:\n        print('DRY_RUN: not posting the stories')",
+     'a stories dry run posts'),
+    ('stories.py', "'-t', str(TEASER_SECONDS), '-i', str(video),", "'-t', '0.5', '-i', str(video),", 'a teaser without the reel', 'test_motion.py'),
     # YouTube Shorts (2026-10-22).
     ('youtube.py', "    if entry.get('youtube_id'):", "    if False:", 'a YouTube Short uploaded twice'),
     ('youtube.py', "    if meta.get('youtube_id'):", "    if False:", 'a ready-made video uploaded to YouTube twice'),
