@@ -297,6 +297,13 @@ MUTANTS = [
      'the edit scene never types', 'test_motion.py'),
     ('scheduler.py', "                      and r['createdAt'][:16] >= since]", "                      ]",
      'a morning dry run blocks the missed showcase'),
+    # YouTube Shorts (2026-10-22).
+    ('youtube.py', "    if entry.get('youtube_id'):", "    if False:", 'a YouTube Short uploaded twice'),
+    ('youtube.py', "    if dry:\n        print('DRY_RUN: not uploading to YouTube')", "    if False:\n        print('DRY_RUN: not uploading to YouTube')",
+     'a YouTube dry run uploads'),
+    ('youtube.py', "        lines.append(AI_VOICE)", "        pass", 'the AI voice not said on YouTube'),
+    ('youtube.py', "    return re.sub(r'[<>]', '', str(text or '').replace('*', '')).strip()",
+     "    return str(text or '').strip()", 'YouTube text with < > or highlights'),
     # From reviewing an Instagram skills pack (2026-10-22): stock phrases, the visible caption, rates per reach.
     ('generate.py', "    if stock:\n        errors.append(", "    if False:\n        errors.append(", 'stock phrases allowed'),
     ('generate.py', "    if lines and len(lines[0]) > CAPTION_VISIBLE:", "    if False:", 'a caption cut off before "... more"'),

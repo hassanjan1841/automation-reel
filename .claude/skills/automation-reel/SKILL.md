@@ -74,7 +74,10 @@ weekly.yml (Sun 10:00 UTC)
                      (a manual run posts it only with the post_carousel input ticked)
 
 After each Instagram post (daily-reel.yml, weekly.yml carousel job, showcase.yml): linkedin.py posts the same piece
-to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry
+to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry.
+After each reel and showcase post, youtube.py uploads the same video as a YouTube Short (title = hook, description =
+caption + sources + hashtags + "Narrated with an AI voice."; continue-on-error; "YouTube login expired" issue;
+youtube_id on the entry
 
 showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase starts it if no run since 15:41; an earlier dry run does not count)
   showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page where a 3D
@@ -158,6 +161,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
 | `showcase.py` | The weekly showcase: abstract motion piece, no voice | `write`, `errors`, `timeline`, `page`, `render_showcase`, `sound_track`, `fx_kit`, `FX_GAIN`, `review`, `posted_today`, `MOTIFS`, `BEAT`, `BACK` |
 | `showcases.json` | Posted showcases | data, written by `showcase.py` (showcase.yml) |
+| `youtube.py` | Uploads each reel and showcase as a YouTube Short (videos.insert, resumable; OAuth refresh token), words taken from the reel, `youtube_id` on the entry | `post`, `target`, `title_for`, `description_for`, `tags_for`, `access_token`, `upload`, `AI_VOICE`, `LoginExpired`, `ALERT` |
 | `linkedin.py` | Cross-posts to LinkedIn (Share on LinkedIn, `w_member_social`): reel and showcase as video (`/rest/videos` initializeUpload, parts, finalizeUpload), carousel as a PDF document (`/rest/documents`), `/rest/posts` with the text in little text format; Claude writes the text, `text_errors` checks it; records `linkedin_id`; a 401 leaves `out/linkedin-alert.md` | `post`, `write_text`, `text_errors`, `little`, `upload_video`, `upload_document`, `create_post`, `pdf`, `LoginExpired`, `ALERT`, `VERSION` |
 | `dm.py` | Comment replies on recent reels, carousels and extras: keyword guide by DM, Claude triage of the rest | `main`, `posts`, `asks`, `comments`, `answer`, `triage`, `send_guide`, `inbox`, `to_inbox`, `clean`, `claude`, `SYSTEM`, `KINDS`, `INBOX`, `REPLY_LIMIT`, `ABOUT`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |
@@ -288,8 +292,8 @@ Pillar and series come from `generate.pillar_for`: each slot rotates its series 
 
 ## Secrets and variables
 
-Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_2` (optional backup), `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write), `LINKEDIN_TOKEN` (optional: linkedin.py; 60-day token, no refresh for self-serve apps).
-Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: myth, news, trick, versus, explained, series or build), `REEL_SLOTS` (the slots that post, default `1,3`), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `STAGE`, `STAGE_CHANCE` (stage reels, `generate.stage_today`), `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`, `LINKEDIN_AUTHOR`, `LINKEDIN_VERSION` (linkedin.py).
+Secrets: `IG_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `YOUTUBE_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_2` (optional backup), `FISH_API_KEY`, `GH_PAT` (fine-grained, this repo, Secrets read/write), `LINKEDIN_TOKEN` (optional: linkedin.py; 60-day token, no refresh for self-serve apps), `YT_CLIENT_ID`, `YT_CLIENT_SECRET`, `YT_REFRESH_TOKEN` (optional: youtube.py, an OAuth client and refresh token with youtube.upload).
+Variables/env: `POST_AT_UTC`, `SLOT`, `REEL_FORMAT` (local only, no workflow passes it: forces slot 3's format: myth, news, trick, versus, explained, series or build), `REEL_SLOTS` (the slots that post, default `1,3`), `FORCE_POST` (a real run skips when this slot's reel already went out today, UTC, unless true), `VOICE`, `VOICE_ENGINE`, `VOICE_PITCH`, `VOICE_SPEED`, `FISH_MODEL`, `TRENDING`, `THREE_D`, `THREE_D_CHANCE`, `STAGE`, `STAGE_CHANCE` (stage reels, `generate.stage_today`), `EXPERIMENT` (`off` or a test's name), `LEARN_DAYS` (empty/`daily` or e.g. `sun,wed`), `DRY_RUN`, `GRAPH_VERSION` (default `v25.0`, also when empty; trends.performance follows it too), `CLAUDE_MODEL` (empty means the default; see above for who reads it), `YT_PRIVACY` (youtube.py: public, unlisted or private), `GITHUB_EVENT_NAME` (set by Actions; `learn.backup_skip` acts only on `schedule`), and for study.py `GH_TOKEN` (fetches issue attachments) and `ISSUE_BODY` (the links, with `--issue`). daily-reel.yml passes `VOICE_PITCH`, `CLAUDE_MODEL` and `GRAPH_VERSION`; learn.yml passes `LEARN_DAYS`, `LINKEDIN_AUTHOR`, `LINKEDIN_VERSION` (linkedin.py).
 Never print a token; `publish.redact` and the `replace(token, '***')` calls exist for that. Keep new error paths redacted too.
 
 ## Gotchas

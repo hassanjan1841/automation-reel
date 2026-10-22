@@ -2191,6 +2191,100 @@ class FakeLinkedIn:
         return self.response(body={'status': 'AVAILABLE', 'sub': 'abc'})
 
 
+def FakeResp(status, body, headers=None):
+    r = SimpleNamespace(status_code=status, headers=headers or {}, text=json.dumps(body))
+    r.json = lambda: body
+    def raise_for_status():
+        if status >= 400:
+            raise RuntimeError(f"HTTP {status}")
+    r.raise_for_status = raise_for_status
+    return r
+
+
+class FakeYouTube:
+    """Google's token endpoint and YouTube's resumable upload, recording every call."""
+
+    def __init__(self, refuse=False):
+        self.calls, self.refuse = [], refuse
+
+    def post(self, url, params=None, json=None, data=None, headers=None, timeout=None):
+        self.calls.append(('POST', url, json or data))
+        if 'oauth2' in url:
+            if self.refuse:
+                return FakeResp(400, {'error': 'invalid_grant'})
+            return FakeResp(200, {'access_token': 'at'})
+        return FakeResp(200, {}, headers={'Location': 'https://up/session'})
+
+    def put(self, url, data=None, headers=None, timeout=None):
+        self.calls.append(('PUT', url, data.read() if hasattr(data, 'read') else data))
+        return FakeResp(200, {'id': 'YT123'})
+
+
+class YouTubeTest(Sandbox):
+    """youtube.py: the title and description taken from the reel (never invented), the upload against a fake
+    YouTube, the expired-login alert, and never uploading twice."""
+
+    def setUp(self):
+        super().setUp()
+        import youtube
+        self.yt = youtube
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(youtube, 'ALERT', out / 'youtube-alert.md')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        render.QUEUE.write_text(json.dumps([{**VALID, 'id': 7, 'sources': ['https://redis.io/docs/del'],
+                                             'posted_at': '2026-10-22T12:00:00+00:00'}]))
+        (out / 'reel-7.mp4').write_bytes(b'video')
+        self.env = {'YT_CLIENT_ID': 'cid', 'YT_CLIENT_SECRET': 'sec', 'YT_REFRESH_TOKEN': 'ref', 'DRY_RUN': '', 'YT_PRIVACY': ''}
+
+    def test_words_come_from_the_reel(self):
+        yt = self.yt
+        entry = {**VALID, 'hook': 'Your <cache> lies *twice*', 'sources': ['https://redis.io/docs/del']}
+        self.assertEqual(yt.title_for(entry, 'reel'), 'Your cache lies twice')      # no < >, no highlights
+        self.assertLessEqual(len(yt.title_for({'hook': 'word ' * 40}, 'reel')), yt.MAX_TITLE)
+        desc = yt.description_for(entry, 'reel')
+        self.assertTrue(desc.startswith(VALID['caption'].replace('*', '').strip()[:20]))
+        self.assertIn('https://redis.io/docs/del', desc)
+        self.assertIn(yt.AI_VOICE, desc)                                          # the AI voice is said plainly
+        self.assertIn('#Shorts', desc)
+        self.assertNotIn(yt.AI_VOICE, yt.description_for({'title': 'Loops', 'caption': 'x'}, 'showcase'))  # no voice
+        self.assertLessEqual(len(yt.description_for({**entry, 'caption': 'x' * 6000}, 'reel').encode()), yt.MAX_DESCRIPTION)
+
+    def test_uploads_a_reel_and_records_it(self):
+        yt, fake = self.yt, FakeYouTube()
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                mock.patch.object(yt.requests, 'put', fake.put), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(yt.post('reel', '7'), 'YT123')
+        self.assertEqual(fake.calls[0][2]['grant_type'], 'refresh_token')
+        meta = fake.calls[1][2]
+        self.assertEqual((meta['status']['privacyStatus'], meta['status']['selfDeclaredMadeForKids'],
+                          meta['snippet']['categoryId']), ('public', False, '28'))
+        self.assertEqual(fake.calls[2], ('PUT', 'https://up/session', b'video'))
+        self.assertEqual(json.loads(render.QUEUE.read_text())[0]['youtube_id'], 'YT123')
+        fake.calls.clear()                                                        # never twice
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yt.post('reel', '7')
+        self.assertEqual(fake.calls, [])
+
+    def test_not_set_up_dry_run_and_expired_login(self):
+        yt, fake = self.yt, FakeYouTube()
+        with mock.patch.dict(os.environ, {**self.env, 'YT_REFRESH_TOKEN': ''}), \
+                mock.patch.object(yt.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(yt.post('reel', '7'))
+        with mock.patch.dict(os.environ, {**self.env, 'DRY_RUN': 'true'}), \
+                mock.patch.object(yt.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(yt.post('reel', '7'))
+        self.assertEqual(fake.calls, [])
+        refused = FakeYouTube(refuse=True)
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', refused.post), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(yt.LoginExpired):
+            yt.post('reel', '7')
+        self.assertTrue(yt.ALERT.exists())
+        self.assertNotIn('youtube_id', json.loads(render.QUEUE.read_text())[0])
+
+
 class LinkedInTest(Sandbox):
     """linkedin.py: the post text's checks and LinkedIn's little text format, the upload and post calls against a
     fake LinkedIn, the expired-token alert, and never posting twice."""
