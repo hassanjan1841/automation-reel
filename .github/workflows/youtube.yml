@@ -1,0 +1,29 @@
+name: YouTube check
+
+# Checks the YouTube login (youtube.py --check) after the YT_ secrets are added or replaced: it gets an access token
+# with the refresh token and, when the token can read the channel, names it. Uploads nothing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests numpy pillow
+
+      - name: Check the YouTube login
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python youtube.py --check
