@@ -2302,6 +2302,64 @@ class YouTubeTest(Sandbox):
         self.assertNotIn('youtube_id', json.loads(render.QUEUE.read_text())[0])
 
 
+class StoriesTest(Sandbox):
+    """stories.py: which reels get a puzzle story (and only one a day), the teaser for every reel, the record that
+    stops a second posting, the off switch and the dry run. The images and video are stubbed (test_motion makes them
+    for real)."""
+
+    def setUp(self):
+        super().setUp()
+        import stories
+        self.st = stories
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(stories, 'OUT', out / 'stories'),
+                      mock.patch.object(stories, 'puzzle_image', side_effect=lambda r, c, p: p),
+                      mock.patch.object(stories, 'teaser_video', side_effect=lambda r, v, p: p)):
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.myth = {**VALID, 'id': 7, 'series': 'Myth vs fact', 'posted_at': '2026-10-22T12:00:00+00:00',
+                     'hook_visual': {'type': 'code', 'language': 'js', 'code': 'console.log(typeof null)'}}
+        (out / 'reel-7.mp4').write_bytes(b'v')
+        (out / 'reel-8.mp4').write_bytes(b'v')
+        self.now = datetime(2026, 10, 22, 12, 5, tzinfo=timezone.utc)
+
+    def test_which_reels_get_a_puzzle(self):
+        st = self.st
+        self.assertEqual(st.puzzle_code(self.myth), 'console.log(typeof null)')
+        self.assertIsNone(st.puzzle_code({**self.myth, 'series': 'Quick trick'}))                    # myths only
+        self.assertIsNone(st.puzzle_code({**self.myth, 'hook_visual': {'type': 'code', 'code': 'cd -'}}))  # nothing printed
+        self.assertIsNone(st.puzzle_code({**self.myth, 'hook_visual': {'type': 'diff', 'code': 'print(1)'}}))
+        done = {**self.myth, 'stories': [{'kind': 'puzzle', 'id': '1'}]}
+        self.assertTrue(st.puzzled_today([done], self.now))
+        self.assertFalse(st.puzzled_today([{**done, 'posted_at': '2026-10-21T12:00:00+00:00'}], self.now))
+
+    def run_stories(self, reels, reel_id, env=None):
+        render.QUEUE.write_text(json.dumps(reels))
+        posted = []
+        with mock.patch.dict(os.environ, {'DRY_RUN': '', 'STORIES': '', **(env or {})}), \
+                mock.patch.object(self.st, 'post_story', side_effect=lambda k, p, c: posted.append((k, c)) or f'S-{k}'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.st.run(reel_id, now=self.now)
+        return posted, {r['id']: r for r in json.loads(render.QUEUE.read_text())}
+
+    def test_posts_puzzle_then_teaser_once(self):
+        posted, saved = self.run_stories([self.myth], 7)
+        self.assertEqual(posted, [('puzzle', 'image/jpeg'), ('teaser', 'video/mp4')])     # the question before the reel
+        self.assertEqual(saved[7]['stories'], [{'kind': 'puzzle', 'id': 'S-puzzle'}, {'kind': 'teaser', 'id': 'S-teaser'}])
+        again, _ = self.run_stories(list(saved.values()), 7)
+        self.assertEqual(again, [])                                                         # never twice
+        second = {**self.myth, 'id': 8}                                                     # a second myth that day
+        posted, _ = self.run_stories(list(saved.values()) + [second], 8)
+        self.assertEqual(posted, [('teaser', 'video/mp4')])                                 # one puzzle a day
+
+    def test_off_and_dry_run_post_nothing(self):
+        self.assertEqual(self.run_stories([self.myth], 7, {'STORIES': 'off'})[0], [])
+        posted, saved = self.run_stories([self.myth], 7, {'DRY_RUN': 'true'})
+        self.assertEqual(posted, [])
+        self.assertNotIn('stories', saved[7])
+
+
 class LinkedInTest(Sandbox):
     """linkedin.py: the post text's checks and LinkedIn's little text format, the upload and post calls against a
     fake LinkedIn, the expired-token alert, and never posting twice."""

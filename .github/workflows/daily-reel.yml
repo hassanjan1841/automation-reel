@@ -178,6 +178,19 @@ jobs:
             gh issue create --title 'YouTube login expired: Shorts are not going to YouTube' --body-file out/youtube-alert.md
           fi
 
+      - name: Post the stories
+        # A "Guess the output" story (myth reels that open on code that prints, once a day) and a teaser story (the
+        # reel's first seconds, then a "new reel" card), stories.py. It may fail without stopping the record below.
+        if: steps.publish.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+          STORIES: ${{ vars.STORIES }}
+        run: python stories.py reel ${{ steps.publish.outputs.reel_id }}
+
       - name: Pronunciation test
         run: python test_voice.py
 

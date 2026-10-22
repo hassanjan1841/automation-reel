@@ -434,6 +434,43 @@ class Stage(unittest.TestCase):
             self.assertLess(ghost.sum(), 2000)
 
 
+class Stories(unittest.TestCase):
+    """stories.py's files made for real: the teaser is the reel's first seconds then the card, 9:16 with sound; the
+    puzzle shows the reel's own code."""
+
+    def test_teaser_and_puzzle(self):
+        import json
+        import subprocess
+        import stories
+        with tempfile.TemporaryDirectory() as tmp:
+            reel_video = Path(tmp) / 'reel.mp4'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=blue:s=1080x1920:r=30:d=8',
+                            '-f', 'lavfi', '-i', f'sine=f=300:r={render.SR}:d=8', '-shortest', '-c:v', 'libx264',
+                            '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(reel_video)], check=True)
+            reel = {'id': 5, 'hook': 'typeof null *lies*', 'series': 'Myth vs fact',
+                    'hook_visual': {'type': 'code', 'language': 'javascript', 'title': 'quirk.js', 'code': 'console.log(typeof null);'}}
+            with mock.patch.object(stories, 'OUT', Path(tmp)):
+                out = stories.teaser_video(reel, reel_video, Path(tmp) / 'teaser.mp4')
+                puzzle = stories.puzzle_image(reel, reel['hook_visual']['code'], Path(tmp) / 'puzzle.jpg')
+            info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height',
+                                              '-of', 'json', str(out)], capture_output=True, text=True, check=True).stdout)
+            self.assertAlmostEqual(float(info['format']['duration']), stories.TEASER_SECONDS + stories.CARD_SECONDS, delta=0.3)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            self.assertEqual([(x['width'], x['height']) for x in info['streams'] if x['codec_type'] == 'video'], [(1080, 1920)])
+            frames = []
+            for t in (1.0, stories.TEASER_SECONDS + 1.5):
+                png = Path(tmp) / f'{t}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(t), '-i', str(out), '-frames:v', '1', str(png)], check=True)
+                frames.append(np.asarray(Image.open(png).convert('RGB'), dtype=np.float32))
+            self.assertGreater(frames[0][..., 2].mean(), 150)                 # the reel's opening (blue here)
+            card = frames[1][600:800]
+            self.assertGreater(((card[..., 0] > 200) & (card[..., 2] < 120)).sum(), 5000)   # then the orange NEW REEL
+            img = Image.open(puzzle)
+            self.assertEqual(img.size, (1080, 1920))
+            code = np.asarray(img.convert('RGB'), dtype=np.float32)[760:1000]
+            self.assertGreater((code.min(axis=2) > 200).sum(), 1000)          # the code card's light text (an empty card has none)
+
+
 class Showcase(unittest.TestCase):
     """The weekly showcase (showcase.py) rendered for real: its length, a sound track and its cover, light and words
     on frame 0, the light beat, the glide back to the opening, and an impact with a riser into every beat."""
