@@ -77,7 +77,7 @@ After each Instagram post (daily-reel.yml, weekly.yml carousel job, showcase.yml
 to LinkedIn (continue-on-error; a refused token opens a "LinkedIn login expired" issue), linkedin_id on the entry.
 After each reel and showcase post, youtube.py uploads the same video as a YouTube Short (title = hook, description =
 caption + sources + hashtags + "Narrated with an AI voice."; continue-on-error; "YouTube login expired" issue;
-youtube_id on the entry; youtube.yml ("YouTube check", manual) runs youtube.py --check with the secrets
+youtube_id on the entry; youtube.yml ("YouTube", manual) runs youtube.py --check with the secrets, and with a `video` input uploads a ready-made videos/<name>.mp4 (`post_file`, words from videos/<name>.json, youtube_id recorded there)
 
 showcase.yml (Wed and Sat 15:41 UTC, SHOWCASE_DAYS; scheduler.due_showcase starts it if no run since 15:41; an earlier dry run does not count)
   showcase.py        Claude writes 4-6 beats (text + motif from MOTIFS) -> errors() -> one canvas page where a 3D
@@ -161,7 +161,7 @@ Claude is called through the Claude Code CLI (`claude -p ... --json-schema`), bi
 | `carousels.json` | Posted carousels | data, written by `carousel.py` |
 | `showcase.py` | The weekly showcase: abstract motion piece, no voice | `write`, `errors`, `timeline`, `page`, `render_showcase`, `sound_track`, `fx_kit`, `FX_GAIN`, `review`, `posted_today`, `MOTIFS`, `BEAT`, `BACK` |
 | `showcases.json` | Posted showcases | data, written by `showcase.py` (showcase.yml) |
-| `youtube.py` | Uploads each reel and showcase as a YouTube Short (videos.insert, resumable; OAuth refresh token), words taken from the reel, `youtube_id` on the entry | `post`, `target`, `title_for`, `description_for`, `tags_for`, `access_token`, `upload`, `AI_VOICE`, `LoginExpired`, `ALERT` |
+| `youtube.py` | Uploads each reel and showcase as a YouTube Short (videos.insert, resumable; OAuth refresh token), words taken from the reel, `youtube_id` on the entry | `post`, `post_file`, `target`, `title_for`, `description_for`, `tags_for`, `access_token`, `upload`, `AI_VOICE`, `LoginExpired`, `ALERT` |
 | `linkedin.py` | Cross-posts to LinkedIn (Share on LinkedIn, `w_member_social`): reel and showcase as video (`/rest/videos` initializeUpload, parts, finalizeUpload), carousel as a PDF document (`/rest/documents`), `/rest/posts` with the text in little text format; Claude writes the text, `text_errors` checks it; records `linkedin_id`; a 401 leaves `out/linkedin-alert.md` | `post`, `write_text`, `text_errors`, `little`, `upload_video`, `upload_document`, `create_post`, `pdf`, `LoginExpired`, `ALERT`, `VERSION` |
 | `dm.py` | Comment replies on recent reels, carousels and extras: keyword guide by DM, Claude triage of the rest | `main`, `posts`, `asks`, `comments`, `answer`, `triage`, `send_guide`, `inbox`, `to_inbox`, `clean`, `claude`, `SYSTEM`, `KINDS`, `INBOX`, `REPLY_LIMIT`, `ABOUT`, `PRIVATE_REPLY_DAYS`, `PUBLIC_REPLY`, `GUIDE_LIMIT` (the guide is cut to 1000 characters), `DMError` |
 | `insights.py` | Account + per-reel metrics | `main`, `metric` |

@@ -2268,6 +2268,23 @@ class YouTubeTest(Sandbox):
             yt.post('reel', '7')
         self.assertEqual(fake.calls, [])
 
+    def test_uploads_a_ready_made_video_once(self):
+        yt, fake = self.yt, FakeYouTube()
+        video = Path(self.tmp) / 'tour.mp4'
+        video.write_bytes(b'film')
+        video.with_suffix('.json').write_text(json.dumps({'title': 'Inside an <AI> agent', 'description': 'A tour.', 'tags': ['ai']}))
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                mock.patch.object(yt.requests, 'put', fake.put), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(yt.post_file(video), 'YT123')
+        meta = fake.calls[1][2]
+        self.assertEqual((meta['snippet']['title'], meta['snippet']['tags']), ('Inside an AI agent', ['ai']))
+        self.assertEqual(json.loads(video.with_suffix('.json').read_text())['youtube_id'], 'YT123')
+        fake.calls.clear()
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yt.post_file(video)                                                   # recorded: never twice
+        self.assertEqual(fake.calls, [])
+
     def test_not_set_up_dry_run_and_expired_login(self):
         yt, fake = self.yt, FakeYouTube()
         with mock.patch.dict(os.environ, {**self.env, 'YT_REFRESH_TOKEN': ''}), \
