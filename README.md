@@ -237,7 +237,7 @@ Every reel and every showcase also goes up as a YouTube Short (`youtube.py`, a s
 
 Set it up once (about 15 minutes, free):
 1. [Google Cloud console](https://console.cloud.google.com/) → create a project → **APIs & Services** → **Library** → enable **YouTube Data API v3**.
-2. **OAuth consent screen** → External → fill in the app name and your email → add yourself as a test user → then **Publish app** (in Testing mode the login lasts only 7 days). Google shows an "unverified app" warning when you sign in; that is fine for your own channel.
+2. **OAuth consent screen** (Branding: home page `https://github.com/hassanjan1841`, privacy policy `https://github.com/hassanjan1841/automation-reel/blob/main/PRIVACY.md`) → External → fill in the app name and your email → add yourself as a test user → then **Publish app** (in Testing mode the login lasts only 7 days). Google shows an "unverified app" warning when you sign in; that is fine for your own channel.
 3. **Credentials** → **Create credentials** → **OAuth client ID** → type **Web application** → authorised redirect URI `https://developers.google.com/oauthplayground` → copy the client ID and secret.
 4. Open the [OAuth Playground](https://developers.google.com/oauthplayground) → gear icon → **Use your own OAuth credentials** → paste them → in the scope box paste the two scopes in `youtube.SCOPES` (upload, and read for `--check`) → **Authorize APIs** with the Google account that owns the channel → **Exchange authorization code for tokens** → copy the **refresh token**.
 5. GitHub → Settings → Secrets and variables → Actions → add the secrets `YT_CLIENT_ID`, `YT_CLIENT_SECRET` and `YT_REFRESH_TOKEN`.
