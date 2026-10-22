@@ -1,0 +1,312 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}
+html,body{margin:0;width:540px;height:960px;overflow:hidden;background:#040508;font-family:Poppins}
+canvas{position:absolute;left:0;top:0;width:540px;height:960px}
+#ui{position:absolute;inset:0;pointer-events:none}
+#cap{position:absolute;left:24px;right:24px;top:700px;text-align:center;font:600 26px/1.25 Poppins;color:#F2F3F7;letter-spacing:-.01em}
+#cap span{display:inline-block;margin:0 .12em}
+#cap span.k{font:italic 400 36px/1 'Instrument Serif';color:#FF6A3D;text-shadow:0 0 18px rgba(255,106,61,.6)}
+#chap{position:absolute;left:0;right:0;top:330px;text-align:center}
+#chap b{display:block;font:600 20px Poppins;color:#F2F3F7;letter-spacing:.04em;margin-bottom:4px}
+#chap span{display:block;font:400 104px/1 Anton,Poppins;letter-spacing:.01em;text-transform:uppercase}
+#chap span i{font-style:normal;display:inline-block}
+#title{position:absolute;left:0;right:0;top:300px;text-align:center}
+#title div{font:400 112px/0.95 Anton,Poppins;text-transform:uppercase;color:#F2F3F7}
+#title div.o{color:#FF6A3D}
+#title small{display:block;margin-top:18px;font:500 17px Poppins;color:#8C93A6;letter-spacing:.08em}
+#tag{position:absolute;right:26px;top:126px;font:600 10px 'JetBrains Mono';letter-spacing:.12em;color:#8C93A6;border:1px solid #3A3F50;border-radius:999px;padding:3px 9px;opacity:0}
+#hud{position:absolute;left:26px;top:96px;font:600 10px 'JetBrains Mono';letter-spacing:.14em;color:#FF6A3D}
+#tc{position:absolute;right:26px;top:96px;font:500 10px 'JetBrains Mono';letter-spacing:.06em;color:#5D6475}
+#handle{position:absolute;left:0;right:0;top:790px;text-align:center;font:500 14px Poppins;color:#8C93A6;letter-spacing:.04em;opacity:0}
+.frm i{position:absolute;width:16px;height:16px;border-color:#5D6475;border-style:solid;opacity:.7}
+.frm .a{left:18px;top:84px;border-width:1.5px 0 0 1.5px}.frm .b{right:18px;top:84px;border-width:1.5px 1.5px 0 0}
+.frm .c{left:18px;top:860px;border-width:0 0 1.5px 1.5px}.frm .d{right:18px;top:860px;border-width:0 1.5px 1.5px 0}
+</style></head><body><canvas id="c" width="1080" height="1920"></canvas>
+<div id="ui"><div class="frm"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div id="hud"></div><div id="tc"></div><div id="tag">ILLUSTRATION</div>
+<div id="title"><div>Inside an</div><div class="o">AI agent</div><small>A 60-SECOND TOUR</small></div>
+<div id="chap"><b></b><span></span></div><div id="cap"></div><div id="handle"></div></div>
+<script>
+const P = window.PARAMS, T = P.total, SOUNDS = [];
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), prog = (t, a, d) => clamp((t - a) / d);
+const expo = p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p), inout = p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const out3 = p => 1 - Math.pow(1 - p, 3), bell = (t, a, d) => Math.sin(Math.PI * prog(t, a, d));
+const snd = (t, k) => { if (t >= 0 && t < T) SOUNDS.push([+t.toFixed(3), k]); };
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const TAU = Math.PI * 2, CX = 270, CY = 430, ACC = '255,106,61', ACC2 = '255,179,107', GRN = '90,209,126', RED = '229,72,77';
+const ACTS = [0, 10, 20, 30, 40, 50, 60];
+const NAMES = ['', 'The prompt', 'Tokens', 'Attention', 'Prediction', 'Tools', 'The loop'];
+// Captions: [start, end, words]; *word* is the key word.
+const CAPS = [[3.4, 9.7, 'You type a *prompt*'], [11.6, 15.2, 'Text becomes *tokens*'], [15.4, 19.7, 'each one a list of *numbers*'],
+  [21.6, 29.7, 'Each token weighs the ones *before it*'], [31.6, 39.7, 'It predicts the *next token*'],
+  [41.6, 49.6, 'It runs *tools* and reads the result'], [51.6, 56.4, 'Plan, act, *check*, repeat']];
+document.getElementById('handle').textContent = P.handle;
+// ---------- the camera: 3D points projected through a camera that dollies, orbits and shakes ----------
+let CAM = {x: 0, y: 0, z: -620, yaw: 0, pitch: 0, f: 620, shake: 0};
+function proj(x, y, z) {
+  const c = CAM, X = x - c.x, Y = y - c.y, Z = z - c.z, cy = Math.cos(c.yaw), sy = Math.sin(c.yaw), cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+  const x1 = X * cy - Z * sy, z1 = X * sy + Z * cy, y1 = Y * cp - z1 * sp, z2 = Y * sp + z1 * cp;
+  if (z2 < 20) return null;
+  const s = c.f / z2; return [CX + x1 * s, CY + y1 * s, s, z2];
+}
+let impacts = [];  // times of hits: shake, flash, shockwave
+const hit = (t, k = 1) => { impacts.push([t, k]); snd(t, 'impact'); snd(t - .85, 'riser'); };
+function shakeAt(t) { let s = 0; impacts.forEach(([a, k]) => { if (t >= a) s += k * 7 * Math.exp(-(t - a) * 7); }); return s; }
+function camera(t) {
+  // a slow drift always, and per act a move: dolly in, orbit, crane up over the floor, push into the terminal, pull out
+  let z = -620, yaw = 0, pitch = 0, x = 0, y = 0;
+  if (t < 10) { z = -620 + 60 * t + (t > 8 ? 900 * Math.pow(prog(t, 8, 2), 2) : 0); yaw = .05 * Math.sin(t * .5); }
+  else if (t < 20) { const u = t - 10; z = -720 + 16 * u; yaw = -.18 + .036 * u; pitch = .06 * Math.sin(u * .4); }
+  else if (t < 30) { const u = t - 20; yaw = .2 * Math.sin(u * .32); pitch = -.22 - .06 * Math.sin(u * .5); z = -720 + 10 * u; }
+  else if (t < 40) { const u = t - 30; pitch = -.28 + .015 * u; yaw = -.25 + .05 * u; z = -820 + 22 * u; y = -40; }
+  else if (t < 50) { const u = t - 40; z = -800 + 16 * u; yaw = .1 * Math.sin(u * .35); pitch = .05; }
+  else { const u = t - 50; z = -700 - 18 * u; yaw = .12 * Math.sin(u * .6); pitch = -.04; }
+  const s = shakeAt(t);
+  CAM = {x: x + s * Math.sin(t * 91), y: y + s * Math.cos(t * 77), z, yaw, pitch, f: 620 + 40 * s};
+}
+// ---------- the world's backdrop: deep dust you fly through, streaking at warp speed ----------
+const DUST = [...Array(700)].map((_, j) => ({x: (hash(j) - .5) * 2400, y: (hash(j + 7) - .5) * 3200, z: hash(j + 13) * 4000, s: .5 + hash(j + 19) * 1.6, w: hash(j + 23)}));
+function travel(t) { // how far the world has flowed toward the camera (faster in the warps)
+  return 40 * t + 1800 * inout(prog(t, 8, 2.2)) + 900 * inout(prog(t, 49.2, 1.2)) + 500 * inout(prog(t, 19.3, 1.2)) + 500 * inout(prog(t, 29.3, 1.2)) + 500 * inout(prog(t, 39.3, 1.2));
+}
+function dust(t) {
+  const d0 = travel(t), d1 = travel(t - 1 / 30), speed = d0 - d1;
+  cx.lineCap = 'round';
+  for (const p of DUST) {
+    const z = ((p.z - d0) % 4000 + 4000) % 4000 + CAM.z + 100, zb = z + speed * 3.5;
+    const a = proj(p.x, p.y, z), b = proj(p.x, p.y, zb); if (!a) continue;
+    const al = clamp(1 - a[3] / 4000) * (.25 + .5 * p.w);
+    if (speed > 12 && b) { cx.strokeStyle = `rgba(${p.w > .8 ? ACC2 : '200,210,255'},${al})`; cx.lineWidth = p.s * a[2] * 1.4; cx.beginPath(); cx.moveTo(a[0], a[1]); cx.lineTo(b[0], b[1]); cx.stroke(); }
+    else { cx.fillStyle = `rgba(${p.w > .8 ? ACC2 : '200,210,255'},${al})`; const r = p.s * a[2] * 1.2; cx.fillRect(a[0] - r / 2, a[1] - r / 2, r, r); }
+  }
+}
+// ---------- glow helpers ----------
+function glowDot(x, y, r, rgb, a = 1) { const g = cx.createRadialGradient(x, y, 0, x, y, r * 4); g.addColorStop(0, `rgba(255,248,240,${a})`); g.addColorStop(.25, `rgba(${rgb},${a * .8})`); g.addColorStop(1, `rgba(${rgb},0)`); cx.fillStyle = g; cx.fillRect(x - r * 4, y - r * 4, r * 8, r * 8); }
+function cube(x, y, z, s, rgb, a, spin) { // a glowing wireframe cube with a lit face
+  const v = []; for (const dx of [-1, 1]) for (const dy of [-1, 1]) for (const dz of [-1, 1]) {
+    const X = dx * s, Z = dz * s, c = Math.cos(spin), si = Math.sin(spin); v.push(proj(x + X * c - Z * si, y + dy * s, z + X * si + Z * c)); }
+  if (v.some(p => !p)) return;
+  const E = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+  cx.fillStyle = `rgba(${rgb},${.16 * a})`; cx.beginPath(); [0, 2, 6, 4].forEach((i, k) => k ? cx.lineTo(v[i][0], v[i][1]) : cx.moveTo(v[i][0], v[i][1])); cx.fill();
+  cx.strokeStyle = `rgba(${rgb},${.95 * a})`; cx.lineWidth = 1.4; cx.shadowColor = `rgba(${rgb},1)`; cx.shadowBlur = 14;
+  cx.beginPath(); E.forEach(([i, j]) => { cx.moveTo(v[i][0], v[i][1]); cx.lineTo(v[j][0], v[j][1]); }); cx.stroke(); cx.shadowBlur = 0;
+}
+// ---------- the token chain, shared by acts 2 to 6 ----------
+const NT = 6, tokenPos = (i, t) => { // a row that becomes a ring in act 3, back to a row after
+  const row = [(i - (NT - 1) / 2) * 84, 0, 0], ringA = -Math.PI / 2 + TAU * i / NT, ring = [Math.cos(ringA) * 190, Math.sin(ringA) * 70 - 10, Math.sin(ringA) * 150];
+  const m = inout(prog(t, 20.4, 1.6)) * (1 - inout(prog(t, 29.0, 1.2)));
+  const lift = t > 30 && t < 40 ? -200 : 0, lm = inout(prog(t, 30.2, 1)) * (1 - inout(prog(t, 39.0, 1)));
+  return [row[0] + (ring[0] - row[0]) * m, row[1] + (ring[1] - row[1]) * m + lift * lm * .6, row[2] + (ring[2] - row[2]) * m]; };
+// ---------- act 1: the title shatters, a prompt is typed, its letters burst into a stream ----------
+const PROMPT = 'Fix the failing test';
+const TYPE0 = 3.6, TYPEDT = .11, ENTER = TYPE0 + PROMPT.length * TYPEDT + .5;
+for (let i = 0; i < PROMPT.length; i++) if (PROMPT[i] !== ' ') snd(TYPE0 + i * TYPEDT, 'key');
+snd(ENTER, 'thud'); snd(ENTER + .02, 'swirl'); snd(0, 'impact'); snd(.05, 'sparkle'); snd(1.9, 'swirl'); snd(2.0, 'sparkle');
+const SHARDS = [...Array(380)].map((_, j) => ({x: (hash(j + 900) - .5) * 440, y: (hash(j + 901) - .5) * 240 - 30, vx: (hash(j + 902) - .5) * 900, vy: (hash(j + 903) - .5) * 700 - 120, vz: -hash(j + 904) * 900, r: 1 + hash(j + 905) * 2.6, w: hash(j + 906)}));
+const BITS = [...Array(520)].map((_, j) => ({i: j % PROMPT.length, ox: (hash(j + 1300) - .5) * 14, oy: (hash(j + 1301) - .5) * 20, sp: .4 + hash(j + 1302), a: hash(j + 1303) * TAU, w: hash(j + 1304), d: hash(j + 1305) * .5}));
+function act1(t) {
+  // the title's shards fly out at 1.9 s
+  if (t > 1.9 && t < 5) { const u = t - 1.9; cx.globalCompositeOperation = 'lighter';
+    for (const s of SHARDS) { const p = proj(s.x + s.vx * u * (1 - u * .1), s.y + s.vy * u + 160 * u * u, s.vz * u); if (!p) continue;
+      const a = clamp(1 - u / 2.6); cx.fillStyle = `rgba(${s.w > .5 ? ACC : '242,243,247'},${a})`; const r = s.r * p[2]; cx.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
+    cx.globalCompositeOperation = 'source-over'; }
+  // the prompt box: glass, typed text, a blinking cursor; on Enter the letters burst into a stream of light
+  const show = expo(prog(t, 2.9, .6)) * (1 - prog(t, ENTER + .25, .35));
+  if (show > 0) {
+    const w = 400, h = 76, x0 = CX - w / 2, y0 = CY - h / 2, s = .9 + .1 * show + .04 * bell(t, ENTER - .05, .3);
+    cx.save(); cx.translate(CX, CY); cx.scale(s, s); cx.translate(-CX, -CY); cx.globalAlpha = show;
+    cx.fillStyle = 'rgba(20,23,32,.85)'; cx.strokeStyle = `rgba(${ACC},${.5 + .5 * bell(t, ENTER - .05, .4)})`; cx.lineWidth = 1.5;
+    cx.shadowColor = `rgba(${ACC},.55)`; cx.shadowBlur = 30; cx.beginPath(); cx.roundRect(x0, y0, w, h, 18); cx.fill(); cx.stroke(); cx.shadowBlur = 0;
+    cx.font = "500 12px 'JetBrains Mono'"; cx.fillStyle = '#8C93A6'; cx.fillText('PROMPT', x0 + 18, y0 - 10);
+    const n = Math.floor(clamp((t - TYPE0) / TYPEDT, 0, PROMPT.length)); cx.font = "500 24px 'JetBrains Mono'"; cx.fillStyle = '#F2F3F7';
+    cx.fillText(PROMPT.slice(0, n), x0 + 22, CY + 9); const tw = cx.measureText(PROMPT.slice(0, n)).width;
+    if (Math.sin(t * 9) > -.3 || (t > TYPE0 && t < ENTER)) { cx.fillStyle = '#FF6A3D'; cx.fillRect(x0 + 24 + tw, CY - 14, 2.5, 28); }
+    cx.fillStyle = `rgba(${ACC},.9)`; cx.font = '600 12px Poppins'; cx.fillText('↵', x0 + w - 30, CY + 5);
+    cx.restore(); cx.globalAlpha = 1;
+  }
+  if (t > ENTER && t < 11.5) { const u = t - ENTER; cx.globalCompositeOperation = 'lighter'; cx.font = "500 24px 'JetBrains Mono'";
+    const x0 = CX - 178, cw = 14.4;
+    for (const b of BITS) { const v = Math.max(0, u - b.d * .3), sx = x0 + b.i * cw + b.ox, sy = CY + b.oy;
+      const X = (sx - CX) * (1 + .4 * v) + Math.cos(b.a) * 40 * v, Y = (sy - CY) + Math.sin(b.a) * 30 * v, Z = 600 * v * v * b.sp + 80 * v;
+      const p = proj(X, Y, Z); if (!p) continue; const al = clamp(1 - v / 4.2) * (u < .05 ? u * 20 : 1);
+      cx.fillStyle = `rgba(${b.w > .55 ? ACC : b.w > .3 ? ACC2 : '242,243,247'},${al})`; const r = (1 + 2 * b.w) * p[2]; cx.fillRect(p[0] - r / 2, p[1] - r / 2, r, r); }
+    cx.globalCompositeOperation = 'source-over'; }
+}
+// ---------- act 2: the stream condenses into token blocks; each block unfolds into a column of numbers ----------
+for (let i = 0; i < NT; i++) { snd(11 + i * .28, 'pop'); }
+for (let i = 0; i < NT; i++) for (let k = 0; k < 4; k++) snd(15.5 + i * .2 + k * .05, 'tick');
+const VEC = [...Array(NT * 14)].map((_, j) => .15 + .85 * hash(j + 2100));
+function tokens(t, alpha = 1) {
+  for (let i = 0; i < NT; i++) {
+    const born = 11 + i * .28, b = expo(prog(t, born, .5)); if (b <= 0) continue;
+    const [x, y, z] = tokenPos(i, t), pulse = bell(t, born, .4) + .6 * bell(t, 21.5 + i * .6, .5) + (t > 30 && t < 40 ? .3 * bell(t, 31 + i * .3, .6) : 0);
+    // particles converge into the block as it is born
+    if (b < 1) { cx.globalCompositeOperation = 'lighter'; for (let k = 0; k < 40; k++) { const a = hash(i * 40 + k) * TAU, r = 260 * (1 - b) * (.5 + hash(i * 40 + k + 5));
+      const p = proj(x + Math.cos(a) * r, y + Math.sin(a) * r * .6, z + (hash(k + i) - .5) * 200 * (1 - b)); if (p) { cx.fillStyle = `rgba(${ACC2},${b})`; cx.fillRect(p[0] - 1.5, p[1] - 1.5, 3, 3); } }
+      cx.globalCompositeOperation = 'source-over'; }
+    cube(x, y, z, 26 * b * (1 + .15 * pulse), ACC, alpha * b, t * .6 + i);
+    const c = proj(x, y, z); if (c) glowDot(c[0], c[1], 6 * c[2] * (1 + pulse), ACC, .55 * alpha * b);
+    // the embedding: a column of bars unfolds above the block (act 2 only)
+    const e = expo(prog(t, 15.4 + i * .2, .6)) * (1 - prog(t, 19.6, .5));
+    if (e > 0) for (let k = 0; k < 14; k++) { const p = proj(x - 10, y - 50 - k * 13 * e, z), w = VEC[i * 14 + k] * 34 * e; if (!p) continue;
+      cx.fillStyle = `rgba(${k % 3 ? '200,210,255' : ACC2},${.75 * e})`; cx.fillRect(p[0], p[1], w * p[2], 7 * p[2]); }
+  }
+}
+// ---------- act 3: attention, every token linked to the ones before it, light running along the links ----------
+for (let k = 0; k < 14; k++) snd(21.6 + k * .55, 'sparkle');
+function attention(t) {
+  const on = expo(prog(t, 21.2, 1)) * (1 - prog(t, 29.2, .8)); if (on <= 0) return;
+  cx.globalCompositeOperation = 'lighter';
+  for (let i = 1; i < NT; i++) for (let j = 0; j < i; j++) {
+    const a = tokenPos(i, t), b = tokenPos(j, t), w = .25 + .75 * Math.pow(.5 + .5 * Math.sin(t * 1.3 + i * 1.7 + j * 2.9), 2);
+    const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 120 - 40 * (i - j), (a[2] + b[2]) / 2];
+    const pts = []; for (let s = 0; s <= 24; s++) { const u = s / 24, q = [0, 1, 2].map(d => (1 - u) * (1 - u) * a[d] + 2 * (1 - u) * u * mid[d] + u * u * b[d]); pts.push(proj(...q)); }
+    if (pts.some(p => !p)) continue;
+    cx.strokeStyle = `rgba(${ACC},${.12 + .55 * w * on})`; cx.lineWidth = .6 + 2.2 * w; cx.beginPath(); pts.forEach((p, k) => k ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1])); cx.stroke();
+    const ph = ((t * .5 + (i * 7 + j * 3) * .13) % 1), q = pts[Math.floor(ph * 24)]; glowDot(q[0], q[1], 2.2 + 2 * w, ACC2, on);
+  }
+  cx.globalCompositeOperation = 'source-over';
+}
+// ---------- act 4: a floor of candidate bars rises; the tallest becomes the next token, three times ----------
+const ROUNDS = [32.2, 34.8, 37.0];
+ROUNDS.forEach((r, k) => { snd(r - .7, 'riser'); snd(r, 'swish'); snd(r + .9, 'impact'); snd(r + 1.25, 'pop'); });
+function floor(t) {
+  const on = expo(prog(t, 30.2, 1)) * (1 - prog(t, 39.4, .8)); if (on <= 0) return;
+  cx.strokeStyle = `rgba(120,140,220,${.22 * on})`; cx.lineWidth = 1;
+  for (let k = -8; k <= 8; k++) { const a = proj(k * 70, 160, -200), b = proj(k * 70, 160, 1400); if (a && b) { cx.beginPath(); cx.moveTo(a[0], a[1]); cx.lineTo(b[0], b[1]); cx.stroke(); } }
+  for (let k = 0; k <= 16; k++) { const z = -200 + k * 100 - (t * 60) % 100, a = proj(-560, 160, z), b = proj(560, 160, z); if (a && b) { cx.beginPath(); cx.moveTo(a[0], a[1]); cx.lineTo(b[0], b[1]); cx.stroke(); } }
+}
+function bars(t) {
+  ROUNDS.forEach((r, k) => {
+    const rise = out3(prog(t, r - .6, .7)), gone = prog(t, r + 1.4, .4); if (rise <= 0 || gone >= 1) return;
+    const best = (k * 5 + 3) % 12;
+    for (let i = 0; i < 12; i++) {
+      const hgt = (i === best ? 220 : 30 + 130 * hash(i + k * 31)) * rise, x = (i - 5.5) * 64, z = 300 + (i % 2) * 60;
+      const chosen = prog(t, r + .5, .4), isB = i === best;
+      const a = proj(x - 18, 160, z), b = proj(x + 18, 160 - hgt, z); if (!a || !b) continue;
+      const al = (1 - gone) * (isB ? 1 : 1 - .75 * chosen);
+      const g = cx.createLinearGradient(0, a[1], 0, b[1]); g.addColorStop(0, `rgba(${isB ? ACC : '120,140,220'},${.15 * al})`); g.addColorStop(1, `rgba(${isB ? ACC2 : '170,185,255'},${.85 * al})`);
+      cx.fillStyle = g; cx.shadowColor = isB ? `rgba(${ACC},${al})` : 'transparent'; cx.shadowBlur = isB ? 26 * chosen : 0;
+      cx.fillRect(a[0], b[1], b[0] - a[0], a[1] - b[1]); cx.shadowBlur = 0;
+    }
+    // the winner flies up into the chain as a new block
+    const fly = inout(prog(t, r + .9, .6)); if (fly > 0 && gone < 1) { const x0 = (best - 5.5) * 64, s = proj(x0 + (300 - x0) * fly, 160 - 220 - (60 - 220 + 220) * fly * .4, 330 - 330 * fly);
+      if (s) glowDot(s[0], s[1], 7 * s[2], ACC, 1 - gone); }
+  });
+  // the chain grows by one block per round, to the right
+  ROUNDS.forEach((r, k) => { const b = expo(prog(t, r + 1.25, .4)) * (1 - prog(t, 39.4, .6)); if (b > 0) cube((k - 1) * 84, -230, 0, 22 * b, ACC2, b, t * .8 + k); });
+}
+// ---------- act 5: a terminal floats in; a test fails, a patch lands, every check turns green ----------
+const T5 = 40, LINES = [['$ run the tests', '242,243,247', T5 + 1.2, 70], ['  checks', '140,147,166', T5 + 2.4, 108], ['$ apply the fix', '242,243,247', T5 + 4.6, 178], ['$ run the tests', '242,243,247', T5 + 6.2, 318], ['  checks', '140,147,166', T5 + 7.0, 356]];
+LINES.forEach(([s, , at]) => { for (let i = 0; i < s.length; i += 2) if (s[i] !== ' ') snd(at + i * .03, 'key'); });
+for (let i = 0; i < 10; i++) snd(T5 + 2.5 + i * .08, 'tick');
+snd(T5 + 3.3, 'thud'); for (let i = 0; i < 10; i++) snd(T5 + 7.1 + i * .12, 'tick'); snd(T5 + 8.4, 'impact'); snd(T5 + 4.8, 'swish');
+function terminal(t) {
+  const on = expo(prog(t, T5 + .3, .9)) * (1 - prog(t, 49.3, .7)); if (on <= 0) return;
+  // the window is a plane in 3D: its corners projected, the text drawn in its own space with a transform
+  const W = 420, H = 420, z = 0, tl = proj(-W / 2, -H / 2 - 20, z), tr = proj(W / 2, -H / 2 - 20, z), bl = proj(-W / 2, H / 2 - 20, z);
+  if (!tl || !tr || !bl) return;
+  cx.save(); cx.globalAlpha = on;
+  cx.setTransform(2 * (tr[0] - tl[0]) / W, 2 * (tr[1] - tl[1]) / W, 2 * (bl[0] - tl[0]) / H, 2 * (bl[1] - tl[1]) / H, 2 * tl[0], 2 * tl[1]);
+  cx.fillStyle = 'rgba(16,18,26,.93)'; cx.shadowColor = `rgba(${ACC},.35)`; cx.shadowBlur = 40; cx.beginPath(); cx.roundRect(0, 0, W, H, 16); cx.fill(); cx.shadowBlur = 0;
+  cx.strokeStyle = 'rgba(255,255,255,.09)'; cx.stroke(); cx.fillStyle = 'rgba(255,255,255,.04)'; cx.fillRect(0, 0, W, 30);
+  [0, 1, 2].forEach(k => { cx.fillStyle = '#2E3240'; cx.beginPath(); cx.arc(16 + k * 14, 15, 4.5, 0, TAU); cx.fill(); });
+  cx.font = "600 11px Poppins"; cx.fillStyle = '#8C93A6'; cx.fillText('Terminal', W / 2 - 24, 19);
+  cx.font = "500 16px 'JetBrains Mono'";
+  LINES.forEach(([s, col, at, y]) => { const n = Math.floor(clamp((t - at) / .03, 0, s.length)); cx.fillStyle = `rgb(${col})`; cx.fillText(s.slice(0, n), 22, y); });
+  // the check dots: ten, one fails; after the fix all ten pass, one by one
+  for (let row = 0; row < 2; row++) { const base = row ? T5 + 7.1 : T5 + 2.5, y = row ? 384 : 136;
+    for (let i = 0; i < 10; i++) { const at = base + i * (row ? .12 : .08), p = prog(t, at, .15); if (p <= 0) continue;
+      const bad = !row && i === 6, col = bad ? RED : GRN, x = 36 + i * 34, r = 7 * (1 + .4 * bell(t, at, .25));
+      cx.fillStyle = `rgba(${col},${p})`; cx.shadowColor = `rgb(${col})`; cx.shadowBlur = 12; cx.beginPath(); cx.arc(x, y, r, 0, TAU); cx.fill(); cx.shadowBlur = 0;
+      if (bad && t > T5 + 3.3) { const s = Math.sin(prog(t, T5 + 3.3, .5) * Math.PI * 6) * 3 * (1 - prog(t, T5 + 3.3, .5)); cx.strokeStyle = `rgba(${RED},.9)`; cx.lineWidth = 2; cx.beginPath(); cx.arc(x + s, y, r + 5, 0, TAU); cx.stroke(); } } }
+  // the patch: two lines out (red), two lines in (green), sliding into the window
+  const pm = expo(prog(t, T5 + 4.8, .5));
+  if (pm > 0) { [[RED, '- old line'], [RED, '- old line'], [GRN, '+ new line'], [GRN, '+ new line']].forEach(([c, s], k) => {
+    cx.fillStyle = `rgba(${c},${.18 * pm})`; cx.fillRect(14 + (1 - pm) * 120, 196 + k * 26, W - 28, 22); cx.fillStyle = `rgba(${c},${pm})`; cx.fillText(s, 22 + (1 - pm) * 120, 213 + k * 26); }); }
+  // PASSED stamp
+  const st = prog(t, T5 + 8.4, .25); if (st > 0) { cx.save(); cx.translate(W - 96, H - 70); cx.rotate(-.14); cx.scale(1.6 - .6 * expo(st), 1.6 - .6 * expo(st));
+    cx.globalAlpha = on * st; cx.strokeStyle = `rgb(${GRN})`; cx.lineWidth = 3; cx.strokeRect(-62, -20, 124, 40); cx.fillStyle = `rgb(${GRN})`; cx.font = "400 30px Anton"; cx.fillText('PASSED', -50, 11); cx.restore(); }
+  cx.restore(); cx.setTransform(2, 0, 0, 2, 0, 0);
+}
+// ---------- act 6: everything pours into one loop, labels on it, then folds into a spark ----------
+const LOOPN = 900, LP = [...Array(LOOPN)].map((_, j) => ({u: j / LOOPN, r: hash(j + 3000), a: hash(j + 3001) * TAU, s: .6 + hash(j + 3002) * 2, w: hash(j + 3003), d: hash(j + 3004)}));
+snd(50.2, 'swirl'); ['PLAN', 'ACT', 'CHECK'].forEach((_, k) => snd(52 + k * .7, 'pop')); snd(56.6, 'riser'); snd(57.4, 'impact'); snd(57.5, 'sparkle');
+function lemn(u, sc) { const a = -Math.PI / 2 + TAU * u, d = 1 + Math.pow(Math.sin(a), 2); return [sc * Math.cos(a) / d, sc * Math.sin(a) * Math.cos(a) / d * 1.1]; }
+function loop(t) {
+  const on = prog(t, 50, .2); if (on <= 0) return;
+  const form = inout(prog(t, 50.1, 1.6)), fold = inout(prog(t, 56.8, .7)), spin = t * .9;
+  cx.globalCompositeOperation = 'lighter';
+  for (const q of LP) {
+    const m = clamp((form - q.d * .4) / .6), [lx, ly] = lemn((q.u + spin * .05) % 1, 230);
+    const sx = Math.cos(q.a) * 700 * (1 - m), sy = Math.sin(q.a) * 900 * (1 - m), sz = (q.r - .5) * 900 * (1 - m);
+    let x = lx * m + sx, y = ly * m + sy - 20, z = sz + (q.r - .5) * 30 * m;
+    x *= 1 - fold; y = y * (1 - fold) - 20 * fold; z *= 1 - fold;
+    const p = proj(x, y, z); if (!p) continue;
+    cx.fillStyle = `rgba(${q.w > .8 ? '255,248,240' : q.w > .4 ? ACC : ACC2},${.85 * on})`; const r = q.s * p[2] * 1.2; cx.fillRect(p[0] - r / 2, p[1] - r / 2, r, r);
+  }
+  // the head that runs the loop, and the labels pinned on it
+  const hp = lemn((t * .32) % 1, 230), h = proj(hp[0] * (1 - fold), (hp[1] - 20) * (1 - fold) - 20 * fold, 0); if (h && form > .8) glowDot(h[0], h[1], 8 * h[2], ACC, 1);
+  cx.globalCompositeOperation = 'source-over';
+  [['PLAN', .12], ['ACT', .5], ['CHECK', .78]].forEach(([l, u], k) => { const a = expo(prog(t, 52 + k * .7, .4)) * (1 - fold); if (a <= 0) return;
+    const [x, y] = lemn(u, 230), p = proj(x, y - 20, 0); if (!p) return; glowDot(p[0], p[1], 6, ACC, a);
+    cx.globalAlpha = a; cx.font = '600 14px Poppins'; cx.fillStyle = '#F2F3F7'; cx.textAlign = 'center'; cx.fillText(l, p[0], p[1] + (y > 0 ? 28 : -18)); cx.textAlign = 'left'; cx.globalAlpha = 1; });
+  if (fold > .9) { const c = proj(0, -20, 0); if (c) glowDot(c[0], c[1], 10 + 6 * Math.sin(t * 6), ACC, 1); }
+}
+// ---------- shockwaves, light leaks and flashes on the cuts ----------
+[10, 20, 30, 40, 50].forEach(a => hit(a, 1)); hit(ENTER + .05, .7); impacts.push([1.9, .8]); hit(T5 + 8.4, .5);
+function overlays(t) {
+  impacts.forEach(([a, k]) => { const p = prog(t, a, .9); if (p <= 0 || p >= 1) return;
+    cx.strokeStyle = `rgba(${ACC},${.6 * (1 - p) * k})`; cx.lineWidth = 3 * (1 - p) + .5; cx.beginPath(); cx.arc(CX, CY, 20 + 360 * expo(p), 0, TAU); cx.stroke(); });
+  cx.globalCompositeOperation = 'screen';
+  [10, 20, 30, 40, 50].forEach((a, k) => { const p = prog(t, a - .35, .8); if (p <= 0 || p >= 1) return; const al = Math.sin(Math.PI * p), x = (k % 2 ? 700 : -160) + (k % 2 ? -860 : 860) * p;
+    const g = cx.createRadialGradient(x, 380, 0, x, 380, 420); g.addColorStop(0, `rgba(255,${k === 4 ? 248 : 190},${k === 4 ? 236 : 120},${.9 * al})`); g.addColorStop(.4, `rgba(255,96,32,${.45 * al})`); g.addColorStop(1, 'rgba(160,40,10,0)'); cx.fillStyle = g; cx.fillRect(0, 0, 540, 960); });
+  const fl = Math.max(...impacts.map(([a, k]) => t >= a ? k * Math.exp(-(t - a) * 14) : 0), 0); if (fl > .01) { cx.fillStyle = `rgba(255,240,228,${.35 * fl})`; cx.fillRect(0, 0, 540, 960); }
+  cx.globalCompositeOperation = 'source-over';
+}
+// ---------- type: title, chapter cards, captions, the HUD ----------
+const chap = document.getElementById('chap'), cap = document.getElementById('cap'), title = document.getElementById('title');
+const capEls = CAPS.map(([a, b, s]) => { const d = document.createElement('div'); d.style.position = 'absolute'; d.style.left = d.style.right = '0';
+  const ws = s.split(' ').map((w, i) => { const e = document.createElement('span'); const k = w.includes('*'); e.textContent = w.replace(/\*/g, ''); if (k) e.className = 'k'; d.appendChild(e); return [e, a + .1 + i * .13, k]; });
+  ws.forEach(([, at, k]) => { if (k) snd(at + .05, 'sparkle'); }); cap.appendChild(d); return {a, b, d, ws}; });
+for (let k = 1; k <= 6; k++) snd(ACTS[k - 1] + (k === 1 ? 99 : .1), 'pop');
+function type(t) {
+  const tt = 1 - prog(t, 1.75, .25); title.style.opacity = tt;
+  title.style.transform = `scale(${1 + .04 * t + .2 * prog(t, 1.75, .25)})`; title.style.filter = t > 1.75 ? `blur(${8 * prog(t, 1.75, .25)}px)` : 'none';
+  // chapter cards for acts 2..6: "No.k" small over the giant name, outline first, then filled letter by letter
+  chap.style.opacity = 0;
+  for (let k = 2; k <= 6; k++) { const a = ACTS[k - 1]; if (t < a || t > a + 1.5) continue; const ein = expo(prog(t, a, .25)), eout = inout(prog(t, a + 1.1, .4));
+    chap.style.opacity = ein * (1 - eout); chap.style.transform = `translateY(${-180 * eout}px) scale(${1.1 - .1 * ein - .3 * eout})`;
+    chap.querySelector('b').textContent = 'No.' + k; const name = NAMES[k].toUpperCase(), sp = chap.querySelector('span');
+    sp.innerHTML = [...name].map((c, i) => `<i style="color:${t > a + .15 + i * .04 ? '#FF6A3D' : 'transparent'};-webkit-text-stroke:1.6px #FF6A3D">${c === ' ' ? '&nbsp;' : c}</i>`).join(''); }
+  capEls.forEach(({a, b, d, ws}) => { const on = t >= a && t < b; d.style.display = on ? 'block' : 'none'; if (!on) return; const q = prog(t, b - .3, .3);
+    d.style.opacity = 1 - q; d.style.filter = q > 0 ? `blur(${6 * q}px)` : 'none';
+    ws.forEach(([e, at]) => { const p = prog(t, at, .32); e.style.opacity = p; e.style.transform = `translateY(${(1 - out3(p)) * 12}px)`; e.style.filter = p < 1 ? `blur(${(1 - p) * 8}px)` : 'none'; }); });
+  const act = ACTS.findIndex((a, i) => t >= a && t < ACTS[i + 1]); document.getElementById('hud').textContent = `NO.${act + 1} · ${NAMES[act + 1].toUpperCase()}`;
+  const f = Math.round(t * 30); document.getElementById('tc').textContent = `00:00:${String(Math.floor(f / 30)).padStart(2, '0')}:${String(f % 30).padStart(2, '0')}`;
+  document.getElementById('tag').style.opacity = ((t > 15.4 && t < 19.8) || (t > 31.4 && t < 39.6)) ? .9 : 0;
+  // the closing words
+  const end = document.getElementById('handle'); end.style.opacity = prog(t, 57.6, .5);
+}
+// ---------- the frame ----------
+function frame(t) {
+  impacts.sort((a, b) => a[0] - b[0]); camera(t);
+  cx.setTransform(2, 0, 0, 2, 0, 0); cx.globalCompositeOperation = 'source-over';
+  cx.fillStyle = '#040508'; cx.fillRect(0, 0, 540, 960);
+  const neb = cx.createRadialGradient(CX + 60 * Math.sin(t * .2), CY - 40, 0, CX, CY, 520); neb.addColorStop(0, `rgba(${ACC},.13)`); neb.addColorStop(.5, 'rgba(70,95,230,.07)'); neb.addColorStop(1, 'rgba(0,0,0,0)'); cx.fillStyle = neb; cx.fillRect(0, 0, 540, 960);
+  dust(t);
+  if (t < 12) act1(t);
+  if (t > 30 && t < 40.5) floor(t);
+  if (t > 10.8 && t < 41) { attention(t); tokens(t, 1 - prog(t, 40, .6)); }
+  if (t > 30 && t < 40.5) bars(t);
+  if (t > 40 && t < 50.2) terminal(t);
+  if (t >= 50) loop(t);
+  overlays(t); type(t);
+  // the last words
+  if (t > 57.5) { const a = expo(prog(t, 57.5, .5)); cx.globalAlpha = a; cx.textAlign = 'center'; cx.font = '400 64px Anton'; cx.fillStyle = '#F2F3F7';
+    cx.fillText('THAT IS THE', CX, 560 - 20 * (1 - a)); cx.fillStyle = '#FF6A3D'; cx.fillText('WHOLE LOOP', CX, 628 - 20 * (1 - a)); cx.textAlign = 'left'; cx.globalAlpha = 1; }
+}
+window.renderAt = frame;
+document.fonts.ready.then(() => { frame(0); window.SOUNDS = SOUNDS.filter(x => x[0] >= 0 && x[0] < T).sort((a, b) => a[0] - b[0]); window.READY = true; }).catch(e => { window.ERROR = String(e); });
+window.onerror = m => { window.ERROR = String(m); };
+</script></body></html>
