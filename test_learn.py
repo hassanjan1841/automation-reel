@@ -686,7 +686,7 @@ class ScoreTest(Sandbox):
         snaps = [{'date': '2026-09-05', 'kind': 'reel', 'id': i, 'age_days': 4, 'views': 50, 'reels_skip_rate': s,
                   'ig_reels_avg_watch_time': w} for i, s, w in ((1, 60, 8000), (2, 70, 4000), (3, 80, 5000))]
         snaps.append({'date': '2026-09-12', 'kind': 'reel', 'id': 1, 'age_days': 11, 'views': 90, 'reels_skip_rate': 58,
-                      'ig_reels_avg_watch_time': 8000})
+                      'ig_reels_avg_watch_time': 8000, 'reach': 400, 'shares': 6, 'follows': 2})
         rows, usual = learn.table(reels, [], history.by_post(snaps))
         by = {r['id']: r for r in rows}
         self.assertEqual(set(by), {1, 2, 3})            # 4 has no snapshot yet
@@ -697,6 +697,8 @@ class ScoreTest(Sandbox):
         self.assertIsNone(by[2]['views_7d'])
         self.assertEqual(by[1]['watched_share'], 0.4)
         self.assertIsNone(by[3]['watched_share'])        # length unknown
+        self.assertEqual((by[1]['shares_per_1k'], by[1]['follows_per_1k']), (15.0, 5.0))  # per 1,000 reached
+        self.assertIsNone(by[2]['shares_per_1k'])        # no reach measured
         self.assertEqual(by[1]['test'], 'hook_style: question')
         self.assertEqual(by[2]['test'], 'none')
         self.assertEqual(by[3]['slot'], 'slot 2')
@@ -1559,6 +1561,19 @@ class ReelFormatTest(Sandbox):
                     {'html': '<script>fetch(1)</script>'}, {'stages': ['@import "x.css";', 'b{}']},
                     {'stages': ['a{\nb\nc\n}', 'd{\ne\nf\n}', 'g{}']}):
             self.assertTrue(generate.build_errors(1, {**self.BUILD, **bad}), bad)
+
+    def test_stock_phrases_and_the_visible_caption(self):
+        errs = lambda **kw: ' | '.join(generate.validate({**VALID, **kw}))
+        self.assertNotIn('stock phrase', errs())
+        vo = list(VALID['voiceover'])
+        vo[1] = vo[1].split(']')[0] + '] In this video we dive into it.'
+        self.assertIn("stock phrase 'dive into', 'in this video'", errs(voiceover=vo))
+        self.assertIn('stock phrase', errs(caption='Stop scrolling: Zod in TypeScript\nSchemas that check data\nWhat do you check? 👇'))
+        self.assertIn('stock phrase', errs(cta='Is this a *game-changer*?'))
+        self.assertNotIn('stock phrase', errs(caption='Must have tests? Zod in TypeScript\nSchemas that check data\nWhat do you check? 👇'))
+        long = 'Zod schema validation in TypeScript ' * 4
+        self.assertIn('caption first line has', errs(caption=long + '\nWhat do you check? 👇'))
+        self.assertNotIn('caption first line', errs(caption=long[:125].strip() + '\nWhat do you check? 👇'))
 
     def test_reveal_needs_a_result_to_watch(self):
         self.assertEqual(generate.validate({**VALID, 'reveal': 3}), [])  # point 3 types a real command

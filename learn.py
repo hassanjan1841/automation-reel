@@ -202,6 +202,13 @@ def table(reels, carousels, snaps):
                         'watched_share': round(watch / 1000 / seconds, 3) if watch and seconds else None})
         else:
             row['title'] = entry.get('title', '')
+        # Shares and follows per 1,000 people reached: a share is someone putting their name on the post, and a rate
+        # compares a small reel fairly with a big one (raw counts mostly follow reach).
+        reach = latest.get('reach')
+        for key, name in (('shares', 'shares_per_1k'), ('follows', 'follows_per_1k')):
+            value = latest.get(key)
+            row[name] = round(value / reach * 1000, 1) \
+                if isinstance(value, (int, float)) and isinstance(reach, (int, float)) and reach > 0 else None
         rows.append(row)
     reel_rows = [r for r in rows if r['kind'] == 'reel']
     # The usual is taken from reels at least SCORE_MIN_DAYS old; a day-old reel's numbers are still moving.
@@ -223,7 +230,7 @@ def mean(rows, key):
 
 
 STATS = ('skip_vs_usual', 'watched_vs_usual', 'reels_skip_rate', 'watched_share', 'views_7d', 'late_views', 'saved', 'shares',
-         'dm_asks', 'follows')
+         'shares_per_1k', 'dm_asks', 'follows', 'follows_per_1k')
 
 
 def stats(rows):
@@ -492,7 +499,8 @@ def review_openings(best, worst, token):
 
 SYSTEM = """You analyse an Instagram creator's own reel results and propose rules for the writer of the next reels.
 Lower skip rate (share of viewers who scroll away in the first 3 seconds) and a higher share of the reel watched
-are the main goals; saves, shares and keyword comments (dm_asks) come next. Each reel is scored against the account's
+are the main goals; saves, shares and keyword comments (dm_asks) come next; compare shares and follows by shares_per_1k and
+follows_per_1k (per 1,000 people reached), not raw counts, which mostly follow reach. Each reel is scored against the account's
 usual: skip_vs_usual (negative is better) and watched_vs_usual (positive is better). Views are compared at 7 days old;
 views_1d, views_3d and late_views (the share of the first week's views that came after day 1) show how long a reel
 kept being shown by Instagram.
@@ -574,7 +582,8 @@ def week_table(reel_rows, today):
     for label, key, kind in (('Skip rate', 'reels_skip_rate', 'pct'), ('Watch time', 'ig_reels_avg_watch_time', 'ms'),
                              ('Share of the reel watched', 'watched_share', 'share'),
                              ('Views at 7 days', 'views_7d', ''), ('Saves', 'saved', ''), ('Shares', 'shares', ''),
-                             ('Keyword comments', 'dm_asks', '')):
+                             ('Shares per 1,000 reached', 'shares_per_1k', ''),
+                             ('Follows per 1,000 reached', 'follows_per_1k', ''), ('Keyword comments', 'dm_asks', '')):
         lines.append(f'| {label} (average) | {fmt(mean(this, key), kind)} | {fmt(mean(last, key), kind)} |')
     return '\n'.join(lines)
 
