@@ -1,0 +1,138 @@
+{
+  "style": "dark",
+  "pillar": "timely",
+  "series": null,
+  "kicker": "Dev news",
+  "payoff": "PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 (21 October 2026) fix two critical flaws that can let a request with no login run code on your server; php.net says updating is the only safe choice.",
+  "hook": "The attack starts *before* your code",
+  "hook_type": "news",
+  "hook_visual": {
+    "type": "screenshot",
+    "url": "https://www.php.net/archive/2026.php#2026-10-21-5",
+    "find": "before any application code runs"
+  },
+  "alternatives": [
+    {
+      "hook": "No setting fixes *PHP2Shell*",
+      "spoken": "[fired up] PHP itself says no setting fully protects your server.",
+      "hook_type": "news"
+    },
+    {
+      "hook": "Your PHP server needs *updating*",
+      "spoken": "[urgent] Two critical PHP bugs, (break) [serious] and a request with no login runs code.",
+      "hook_type": "problem"
+    },
+    {
+      "hook": "PHP shipped a *critical* fix",
+      "spoken": "[excited] PHP shipped fixes for two critical bugs (break) [serious] on October twenty first.",
+      "hook_type": "news"
+    }
+  ],
+  "points": [
+    {
+      "title": "Two critical bugs",
+      "body": "Remote code, no login needed",
+      "visual": [
+        {
+          "type": "screenshot",
+          "url": "https://www.php.net/archive/2026.php#2026-10-21-5",
+          "find": "Security advisory"
+        }
+      ]
+    },
+    {
+      "title": "No setting fixes",
+      "body": "Only an update fully fixes it",
+      "visual": [
+        {
+          "type": "screenshot",
+          "url": "https://www.php.net/archive/2026.php#2026-10-21-4",
+          "find": "There are no complete mitigations"
+        }
+      ]
+    },
+    {
+      "title": "Fixed versions",
+      "body": "Released 21 October 2026",
+      "visual": [
+        {
+          "type": "code",
+          "title": "fixed-versions.txt",
+          "language": "text",
+          "code": "PHP 8.5.12\nPHP 8.4.27\nPHP 8.3.36\nPHP 8.2.35"
+        }
+      ]
+    }
+  ],
+  "cta": "Which *PHP* version runs your server?",
+  "caption": "PHP2Shell: critical PHP remote code execution flaws, CVE-2026-109618 and CVE-2026-109619\nFixed in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 on 21 October 2026. Source: the php.net security advisory.\nWhich PHP version runs your server? 👇",
+  "hashtags": [
+    "#php",
+    "#websecurity",
+    "#cybersecurity",
+    "#webdev"
+  ],
+  "voiceover": [
+    "[urgent] One request, no login, (break) [serious] and the attack can start before your code runs.",
+    "[serious] Two critical bugs let attackers run code.",
+    "[firm] PHP says only updating fixes it, (break) [serious] no setting does.",
+    "[confident and fast] The fixes shipped October twenty first.",
+    "[warm, curious] So what does your server run?"
+  ],
+  "sources": [
+    "https://www.php.net/archive/2026.php#2026-10-21-5",
+    "https://www.php.net/archive/2026.php#2026-10-21-4"
+  ],
+  "scenes": [
+    {
+      "kind": "docs",
+      "url": "https://www.php.net/archive/2026.php#2026-10-21-5",
+      "title": "Security advisory",
+      "text": "We consider the risk highest for mod_php, with a demonstrated exploit where an unauthenticated request can trigger the attack before any application code runs.",
+      "mark": "before any application code runs"
+    },
+    {
+      "kind": "file",
+      "title": "php.net advisory",
+      "lines": [
+        "CVE-2026-109618",
+        "RCE via OOM corruption",
+        "CVE-2026-109619",
+        "RCE via stale global state"
+      ],
+      "tag": "CRITICAL",
+      "at": "code"
+    },
+    {
+      "kind": "docs",
+      "url": "https://www.php.net/archive/2026.php#2026-10-21-4",
+      "title": "PHP 8.5.12 Released!",
+      "text": "There are no complete mitigations, updating is the only safe choice.",
+      "mark": "updating is the only safe choice",
+      "accent": true,
+      "at": "updating"
+    },
+    {
+      "kind": "file",
+      "title": "fixed versions",
+      "lines": [
+        "PHP 8.5.12",
+        "PHP 8.4.27",
+        "PHP 8.3.36",
+        "PHP 8.2.35"
+      ],
+      "tag": "21 OCT 2026",
+      "at": "fixes"
+    },
+    {
+      "kind": "words",
+      "label": "php -v",
+      "lines": [
+        "Check your",
+        "*PHP* today"
+      ],
+      "motif": "rings",
+      "at": "server"
+    }
+  ]
+}
