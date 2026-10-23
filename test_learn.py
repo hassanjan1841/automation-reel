@@ -1704,6 +1704,45 @@ class ReelFormatTest(Sandbox):
             publish.paced({'test': {'name': 'hook_pace', 'arm': 'relaxed'}}, clips)
         self.assertEqual(tempo.call_count, 1)
 
+    def test_a_same_every_time_voice_is_not_retaken_for_nothing(self):
+        """Kokoro says the same text the same way every time, so a retake of unchanged text is skipped; a take after a
+        respelling was learned (new text) still happens, and Fish (a new delivery each time) keeps every retake."""
+        import voice
+        said = []
+
+        class Engine:
+            key, same_every_time = 'kokoro', True
+            def say(self, text):
+                said.append(text)
+                return np.zeros(100, np.float32)
+
+        with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), \
+                contextlib.redirect_stdout(io.StringIO()):
+            audio, faults = voice.clean_take(Engine(), 'jank text')
+            self.assertEqual((len(said), faults), (1, ['jank']))
+            said.clear()
+            with mock.patch.object(voice, 'speakable', side_effect=['jank text', 'jaynk text', 'jaynk text']):
+                voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), 2)                      # the text changed after learning: one more take
+            said.clear()
+            Engine.same_every_time = False
+            voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), voice.FINAL_TAKES)
+
+    def test_the_listener_hears_the_clip_with_silence_after_it(self):
+        import voice
+        heard = {}
+
+        class Model:
+            def transcribe(self, audio, **k):
+                heard['len'] = len(audio)
+                return [], None
+
+        with mock.patch.object(voice, '_whisper', Model()):
+            voice.transcribe(np.ones(render.SR, np.float32))
+        self.assertAlmostEqual(heard['len'] / 16000, 1 + voice.LISTEN_PAD, delta=0.01)
+
     def test_tempo_plays_faster_at_the_same_pitch(self):
         import shutil
         import voice
@@ -2589,6 +2628,42 @@ class WorkflowTest(unittest.TestCase):
         daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
         for var in ('VOICE_PITCH', 'CLAUDE_MODEL', 'GRAPH_VERSION'):
             self.assertIn(f'{var}: ${{{{ vars.{var} }}}}', daily)
+
+    def test_setup_never_waits_on_apt(self):
+        """ffmpeg comes from the static build (apt only as its fallback), and the browser's few missing packages come
+        from the Actions cache (apt only fills it, within 4 minutes): a slow mirror once cost 31 and 11 minutes
+        (2026-10-22). Long jobs print their log as it happens."""
+        for f in (ROOT / '.github/workflows').glob('*.yml'):
+            text = f.read_text()
+            self.assertNotIn('apt-get install -y -q ffmpeg', text, f.name)
+            self.assertNotIn('--with-deps', text, f.name)
+            self.assertNotIn('install-deps', text, f.name)          # the browser action does it, from the cache
+        for name in ('daily-reel', 'showcase', 'demo-preview', 'tests'):     # every workflow that draws with Chromium
+            self.assertIn('uses: ./.github/actions/browser', (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
+        browser = (ROOT / '.github/actions/browser/action.yml').read_text()
+        self.assertIn('actions/cache/restore@', browser)
+        self.assertIn('actions/cache/save@', browser)
+        self.assertIn("if: steps.install.outputs.fresh == 'true'", browser)        # saved only when freshly fetched
+        self.assertIn('timeout 240 sudo bash -c "apt-get update', browser)
+        self.assertIn('exit 0', browser.split('timeout 240')[1])                    # a slow apt never fails the run
+        action = (ROOT / '.github/actions/ffmpeg/action.yml').read_text()
+        self.assertIn('ffmpeg-n8.1-latest-linux64-gpl', action)
+        self.assertIn('apt-get install -y -q ffmpeg', action.split('else')[1])
+        for name in ('daily-reel', 'showcase', 'weekly', 'post-video', 'learn', 'study'):
+            self.assertIn("PYTHONUNBUFFERED: '1'", (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
+        self.assertIn('uses: ./.github/actions/ffmpeg', (ROOT / '.github/workflows/daily-reel.yml').read_text())
+
+    def test_each_part_of_the_run_says_how_long_it_took(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), mock.patch.object(publish.time, 'monotonic', side_effect=[10.0, 52.4]):
+            with publish.took('writing'):
+                pass
+        self.assertEqual(out.getvalue(), 'Took 42s: writing\n')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), self.assertRaises(ValueError):
+            with publish.took('voice'):
+                raise ValueError
+        self.assertIn('voice', out.getvalue())                 # a failing part still says how long it ran
 
     def test_a_posted_reel_is_always_recorded(self):
         """Once posted, reels.json is committed even if a later step (the pronunciation test) fails; otherwise the

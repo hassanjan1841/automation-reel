@@ -42,6 +42,10 @@ concurrency:
   group: study
   cancel-in-progress: false
 
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
 jobs:
   study:
     # Issues only from the repo owner, so nobody else can make the job download things.
@@ -58,7 +62,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Install Python packages
         run: pip install requests pillow numpy faster-whisper==1.2.1 yt-dlp

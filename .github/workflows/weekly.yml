@@ -18,6 +18,10 @@ concurrency:
   group: reels-queue
   cancel-in-progress: false
 
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
 jobs:
   refresh-token:
     # Long-lived Instagram tokens expire after 60 days; a weekly refresh keeps it alive.

@@ -291,6 +291,53 @@ class Auto(unittest.TestCase):
             self.assertEqual(len(list(study.STUDIES.glob('*-digest.md'))), 1)
 
 
+    def test_youtube_block_is_a_note_not_a_failure(self):
+        """YouTube refuses GitHub's servers ("sign in to confirm you're not a bot"): the first refusal skips the rest of
+        the YouTube links, other links are still studied, the report says why, and the run does not fail."""
+        blocked = SimpleNamespace(returncode=1, stdout='', stderr="ERROR: [youtube] x: Sign in to confirm you're not a bot.")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(study.subprocess, 'run', return_value=blocked):
+            with self.assertRaises(study.Blocked):
+                study.fetch('https://www.youtube.com/shorts/x', tmp)
+        other = SimpleNamespace(returncode=1, stdout='', stderr='ERROR: video unavailable')
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(study.subprocess, 'run', return_value=other):
+            with self.assertRaises(RuntimeError) as caught:
+                study.fetch('https://www.youtube.com/shorts/y', tmp)
+            self.assertNotIsInstance(caught.exception, study.Blocked)
+        tried = []
+
+        def fake_study(source, token=None, extra=None):
+            tried.append(source)
+            if 'youtube' in source:
+                raise study.Blocked(source)
+            return f'# Study: {source}'
+
+        picks = [self.pick(c, 9, 'c') for c in ('a', 'b', 'd')]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['study.py', '--auto']), \
+                mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': 'k'}), mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), \
+                mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
+                mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
+                mock.patch.object(study, 'study', side_effect=fake_study), contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.object(study, 'auto_picks', return_value=picks):
+                study.main()                                     # all blocked: no failure
+            self.assertEqual(len(tried), 1)                      # the other YouTube links were not tried
+            text = (Path(tmp) / 'study.md').read_text()
+            self.assertIn('Not studied (3)', text)
+            self.assertIn('Attach the videos', text)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['study.py', 'https://youtu.be/q', 'clip.mp4']), \
+                mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
+                mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
+                mock.patch.object(study, 'study', side_effect=fake_study), contextlib.redirect_stdout(io.StringIO()):
+            study.main()
+            self.assertIn('# Study: clip.mp4', (Path(tmp) / 'study.md').read_text())   # other links still studied
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(sys, 'argv', ['study.py', 'clip.mp4']), \
+                mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
+                mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
+                mock.patch.object(study, 'study', side_effect=RuntimeError('broken file')), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                study.main()                                     # a real failure with nothing studied still fails
+        self.assertTrue(study.youtube('https://youtu.be/q') and study.youtube('https://www.youtube.com/shorts/x'))
+        self.assertFalse(study.youtube('https://www.instagram.com/reel/x/'))
+
 class Breakdown(unittest.TestCase):
     METRICS = {'loudness': [-20.0], 'seconds': 6}
 

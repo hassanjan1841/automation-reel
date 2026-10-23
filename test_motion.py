@@ -130,6 +130,27 @@ class Fields(unittest.TestCase):
             self.assertEqual(set(re.findall(r'\bS\.(\w+)', body)) - set(spec), set(), kind)
 
 
+_module_patches = []
+
+
+def setUpModule():
+    """E2E_CHROMIUM=<path> makes every browser in this file launch that Chromium (as Render does for its own)."""
+    if not os.environ.get('E2E_CHROMIUM'):
+        return
+    try:
+        from playwright.sync_api import BrowserType
+    except ImportError:
+        return
+    launch = BrowserType.launch
+    _module_patches.append(mock.patch.object(BrowserType, 'launch', lambda self, **k: launch(
+        self, **{'executable_path': os.environ['E2E_CHROMIUM'], **k})))
+    _module_patches[-1].start()
+
+
+def tearDownModule():
+    for p in _module_patches:
+        p.stop()
+
 class Render(unittest.TestCase):
     """Every template rendered for real, once, at a small size."""
 
@@ -470,6 +491,48 @@ class Stories(unittest.TestCase):
             code = np.asarray(img.convert('RGB'), dtype=np.float32)[760:1000]
             self.assertGreater((code.min(axis=2) > 200).sum(), 1000)          # the code card's light text (an empty card has none)
 
+
+class ParallelFrames(unittest.TestCase):
+    """stage.frames draws frames in several browsers at once: the frames must be exactly those one browser draws (the
+    page is a pure function of time; each frame waits for every tile to be painted), and a broken page still fails."""
+
+    def test_many_browsers_draw_the_same_frames(self):
+        import importlib.util
+        if importlib.util.find_spec('playwright') is None:
+            self.skipTest('playwright is not installed')
+        import copy
+        import stage
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'tests'))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from e2e_publish import silent_voice
+        from test_learn import STAGED
+        reel = {**copy.deepcopy(STAGED), 'id': 99902}
+        got = {}
+
+        class Caught(Exception):
+            pass
+
+        def catch(page_html, total, frames_path, label='stage'):
+            got.update(page=page_html, total=total)
+            raise Caught
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(stage, 'film', catch), self.assertRaises(Caught):
+            render.render_reel(reel, out_path=Path(tmp) / 'x.mp4', voice=silent_voice(reel['voiceover']))
+        page_html = got['page']
+        start = got['total'] * 0.25          # a stretch with scenes on the move
+        seconds = 1.2
+        # Only the frames from the cut: the page is shifted in time so frame 0 is `start`.
+        page_html = page_html.replace('window.renderAt = t => {', f'window.renderAt = t => {{ t += {start:.3f};', 1)
+        sounds_1, one = stage.frames(page_html, seconds, n_workers=1)
+        sounds_3, three = stage.frames(page_html, seconds, n_workers=3)
+        one, three = list(one), list(three)
+        self.assertEqual(len(one), round(seconds * render.FPS))
+        self.assertEqual(sounds_1, sounds_3)
+        self.assertEqual([i for i, (a, b) in enumerate(zip(one, three)) if a != b], [])
+        self.assertGreater(len(set(one)), len(one) // 2)       # the frames really move
+        with self.assertRaises(RuntimeError) as caught:
+            stage.frames('<script>window.ERROR = "boom";</script>', 1, label='broken', n_workers=2)
+        self.assertIn('boom', str(caught.exception))
 
 class Showcase(unittest.TestCase):
     """The weekly showcase (showcase.py) rendered for real: its length, a sound track and its cover, light and words

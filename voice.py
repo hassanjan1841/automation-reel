@@ -105,6 +105,9 @@ LEXICON = render.ROOT / 'pronounce.json'
 WHISPER_MODEL = 'small.en'
 RESPELL_TRIES = 3
 FINAL_TAKES = 3
+# Silence added after a clip before Whisper hears it: a word right at the clip's end was often dropped, which made it
+# look misheard and cost a retake.
+LISTEN_PAD = 0.5
 # The beat between slides is silence added here, not asked of Fish: a "(long-break)" followed by a cue made it
 # fill the gap with an "uhh" (2026-09-27).
 BEAT = 0.3
@@ -202,6 +205,7 @@ def shift_pitch(clip, semitones):
 
 class Kokoro:
     key = 'kokoro'
+    same_every_time = True      # the same text gives the same audio, so a retake of unchanged text is wasted
 
     def __init__(self, voice=None, speed=1.0, pitch=0.0):
         from kokoro_onnx import Kokoro as Model
@@ -216,6 +220,7 @@ class Kokoro:
 
 class Fish:
     key = 'fish'
+    same_every_time = False
 
     def __init__(self, voice=None, pitch=0.0, speed=1.0):
         self.token = os.environ['FISH_API_KEY'].strip()
@@ -272,6 +277,7 @@ def transcribe(clip, words=False, context=None):
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(WHISPER_MODEL, device='cpu', compute_type='int8',
                                 download_root=str(MODEL_DIR / 'whisper'))
+    clip = np.concatenate([clip, np.zeros(int(LISTEN_PAD * render.SR), dtype=clip.dtype)])
     audio = np.interp(np.arange(0, len(clip), render.SR / 16000), np.arange(len(clip)), clip).astype(np.float32)
     segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words,
                                       initial_prompt=strip_cues(plain(context)) if context else None)
@@ -594,9 +600,13 @@ def split(audio, words, lines):
 def clean_take(engine, text, check=True):
     """The best of up to FINAL_TAKES recordings of text, as (audio, faults). A stray sound left in the best take
     is cut out and the take is verified again, so what comes back is what was checked."""
-    best = None
+    best, said = None, None
     for take in range(FINAL_TAKES):
-        audio = engine.say(speakable(text, engine=engine.key))
+        spoken = speakable(text, engine=engine.key)
+        if spoken == said and getattr(engine, 'same_every_time', False):
+            break               # nothing learned since the last take: the engine would say it the same way again
+        said = spoken
+        audio = engine.say(spoken)
         if not check:
             return audio, []
         faults, strays = verify(audio, text)

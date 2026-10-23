@@ -13,10 +13,12 @@ Usage: python stage.py <id>     render out/reel-<id>.mp4 from reels.json with a 
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 import render
@@ -34,6 +36,12 @@ CHAPTER = 0.6             # seconds a chapter card ("02 TOOLBOX") holds the stag
 LAND = 1.9                # a scene's main move lands at least this long before its slide ends, so the result holds
                           # still for a screenshot and the frame review sees it complete (director.md, section 1)
 JPEG_QUALITY = 92
+# Frames are drawn by several browsers at once (RENDER_WORKERS; default one per CPU core, at most 4). The page is a
+# pure function of time, so frame f comes out the same from any of them. Chromium paints in tiles, and under that
+# load a screenshot taken straight after drawing could keep one tile of the previous frame (seen 2026-10-23), so
+# each frame waits two display frames before its screenshot.
+SETTLE = 'window.renderAt(%r); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))'
+AHEAD = 48                # frames a browser may draw ahead of the encoder, to bound memory
 
 
 # ---------- validation ----------
@@ -864,37 +872,108 @@ def html(reel, slides, words):
                         + json.dumps(params).replace('</', '<\\/') + ';</script>', 1), params
 
 
+def workers():
+    raw = os.environ.get('RENDER_WORKERS', '').strip()
+    return max(1, int(raw)) if raw.isdigit() else max(1, min(4, os.cpu_count() or 1))
+
+
+def frames(page_html, total, label='stage', n_workers=None):
+    """(sounds, an iterator of every frame as JPEG bytes, in order). The frames are drawn by n_workers browsers at
+    once, browser k drawing frames k, k + n, k + 2n...; each opens the same page, which is a pure function of time."""
+    from playwright.sync_api import sync_playwright
+    count = round(total * render.FPS)
+    n = max(1, min(n_workers or workers(), count or 1))
+    shots, failed, sounds = {}, [], []
+    lock = threading.Condition()
+    state = {'next': 0, 'stop': False}
+
+    def draw(k):
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                try:
+                    page = browser.new_page(viewport={'width': CSS_W, 'height': CSS_H}, device_scale_factor=2)
+                    errors = []
+                    page.on('pageerror', lambda e: errors.append(str(e)))
+                    page.set_content(page_html, wait_until='domcontentloaded')
+                    try:
+                        page.wait_for_function('window.READY === true || window.ERROR', timeout=30000)
+                    except Exception:
+                        raise RuntimeError(f'{label} page did not load: {errors or "no error reported"}') from None
+                    if errors or page.evaluate('window.ERROR || null'):
+                        raise RuntimeError(f"{label} page failed: {(errors or [page.evaluate('window.ERROR')])[0][:300]}")
+                    if k == 0:
+                        with lock:
+                            sounds.append(page.evaluate('window.SOUNDS'))
+                            lock.notify_all()
+                    for f in range(k, count, n):
+                        with lock:
+                            lock.wait_for(lambda: state['stop'] or f < state['next'] + AHEAD * n)
+                            if state['stop']:
+                                return
+                        page.evaluate(SETTLE % (f / render.FPS))
+                        shot = page.screenshot(type='jpeg', quality=JPEG_QUALITY)
+                        with lock:
+                            shots[f] = shot
+                            lock.notify_all()
+                finally:
+                    browser.close()
+        except Exception as e:
+            with lock:
+                failed.append(e)
+                lock.notify_all()
+
+    threads = [threading.Thread(target=draw, args=(k,), daemon=True) for k in range(n)]
+    for t in threads:
+        t.start()
+    with lock:
+        lock.wait_for(lambda: sounds or failed)
+        if failed:
+            state['stop'] = True           # the other browsers stop instead of waiting for frames to be taken
+            lock.notify_all()
+    if failed:
+        for t in threads:
+            t.join()
+        raise failed[0]
+
+    def ordered():
+        try:
+            for f in range(count):
+                with lock:
+                    lock.wait_for(lambda: f in shots or failed)
+                    if f not in shots:
+                        raise failed[0]
+                    shot = shots.pop(f)
+                    state['next'] = f + 1
+                    lock.notify_all()
+                yield shot
+        finally:
+            with lock:
+                state['stop'] = True
+                lock.notify_all()
+            for t in threads:
+                t.join()
+
+    return sounds[0], ordered()
+
+
 def film(page_html, total, frames_path, label='stage'):
     """Every frame of a page that draws itself with window.renderAt(t), encoded to frames_path (video only, film grain
     and a soft vignette, the standard encoding). Returns the page's sound effects, [(time, kind)]. Shared with
     showcase.py."""
-    from playwright.sync_api import sync_playwright
+    sounds, shots = frames(page_html, total, label)
     enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'image2pipe', '-vcodec', 'mjpeg',
                             '-framerate', str(render.FPS), '-i', '-',
                             '-vf', 'noise=alls=4:allf=t,vignette=PI/9', '-c:v', 'libx264', '-preset', 'slow',
                             '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
                             '-maxrate', '5M', '-bufsize', '10M', '-g', str(render.FPS * 2), str(frames_path)],
                            stdin=subprocess.PIPE)
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        try:
-            page = browser.new_page(viewport={'width': CSS_W, 'height': CSS_H}, device_scale_factor=2)
-            errors = []
-            page.on('pageerror', lambda e: errors.append(str(e)))
-            page.set_content(page_html, wait_until='domcontentloaded')
-            try:
-                page.wait_for_function('window.READY === true || window.ERROR', timeout=30000)
-            except Exception:
-                raise RuntimeError(f'{label} page did not load: {errors or "no error reported"}') from None
-            if errors or page.evaluate('window.ERROR || null'):
-                raise RuntimeError(f"{label} page failed: {(errors or [page.evaluate('window.ERROR')])[0][:300]}")
-            sounds = page.evaluate('window.SOUNDS')
-            for f in range(round(total * render.FPS)):
-                page.evaluate(f'window.renderAt({f / render.FPS})')
-                enc.stdin.write(page.screenshot(type='jpeg', quality=JPEG_QUALITY))
-        finally:
-            browser.close()
-            enc.stdin.close()
+    try:
+        for shot in shots:
+            enc.stdin.write(shot)
+    finally:
+        shots.close()                      # stops and closes the browsers if the encoder failed part way
+        enc.stdin.close()
     if enc.wait() != 0:
         raise RuntimeError(f'ffmpeg failed on the {label} frames')
     return sounds
