@@ -24,6 +24,7 @@ import random
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 import history
@@ -31,6 +32,12 @@ import render
 from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
+
+
+def effort():
+    """WRITER_EFFORT (low, medium, high...) for the writer, its repair and the hook judge; empty: the CLI's default."""
+    level = os.environ.get('WRITER_EFFORT', '').strip().lower()
+    return ['--effort', level] if level else []
 BATCH = 14
 POST_HOUR_UTC = 12
 
@@ -1554,12 +1561,14 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
 
     # Claude Code CLI in print mode bills the Claude subscription (CLAUDE_CODE_OAUTH_TOKEN), not the API.
+    start = time.monotonic()
     proc = subprocess.run(
         ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
          '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-         '--json-schema', json.dumps(SCHEMA)],
+         '--json-schema', json.dumps(SCHEMA)] + effort(),
         capture_output=True, text=True, timeout=900,
     )
+    print(f'  draft: {time.monotonic() - start:.0f}s', flush=True)
     if proc.returncode != 0:
         raise ValueError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-500:]}')
     result = json.loads(proc.stdout)
@@ -1598,10 +1607,12 @@ def pick_hook(reel):
               f"Points: {json.dumps([p.get('title') for p in reel.get('points', [])], ensure_ascii=False)}\n\n"
               f"Hooks:\n{listing}")
     try:
+        start = time.monotonic()
         proc = subprocess.run(['claude', '-p', prompt, '--model', MODEL, '--system-prompt', HOOK_JUDGE, '--tools', '',
                                '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-                               '--json-schema', json.dumps(HOOK_SCHEMA)],
+                               '--json-schema', json.dumps(HOOK_SCHEMA)] + effort(),
                               capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+        print(f'  hook judge: {time.monotonic() - start:.0f}s', flush=True)
         verdict = json.loads(proc.stdout).get('structured_output') or {}
         best = int(verdict['best'])
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as e:
@@ -1649,12 +1660,14 @@ def repair(reel, errors, rounds=2, extra=None):
         prompt = ('This reel breaks some rules. Fix only these problems and keep everything else as it is, '
                   'including the topic, facts and sources:\n' + '\n'.join(f'- {e}' for e in errors)
                   + '\n\nReturn it as the single item of "reels".\n\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+        start = time.monotonic()
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
              '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-             '--json-schema', json.dumps(SCHEMA)],
+             '--json-schema', json.dumps(SCHEMA)] + effort(),
             capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
         )
+        print(f'  repair round: {time.monotonic() - start:.0f}s', flush=True)
         try:
             fixed = (json.loads(proc.stdout).get('structured_output') or {}).get('reels', [])
         except ValueError:
