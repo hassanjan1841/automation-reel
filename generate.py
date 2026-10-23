@@ -34,10 +34,16 @@ from voice import strip_cues
 MODEL = 'claude-sonnet-5'
 
 
+# The writer's effort: medium wrote reels as good as the default (2026-10-23 benchmark, 6 reels each, every one
+# accurate once the checklist was added) in about 70 % of the time; low got a fact wrong.
+WRITER_EFFORT = 'medium'
+
+
 def effort():
-    """WRITER_EFFORT (low, medium, high...) for the writer, its repair and the hook judge; empty: the CLI's default."""
-    level = os.environ.get('WRITER_EFFORT', '').strip().lower()
-    return ['--effort', level] if level else []
+    """WRITER_EFFORT (low, medium, high...; default medium) for the writer, its repairs and the hook judge;
+    "default" leaves it to the Claude CLI."""
+    level = os.environ.get('WRITER_EFFORT', '').strip().lower() or WRITER_EFFORT
+    return [] if level == 'default' else ['--effort', level]
 BATCH = 14
 POST_HOUR_UTC = 12
 
@@ -1668,12 +1674,51 @@ def tidy(reel):
     return reel
 
 
+ALTERNATIVES_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['alternatives'],
+    'properties': {'alternatives': SCHEMA['properties']['reels']['items']['properties']['alternatives']},
+}
+
+
+def fix_alternatives(reel, errors):
+    """Only the alternative hooks are wrong (the usual case, 2026-10-23): Claude rewrites just those three, which
+    takes seconds, instead of returning the whole reel. The reel with its new alternatives, or None."""
+    vo = reel.get('voiceover') or []
+    prompt = ('These alternative hooks break some rules. Rewrite only the alternatives (3 of them, same ideas, same '
+              'reel) so they pass:\n' + '\n'.join(f'- {e}' for e in errors)
+              + f"\n\nVoiceover line 1 they would replace: {vo[0] if vo else ''}"
+              + f"\nThe whole voiceover has {vo_words(reel)} spoken words; with any alternative in place of line 1 it "
+              f'must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}.'
+              + '\n\nThe reel:\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+    start = time.monotonic()
+    proc = subprocess.run(
+        ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+         '--json-schema', json.dumps(ALTERNATIVES_SCHEMA)] + effort(),
+        capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL,
+    )
+    print(f'  alternatives fix: {time.monotonic() - start:.0f}s', flush=True)
+    try:
+        alts = (json.loads(proc.stdout).get('structured_output') or {}).get('alternatives')
+    except ValueError:
+        alts = None
+    return {**reel, 'alternatives': alts} if alts else None
+
+
 def repair(reel, errors, rounds=2, extra=None):
     """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None.
-    extra(reel) adds checks validate does not know (the day's format)."""
+    extra(reel) adds checks validate does not know (the day's format). When only the alternative hooks are wrong,
+    a quick rewrite of just those comes first."""
     check = (lambda r: validate(r) + extra(r)) if extra else validate
     reel = tidy(reel)
     errors = check(reel)
+    if errors and all(e.startswith('alternative ') for e in errors):
+        fixed = fix_alternatives(reel, errors)
+        if fixed is not None:
+            left = check(fixed)
+            print(f"  alternatives: {'fixed' if not left else '; '.join(left)}")
+            if len(left) < len(errors):
+                reel, errors = fixed, left
     for _ in range(rounds):
         if not errors:
             return reel

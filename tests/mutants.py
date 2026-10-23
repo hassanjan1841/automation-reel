@@ -390,6 +390,9 @@ MUTANTS = [
     ('generate.py', "    prompt += '\\n\\n' + checklist()\n", "", 'speed: drafts without the checklist'),
     ('publish.py', "    if os.environ.get('POST_NOW', '').strip().lower() in ('1', 'true', 'yes'):",
      "    if False:", 'speed: post_now still waits'),
+    ('generate.py', "    if errors and all(e.startswith('alternative ') for e in errors):",
+     "    if False:", 'speed: alternatives repaired by a whole-reel round'),
+    ('generate.py', "WRITER_EFFORT = 'medium'", "WRITER_EFFORT = 'default'", 'speed: the writer back on the CLI default effort'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

@@ -1762,7 +1762,34 @@ class ReelFormatTest(Sandbox):
             self.assertIn(part, generate.checklist())
         self.assertEqual(sent['cmd'][-2:], ['--effort', 'medium'])
         with mock.patch.dict(os.environ, {'WRITER_EFFORT': ''}):
+            self.assertEqual(generate.effort(), ['--effort', generate.WRITER_EFFORT])
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': 'default'}):
             self.assertEqual(generate.effort(), [])
+
+    def test_only_the_alternatives_are_rewritten_when_only_they_are_wrong(self):
+        """The usual repair (2026-10-23) was the alternatives' spoken lines; a quick rewrite of just those comes
+        first, and the whole reel is sent back only when something else is still wrong."""
+        good = copy.deepcopy(VALID)
+        bad = {**good, 'alternatives': [{**a, 'spoken': a['spoken'].split('] ', 1)[-1]} for a in good['alternatives']]}
+        self.assertTrue(generate.validate(bad) and all(e.startswith('alternative ') for e in generate.validate(bad)))
+        calls = []
+
+        def fake(cmd, **k):
+            schema = json.loads(cmd[cmd.index('--json-schema') + 1])
+            calls.append(list(schema['properties']))
+            out = {'alternatives': good['alternatives']} if 'alternatives' in schema['properties'] and len(schema['properties']) == 1 \
+                else {'reels': [good]}
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': out}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            fixed = generate.repair(bad, generate.validate(bad))
+        self.assertEqual(fixed['alternatives'], good['alternatives'])
+        self.assertEqual(calls, [['alternatives']])                      # one quick call, no whole-reel round
+        calls.clear()
+        worse = {**bad, 'hook': 'no highlight here'}
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            generate.repair(worse, generate.validate(worse))
+        self.assertEqual(calls, [['reels']])                             # something else is wrong: the full repair
 
     def test_the_voice_check_hears_a_clip_once_and_caps_bursts(self):
         """verify remembers a clip it already checked (the final report re-heard every unchanged line), and a burst of
