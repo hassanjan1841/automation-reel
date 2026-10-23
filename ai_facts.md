@@ -32,6 +32,27 @@ docs say ..."), never our opinion of it.
 - Subagents: "Each subagent runs in its own context window", "does that work in its own context and returns only
   the summary". https://code.claude.com/docs/en/sub-agents
 
+## Claude Duet (research preview, announced 2026-10-21; read 2026-10-23)
+
+- What it is: "Today, we’re opening a research preview of Claude Duet, a new app where Claude works as a proactive
+  agent. It comes to you with what needs your attention, completes tasks you ask of it, keeps working even when you
+  step away, and checks with you before it acts on your behalf." https://claude.com/resources/articles/claude-duet
+- It asks first: "before it sends a message, makes a payment, signs a document, or deletes anything, it shows you
+  exactly what it’s about to do and waits for your approval. A few things are off-limits even with your approval,
+  like trading securities or moving money between accounts." https://claude.com/resources/articles/claude-duet
+- One thing it does: "Find the Gmail and Slack messages you’ve missed and help you reply." https://claude.com/resources/articles/claude-duet
+- Who can get it: "Claude Duet is available as a research preview to users on the Pro and Max plans in the US,
+  through a waitlist." "It isn't available on Team or Enterprise plans yet". "Claude Duet is available in the US only
+  during the research preview." "Invitations go out in waves, so joining the waitlist doesn't guarantee a specific
+  date." https://support.claude.com/en/articles/17631495-get-started-with-claude-duet
+- Where and what it costs: "It’s available as a standalone app on iOS and Android, and on claude.ai. For this
+  research preview, Claude Duet is included in Pro and Max plans and uses the same usage limits as the rest of
+  Claude." https://claude.com/resources/articles/claude-duet
+- Model: "You can't choose a model. Claude Duet runs on Claude Opus 5.5 and decides how much effort a job needs."
+  https://support.claude.com/en/articles/17631495-get-started-with-claude-duet
+- Its limits: "it still might misread a thread or miscalibrate what’s urgent" and "it can’t yet show you its
+  browser". https://claude.com/resources/articles/claude-duet
+
 ## Other tools
 
 - GitHub Copilot code review: "By default, Copilot's reviews do not count toward required approvals for the pull

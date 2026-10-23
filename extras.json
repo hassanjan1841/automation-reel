@@ -31,5 +31,12 @@
     "caption": "Two critical PHP bugs can let a request with no login run code on your server.\nOn mod_php, php.net shows the attack can start before any application code runs (CVE-2026-109618, CVE-2026-109619). The fix: update to PHP 8.5.12, 8.4.27, 8.3.36 or 8.2.35 (21 October 2026); php.net says \"There are no complete mitigations, updating is the only safe choice.\" Source: php.net/archive/2026.php\nWhich version runs your server? 👇\n\n#php #websecurity #cybersecurity #webdev",
     "media_id": "17934878313403565",
     "posted_at": "2026-10-23T08:33:39+00:00"
+  },
+  {
+    "video": "videos/claude-duet.mp4",
+    "caption_file": "videos/claude-duet.txt",
+    "cover": "videos/claude-duet-cover.jpg",
+    "post_at": "2026-10-24T16:00:00+00:00",
+    "media_id": null
   }
 ]
