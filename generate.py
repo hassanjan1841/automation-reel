@@ -1547,6 +1547,25 @@ The playbook (researched rules for what makes people stay, save and send; follow
 """ + playbook()
 
 
+def checklist():
+    """The rules drafts broke most often (2026-10-23 benchmark: almost every draft needed a repair round, mostly for
+    the alternatives' spoken lines), checked by the writer before it answers. Built from the validator's own
+    numbers so the two never disagree; validate stays the judge."""
+    return f"""Before you answer, check every reel against this list; each miss costs a repair round:
+- Voiceover: exactly 5 lines, {VO_MIN_WORDS} to {VO_MAX_WORDS} spoken words in total (count them), every line opens
+  with a [cue], a fresh [cue] at least every {CUE_GAP} spoken words, line 1 opens with a high-energy cue, at most one
+  low-energy cue, at least 5 different cues. Point lines add to their slide instead of repeating its text.
+- Each of the 3 alternatives: a 3 to 6 word hook with one *highlight*, a hook_type, and a spoken line that opens
+  with a high-energy cue, has at most 14 words, a fresh cue at least every {CUE_GAP} words, and is within a word or
+  two of voiceover line 1's length (it replaces line 1, so the total must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}).
+- hook_visual is one of {', '.join(HOOK_VISUALS)}, complete on the first frame.
+- At most one animation as a point's first visual, and every animation choice is followed by a flat choice
+  ({', '.join(FLAT_VISUALS)}).
+- "reveal" point's first visual finishes on screen: one of {', '.join(REVEAL_VISUALS)}.
+- predict: 2 or 3 different choices of max 14 characters, exactly one equal to the real output.
+- The caption's last line is a question ending with 👇; the cta is a question with exactly one *highlight*."""
+
+
 def ask_claude(plan, existing_hooks, feedback=None, context=None):
     lines = [f'{i + 1}. {date:%A}: {label}' for i, (date, (_, label)) in enumerate(plan)]
     prompt = (
@@ -1559,6 +1578,7 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
         prompt += '\n\n' + context
     if feedback:
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
+    prompt += '\n\n' + checklist()
 
     # Claude Code CLI in print mode bills the Claude subscription (CLAUDE_CODE_OAUTH_TOKEN), not the API.
     start = time.monotonic()
