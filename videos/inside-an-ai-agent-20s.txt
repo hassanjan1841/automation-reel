@@ -1,0 +1,6 @@
+What an AI coding agent does after you hit Enter
+Your prompt becomes tokens, each token weighs the ones before it, the model predicts the next token, then the agent runs the tests and loops until they pass.
+The bars are an illustration, not real model values. Animated in code with Claude.
+Which step did you not know? 👇
+
+#ai #aiagents #llm #programming #webdev
