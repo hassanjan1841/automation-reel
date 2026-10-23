@@ -1,0 +1,5 @@
+{
+  "title": "PHP2Shell: the attack can start before your code runs",
+  "description": "PHP released 8.5.12, 8.4.27, 8.3.36 and 8.2.35 on 21 October 2026 to fix two critical flaws, CVE-2026-109618 and CVE-2026-109619, that can allow unauthenticated remote code execution.\n\nFrom the php.net security advisory: \"We consider the risk highest for mod_php, with a demonstrated exploit where an unauthenticated request can trigger the attack before any application code runs.\" And from the release notes: \"There are no complete mitigations, updating is the only safe choice.\"\n\nSources:\nhttps://www.php.net/archive/2026.php#2026-10-21-5\nhttps://www.php.net/archive/2026.php#2026-10-21-4\n\nNarrated with an AI voice. Sound effects only, no music.\n\n#php #websecurity #cybersecurity #Shorts",
+  "tags": ["PHP", "PHP2Shell", "CVE-2026-109618", "CVE-2026-109619", "web security", "PHP update"]
+}

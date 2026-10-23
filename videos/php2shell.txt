@@ -1,0 +1,5 @@
+PHP2Shell: critical PHP remote code execution flaws, CVE-2026-109618 and CVE-2026-109619
+Fixed in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 on 21 October 2026. php.net says there are no complete mitigations: updating is the only safe choice. Source: the php.net security advisory (php.net/archive/2026.php).
+So what does your server run? 👇
+
+#php #websecurity #cybersecurity #webdev
