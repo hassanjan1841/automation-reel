@@ -19,5 +19,11 @@
     "caption": "How an AI coding agent works, in 60 seconds\nPrompt, tokens, attention, the next token, tools, and the loop that repeats until the checks pass.\nThe bars and numbers are an illustration, not real model values. Animated in code with Claude.\nWhich step surprised you? 👇\n\n#ai #aiagents #llm #programming #webdev",
     "media_id": "18221160226344059",
     "posted_at": "2026-10-22T12:03:44+00:00"
+  },
+  {
+    "video": "videos/php2shell.mp4",
+    "caption": "PHP2Shell: critical PHP remote code execution flaws, CVE-2026-109618 and CVE-2026-109619\nFixed in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 on 21 October 2026. php.net says there are no complete mitigations: updating is the only safe choice. Source: the php.net security advisory (php.net/archive/2026.php).\nSo what does your server run? 👇\n\n#php #websecurity #cybersecurity #webdev",
+    "media_id": "18153246685547514",
+    "posted_at": "2026-10-23T05:09:30+00:00"
   }
 ]
