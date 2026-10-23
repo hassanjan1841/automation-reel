@@ -372,7 +372,7 @@ class TopicTestTest(Sandbox):
         self.assertFalse(generate.fact_sources({'sources': ['https://example.com/evil-location']}))  # quoted, not cited
         self.assertGreaterEqual(len(urls), 10)
         self.assertTrue(all(re.match(r'https://(code\.claude\.com|docs\.github\.com|cursor\.com|modelcontextprotocol\.io|'
-                                     r'platform\.claude\.com)/', u) for u in urls), urls)
+                                     r'platform\.claude\.com|claude\.com|support\.claude\.com)/', u) for u in urls), urls)
 
 
 class TrendsTest(Sandbox):
