@@ -60,7 +60,9 @@ PILLARS = {
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
                      'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
                      'A template, never an invented conversation', 'Freelance playbook'),
-    4: ('concept', 'Tech concept explained simply, or myth vs fact about a tool or practice', 'Explained'),
+    4: ('concept', 'Tech concept explained simply as a small story: the problem in plain words first (who it '
+                   'hurts and how), then what is going on, then the fix. Clear, never a mystery. Or myth vs fact '
+                   'about a tool or practice', 'Explained'),
     5: ('relatable', 'Ranked: three real tools or habits for one job, ranked with the real reason for each, shown '
                      'with real code, docs or screenshots, and a clear verdict on which to pick', 'Ranked'),
     6: ('saas', 'Build X in one afternoon: one real feature with Next.js, Supabase or Stripe (auth, checkout, '

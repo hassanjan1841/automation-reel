@@ -75,6 +75,9 @@ made by a motion designer, never like slides a beginner put together.
 
 ## 6. Truth on screen
 
+- Clear before clever: news and explainers say the problem plainly in the first second (who it hurts and what can
+  happen), then tell what happened, then the fix. No teaser or riddle hooks; a beginner follows every line.
+
 - Every value shown is real: real program output, real star and view counts at the time, numbers quoted from the
   source. A counter ticks up to the real number, never past it.
 - Every result follows from the steps on screen: the key pressed as many times as it really takes, typing once at
@@ -93,6 +96,9 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-10-23: On the PHP2Shell news reel: "it is in suspense, it should be clear and told in a simplified way, a
+  small story: first tell the problem, then the story or the solution, not some mystery". News and explainers now
+  open on the problem said plainly, then the story, then the fix (section 6, and playbook.md, "The script").
 - 2026-10-21: Liked @ibrahimm_aali's "Halal video editing" reel (its talking head and stock eyes are not for us):
   warm light leaks over the cuts, giant words landing as outlines that fill letter by letter, a small label over a
   big word, an abstract motif behind it, "No.1" over each chapter's name. "Go for all": in the stage kit (light
