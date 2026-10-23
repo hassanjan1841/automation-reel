@@ -1717,6 +1717,7 @@ class ReelFormatTest(Sandbox):
                 return np.zeros(100, np.float32)
 
         with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), \
                 contextlib.redirect_stdout(io.StringIO()):
             audio, faults = voice.clean_take(Engine(), 'jank text')
             self.assertEqual((len(said), faults), (1, ['jank']))
