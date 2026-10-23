@@ -16,6 +16,10 @@ on:
         description: Render only, do not post
         type: boolean
         default: true
+      post_now:
+        description: Post as soon as it is ready instead of at the slot's time (counts as that slot's reel today)
+        type: boolean
+        default: false
       slot:
         description: Which reel of the day (1 how-to at 12:00, 2 evening reel at 16:00, 3 at 20:00 UTC)
         type: choice
@@ -88,6 +92,7 @@ jobs:
         id: publish
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          POST_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.post_now && 'true' || 'false' }}
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

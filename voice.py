@@ -10,9 +10,11 @@ Env:
   VOICE_SPEED    speaking speed (default 1.0, about 2.6 words a second; 1.1 felt rushed)
   FISH_API_KEY   Fish Audio API key
   FISH_MODEL     default s2.1-pro-free
+  VOICE_BUDGET   seconds the retakes may run after the first take (default 150); then the best take so far is used
 """
 
 import difflib
+import hashlib
 import io
 import json
 import os
@@ -105,6 +107,16 @@ LEXICON = render.ROOT / 'pronounce.json'
 WHISPER_MODEL = 'small.en'
 RESPELL_TRIES = 3
 FINAL_TAKES = 3
+# Retakes stop after this many seconds (VOICE_BUDGET) and the best take so far is used, as it would be after the last
+# retake anyway. 2026-10-23: two lines Fish kept saying the same way ran every retake, then the whole voiceover again,
+# 566 s in all, and the second pass came out worse than the first.
+RETAKE_BUDGET = 150
+_deadline = None
+
+
+def out_of_time():
+    """True once the retakes have used up their time (VOICE_BUDGET) in this voiceover."""
+    return _deadline is not None and time.monotonic() > _deadline
 # Silence added after a clip before Whisper hears it: a word right at the clip's end was often dropped, which made it
 # look misheard and cost a retake.
 LISTEN_PAD = 0.5
@@ -268,18 +280,23 @@ _whisper = None
 _written_lower = set()
 
 
-def transcribe(clip, words=False, context=None):
-    """The transcript, or with words=True a list of (word, start, end) in seconds. With context (the script),
-    the recognizer spells names the way a viewer who reads the slides would hear them ("sass" as SaaS), so
-    only real mispronunciations are left as mismatches."""
+def model():
+    """The Whisper model, loaded once."""
     global _whisper
     if _whisper is None:
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(WHISPER_MODEL, device='cpu', compute_type='int8',
                                 download_root=str(MODEL_DIR / 'whisper'))
+    return _whisper
+
+
+def transcribe(clip, words=False, context=None):
+    """The transcript, or with words=True a list of (word, start, end) in seconds. With context (the script),
+    the recognizer spells names the way a viewer who reads the slides would hear them ("sass" as SaaS), so
+    only real mispronunciations are left as mismatches."""
     clip = np.concatenate([clip, np.zeros(int(LISTEN_PAD * render.SR), dtype=clip.dtype)])
     audio = np.interp(np.arange(0, len(clip), render.SR / 16000), np.arange(len(clip)), clip).astype(np.float32)
-    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words,
+    segments, _ = model().transcribe(audio, language='en', beam_size=5, word_timestamps=words,
                                       initial_prompt=strip_cues(plain(context)) if context else None)
     if words:
         return [(w.word, w.start, w.end) for s in segments for w in s.words]
@@ -504,16 +521,36 @@ def islands(audio, gap=0.12, shortest=0.08):
     return found
 
 
+def burst_tokens(seconds):
+    """The most words a burst of this length can hold, in tokens, with room to spare (speech runs 2 to 3 words a
+    second, about 1.3 tokens a word)."""
+    return int(16 + 8 * seconds)
+
+
 def heard_alone(audio, start, end):
     """What one burst of sound says on its own, with no script to lean on, fillers included."""
-    transcribe(audio[:render.SR // 10])  # loads the model
     c = audio[int(max(0.0, start - 0.05) * render.SR):int((end + 0.05) * render.SR)]
     c = np.interp(np.arange(0, len(c), render.SR / 16000), np.arange(len(c)), c).astype(np.float32)
-    segments, _ = _whisper.transcribe(c, language='en', beam_size=5, initial_prompt=FILLER_PROMPT)
+    # A burst of noise can make Whisper invent a long repeated line and retry it at every temperature, which cost
+    # 5 to 9 seconds a burst; a burst of n seconds holds at most a few words a second, so its words are capped.
+    segments, _ = model().transcribe(c, language='en', beam_size=5, initial_prompt=FILLER_PROMPT,
+                                     max_new_tokens=burst_tokens(end - start))
     return ' '.join(x.text for x in segments).strip()
 
 
+_verified = {}
+
+
 def verify(audio, text):
+    """verify_once, remembered: the same audio and text (a line checked again in the final report) is heard once."""
+    key = (hashlib.sha1(np.ascontiguousarray(audio).tobytes()).hexdigest(), text)
+    if key not in _verified:
+        _verified[key] = verify_once(audio, text)
+    faults, strays = _verified[key]
+    return list(faults), list(strays)
+
+
+def verify_once(audio, text):
     """Everything wrong with a take, listened to four ways, as (faults, strays):
     - with the script as a hint: names and tech words the voice got wrong (these get respelled);
     - without it: an everyday word said badly, which the hint papers over ("Check" as "you correct");
@@ -602,6 +639,9 @@ def clean_take(engine, text, check=True):
     is cut out and the take is verified again, so what comes back is what was checked."""
     best, said = None, None
     for take in range(FINAL_TAKES):
+        if take and out_of_time():
+            print('  out of retake time; keeping the best take so far')
+            break
         spoken = speakable(text, engine=engine.key)
         if spoken == said and getattr(engine, 'same_every_time', False):
             break               # nothing learned since the last take: the engine would say it the same way again
@@ -647,6 +687,9 @@ def say_whole(engine, lines, check=True):
         faults, strays = verify(clips[i], line)
         if not faults and not strays:
             continue
+        if out_of_time():
+            print(f'  line {i + 1} still unclear, but out of retake time; keeping it as recorded')
+            continue
         print(f"  line {i + 1} unclear ({', '.join(faults + [repr(h) for h, *_ in strays])}), recording it on its own")
         clip, left = say_checked(engine, line, with_faults=True)
         if len(left) < len(faults) + len(strays):
@@ -680,11 +723,21 @@ def by_line(engine, lines, check=True):
 
 
 def synthesize(lines, voice=None, check=True):
+    global _deadline
+    raw = os.environ.get('VOICE_BUDGET', '').strip()
+    _deadline = time.monotonic() + (float(raw) if raw else RETAKE_BUDGET)
+    try:
+        return _synthesize(lines, voice, check)
+    finally:
+        _deadline = None
+
+
+def _synthesize(lines, voice=None, check=True):
     eng = engine(voice)
     if eng.key == 'fish':
         try:
             first = say_whole(eng, lines, check)
-            if first.verdict in ('clean', 'not checked'):
+            if first.verdict in ('clean', 'not checked') or out_of_time():
                 return first
             # Still unclear after every retake and per-line fix: record the whole reel once more, keep the cleaner.
             print('  voice not clean, recording the whole voiceover once more')

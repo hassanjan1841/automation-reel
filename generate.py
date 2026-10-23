@@ -24,6 +24,7 @@ import random
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 import history
@@ -31,6 +32,19 @@ import render
 from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
+
+
+# The writer's effort stays the Claude CLI's default: lower efforts were faster in a benchmark (2026-10-23), but low
+# got a fact wrong and a medium draft invented a grep output that the frame review caught as dishonest, which cost a
+# whole rewrite. The checklist and fix_alternatives are what cut the writing time without that risk.
+WRITER_EFFORT = 'default'
+
+
+def effort():
+    """WRITER_EFFORT (low, medium, high...) for the writer, its repairs and the hook judge; unset or "default" leaves it
+    to the Claude CLI."""
+    level = os.environ.get('WRITER_EFFORT', '').strip().lower() or WRITER_EFFORT
+    return [] if level == 'default' else ['--effort', level]
 BATCH = 14
 POST_HOUR_UTC = 12
 
@@ -1540,6 +1554,25 @@ The playbook (researched rules for what makes people stay, save and send; follow
 """ + playbook()
 
 
+def checklist():
+    """The rules drafts broke most often (2026-10-23 benchmark: almost every draft needed a repair round, mostly for
+    the alternatives' spoken lines), checked by the writer before it answers. Built from the validator's own
+    numbers so the two never disagree; validate stays the judge."""
+    return f"""Before you answer, check every reel against this list; each miss costs a repair round:
+- Voiceover: exactly 5 lines, {VO_MIN_WORDS} to {VO_MAX_WORDS} spoken words in total (count them), every line opens
+  with a [cue], a fresh [cue] at least every {CUE_GAP} spoken words, line 1 opens with a high-energy cue, at most one
+  low-energy cue, at least 5 different cues. Point lines add to their slide instead of repeating its text.
+- Each of the 3 alternatives: a 3 to 6 word hook with one *highlight*, a hook_type, and a spoken line that opens
+  with a high-energy cue, has at most 14 words, a fresh cue at least every {CUE_GAP} words, and is within a word or
+  two of voiceover line 1's length (it replaces line 1, so the total must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}).
+- hook_visual is one of {', '.join(HOOK_VISUALS)}, complete on the first frame.
+- At most one animation as a point's first visual, and every animation choice is followed by a flat choice
+  ({', '.join(FLAT_VISUALS)}).
+- "reveal" point's first visual finishes on screen: one of {', '.join(REVEAL_VISUALS)}.
+- predict: 2 or 3 different choices of max 14 characters, exactly one equal to the real output.
+- The caption's last line is a question ending with 👇; the cta is a question with exactly one *highlight*."""
+
+
 def ask_claude(plan, existing_hooks, feedback=None, context=None):
     lines = [f'{i + 1}. {date:%A}: {label}' for i, (date, (_, label)) in enumerate(plan)]
     prompt = (
@@ -1552,14 +1585,17 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
         prompt += '\n\n' + context
     if feedback:
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
+    prompt += '\n\n' + checklist()
 
     # Claude Code CLI in print mode bills the Claude subscription (CLAUDE_CODE_OAUTH_TOKEN), not the API.
+    start = time.monotonic()
     proc = subprocess.run(
         ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
          '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-         '--json-schema', json.dumps(SCHEMA)],
+         '--json-schema', json.dumps(SCHEMA)] + effort(),
         capture_output=True, text=True, timeout=900,
     )
+    print(f'  draft: {time.monotonic() - start:.0f}s', flush=True)
     if proc.returncode != 0:
         raise ValueError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-500:]}')
     result = json.loads(proc.stdout)
@@ -1598,10 +1634,12 @@ def pick_hook(reel):
               f"Points: {json.dumps([p.get('title') for p in reel.get('points', [])], ensure_ascii=False)}\n\n"
               f"Hooks:\n{listing}")
     try:
+        start = time.monotonic()
         proc = subprocess.run(['claude', '-p', prompt, '--model', MODEL, '--system-prompt', HOOK_JUDGE, '--tools', '',
                                '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-                               '--json-schema', json.dumps(HOOK_SCHEMA)],
+                               '--json-schema', json.dumps(HOOK_SCHEMA)] + effort(),
                               capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+        print(f'  hook judge: {time.monotonic() - start:.0f}s', flush=True)
         verdict = json.loads(proc.stdout).get('structured_output') or {}
         best = int(verdict['best'])
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as e:
@@ -1637,24 +1675,65 @@ def tidy(reel):
     return reel
 
 
+ALTERNATIVES_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['alternatives'],
+    'properties': {'alternatives': SCHEMA['properties']['reels']['items']['properties']['alternatives']},
+}
+
+
+def fix_alternatives(reel, errors):
+    """Only the alternative hooks are wrong (the usual case, 2026-10-23): Claude rewrites just those three, which
+    takes seconds, instead of returning the whole reel. The reel with its new alternatives, or None."""
+    vo = reel.get('voiceover') or []
+    prompt = ('These alternative hooks break some rules. Rewrite only the alternatives (3 of them, same ideas, same '
+              'reel) so they pass:\n' + '\n'.join(f'- {e}' for e in errors)
+              + f"\n\nVoiceover line 1 they would replace: {vo[0] if vo else ''}"
+              + f"\nThe whole voiceover has {vo_words(reel)} spoken words; with any alternative in place of line 1 it "
+              f'must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}.'
+              + '\n\nThe reel:\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+    start = time.monotonic()
+    proc = subprocess.run(
+        ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+         '--json-schema', json.dumps(ALTERNATIVES_SCHEMA)] + effort(),
+        capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL,
+    )
+    print(f'  alternatives fix: {time.monotonic() - start:.0f}s', flush=True)
+    try:
+        alts = (json.loads(proc.stdout).get('structured_output') or {}).get('alternatives')
+    except ValueError:
+        alts = None
+    return {**reel, 'alternatives': alts} if alts else None
+
+
 def repair(reel, errors, rounds=2, extra=None):
     """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None.
-    extra(reel) adds checks validate does not know (the day's format)."""
+    extra(reel) adds checks validate does not know (the day's format). When only the alternative hooks are wrong,
+    a quick rewrite of just those comes first."""
     check = (lambda r: validate(r) + extra(r)) if extra else validate
     reel = tidy(reel)
     errors = check(reel)
+    if errors and all(e.startswith('alternative ') for e in errors):
+        fixed = fix_alternatives(reel, errors)
+        if fixed is not None:
+            left = check(fixed)
+            print(f"  alternatives: {'fixed' if not left else '; '.join(left)}")
+            if len(left) < len(errors):
+                reel, errors = fixed, left
     for _ in range(rounds):
         if not errors:
             return reel
         prompt = ('This reel breaks some rules. Fix only these problems and keep everything else as it is, '
                   'including the topic, facts and sources:\n' + '\n'.join(f'- {e}' for e in errors)
                   + '\n\nReturn it as the single item of "reels".\n\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+        start = time.monotonic()
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
              '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-             '--json-schema', json.dumps(SCHEMA)],
+             '--json-schema', json.dumps(SCHEMA)] + effort(),
             capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
         )
+        print(f'  repair round: {time.monotonic() - start:.0f}s', flush=True)
         try:
             fixed = (json.loads(proc.stdout).get('structured_output') or {}).get('reels', [])
         except ValueError:

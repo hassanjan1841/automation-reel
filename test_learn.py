@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -372,7 +373,7 @@ class TopicTestTest(Sandbox):
         self.assertFalse(generate.fact_sources({'sources': ['https://example.com/evil-location']}))  # quoted, not cited
         self.assertGreaterEqual(len(urls), 10)
         self.assertTrue(all(re.match(r'https://(code\.claude\.com|docs\.github\.com|cursor\.com|modelcontextprotocol\.io|'
-                                     r'platform\.claude\.com)/', u) for u in urls), urls)
+                                     r'platform\.claude\.com|claude\.com|support\.claude\.com)/', u) for u in urls), urls)
 
 
 class TrendsTest(Sandbox):
@@ -1743,6 +1744,119 @@ class ReelFormatTest(Sandbox):
             voice.transcribe(np.ones(render.SR, np.float32))
         self.assertAlmostEqual(heard['len'] / 16000, 1 + voice.LISTEN_PAD, delta=0.01)
 
+    def test_every_draft_request_carries_the_checklist(self):
+        """The rules drafts broke most (the alternatives' spoken lines above all) are listed in every draft request,
+        with the validator's own limits, so the first draft passes instead of costing a repair round."""
+        sent = {}
+
+        def fake(cmd, **k):
+            sent['prompt'] = cmd[cmd.index('-p') + 1]
+            sent['cmd'] = cmd
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': []}}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()), \
+                mock.patch.dict(os.environ, {'WRITER_EFFORT': 'medium'}):
+            generate.ask_claude([(date(2026, 10, 23), ('devtip', 'Dev tip'))], ['Old hook'])
+        self.assertTrue(sent['prompt'].endswith(generate.checklist()))
+        for part in (f'{generate.VO_MIN_WORDS} to {generate.VO_MAX_WORDS}', 'at most 14 words', 'alternatives',
+                     ', '.join(generate.REVEAL_VISUALS), ', '.join(generate.HOOK_VISUALS)):
+            self.assertIn(part, generate.checklist())
+        self.assertEqual(sent['cmd'][-2:], ['--effort', 'medium'])
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': ''}):
+            self.assertEqual(generate.effort(), [])                       # the CLI's own effort: quality first
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': 'default'}):
+            self.assertEqual(generate.effort(), [])
+
+    def test_only_the_alternatives_are_rewritten_when_only_they_are_wrong(self):
+        """The usual repair (2026-10-23) was the alternatives' spoken lines; a quick rewrite of just those comes
+        first, and the whole reel is sent back only when something else is still wrong."""
+        good = copy.deepcopy(VALID)
+        bad = {**good, 'alternatives': [{**a, 'spoken': a['spoken'].split('] ', 1)[-1]} for a in good['alternatives']]}
+        self.assertTrue(generate.validate(bad) and all(e.startswith('alternative ') for e in generate.validate(bad)))
+        calls = []
+
+        def fake(cmd, **k):
+            schema = json.loads(cmd[cmd.index('--json-schema') + 1])
+            calls.append(list(schema['properties']))
+            out = {'alternatives': good['alternatives']} if 'alternatives' in schema['properties'] and len(schema['properties']) == 1 \
+                else {'reels': [good]}
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': out}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            fixed = generate.repair(bad, generate.validate(bad))
+        self.assertEqual(fixed['alternatives'], good['alternatives'])
+        self.assertEqual(calls, [['alternatives']])                      # one quick call, no whole-reel round
+        calls.clear()
+        worse = {**bad, 'hook': 'no highlight here'}
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            generate.repair(worse, generate.validate(worse))
+        self.assertEqual(calls, [['reels']])                             # something else is wrong: the full repair
+
+    def test_the_voice_check_hears_a_clip_once_and_caps_bursts(self):
+        """verify remembers a clip it already checked (the final report re-heard every unchanged line), and a burst of
+        sound is decoded with a word cap (noise made Whisper invent long repeated lines and retry them)."""
+        import voice
+        heard = []
+        with mock.patch.object(voice, 'verify_once', side_effect=lambda a, t: (heard.append(t) or ['x'], [])):
+            voice._verified.clear()
+            clip = np.ones(1000, np.float32)
+            first = voice.verify(clip, 'a line')
+            first[0].append('changed by the caller')
+            self.assertEqual(voice.verify(clip.copy(), 'a line'), (['x'], []))   # same audio and text: remembered
+            voice.verify(clip, 'another line')
+            voice.verify(clip * 0.5, 'a line')
+        self.assertEqual(heard, ['a line', 'another line', 'a line'])
+        calls = []
+
+        class Model:
+            def transcribe(self, audio, **k):
+                calls.append(k)
+                return [], None
+
+        with mock.patch.object(voice, '_whisper', Model()):
+            voice.heard_alone(np.zeros(render.SR * 3), 1.0, 1.5)
+        self.assertEqual(calls[0]['max_new_tokens'], voice.burst_tokens(0.5))
+        self.assertEqual(len(calls), 1)                                    # no throwaway call to load the model
+        self.assertGreaterEqual(voice.burst_tokens(4), 40)                 # a long burst of real speech fits
+
+    def test_retakes_stop_when_their_time_is_up(self):
+        """VOICE_BUDGET: the first take always happens; once the retakes' time is used up the best take so far is kept
+        (2026-10-23: endless retakes of two stubborn lines cost 566 s and came out worse)."""
+        import voice
+        said = []
+
+        class Engine:
+            key, same_every_time = 'fish', False
+            def say(self, text):
+                said.append(text)
+                return np.zeros(100, np.float32)
+
+        with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), contextlib.redirect_stdout(io.StringIO()):
+            voice._deadline = None
+            voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), voice.FINAL_TAKES)                 # no budget running: every retake
+            said.clear()
+            voice._deadline = time.monotonic() - 1
+            try:
+                voice.clean_take(Engine(), 'jank text')
+            finally:
+                voice._deadline = None
+            self.assertEqual(len(said), 1)                                 # out of time: the first take only
+        seen = {}
+
+        def inner(lines, voice_name=None, check=True):
+            seen['left'] = voice._deadline - time.monotonic()
+            return 'clips'
+
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': '90'}):
+            self.assertEqual(voice.synthesize(['a line']), 'clips')
+        self.assertTrue(85 < seen['left'] <= 90)
+        self.assertIsNone(voice._deadline)                                 # reset for the next voiceover
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': ''}):
+            voice.synthesize(['a line'])
+        self.assertTrue(voice.RETAKE_BUDGET - 5 < seen['left'] <= voice.RETAKE_BUDGET)
+
     def test_tempo_plays_faster_at_the_same_pitch(self):
         import shutil
         import voice
@@ -2652,6 +2766,22 @@ class WorkflowTest(unittest.TestCase):
         for name in ('daily-reel', 'showcase', 'weekly', 'post-video', 'learn', 'study'):
             self.assertIn("PYTHONUNBUFFERED: '1'", (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
         self.assertIn('uses: ./.github/actions/ffmpeg', (ROOT / '.github/workflows/daily-reel.yml').read_text())
+
+    def test_post_now_skips_the_wait(self):
+        """A video made on demand (POST_NOW) posts as soon as it is ready; otherwise the run sleeps until POST_AT_UTC."""
+        now = datetime.now(timezone.utc)
+        if now.hour == 23 and now.minute >= 28:
+            self.skipTest('the post time would wrap past midnight')
+        soon = (now + timedelta(minutes=30)).strftime('%H:%M')
+        with mock.patch.object(publish.time, 'sleep') as sleep, contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': 'true'}):
+                publish.wait_for_post_time()
+            self.assertFalse(sleep.called)
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': ''}):
+                publish.wait_for_post_time()
+            self.assertTrue(sleep.called)
+        self.assertIn("POST_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.post_now",
+                      (ROOT / '.github/workflows/daily-reel.yml').read_text())
 
     def test_each_part_of_the_run_says_how_long_it_took(self):
         out = io.StringIO()
