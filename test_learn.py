@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parent
 
 # A reel that passes generate.validate: a statement hook, 43 spoken words.
 VALID = {
-    'pillar': 'concept', 'series': 'Explained', 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
+    'pillar': 'concept', 'series': 'Explained', 'reveal': 3, 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
     'payoff': 'Delete the cached key on every write so readers never get the old row',
     'hook': 'Your *cache* serves old data', 'hook_type': 'problem',
     'hook_visual': {'type': 'code', 'language': 'ts', 'title': 'profile.ts',
@@ -1607,6 +1607,12 @@ class ReelFormatTest(Sandbox):
         self.assertIn('exactly one', ' '.join(generate.pillar_errors(two, 'relatable', myth)))
         asked = {**VALID, 'hook': QUESTION_HOOK, 'test': {'name': 'hook_style', 'arm': 'question'}}
         self.assertEqual(generate.pillar_errors(asked, 'relatable', myth), [])  # a test's question option wins
+        # 2026-10-23: the answer is held to the end, proven on the last point.
+        early = {k: v for k, v in VALID.items() if k != 'reveal'}
+        self.assertIn('proves the real output on its last point', ' '.join(generate.pillar_errors(early, 'relatable', myth)))
+        self.assertIn('last point', ' '.join(generate.pillar_errors({**VALID, 'reveal': 2}, 'relatable', myth)))
+        self.assertEqual(generate.pillar_errors(early, 'concept', 'Explained'), [])  # myths only
+        self.assertNotIn('news', generate.SLOT3_FORMATS)                              # news left the rotation
 
     def test_generate_holds_the_days_myth_to_its_rules(self):
         diff = {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'let a = 1', 'after': 'const a = 1'}

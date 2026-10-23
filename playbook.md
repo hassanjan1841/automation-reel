@@ -54,6 +54,16 @@ Update, 30 reels from 2026-10-05 to 10-18 (measured 2026-10-19):
   held beat, then the real output and the right chip stamped. A quiz gives people a reason to stay (find out if
   they were right) and to send it on (quiz a friend).
 
+Update, live numbers for the last 60 posts (2026-10-23):
+- Almost every reel stops at 120 to 230 views. Only three broke out (await 2,126, "fetch doesn't send cookies"
+  1,433, CORS 1,107), each holding people 6.5 to 10 seconds. Reels with a low skip rate but only 4 to 6 seconds
+  watched (if statement, cd -) stayed near 140: the hook gets them in, watch time decides the reach.
+- Hold the answer to the end. Both breakout myths proved the real output on the last point (reveal 3); the myths
+  that showed it on point 2 (typeof null, useEffect, Array.sort) stopped at 170 to 210 views. Points 1 and 2
+  build the expectation, point 3 proves the real output.
+- Questions on the cover are 5 of the 8 worst openings. News, freelance and client topics are out of the
+  rotation (news averaged 94 views at +3 skip, freelance 44, client skits 8).
+
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 
 In the first second a viewer must know four things:

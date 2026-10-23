@@ -51,9 +51,10 @@ PILLARS = {
                      'assume, like "Your CORS header isn\'t *security*" or "*await* doesn\'t pause everything": one '
                      'highlighted word, never a question. The hook_visual is code: when the myth is about what code '
                      'does, a short puzzle of 3 to 8 lines whose real output most developers guess wrong (the order '
-                     'of the logs, a surprising value); line 1 says what most devs expect, and the point that shows '
-                     'the real output proves it: best a predict animation (the same code, the usual wrong guess and '
-                     'the real output as its choices) with "reveal", or a stepper, terminal or outputmap. The output '
+                     'of the logs, a surprising value); line 1 says what most devs expect, points 1 and 2 build that '
+                     'expectation, and point 3, the last point, proves the real output with "reveal": 3 (the answer '
+                     'held to the end is what kept people watching): best a predict animation (the same code, the '
+                     'usual wrong guess and the real output as its choices), or a stepper, terminal or outputmap. The output '
                      'shown must be exactly what the code really prints', 'Myth vs fact'),
     3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
@@ -596,11 +597,12 @@ EXTRA_FORMATS = {
 # Myth is listed twice, so it comes up on about a third of days (the main format, see TEACH). Build it live left the
 # rotation (60 views), and so did the beginner series "Next.js from zero" (2026-10-19: 86% skip over 4 reels);
 # Explained took its place (CORS, 1,107 views, and JWT, 172, were Explained reels). REEL_FORMAT=build or series
-# still forces those.
+# still forces those. News left too (2026-10-23: 9 reels, 94 views on average, skip above the usual);
+# REEL_FORMAT=news still runs the trend scan's story by hand.
 EXTRA_FORMATS['myth'] = PILLARS[2]
 EXTRA_FORMATS['explained'] = PILLARS[4]
 MYTH = PILLARS[2][2]
-SLOT3_FORMATS = ('myth', 'myth', 'news', 'trick', 'versus', 'explained')
+SLOT3_FORMATS = ('myth', 'myth', 'trick', 'versus', 'explained')
 
 
 def slot():
@@ -1687,6 +1689,12 @@ def pillar_errors(reel, pillar, series=None):
                 errors.append(f'Myth vs fact hooks are statements, never questions: "{h}"')
             elif len(highlights(h) or []) != 1:
                 errors.append(f'a Myth vs fact hook highlights exactly one word or phrase: "{h}"')
+        # 2026-10-23: both breakout myths (await, 2,126 views; fetch cookies, 1,433) proved the real output on the last
+        # point; the three that showed it on point 2 stopped at 170 to 210 views. The answer is held to the end.
+        if reel.get('reveal') != len(reel.get('points') or []) or not reel.get('points'):
+            errors.append('a Myth vs fact reel proves the real output on its last point: set "reveal" to 3 and make '
+                          "point 3's first visual show the real output (predict, stepper, terminal or outputmap); "
+                          'points 1 and 2 build the expectation')
     if reel.get('dm_keyword') or reel.get('dm_guide'):
         errors.append('reels end on a question, not a comment-to-DM offer: drop dm_keyword and dm_guide and make the '
                       'cta and voiceover line 5 a question')
