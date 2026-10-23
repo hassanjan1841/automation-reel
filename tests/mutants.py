@@ -362,6 +362,23 @@ MUTANTS = [
      "                isinstance(x, dict) and _short(x.get('label'), 28) for x in items):", 'a checklist item without its result'),
     ('stage.py', "body.acc .kin .r span.k,body.acc #kicker,body.acc #chapchip{color:#14161D}", "",
      'the accent word vanishes on the accent flip', 'test_motion.py'),
+    # Speed (2026-10-23): no wasted Kokoro retakes, a padded listen, setup off apt, timings, YouTube's block.
+    ('voice.py', "        if spoken == said and getattr(engine, 'same_every_time', False):\n            break",
+     "        if False:\n            break", 'speed: Kokoro retaken for nothing'),
+    ('voice.py', "        if spoken == said and getattr(engine, 'same_every_time', False):",
+     "        if getattr(engine, 'same_every_time', False):", 'speed: Kokoro never retaken after learning'),
+    ('voice.py', "    clip = np.concatenate([clip, np.zeros(int(LISTEN_PAD * render.SR), dtype=clip.dtype)])\n", "",
+     'speed: the listener hears no silence after a clip'),
+    ('publish.py', "        print(f'Took {time.monotonic() - start:.0f}s: {what}', flush=True)", "        pass",
+     'speed: parts do not say how long they took'),
+    ('.github/workflows/daily-reel.yml', "        uses: ./.github/actions/ffmpeg\n",
+     "        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg\n", 'speed: daily ffmpeg back on apt'),
+    ('study.py', "            raise Blocked(f'{source}: YouTube asked this machine to sign in')",
+     "            raise RuntimeError(f'{source}: YouTube asked this machine to sign in')", 'speed: YouTube block is a failure'),
+    ('study.py', "        if blocked and youtube(source):", "        if False:", 'speed: every blocked YouTube link tried'),
+    ('study.py', "    if not texts and failed:", "    if not texts:", 'speed: a blocked-only run fails'),
+    ('stage.py', "                            shots[f] = shot", "                            shots[f] = shot if k == 0 else b''",
+     'speed: other browsers draw blank frames', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).
