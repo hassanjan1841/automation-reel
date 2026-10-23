@@ -271,6 +271,15 @@ How to choose:
   pricing or policy changes that affect how people build, and breakout open source projects.
 - Strong signals: many sources covering it, high Hacker News points, fast GitHub stars, official announcements.
 - Angle it for practitioners: what changed, why it matters for their work, one practical takeaway.
+
+How to tell it (the creator, 2026-10-23: "first tell the problem, then the story, then the solution, in a simplified
+way, not some mystery"): a small, clear story, never a teaser.
+- The hook and voiceover line 1 say the problem plainly: who is affected and what can happen ("A PHP bug lets anyone
+  run code on your server"), not a riddle like "The attack starts before your code".
+- Point 1 tells what happened, in everyday words: who found it or shipped it, and what it is.
+- Point 2 says why it matters, simply: how it works or what it breaks, with one plain comparison if it helps.
+- Point 3 is the solution: the exact thing to do (the version to update to, the setting, the command).
+- No suspense and no jargon left unexplained; a beginner should follow every line.
 - Skip gossip, funding rounds, lawsuits, politics and drama unless they change how developers work.
 - Do not repeat a topic that was already posted recently.
 

@@ -103,6 +103,11 @@ Hook mistakes that make people swipe:
 
 ## 3. The script
 
+News and explainers are a small story told plainly (the creator, 2026-10-23): the problem first, in words a
+beginner understands (who it hurts and what can happen), then what happened or what is going on, then the
+solution. No teaser hooks and no mystery: the viewer knows the problem in the first second. (A myth's "guess the
+output" puzzle is the exception: there the question is the point, and the answer comes at the end.)
+
 - From frame 0: the problem or result on screen with the on-screen hook, and the spoken hook starting at once
   (about 0.25 s in). Then to about 15 s: one concrete worked example. Last seconds: the exact fix or command, then a closing line that
   links back to the hook, so a replay feels natural.
