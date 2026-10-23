@@ -208,6 +208,8 @@ A reel takes about 10 to 12 minutes of work (dry run 2026-10-23, a 22-second sta
 - ffmpeg is a static build downloaded in about 10 seconds (`.github/actions/ffmpeg`), not apt, which once took 31 minutes on a slow mirror; apt is only its fallback. The few system packages Chromium lacks on the runner (fonts) are installed from .deb files kept in the Actions cache (`.github/actions/browser`); apt only fills that cache, within 4 minutes, after the mirror crawled at 100 kB/s (2026-10-23).
 - A stage reel or showcase is drawn by up to 4 browsers at once (`RENDER_WORKERS`, default one per core), about 2.5 times faster; the frames are the same as one browser draws (`test_motion.ParallelFrames`).
 - The Kokoro voice is not recorded again when nothing changed (it says the same text the same way every time); the listen-back hears each clip with half a second of silence after it, so a last word is not missed.
+- The listen-back loads Whisper once, remembers a clip it already checked (the final report no longer hears every line again), and caps how many words a short burst of sound can come back as: noise made Whisper invent long repeated lines and retry them, 5 to 9 seconds a burst. One check of a 21-second take went from 65 to about 35 seconds; on 24 checks from 4 reels the verdicts were the same.
+- The writer's calls print their time (`draft`, `repair round`, `hook judge`); `WRITER_EFFORT` (low, medium, high; empty means the Claude CLI's default) sets their effort.
 
 The Scheduler itself runs on a GitHub cron too, so for timing that never slips, have an outside service start it every 10 to 15 minutes: a `POST` to `https://api.github.com/repos/hassanjan1841/automation-reel/actions/workflows/scheduler.yml/dispatches` with body `{"ref":"main"}`, headers `Authorization: Bearer <token>`, `Accept: application/vnd.github+json` and `Content-Type: application/json` (without it GitHub answers 415 and nothing starts), and a fine-grained token that has **Actions: read and write** on this repo. A success is HTTP 204. This runs from a cron-job.org job every 10 minutes (set up 2026-09-29); if reels stop starting on time, check that job's history first.
 
@@ -221,7 +223,7 @@ The voice is Fish Audio's ThatMob (`s2.1-pro-free`, free until 2026-11-30; set `
 
 ## Run it by hand
 
-Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the rendered MP4 is attached to the run as an artifact either way. A manual run waits while another Daily reel, Learning or Weekly run is going, and counts toward its slot's two attempts.
+Actions → **Daily reel** → **Run workflow**. `dry_run` is on by default; the rendered MP4 is attached to the run as an artifact either way. To make and post a video on demand, untick `dry_run` and tick `post_now`: it posts as soon as the reel passes review instead of waiting for the slot's time (`POST_NOW`), and counts as that slot's reel today. A manual run waits while another Daily reel, Learning or Weekly run is going, and counts toward its slot's two attempts.
 
 ## Secrets
 

@@ -13,6 +13,7 @@ Env:
 """
 
 import difflib
+import hashlib
 import io
 import json
 import os
@@ -268,18 +269,23 @@ _whisper = None
 _written_lower = set()
 
 
-def transcribe(clip, words=False, context=None):
-    """The transcript, or with words=True a list of (word, start, end) in seconds. With context (the script),
-    the recognizer spells names the way a viewer who reads the slides would hear them ("sass" as SaaS), so
-    only real mispronunciations are left as mismatches."""
+def model():
+    """The Whisper model, loaded once."""
     global _whisper
     if _whisper is None:
         from faster_whisper import WhisperModel
         _whisper = WhisperModel(WHISPER_MODEL, device='cpu', compute_type='int8',
                                 download_root=str(MODEL_DIR / 'whisper'))
+    return _whisper
+
+
+def transcribe(clip, words=False, context=None):
+    """The transcript, or with words=True a list of (word, start, end) in seconds. With context (the script),
+    the recognizer spells names the way a viewer who reads the slides would hear them ("sass" as SaaS), so
+    only real mispronunciations are left as mismatches."""
     clip = np.concatenate([clip, np.zeros(int(LISTEN_PAD * render.SR), dtype=clip.dtype)])
     audio = np.interp(np.arange(0, len(clip), render.SR / 16000), np.arange(len(clip)), clip).astype(np.float32)
-    segments, _ = _whisper.transcribe(audio, language='en', beam_size=5, word_timestamps=words,
+    segments, _ = model().transcribe(audio, language='en', beam_size=5, word_timestamps=words,
                                       initial_prompt=strip_cues(plain(context)) if context else None)
     if words:
         return [(w.word, w.start, w.end) for s in segments for w in s.words]
@@ -504,16 +510,36 @@ def islands(audio, gap=0.12, shortest=0.08):
     return found
 
 
+def burst_tokens(seconds):
+    """The most words a burst of this length can hold, in tokens, with room to spare (speech runs 2 to 3 words a
+    second, about 1.3 tokens a word)."""
+    return int(16 + 8 * seconds)
+
+
 def heard_alone(audio, start, end):
     """What one burst of sound says on its own, with no script to lean on, fillers included."""
-    transcribe(audio[:render.SR // 10])  # loads the model
     c = audio[int(max(0.0, start - 0.05) * render.SR):int((end + 0.05) * render.SR)]
     c = np.interp(np.arange(0, len(c), render.SR / 16000), np.arange(len(c)), c).astype(np.float32)
-    segments, _ = _whisper.transcribe(c, language='en', beam_size=5, initial_prompt=FILLER_PROMPT)
+    # A burst of noise can make Whisper invent a long repeated line and retry it at every temperature, which cost
+    # 5 to 9 seconds a burst; a burst of n seconds holds at most a few words a second, so its words are capped.
+    segments, _ = model().transcribe(c, language='en', beam_size=5, initial_prompt=FILLER_PROMPT,
+                                     max_new_tokens=burst_tokens(end - start))
     return ' '.join(x.text for x in segments).strip()
 
 
+_verified = {}
+
+
 def verify(audio, text):
+    """verify_once, remembered: the same audio and text (a line checked again in the final report) is heard once."""
+    key = (hashlib.sha1(np.ascontiguousarray(audio).tobytes()).hexdigest(), text)
+    if key not in _verified:
+        _verified[key] = verify_once(audio, text)
+    faults, strays = _verified[key]
+    return list(faults), list(strays)
+
+
+def verify_once(audio, text):
     """Everything wrong with a take, listened to four ways, as (faults, strays):
     - with the script as a hint: names and tech words the voice got wrong (these get respelled);
     - without it: an everyday word said badly, which the hint papers over ("Check" as "you correct");

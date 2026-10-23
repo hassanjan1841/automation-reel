@@ -2653,6 +2653,22 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn("PYTHONUNBUFFERED: '1'", (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
         self.assertIn('uses: ./.github/actions/ffmpeg', (ROOT / '.github/workflows/daily-reel.yml').read_text())
 
+    def test_post_now_skips_the_wait(self):
+        """A video made on demand (POST_NOW) posts as soon as it is ready; otherwise the run sleeps until POST_AT_UTC."""
+        now = datetime.now(timezone.utc)
+        if now.hour == 23 and now.minute >= 28:
+            self.skipTest('the post time would wrap past midnight')
+        soon = (now + timedelta(minutes=30)).strftime('%H:%M')
+        with mock.patch.object(publish.time, 'sleep') as sleep, contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': 'true'}):
+                publish.wait_for_post_time()
+            self.assertFalse(sleep.called)
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': ''}):
+                publish.wait_for_post_time()
+            self.assertTrue(sleep.called)
+        self.assertIn("POST_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.post_now",
+                      (ROOT / '.github/workflows/daily-reel.yml').read_text())
+
     def test_each_part_of_the_run_says_how_long_it_took(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), mock.patch.object(publish.time, 'monotonic', side_effect=[10.0, 52.4]):

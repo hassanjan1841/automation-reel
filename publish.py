@@ -9,6 +9,7 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          reel 3 never uses news (no trend scan; another format instead)
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
+  POST_NOW=true         post as soon as the reel is ready (a video made on demand), not at POST_AT_UTC
   FORCE_POST=true       post even if this slot's reel already went out today (UTC); without it a slot never posts twice
   SLOT                  1 (default: Myth vs fact), 2 (off by default: Explained, AI, Ranked or a dev mistake) or 3
                         (a myth, news, a trick, X vs Y or the beginner series, picked at random per day; see
@@ -364,7 +365,11 @@ def research_reel(reels):
 
 
 def wait_for_post_time():
-    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 12:00)."""
+    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 12:00), or at once
+    with POST_NOW=true (a video made on demand)."""
+    if os.environ.get('POST_NOW', '').strip().lower() in ('1', 'true', 'yes'):
+        print('POST_NOW: posting as soon as it is ready')
+        return
     hh, mm = (int(x) for x in (os.environ.get('POST_AT_UTC', '').strip() or '12:00').split(':'))
     now = datetime.now(timezone.utc)
     target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
