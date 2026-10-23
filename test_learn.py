@@ -1763,7 +1763,7 @@ class ReelFormatTest(Sandbox):
             self.assertIn(part, generate.checklist())
         self.assertEqual(sent['cmd'][-2:], ['--effort', 'medium'])
         with mock.patch.dict(os.environ, {'WRITER_EFFORT': ''}):
-            self.assertEqual(generate.effort(), ['--effort', generate.WRITER_EFFORT])
+            self.assertEqual(generate.effort(), [])                       # the CLI's own effort: quality first
         with mock.patch.dict(os.environ, {'WRITER_EFFORT': 'default'}):
             self.assertEqual(generate.effort(), [])
 

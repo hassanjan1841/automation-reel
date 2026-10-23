@@ -392,7 +392,7 @@ MUTANTS = [
      "    if False:", 'speed: post_now still waits'),
     ('generate.py', "    if errors and all(e.startswith('alternative ') for e in errors):",
      "    if False:", 'speed: alternatives repaired by a whole-reel round'),
-    ('generate.py', "WRITER_EFFORT = 'medium'", "WRITER_EFFORT = 'default'", 'speed: the writer back on the CLI default effort'),
+    ('generate.py', "WRITER_EFFORT = 'default'", "WRITER_EFFORT = 'medium'", 'speed: the writer on a lower effort than the default'),
     ('voice.py', "        if take and out_of_time():", "        if False:", 'speed: retakes ignore their time budget'),
 ]
 

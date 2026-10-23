@@ -34,14 +34,15 @@ from voice import strip_cues
 MODEL = 'claude-sonnet-5'
 
 
-# The writer's effort: medium wrote reels as good as the default (2026-10-23 benchmark, 6 reels each, every one
-# accurate once the checklist was added) in about 70 % of the time; low got a fact wrong.
-WRITER_EFFORT = 'medium'
+# The writer's effort stays the Claude CLI's default: lower efforts were faster in a benchmark (2026-10-23), but low
+# got a fact wrong and a medium draft invented a grep output that the frame review caught as dishonest, which cost a
+# whole rewrite. The checklist and fix_alternatives are what cut the writing time without that risk.
+WRITER_EFFORT = 'default'
 
 
 def effort():
-    """WRITER_EFFORT (low, medium, high...; default medium) for the writer, its repairs and the hook judge;
-    "default" leaves it to the Claude CLI."""
+    """WRITER_EFFORT (low, medium, high...) for the writer, its repairs and the hook judge; unset or "default" leaves it
+    to the Claude CLI."""
     level = os.environ.get('WRITER_EFFORT', '').strip().lower() or WRITER_EFFORT
     return [] if level == 'default' else ['--effort', level]
 BATCH = 14
