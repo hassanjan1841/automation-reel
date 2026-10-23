@@ -379,6 +379,17 @@ MUTANTS = [
     ('study.py', "    if not texts and failed:", "    if not texts:", 'speed: a blocked-only run fails'),
     ('stage.py', "                            shots[f] = shot", "                            shots[f] = shot if k == 0 else b''",
      'speed: other browsers draw blank frames', 'test_motion.py'),
+    # On-demand speed (2026-10-23): a remembered voice check, capped bursts, the writer's checklist, post_now.
+    ('voice.py', "    if key not in _verified:\n        _verified[key] = verify_once(audio, text)",
+     "    _verified[key] = verify_once(audio, text)", 'speed: the voice check hears a clip again'),
+    ('voice.py', "                                     max_new_tokens=burst_tokens(end - start))",
+     "                                     )", 'speed: bursts decoded without a word cap'),
+    ('voice.py', "    c = audio[int(max(0.0, start - 0.05) * render.SR):int((end + 0.05) * render.SR)]",
+     "    transcribe(audio[:render.SR // 10])\n    c = audio[int(max(0.0, start - 0.05) * render.SR):int((end + 0.05) * render.SR)]",
+     'speed: a throwaway transcription before every burst'),
+    ('generate.py', "    prompt += '\\n\\n' + checklist()\n", "", 'speed: drafts without the checklist'),
+    ('publish.py', "    if os.environ.get('POST_NOW', '').strip().lower() in ('1', 'true', 'yes'):",
+     "    if False:", 'speed: post_now still waits'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

@@ -1743,6 +1743,54 @@ class ReelFormatTest(Sandbox):
             voice.transcribe(np.ones(render.SR, np.float32))
         self.assertAlmostEqual(heard['len'] / 16000, 1 + voice.LISTEN_PAD, delta=0.01)
 
+    def test_every_draft_request_carries_the_checklist(self):
+        """The rules drafts broke most (the alternatives' spoken lines above all) are listed in every draft request,
+        with the validator's own limits, so the first draft passes instead of costing a repair round."""
+        sent = {}
+
+        def fake(cmd, **k):
+            sent['prompt'] = cmd[cmd.index('-p') + 1]
+            sent['cmd'] = cmd
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': []}}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()), \
+                mock.patch.dict(os.environ, {'WRITER_EFFORT': 'medium'}):
+            generate.ask_claude([(date(2026, 10, 23), ('devtip', 'Dev tip'))], ['Old hook'])
+        self.assertTrue(sent['prompt'].endswith(generate.checklist()))
+        for part in (f'{generate.VO_MIN_WORDS} to {generate.VO_MAX_WORDS}', 'at most 14 words', 'alternatives',
+                     ', '.join(generate.REVEAL_VISUALS), ', '.join(generate.HOOK_VISUALS)):
+            self.assertIn(part, generate.checklist())
+        self.assertEqual(sent['cmd'][-2:], ['--effort', 'medium'])
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': ''}):
+            self.assertEqual(generate.effort(), [])
+
+    def test_the_voice_check_hears_a_clip_once_and_caps_bursts(self):
+        """verify remembers a clip it already checked (the final report re-heard every unchanged line), and a burst of
+        sound is decoded with a word cap (noise made Whisper invent long repeated lines and retry them)."""
+        import voice
+        heard = []
+        with mock.patch.object(voice, 'verify_once', side_effect=lambda a, t: (heard.append(t) or ['x'], [])):
+            voice._verified.clear()
+            clip = np.ones(1000, np.float32)
+            first = voice.verify(clip, 'a line')
+            first[0].append('changed by the caller')
+            self.assertEqual(voice.verify(clip.copy(), 'a line'), (['x'], []))   # same audio and text: remembered
+            voice.verify(clip, 'another line')
+            voice.verify(clip * 0.5, 'a line')
+        self.assertEqual(heard, ['a line', 'another line', 'a line'])
+        calls = []
+
+        class Model:
+            def transcribe(self, audio, **k):
+                calls.append(k)
+                return [], None
+
+        with mock.patch.object(voice, '_whisper', Model()):
+            voice.heard_alone(np.zeros(render.SR * 3), 1.0, 1.5)
+        self.assertEqual(calls[0]['max_new_tokens'], voice.burst_tokens(0.5))
+        self.assertEqual(len(calls), 1)                                    # no throwaway call to load the model
+        self.assertGreaterEqual(voice.burst_tokens(4), 40)                 # a long burst of real speech fits
+
     def test_tempo_plays_faster_at_the_same_pitch(self):
         import shutil
         import voice
