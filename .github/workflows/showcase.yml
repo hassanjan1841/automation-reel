@@ -21,6 +21,10 @@ concurrency:
   group: reels-queue
   cancel-in-progress: false
 
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
 jobs:
   showcase:
     runs-on: ubuntu-latest
@@ -38,7 +42,7 @@ jobs:
           node-version: '22'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Install Python packages
         run: pip install -r requirements.txt
@@ -53,7 +57,11 @@ jobs:
           key: playwright-${{ hashFiles('requirements.txt') }}
 
       - name: Install screenshot browser
-        run: python -m playwright install --with-deps chromium
+        # The system packages come from apt, which can stall on a slow mirror: given 4 minutes at most, the
+        # runner already has what Chromium needs.
+        run: |
+          python -m playwright install chromium
+          timeout 240 python -m playwright install-deps chromium || echo '::warning::Browser system packages skipped (apt too slow)'
 
       - name: Install Claude Code
         uses: ./.github/actions/claude

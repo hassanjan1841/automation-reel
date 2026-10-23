@@ -30,6 +30,10 @@ concurrency:
   group: reels-queue
   cancel-in-progress: false
 
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -47,7 +51,7 @@ jobs:
 
       - name: Install ffmpeg
         if: inputs.voiceover != ''
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Cache voice and speech-to-text models
         if: inputs.voiceover != ''

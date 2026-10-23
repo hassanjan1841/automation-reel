@@ -40,7 +40,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - run: pip install requests pillow numpy
 
@@ -59,12 +59,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Install packages and the browser
         run: |
           pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
-          python -m playwright install --with-deps chromium
+          python -m playwright install chromium
+          timeout 240 python -m playwright install-deps chromium || echo '::warning::Browser system packages skipped (apt too slow)'
 
       - name: Download fonts
         run: python render.py --fonts

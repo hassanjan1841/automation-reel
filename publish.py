@@ -24,9 +24,12 @@ Env:
   VOICE_ENGINE, VOICE, VOICE_SPEED, VOICE_PITCH, FISH_API_KEY, FISH_MODEL   voiceover settings, see voice.py;
                         VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
+  RENDER_WORKERS        browsers that draw a stage reel's frames at once (default: one per core, at most 4; stage.py)
+Each part of the run prints how long it took ("Took 42s: writing"), so a slow run shows where the time went.
 An empty variable (an unset repo variable in the workflow) means the default.
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -45,6 +48,16 @@ import voice
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 BUCKET = 'reels'
 POLL_EVERY, POLL_LIMIT = 10, 600
+
+
+@contextlib.contextmanager
+def took(what):
+    """Print how long the block took, so the run log shows where the time goes."""
+    start = time.monotonic()
+    try:
+        yield
+    finally:
+        print(f'Took {time.monotonic() - start:.0f}s: {what}', flush=True)
 
 
 class PublishError(Exception):
@@ -384,12 +397,15 @@ def make_video(reel):
     """Voice, render and review one reel. Raises Dishonest if the review finds an untrue claim."""
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
     voice_name = os.environ.get('VOICE', '').strip() or None
-    clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
+    with took('voice'):
+        clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     if clips is not None:
         print(f'Voice check: {clips.verdict}')
         clips = paced(reel, clips)
-    path, slides = render.render_reel(reel, voice=clips)
-    return check_visuals(reel, clips, path, slides)
+    with took('render'):
+        path, slides = render.render_reel(reel, voice=clips)
+    with took('frame review (and any re-render)'):
+        return check_visuals(reel, clips, path, slides)
 
 
 def main():
@@ -416,7 +432,8 @@ def main():
     if by_hand:
         print('Using the reel added by hand')
     else:
-        reel = new_entry(reels, todays_reel(reels))
+        with took('writing'):
+            reel = new_entry(reels, todays_reel(reels))
         reels.append(reel)
     try:
         path, slides = make_video(reel)
@@ -455,23 +472,24 @@ def main():
     name = f"reel-{reel['id']}-{int(time.time())}.mp4"
     cover = path.with_name(path.stem + '-cover.jpg')
     cover_name = name.replace('.mp4', '-cover.jpg') if cover.exists() else None
-    try:
-        url = upload(path, name)
-        print(f'Uploaded to {url}')
-        cover_url = None
-        if cover_name:
-            try:
-                cover_url = upload(cover, cover_name, 'image/jpeg')
-            except PublishError:  # a missing cover never blocks the post; the thumb_offset frame is used instead
-                print('Cover upload failed; posting with the video frame as the cover')
-                cover_name = None
-        media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
-    except PublishError as e:
-        raise SystemExit(f'Publish failed: {e}')
-    finally:
-        delete_upload(name)
-        if cover_name:
-            delete_upload(cover_name)
+    with took('posting'):
+        try:
+            url = upload(path, name)
+            print(f'Uploaded to {url}')
+            cover_url = None
+            if cover_name:
+                try:
+                    cover_url = upload(cover, cover_name, 'image/jpeg')
+                except PublishError:  # a missing cover never blocks the post; the thumb_offset frame is used instead
+                    print('Cover upload failed; posting with the video frame as the cover')
+                    cover_name = None
+            media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
+        except PublishError as e:
+            raise SystemExit(f'Publish failed: {e}')
+        finally:
+            delete_upload(name)
+            if cover_name:
+                delete_upload(cover_name)
 
     reel['posted_at'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     reel['media_id'] = media_id

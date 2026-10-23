@@ -1,0 +1,19 @@
+name: ffmpeg
+description: >-
+  A static ffmpeg and ffprobe (BtbN's GPL build of release 8.1, with libx264), downloaded in about 10 seconds. apt is
+  only the fallback: an apt install once took 31 minutes on a slow mirror (2026-10-22).
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        dir="$RUNNER_TEMP/ffmpeg"; mkdir -p "$dir"
+        url=https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
+        if curl -fsSL --retry 3 --max-time 240 "$url" \
+            | tar -xJ -C "$dir" --strip-components=2 --wildcards '*/bin/ffmpeg' '*/bin/ffprobe' \
+            && "$dir/ffmpeg" -hide_banner -version | head -1; then
+          echo "$dir" >> "$GITHUB_PATH"
+        else
+          echo "::warning::The static ffmpeg download failed; installing ffmpeg from apt instead"
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        fi
