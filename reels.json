@@ -7984,5 +7984,151 @@
         "id": "18101671733430355"
       }
     ]
+  },
+  {
+    "id": 89,
+    "style": "light",
+    "payoff": "aspect-ratio: 16 / 9 on the box replaces the old padding-top percentage hack, so you drop the wrapper div and the absolute positioning entirely.",
+    "kicker": "Quick trick #6",
+    "hook": "Skip the *padding-top* hack",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "css",
+      "title": "box.css",
+      "before": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n  inset: 0;\n}",
+      "after": ".box {\n  aspect-ratio: 16 / 9;\n}\n.box img {\n  width: 100%;\n  height: 100%;\n}"
+    },
+    "alternatives": [
+      {
+        "hook": "You're still faking *aspect ratio*",
+        "hook_type": "mistake",
+        "spoken": "[urgent] You're faking aspect ratio with that old hack— [blunt] nobody needs it."
+      },
+      {
+        "hook": "Padding hack *gone*, one line left",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] This box used a padding hack before— [confident] now it's one line."
+      },
+      {
+        "hook": "Tested: *aspect-ratio* vs the padding hack",
+        "hook_type": "test",
+        "spoken": "[fired up] I tested aspect-ratio against the padding hack— [surprised] it won easily."
+      }
+    ],
+    "points": [
+      {
+        "title": "The old hack",
+        "body": "A wrapper div plus absolute positioning",
+        "visual": [
+          {
+            "type": "code",
+            "language": "css",
+            "title": "old.css",
+            "code": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n  inset: 0;\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One line now",
+        "body": "Aspect ratio replaces that whole hack",
+        "visual": [
+          {
+            "type": "morph",
+            "language": "css",
+            "title": "box.css",
+            "before": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n}",
+            "after": ".box {\n  aspect-ratio: 16 / 9;\n}"
+          },
+          {
+            "type": "code",
+            "language": "css",
+            "title": "box.css",
+            "code": ".box {\n  aspect-ratio: 16 / 9;\n}\n.box img {\n  width: 100%;\n  height: 100%;\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof it holds",
+        "body": "Ratio stays locked as it resizes",
+        "visual": [
+          {
+            "type": "build",
+            "title": "box.css",
+            "html": "<div class=\"box\">\n  <div class=\"pic\"></div>\n</div>",
+            "stages": [
+              ".box{width:100%;aspect-ratio:16/9}\n.pic{width:100%;height:100%}",
+              ".pic{background:#4f46e5}\n.box{border-radius:8px}"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "css",
+            "title": "final.css",
+            "code": ".box {\n  width: 100%;\n  aspect-ratio: 16/9;\n  border-radius: 8px;\n}\n.pic {\n  width: 100%;\n  height: 100%;\n  background: #4f46e5;\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Still *faking* aspect ratio somewhere?",
+    "caption": "CSS aspect-ratio property replaces the old padding-top hack for responsive boxes.\nNo wrapper div, no absolute positioning, just one line.\nWhere in your CSS are you still using that old trick? 👇",
+    "hashtags": [
+      "#css",
+      "#webdev",
+      "#frontend",
+      "#aspectratio"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[excited] One CSS line replaces that old padding-top hack— [confident] no wrapper needed.",
+      "[exasperated] That hack means extra markup and tricky percentage math.",
+      "[impressed] Aspect ratio alone keeps the box in shape.",
+      "[pumped] Watch it hold ratio while the image fills perfectly.",
+      "[warm, curious] Where in your CSS are you still faking ratio?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 6,
+    "posted_at": "2026-10-23T20:00:34+00:00",
+    "media_id": "17885755854512405",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "morph",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3,
+    "youtube_id": "qhsQkunjznk",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18114734948142636"
+      }
+    ]
   }
 ]
