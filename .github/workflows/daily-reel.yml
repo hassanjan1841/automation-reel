@@ -69,18 +69,8 @@ jobs:
       - name: Download fonts
         run: python render.py --fonts
 
-      - name: Cache screenshot browser
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('requirements.txt') }}
-
       - name: Install screenshot browser
-        # The system packages come from apt, which can stall on a slow mirror: given 4 minutes at most, the
-        # runner already has what Chromium needs.
-        run: |
-          python -m playwright install chromium
-          timeout 240 python -m playwright install-deps chromium || echo '::warning::Browser system packages skipped (apt too slow)'
+        uses: ./.github/actions/browser
 
       - name: Cache voice and speech-to-text models
         uses: actions/cache@v6

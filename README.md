@@ -203,9 +203,9 @@ GitHub drops many scheduled runs when it is busy: in the first days the Daily re
 
 ## How long a reel takes
 
-A reel takes about 10 minutes of work (2026-10-22: setup about 1.5 minutes, then writing, voice, render, frame review); the rest of a run is waiting for the post time on purpose, because GitHub often starts scheduled runs late. The log shows each part's time as `Took 42s: writing` (then `voice`, `render`, `frame review (and any re-render)`, `posting`), and lines appear as they happen (`PYTHONUNBUFFERED` in the long workflows). What keeps it short:
+A reel takes about 10 to 12 minutes of work (dry run 2026-10-23, a 22-second stage reel: setup 1.5 minutes, writing 6, voice 3.4, render 1.7, frame review 0.6); the rest of a run is waiting for the post time on purpose, because GitHub often starts scheduled runs late. The log shows each part's time as `Took 42s: writing` (then `voice`, `render`, `frame review (and any re-render)`, `posting`), and lines appear as they happen (`PYTHONUNBUFFERED` in the long workflows). What keeps it short:
 
-- ffmpeg is a static build downloaded in about 10 seconds (`.github/actions/ffmpeg`), not apt, which once took 31 minutes on a slow mirror; apt is only its fallback. The browser's system packages from apt get at most 4 minutes (the runner already has what Chromium needs).
+- ffmpeg is a static build downloaded in about 10 seconds (`.github/actions/ffmpeg`), not apt, which once took 31 minutes on a slow mirror; apt is only its fallback. The few system packages Chromium lacks on the runner (fonts) are installed from .deb files kept in the Actions cache (`.github/actions/browser`); apt only fills that cache, within 4 minutes, after the mirror crawled at 100 kB/s (2026-10-23).
 - A stage reel or showcase is drawn by up to 4 browsers at once (`RENDER_WORKERS`, default one per core), about 2.5 times faster; the frames are the same as one browser draws (`test_motion.ParallelFrames`).
 - The Kokoro voice is not recorded again when nothing changed (it says the same text the same way every time); the listen-back hears each clip with half a second of silence after it, so a last word is not missed.
 

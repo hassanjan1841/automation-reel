@@ -2630,14 +2630,22 @@ class WorkflowTest(unittest.TestCase):
             self.assertIn(f'{var}: ${{{{ vars.{var} }}}}', daily)
 
     def test_setup_never_waits_on_apt(self):
-        """ffmpeg comes from the static build (apt only as its fallback), and the browser's apt packages have a time
-        limit: a slow mirror once cost 31 and 11 minutes (2026-10-22). Long jobs print their log as it happens."""
+        """ffmpeg comes from the static build (apt only as its fallback), and the browser's few missing packages come
+        from the Actions cache (apt only fills it, within 4 minutes): a slow mirror once cost 31 and 11 minutes
+        (2026-10-22). Long jobs print their log as it happens."""
         for f in (ROOT / '.github/workflows').glob('*.yml'):
             text = f.read_text()
             self.assertNotIn('apt-get install -y -q ffmpeg', text, f.name)
             self.assertNotIn('--with-deps', text, f.name)
-            if 'install-deps' in text:
-                self.assertIn('timeout 240 python -m playwright install-deps chromium ||', text, f.name)
+            self.assertNotIn('install-deps', text, f.name)          # the browser action does it, from the cache
+        for name in ('daily-reel', 'showcase', 'demo-preview', 'tests'):     # every workflow that draws with Chromium
+            self.assertIn('uses: ./.github/actions/browser', (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
+        browser = (ROOT / '.github/actions/browser/action.yml').read_text()
+        self.assertIn('actions/cache/restore@', browser)
+        self.assertIn('actions/cache/save@', browser)
+        self.assertIn("if: steps.install.outputs.fresh == 'true'", browser)        # saved only when freshly fetched
+        self.assertIn('timeout 240 sudo bash -c "apt-get update', browser)
+        self.assertIn('exit 0', browser.split('timeout 240')[1])                    # a slow apt never fails the run
         action = (ROOT / '.github/actions/ffmpeg/action.yml').read_text()
         self.assertIn('ffmpeg-n8.1-latest-linux64-gpl', action)
         self.assertIn('apt-get install -y -q ffmpeg', action.split('else')[1])

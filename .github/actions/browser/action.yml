@@ -1,0 +1,58 @@
+name: Screenshot browser
+description: >-
+  Playwright's Chromium (cached), plus the few system packages it lacks on the runner (fonts), installed from .deb
+  files kept in the Actions cache. apt is used only to fill that cache, with a 4-minute limit: Ubuntu's mirror has
+  stalled for 11 minutes (2026-10-22) and crawled at 100 kB/s (2026-10-23).
+runs:
+  using: composite
+  steps:
+    - name: Cache the browser
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ hashFiles('requirements.txt') }}
+
+    - name: Install the browser and list what the system lacks
+      id: deps
+      shell: bash
+      run: |
+        python -m playwright install chromium
+        missing=$(python -m playwright install-deps --dry-run chromium 2>/dev/null | sed -n 's/^  \([a-z0-9][a-z0-9.+-]*\)$/\1/p' | tr '\n' ' ' || true)
+        echo "Missing system packages: ${missing:-none}"
+        echo "missing=$missing" >> "$GITHUB_OUTPUT"
+        echo "key=browser-debs-$(echo "$missing" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+    - name: Restore their packages
+      if: steps.deps.outputs.missing != ''
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/browser-debs
+        key: ${{ steps.deps.outputs.key }}
+
+    - name: Install them
+      if: steps.deps.outputs.missing != ''
+      id: install
+      shell: bash
+      env:
+        MISSING: ${{ steps.deps.outputs.missing }}
+      run: |
+        dir="$HOME/browser-debs"
+        if [ "${{ steps.restore.outputs.cache-hit }}" != 'true' ]; then
+          mkdir -p "$dir/partial"
+          if timeout 240 sudo bash -c "apt-get update -q && apt-get install -y -q --no-install-recommends --download-only -o Dir::Cache::archives='$dir' $MISSING"; then
+            sudo rm -rf "$dir/partial" "$dir/lock"; sudo chmod -R a+rX "$dir"
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Browser system packages skipped (apt too slow); the runner's own fonts are used"
+            exit 0
+          fi
+        fi
+        sudo dpkg -i "$dir"/*.deb > /dev/null && echo "Installed: $MISSING"
+
+    - name: Keep their packages
+      if: steps.install.outputs.fresh == 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ~/browser-debs
+        key: ${{ steps.deps.outputs.key }}

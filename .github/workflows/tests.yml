@@ -61,11 +61,11 @@ jobs:
       - name: Install ffmpeg
         uses: ./.github/actions/ffmpeg
 
-      - name: Install packages and the browser
-        run: |
-          pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
-          python -m playwright install chromium
-          timeout 240 python -m playwright install-deps chromium || echo '::warning::Browser system packages skipped (apt too slow)'
+      - name: Install packages
+        run: pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
+
+      - name: Install the browser
+        uses: ./.github/actions/browser
 
       - name: Download fonts
         run: python render.py --fonts

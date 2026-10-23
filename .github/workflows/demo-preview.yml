@@ -36,11 +36,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install screenshot browser
-        # The system packages come from apt, which can stall on a slow mirror: given 4 minutes at most, the
-        # runner already has what Chromium needs.
-        run: |
-          python -m playwright install chromium
-          timeout 240 python -m playwright install-deps chromium || echo '::warning::Browser system packages skipped (apt too slow)'
+        uses: ./.github/actions/browser
 
       - name: Record
         env:
