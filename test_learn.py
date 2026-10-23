@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -1817,6 +1818,44 @@ class ReelFormatTest(Sandbox):
         self.assertEqual(calls[0]['max_new_tokens'], voice.burst_tokens(0.5))
         self.assertEqual(len(calls), 1)                                    # no throwaway call to load the model
         self.assertGreaterEqual(voice.burst_tokens(4), 40)                 # a long burst of real speech fits
+
+    def test_retakes_stop_when_their_time_is_up(self):
+        """VOICE_BUDGET: the first take always happens; once the retakes' time is used up the best take so far is kept
+        (2026-10-23: endless retakes of two stubborn lines cost 566 s and came out worse)."""
+        import voice
+        said = []
+
+        class Engine:
+            key, same_every_time = 'fish', False
+            def say(self, text):
+                said.append(text)
+                return np.zeros(100, np.float32)
+
+        with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), contextlib.redirect_stdout(io.StringIO()):
+            voice._deadline = None
+            voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), voice.FINAL_TAKES)                 # no budget running: every retake
+            said.clear()
+            voice._deadline = time.monotonic() - 1
+            try:
+                voice.clean_take(Engine(), 'jank text')
+            finally:
+                voice._deadline = None
+            self.assertEqual(len(said), 1)                                 # out of time: the first take only
+        seen = {}
+
+        def inner(lines, voice_name=None, check=True):
+            seen['left'] = voice._deadline - time.monotonic()
+            return 'clips'
+
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': '90'}):
+            self.assertEqual(voice.synthesize(['a line']), 'clips')
+        self.assertTrue(85 < seen['left'] <= 90)
+        self.assertIsNone(voice._deadline)                                 # reset for the next voiceover
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': ''}):
+            voice.synthesize(['a line'])
+        self.assertTrue(voice.RETAKE_BUDGET - 5 < seen['left'] <= voice.RETAKE_BUDGET)
 
     def test_tempo_plays_faster_at_the_same_pitch(self):
         import shutil
