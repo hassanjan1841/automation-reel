@@ -1045,18 +1045,18 @@ T.quotes = () => {
 T.notify = () => {
   // A notification banner drops in, then its notes stack under it one by one; the newest is read while the earlier
   // ones dim, and all return to full once the last has landed.
-  const notes = S.notes, bh = 140, nh = 116, gap = 18, top = bh + 34;
+  const notes = S.notes, bh = 140, nh = 128, gap = 18, top = bh + 34;
   const banner = mk('g', {opacity: 0}, L1); panel(banner, 0, 0, W, bh, {rx: 30});
   mk('rect', {x: 30, y: 34, width: 72, height: 72, rx: 18, fill: C.accent}, banner);
   txt(banner, 66, 84, S.app.trim()[0].toUpperCase(), 40, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700});
-  fit(txt(banner, 128, 62, S.app, 24, {fill: C.dim, 'font-weight': 500}), W - 170);
+  fit(txt(banner, 128, 62, S.app, 28, {fill: C.dim, 'font-weight': 500}), W - 170);
   fit(txt(banner, 128, 104, S.title, 36, {'font-weight': 700}), W - 170);
   at(0, 0.5, (p, raw) => { banner.setAttribute('opacity', Math.min(1, raw * 2.5)); banner.setAttribute('transform', `translate(0 ${-36 * (1 - p)})`); }, E.spring);
   snd(0, 'pop'); SETTLE = 0.5;
   const cards = notes.map((n, k) => { const y = top + k * (nh + gap), g = mk('g', {opacity: 0}, L1);
     panel(g, 0, y, W, nh); mk('circle', {cx: 44, cy: y + nh / 2, r: 9, fill: C.accent}, g);
-    fit(txt(g, 76, y + 44, n.label, 24, {class: 'mono', fill: C.dim, 'font-weight': 500}), W - 110);
-    fit(txt(g, 76, y + 88, n.text, 34), W - 110);
+    fit(txt(g, 76, y + 48, n.label, 28, {class: 'mono', fill: C.dim, 'font-weight': 500}), W - 110);
+    fit(txt(g, 76, y + 98, n.text, 36), W - 110);
     return g; });
   let t = 1.0;
   cards.forEach((g, k) => { at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${40 * (1 - p)})`); }, E.spring);
@@ -1124,7 +1124,7 @@ T.bignumber = () => {
     for (let k = 1; k < ws.length; k++) { const a = ws.slice(0, k).join(' '), b = ws.slice(k).join(' '), m = Math.max(measure(a), measure(b));
       if (m < best) { best = m; lines = [a, b]; } } }
   const ly = my + 90, labs = lines.map((l, i) => fit(txt(L2, W / 2, ly + i * 54, l, 40, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0}), W - 40));
-  const src = txt(L2, W / 2, ly + lines.length * 54 + 30, `Source: ${S.source_host}`, 22, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0});
+  const src = txt(L2, W / 2, ly + lines.length * 54 + 34, `Source: ${S.source_host}`, 26, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0});
   set(0, () => show(0));
   at(0.1, 0.5, (p, raw) => { num.setAttribute('opacity', Math.min(1, raw * 2.5)); num.setAttribute('transform', `translate(0 ${(1 - p) * 40})`);
     blur.setAttribute('stdDeviation', 8 * (1 - p)); }, E.spring);
@@ -1182,11 +1182,11 @@ T.latency = () => {
     at(t0, d, (p, raw) => { r.setAttribute('width', Math.max(bh, w * p)); num.textContent = (raw >= 1 ? b.value : b.value * p).toFixed(k) + unit; }, E.lin);
     at(t0 + d, 0.25, p => num.setAttribute('fill', p > 0.5 ? (win ? C.accent : C.text) : C.dim));
     snd(t0 + d, win ? 'pop' : 'tick');
-    if (win) { const pl = pill(card, px + lab.getComputedTextLength() + 20 + 56, y + 25, 'fastest', 20); pop(pl.g, t0 + d, pl.cx, pl.cy, 0.4); } });
-  const ay = head + n * rowH + 22;
-  txt(card, px, ay, '0', 22, {class: 'mono', fill: C.dim, 'font-weight': 500});
-  txt(card, W - px, ay, max.toFixed(dm) + unit, 22, {class: 'mono', fill: C.dim, 'font-weight': 500, 'text-anchor': 'end'});
-  const src = txt(L2, 0, ph + 44, `Source: ${S.source_host}`, 22, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
+    if (win) { const pl = pill(card, px + lab.getComputedTextLength() + 20 + 62, y + 24, 'fastest', 24); pop(pl.g, t0 + d, pl.cx, pl.cy, 0.4); } });
+  const ay = head + n * rowH + 26;
+  txt(card, px, ay, '0', 28, {class: 'mono', fill: C.dim, 'font-weight': 500});
+  txt(card, W - px, ay, max.toFixed(dm) + unit, 28, {class: 'mono', fill: C.dim, 'font-weight': 500, 'text-anchor': 'end'});
+  const src = txt(L2, 0, ph + 46, `Source: ${S.source_host}`, 26, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
   sweep(0, 0, W, ph, t0 + D + 0.3);
   END = Math.max(END, t0 + D + 1.2 + 1.0);
 };
