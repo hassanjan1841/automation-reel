@@ -1,0 +1,49 @@
+[
+  {
+    "beats": [
+      {
+        "text": "Start with one *goal*",
+        "motif": "spark"
+      },
+      {
+        "text": "It drafts a *plan*",
+        "motif": "orbit"
+      },
+      {
+        "text": "Plan becomes *action*",
+        "motif": "flow",
+        "labels": [
+          "PLAN",
+          "ACT",
+          "CHECK"
+        ]
+      },
+      {
+        "text": "Check, then *repeat*",
+        "motif": "loop",
+        "light": true
+      },
+      {
+        "text": "Each loop *adds up*",
+        "motif": "bloom"
+      },
+      {
+        "text": "Until the *goal* closes",
+        "motif": "ring"
+      }
+    ],
+    "title": "How an AI agent loops",
+    "caption": "An agent doesn't just answer.\nIt plans, acts, checks — then does it again.\nWhat would you let it loop on? 👇",
+    "hashtags": [
+      "#AIagents",
+      "#buildinpublic",
+      "#webdev",
+      "#AI",
+      "#automation"
+    ],
+    "id": 1,
+    "media_id": "18251192611311540",
+    "posted_at": "2026-10-21T17:04:40+00:00",
+    "seconds": 17.7
+  }
+]

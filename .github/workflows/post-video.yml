@@ -30,6 +30,10 @@ concurrency:
   group: reels-queue
   cancel-in-progress: false
 
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -47,7 +51,7 @@ jobs:
 
       - name: Install ffmpeg
         if: inputs.voiceover != ''
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Cache voice and speech-to-text models
         if: inputs.voiceover != ''
@@ -59,9 +63,10 @@ jobs:
       - name: Install Claude Code
         # the listen-back check asks Claude for respellings of a misheard word
         if: inputs.voiceover != ''
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
 
       - name: Record voiceover
         if: inputs.voiceover != ''
@@ -73,7 +78,6 @@ jobs:
           VOICE_PITCH: ${{ vars.VOICE_PITCH }}
           FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
           FISH_MODEL: ${{ vars.FISH_MODEL }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: python post_video.py --voice "$LINES"
 
       - name: Upload voiceover

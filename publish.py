@@ -1,5 +1,6 @@
-"""Write today's reel (or take one queued by hand), render it, have Claude review the frames, wait for POST_AT_UTC
-and publish it to Instagram.
+"""Check the Instagram login, write today's reel (or take one queued by hand), render it, have Claude review the frames,
+wait for POST_AT_UTC and publish it to Instagram. A refused token stops the run before any work and leaves
+out/alert.md, which daily-reel.yml turns into an issue (check_login).
 
 Env:
   IG_TOKEN              Instagram User access token (Instagram API with Instagram Login)
@@ -8,20 +9,28 @@ Env:
   DRY_RUN=true          render only, post nothing
   TRENDING=off          reel 3 never uses news (no trend scan; another format instead)
   POST_AT_UTC           when to post, HH:MM UTC (default 12:00); the job starts early to prepare the reel
+  POST_NOW=true         post as soon as the reel is ready (a video made on demand), not at POST_AT_UTC
   FORCE_POST=true       post even if this slot's reel already went out today (UTC); without it a slot never posts twice
-  SLOT                  1 (default: a how-to), 2 (the evening reel: relatable, another series) or 3 (news, a trick,
-                        X vs Y or the beginner series, picked at random per day; see generate.slot3_format)
+  SLOT                  1 (default: Myth vs fact), 2 (off by default: Explained, AI, Ranked or a dev mistake) or 3
+                        (a myth, news, a trick, X vs Y or the beginner series, picked at random per day; see
+                        generate.slot3_format)
+  REEL_SLOTS            the slots that post (default 1,3); a scheduled run of another slot does nothing
+  GITHUB_EVENT_NAME     set by Actions: only a "schedule" run is held to REEL_SLOTS
   CLAUDE_CODE_OAUTH_TOKEN   the writer, hook judge, frame review and trend scan (Claude Code CLI)
   YOUTUBE_API_KEY       the trend scan, see trends.py
   CLAUDE_MODEL          optional model for the frame review and the trend scan (the writer uses generate.MODEL)
   THREE_D=on|off, THREE_D_CHANCE   3D today, see generate.three_d_today (default: random, chance 0.5)
+  STAGE=on|off, STAGE_CHANCE       a stage reel today (stage.py), see generate.stage_today (default: random, 0.5)
   EXPERIMENT            off stops the running test; a test name forces it, see generate.experiment_today
   VOICE_ENGINE, VOICE, VOICE_SPEED, VOICE_PITCH, FISH_API_KEY, FISH_MODEL   voiceover settings, see voice.py;
                         VOICE=none for sound effects only
   GRAPH_VERSION         optional, defaults to v25.0
+  RENDER_WORKERS        browsers that draw a stage reel's frames at once (default: one per core, at most 4; stage.py)
+Each part of the run prints how long it took ("Took 42s: writing"), so a slow run shows where the time went.
 An empty variable (an unset repo variable in the workflow) means the default.
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -40,6 +49,16 @@ import voice
 GRAPH = f"https://graph.instagram.com/{os.environ.get('GRAPH_VERSION') or 'v25.0'}"
 BUCKET = 'reels'
 POLL_EVERY, POLL_LIMIT = 10, 600
+
+
+@contextlib.contextmanager
+def took(what):
+    """Print how long the block took, so the run log shows where the time goes."""
+    start = time.monotonic()
+    try:
+        yield
+    finally:
+        print(f'Took {time.monotonic() - start:.0f}s: {what}', flush=True)
 
 
 class PublishError(Exception):
@@ -147,6 +166,32 @@ def ig_post(path, token, **data):
     return check(requests.post(f'{GRAPH}/{path}', data={**data, 'access_token': token}, timeout=120), f'POST {path}')
 
 
+ALERT = render.OUT_DIR / 'alert.md'
+
+
+def check_login():
+    """Fail in seconds, before writing or rendering anything, when Instagram refuses the token, and leave
+    out/alert.md for the workflow to open an issue with (2026-10-03: a dead token failed every run for two days at
+    the last step, after 7 minutes of work each, and nobody noticed)."""
+    token = env('IG_TOKEN')
+    resp = requests.get(f'{GRAPH}/me', params={'fields': 'user_id,username', 'access_token': token}, timeout=60)
+    if resp.ok:
+        return
+    try:
+        detail = resp.json().get('error', {}).get('message', '')
+    except ValueError:
+        detail = resp.text[:300]
+    detail = redact(detail)
+    render.OUT_DIR.mkdir(exist_ok=True)
+    ALERT.write_text(
+        f'The Daily reel could not log in to Instagram, so nothing is being posted.\n\n'
+        f'Instagram said (HTTP {resp.status_code}): {detail}\n\n'
+        'Fix: make a new long-lived token (Meta for Developers, your app, Instagram API with Instagram Login, '
+        'Generate token) and save it as the IG_TOKEN secret (Settings, Secrets and variables, Actions). '
+        'The next slot posts on its own. See README.md, "Instagram login failed".\n')
+    raise SystemExit(f'ERROR: Instagram refused the token (HTTP {resp.status_code}): {detail}')
+
+
 def publish_to_instagram(video_url, caption, thumb_ms, cover_url=None):
     token = env('IG_TOKEN')
     me = ig_get('me', token, fields='user_id,username')
@@ -183,7 +228,7 @@ def check_visuals(reel, clips, path, slides, rounds=3):
     """Have Claude look at the rendered frames. A dishonest claim stops the post; a visual that fails is replaced
     by the point's next choice, or by its text, and the reel is rendered again."""
     shown = reel
-    for _ in range(rounds):
+    for round_ in range(rounds):
         try:
             verdict = qa.review(path, shown, slides)
             results = verdict['slides']
@@ -203,6 +248,15 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             # Honesty is a hard line: better no post today than a misleading one.
             raise Dishonest('the review found a dishonest claim: '
                              + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in dishonest))
+        failed = [r for r in results if r.get('visual_ok') is False and r['slide'] < len(slides) and slides[r['slide']].visual]
+        if shown.get('scenes') and failed:
+            # A stage reel draws every slide as one piece; a scene that misses its point sends the whole reel back to
+            # the classic slides (its hook proof and point visuals, if the writer gave any).
+            print('Stage scene rejected (' + '; '.join(f"slide {r['slide']}: {r['problem']}" for r in failed)
+                  + '); rendering the classic slides instead')
+            shown = {k: v for k, v in shown.items() if k != 'scenes'}
+            path, slides = render.render_reel(shown, voice=clips)
+            continue
         rejected, drop_proof = {}, False
         for r in results:
             i = r['slide']
@@ -225,9 +279,28 @@ def check_visuals(reel, clips, path, slides, rounds=3):
             if i in rejected:
                 choices = [c for c in choices if c != rejected[i]]
             points.append({**{k: v for k, v in point.items() if k != 'visual'}, **({'visual': choices} if choices else {})})
-        shown = {**({k: v for k, v in shown.items() if k != 'hook_visual'} if drop_proof else shown), 'points': points}
+        shown = {**(without_proof(shown, retry=round_ < rounds - 1) if drop_proof else shown), 'points': points}
         path, slides = render.render_reel(shown, voice=clips)
     return path, slides
+
+
+def without_proof(reel, retry=True):
+    """The reel after its hook proof was rejected. A diff gets a second chance as a plain code card of its "after"
+    (its added lines highlighted), because a text-only first frame lost the most viewers (84% skip against 72%
+    with code, 2026-10-19); anything else, that code card rejected too, or no review round left to check it
+    (retry False), leaves the hook alone."""
+    proof = reel.get('hook_visual') or {}
+    rest = {k: v for k, v in reel.items() if k != 'hook_visual'}
+    if not retry or proof.get('type') != 'diff' or not proof.get('after', '').strip():
+        return rest
+    import difflib
+    before, after = proof.get('before', '').rstrip('\n').split('\n'), proof['after'].rstrip('\n').split('\n')
+    added = [j + 1 for op, _, _, j1, j2 in difflib.SequenceMatcher(None, before, after).get_opcodes()
+             if op in ('replace', 'insert') for j in range(j1, j2)]
+    code = {'type': 'code', 'code': proof['after'], 'language': proof.get('language') or 'text',
+            'title': proof.get('title', ''), 'highlight': added[:1]}
+    print('Trying the hook proof again as a code card of its "after"')
+    return {**rest, 'hook_visual': code}
 
 
 def shown(slides):
@@ -259,7 +332,8 @@ def todays_reel(reels):
     reel = research_reel(reels)
     if reel.get('alternatives'):
         reel = generate.pick_hook(reel)
-    return reel if generate.three_d_today() else generate.strip_3d(reel)
+    reel = reel if generate.three_d_today() else generate.strip_3d(reel)
+    return reel if generate.stage_today() else generate.strip_stage(reel)
 
 
 def research_reel(reels):
@@ -291,7 +365,11 @@ def research_reel(reels):
 
 
 def wait_for_post_time():
-    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 12:00)."""
+    """The job starts about an hour early to research and render; post at POST_AT_UTC (default 12:00), or at once
+    with POST_NOW=true (a video made on demand)."""
+    if os.environ.get('POST_NOW', '').strip().lower() in ('1', 'true', 'yes'):
+        print('POST_NOW: posting as soon as it is ready')
+        return
     hh, mm = (int(x) for x in (os.environ.get('POST_AT_UTC', '').strip() or '12:00').split(':'))
     now = datetime.now(timezone.utc)
     target = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
@@ -324,12 +402,15 @@ def make_video(reel):
     """Voice, render and review one reel. Raises Dishonest if the review finds an untrue claim."""
     print(f"Next reel: #{reel['id']} {reel['hook']!r}")
     voice_name = os.environ.get('VOICE', '').strip() or None
-    clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
+    with took('voice'):
+        clips = None if voice_name == 'none' else voice.synthesize(voice.script(reel), voice_name)
     if clips is not None:
         print(f'Voice check: {clips.verdict}')
         clips = paced(reel, clips)
-    path, slides = render.render_reel(reel, voice=clips)
-    return check_visuals(reel, clips, path, slides)
+    with took('render'):
+        path, slides = render.render_reel(reel, voice=clips)
+    with took('frame review (and any re-render)'):
+        return check_visuals(reel, clips, path, slides)
 
 
 def main():
@@ -337,6 +418,13 @@ def main():
     output('posted', 'false')
     reels = json.loads(render.QUEUE.read_text())
     today = datetime.now(timezone.utc).date().isoformat()
+    # A slot that is off (REEL_SLOTS) still has its cron in daily-reel.yml; its scheduled run does nothing.
+    if os.environ.get('GITHUB_EVENT_NAME') == 'schedule' \
+            and generate.slot() not in scheduler.active_slots(os.environ.get('REEL_SLOTS')):
+        print(f'Reel {generate.slot()} is off (REEL_SLOTS); nothing to do.')
+        return
+    if not dry:
+        check_login()
     # Never post the same slot twice in a day, however many times a run is started (the scheduler retries).
     if not dry and generate.slot() in scheduler.posted_slots(reels, datetime.now(timezone.utc).date()) \
             and os.environ.get('FORCE_POST', '').strip().lower() not in ('1', 'true', 'yes'):
@@ -349,7 +437,8 @@ def main():
     if by_hand:
         print('Using the reel added by hand')
     else:
-        reel = new_entry(reels, todays_reel(reels))
+        with took('writing'):
+            reel = new_entry(reels, todays_reel(reels))
         reels.append(reel)
     try:
         path, slides = make_video(reel)
@@ -362,6 +451,7 @@ def main():
         tip = generate.today(reels, [])
         tip = generate.pick_hook(tip) if tip and tip.get('alternatives') else tip
         tip = tip if not tip or generate.three_d_today() else generate.strip_3d(tip)
+        tip = tip if not tip or generate.stage_today() else generate.strip_stage(tip)
         if not tip:
             raise SystemExit('ERROR: could not write a replacement reel today.')
         name, episode = generate.series_label(reels, datetime.now(timezone.utc).date())
@@ -387,23 +477,24 @@ def main():
     name = f"reel-{reel['id']}-{int(time.time())}.mp4"
     cover = path.with_name(path.stem + '-cover.jpg')
     cover_name = name.replace('.mp4', '-cover.jpg') if cover.exists() else None
-    try:
-        url = upload(path, name)
-        print(f'Uploaded to {url}')
-        cover_url = None
-        if cover_name:
-            try:
-                cover_url = upload(cover, cover_name, 'image/jpeg')
-            except PublishError:  # a missing cover never blocks the post; the thumb_offset frame is used instead
-                print('Cover upload failed; posting with the video frame as the cover')
-                cover_name = None
-        media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
-    except PublishError as e:
-        raise SystemExit(f'Publish failed: {e}')
-    finally:
-        delete_upload(name)
-        if cover_name:
-            delete_upload(cover_name)
+    with took('posting'):
+        try:
+            url = upload(path, name)
+            print(f'Uploaded to {url}')
+            cover_url = None
+            if cover_name:
+                try:
+                    cover_url = upload(cover, cover_name, 'image/jpeg')
+                except PublishError:  # a missing cover never blocks the post; the thumb_offset frame is used instead
+                    print('Cover upload failed; posting with the video frame as the cover')
+                    cover_name = None
+            media_id = publish_to_instagram(url, caption, thumb_ms, cover_url)
+        except PublishError as e:
+            raise SystemExit(f'Publish failed: {e}')
+        finally:
+            delete_upload(name)
+            if cover_name:
+                delete_upload(cover_name)
 
     reel['posted_at'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
     reel['media_id'] = media_id

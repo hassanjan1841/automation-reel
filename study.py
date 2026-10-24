@@ -80,6 +80,20 @@ def sources_in(text):
     return out
 
 
+class Blocked(RuntimeError):
+    """The site refused a download from this machine (YouTube asks GitHub's servers to sign in, 2026-10)."""
+
+
+BLOCKED = ('sign in to confirm', "confirm you're not a bot", 'confirm you are not a bot')
+BLOCKED_NOTE = ('YouTube refuses downloads from GitHub\'s servers ("sign in to confirm you\'re not a bot"), so its '
+                'videos could not be studied this run. Attach the videos to a study issue instead (a phone screen '
+                'recording works); attachments and other public links are still studied.')
+
+
+def youtube(source):
+    return bool(re.search(r'(^|[/.])(youtube\.com|youtu\.be)/', source))
+
+
 def fetch(source, folder, token=None):
     """(path to the video, what we know about it). Local files as they are; GitHub attachments with the token;
     anything else with yt-dlp (public videos only, never a login)."""
@@ -99,6 +113,8 @@ def fetch(source, folder, token=None):
                           '-o', str(Path(folder) / '%(id)s.%(ext)s'), source],
                          capture_output=True, text=True, timeout=600)
     if out.returncode != 0:
+        if any(b in out.stderr.lower() for b in BLOCKED):
+            raise Blocked(f'{source}: YouTube asked this machine to sign in')
         raise RuntimeError(f'could not download {source}: {out.stderr.strip()[-300:]}')
     info = json.loads(out.stdout.strip().splitlines()[-1])
     path = Path(folder) / f"{info['id']}.mp4"
@@ -590,10 +606,16 @@ def main():
             print('Nothing new worth studying this week')
             return
         raise SystemExit('No videos to study')
-    texts, failed = [], []
+    texts, failed, blocked = [], [], []
     for source, extra in todo:
+        if blocked and youtube(source):     # once YouTube refuses this machine it refuses every link; skip the rest
+            blocked.append(source)
+            continue
         try:
             texts.append(study(source, os.environ.get('GH_TOKEN'), extra))
+        except Blocked:
+            print(f'  blocked: {source} (YouTube asks GitHub\'s servers to sign in)')
+            blocked.append(source)
         except Exception as e:  # one bad link must not stop the others
             print(f'  failed: {source}: {type(e).__name__}: {str(e)[:300]}')
             failed.append(f'- {source}: {str(e)[:200]}')
@@ -607,8 +629,12 @@ def main():
         except Exception as e:  # the studies are saved; the digest can wait a week
             print(f'  digest unavailable: {type(e).__name__}: {str(e)[:200]}')
     render.OUT_DIR.mkdir(exist_ok=True)
-    OUT.write_text((summary + '\n---\n\n' if summary else '') + '\n\n---\n\n'.join(texts) + ('\n\n**Could not study:**\n' + '\n'.join(failed) if failed else '') + '\n')
-    if not texts:
+    note = f'\n\n**Not studied ({len(blocked)}):** {BLOCKED_NOTE}' if blocked else ''
+    OUT.write_text((summary + '\n---\n\n' if summary else '') + '\n\n---\n\n'.join(texts) + ('\n\n**Could not study:**\n' + '\n'.join(failed) if failed else '') + note + '\n')
+    if blocked:
+        print(BLOCKED_NOTE)
+    # A run where YouTube's block was the only problem is not a failure: there is nothing this machine can fix.
+    if not texts and failed:
         raise SystemExit(1)
 
 

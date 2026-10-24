@@ -15,16 +15,54 @@ normal reel loses about 60%). The writers (`generate.py`, and `trends.py` for ne
   "this one line makes the query use an index" is a reel.
 - Show it, do not claim it: real code, a real diff, a real recording (ide, walkthrough). Never an invented
   result, number, chat or post. If it cannot be shown honestly, pick another topic.
-- The useful part stays on screen long enough to screenshot (2 seconds or more) and is in dm_guide or the
-  caption, so people save it.
+- The useful part stays on screen long enough to screenshot (2 seconds or more) and is in the caption, so
+  people save it.
 - Reels people send to a friend are surprising ("this is wrong and here is proof") or a pain they share; reels
   people save are exact steps they will need again. Aim for one of the two on purpose.
 - Watching something get built holds people (2026-10-01 study: a CSS login card built from a plain form, 47,800
   likes, held uncut for 7 seconds at the end): the plain "before" on frame 0, the change happening on screen, the
   finished result held long enough to screenshot. For UI and CSS use the build visual.
-- How-tos end with a concrete freebie: "Comment CODE for the code". The two studied reels with thousands of
-  comments (2,365 and 3,271) both offered the real file or tool for a keyword; ours offered a question and got
-  none. The reel still delivers its payoff; the freebie is the full file.
+- The ending is a direct question about the viewer's own code, never a comment-to-DM freebie. Two studied big
+  accounts got thousands of comments with freebies, but on this account 29 reels offered one, not one keyword
+  comment came in, and they were watched less (13% against 22% for question endings, 2026-10-14).
+
+What our own numbers say (42 reels measured, 2026-10-14; they outrank the studies above):
+- The myth about a famous basic is the format people stay on: "Your CORS header isn't security" reached 1,105
+  views at 58.6% skip with 7 saves and 2 shares; "JWT: signed, not secret" and var vs let came next. The rest sat
+  near 110 views at 80 to 90% skip.
+- Pick topics every web developer has met (CORS, JWT, cookies, git, async, caching, indexes, re-renders). Niche
+  setups (one library's realtime API, one provider's webhook into another) got 6 to 20 views.
+- Statement hooks beat questions (median 111 views against 68).
+- Under 20 seconds: reels of 23 seconds or more got half the views of shorter ones.
+- Shares push a reel past its first test audience; watch time alone did not (a reel held at 26% skip still
+  stopped at 142 views with no shares). Aim each reel at a surprise people want to send on.
+
+Update, 30 reels from 2026-10-05 to 10-18 (measured 2026-10-19):
+- The second breakout was a myth too: "*await* doesn't pause everything" reached 1,938 views in its first day at
+  46.6% skip, 10 seconds watched of 19, 6 saves and 2 shares. Its first frame was a 7-line code puzzle (A, await,
+  C, then B outside the function): people stayed to find out the real print order, which a stepper then showed.
+- Both breakouts share one shape: a famous basic, a statement hook that flips what people assume ("Your X isn't
+  Y", "X doesn't Y"), real code on screen from frame 0, and a reveal that proves it. Use that shape.
+- Myths, explainers and X vs Y (11 reels): median 172 views, 67% skip, 19 saves and shares. Everything else (19
+  reels): median 112 views, 85% skip, 3 saves and shares. Beginner lessons ("Next.js from zero") averaged 86%
+  skip; client and freelance topics 91%.
+- The first frame decides it: reels that opened on code averaged 72% skip and 4.7 seconds watched; reels whose
+  first frame ended up as text alone averaged 84% skip, 2.6 seconds, and not one save or share.
+- A "guess the output" opening works when the myth is about what code does: 3 to 8 lines, an outcome most
+  developers get wrong, the real output proven later. Never a made-up output. The predict animation is made for
+  it: the same code with the usual wrong guess and the real output as answer chips, a short countdown during the
+  held beat, then the real output and the right chip stamped. A quiz gives people a reason to stay (find out if
+  they were right) and to send it on (quiz a friend).
+
+Update, live numbers for the last 60 posts (2026-10-23):
+- Almost every reel stops at 120 to 230 views. Only three broke out (await 2,126, "fetch doesn't send cookies"
+  1,433, CORS 1,107), each holding people 6.5 to 10 seconds. Reels with a low skip rate but only 4 to 6 seconds
+  watched (if statement, cd -) stayed near 140: the hook gets them in, watch time decides the reach.
+- Hold the answer to the end. Both breakout myths proved the real output on the last point (reveal 3); the myths
+  that showed it on point 2 (typeof null, useEffect, Array.sort) stopped at 170 to 210 views. Points 1 and 2
+  build the expectation, point 3 proves the real output.
+- Questions on the cover are 5 of the 8 worst openings. News, freelance and client topics are out of the
+  rotation (news averaged 94 views at +3 skip, freelance 44, client skits 8).
 
 ## 2. The hook (seconds 0 to 3, where most viewers leave)
 
@@ -64,6 +102,11 @@ Hook mistakes that make people swipe:
 - a text-only first frame with nothing to look at.
 
 ## 3. The script
+
+News and explainers are a small story told plainly (the creator, 2026-10-23): the problem first, in words a
+beginner understands (who it hurts and what can happen), then what happened or what is going on, then the
+solution. No teaser hooks and no mystery: the viewer knows the problem in the first second. (A myth's "guess the
+output" puzzle is the exception: there the question is the point, and the answer comes at the end.)
 
 - From frame 0: the problem or result on screen with the on-screen hook, and the spoken hook starting at once
   (about 0.25 s in). Then to about 15 s: one concrete worked example. Last seconds: the exact fix or command, then a closing line that

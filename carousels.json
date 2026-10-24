@@ -72,5 +72,161 @@
     "style": "dark",
     "posted_at": "2026-09-27T18:31:45+00:00",
     "media_id": "17909215953545019"
+  },
+  {
+    "title": "Add Stripe checkout in one afternoon",
+    "subtitle": "The real steps from product to verified payment",
+    "slides": [
+      {
+        "heading": "The Goal",
+        "points": [
+          "One button triggers real payment",
+          "Stripe hosts the checkout page",
+          "No backend payment form needed"
+        ],
+        "alt": "A slide stating the goal: a button that triggers a real payment without building a custom payment form."
+      },
+      {
+        "heading": "Create A Product",
+        "points": [
+          "Add product and price in dashboard",
+          "Copy the price ID it generates",
+          "This ID goes in your code"
+        ],
+        "alt": "A slide showing how to create a product and price in the Stripe dashboard and copy its price ID."
+      },
+      {
+        "heading": "Install Stripe",
+        "code": "npm install stripe",
+        "language": "bash",
+        "alt": "A terminal command installing the Stripe Node package with npm install stripe."
+      },
+      {
+        "heading": "Create Checkout Session",
+        "code": "const session = await stripe.checkout\n  .sessions.create({\n    mode: 'payment',\n    line_items: [lineItem],\n    success_url: successUrl,\n    cancel_url: cancelUrl,\n  });",
+        "language": "javascript",
+        "alt": "Server code creating a Stripe checkout session with payment mode, a line item, and success and cancel URLs."
+      },
+      {
+        "heading": "Redirect The Customer",
+        "points": [
+          "Send them to session.url",
+          "Stripe collects card details securely",
+          "You never touch raw card numbers"
+        ],
+        "alt": "A slide explaining to redirect the customer to the checkout session URL returned by Stripe."
+      },
+      {
+        "heading": "Verify With Webhook",
+        "points": [
+          "Listen for checkout.session.completed event",
+          "Grant access only after that event",
+          "Never trust the success redirect alone"
+        ],
+        "alt": "A slide warning to verify payment through a Stripe webhook event, not the success redirect alone."
+      },
+      {
+        "heading": "Test Before Going Live",
+        "points": [
+          "Use Stripe test mode keys",
+          "Trigger events with Stripe CLI",
+          "Switch keys when going live"
+        ],
+        "alt": "A slide recommending testing with Stripe test mode keys and the Stripe CLI before switching to live keys."
+      }
+    ],
+    "takeaway": "One checkout session. Real payments, no custom form.",
+    "question": "What payment step always trips you up?",
+    "caption": "Add Stripe checkout in one afternoon\nNo backend payment page needed, just one API call.\nWhat payment step always trips you up?\nComment STRIPE and I'll send you the full guide 👇",
+    "hashtags": [
+      "#StripeCheckout",
+      "#WebDevelopment",
+      "#FullStackDeveloper",
+      "#PaymentIntegration",
+      "#FreelanceDev"
+    ],
+    "style": "dark",
+    "dm_keyword": "STRIPE",
+    "dm_guide": "Install: npm install stripe. 1) In the Stripe dashboard, create a Product and Price, copy the price ID. 2) Server: const session = await stripe.checkout.sessions.create({mode:'payment', line_items:[{price:'price_xxx', quantity:1}], success_url, cancel_url}); then redirect to session.url. 3) Verify payment server-side: run `stripe listen --forward-to localhost:3000/webhook` (Stripe CLI), check event.type === 'checkout.session.completed' before granting access. Full docs: https://docs.stripe.com/checkout/quickstart",
+    "posted_at": "2026-10-11T16:12:25+00:00",
+    "media_id": "18117846917033595"
+  },
+  {
+    "caption": "How to write a freelance proposal that wins the job\nMost proposals lose before the client finishes reading them.\nFix the structure, not your resume.\nWhat's the last line of your best proposal? 👇",
+    "dm_guide": "Proposal structure that gets replies: 1) Restate their exact problem in one line, skip your bio entirely. 2) Give a price range anchored to scope, not hours worked. 3) End with one next step only, something like \"Free for a 15 min call Tuesday or Wednesday?\" Keep the whole thing to one page covering just problem, plan, price. Send it within 24 hours of talking to them. Skip generic templates, rewrite the opening line for every client so it names their actual problem.",
+    "dm_keyword": "PROPOSAL",
+    "hashtags": [
+      "#freelancedeveloper",
+      "#clientwork",
+      "#webdevfreelance",
+      "#freelancing",
+      "#proposaltips"
+    ],
+    "question": "What's the last line of your best proposal?",
+    "slides": [
+      {
+        "heading": "The proposal that gets ignored",
+        "alt": "A code block shows a generic freelance proposal opening with the developer's bio and ending with let me know your thoughts.",
+        "code": "Hi, I'm a full-stack dev with\n5 years experience. I'd love\nto help with your project.\nLet me know your thoughts!",
+        "language": "text"
+      },
+      {
+        "heading": "The proposal that gets replies",
+        "alt": "A code block shows a rewritten proposal naming the client's specific problem, a price range, and a request for a short call.",
+        "code": "Your [specific problem] costs\nyou time every week. I'll fix\nit in 1 week, $800-1200.\nFree for a 15 min call Tue?",
+        "language": "text"
+      },
+      {
+        "heading": "Open with their problem",
+        "points": [
+          "Restate their exact goal in one line",
+          "Skip your bio entirely",
+          "Prove you listened before you pitch"
+        ],
+        "alt": "Slide explaining to open a proposal by restating the client's exact problem instead of a personal bio."
+      },
+      {
+        "heading": "Price as a range",
+        "points": [
+          "Give a range, not one number",
+          "Anchor the high number first",
+          "Tie it to scope, not hours"
+        ],
+        "alt": "Slide showing how to present a price as a scope-based range instead of a single hourly rate."
+      },
+      {
+        "heading": "One clear next step",
+        "points": [
+          "Ask for a 15 minute call",
+          "Never end with let me know",
+          "Make saying yes effortless"
+        ],
+        "alt": "Slide recommending every proposal end with a request for a short call instead of an open ended question."
+      },
+      {
+        "heading": "Keep it to one page",
+        "points": [
+          "Cut anything they can Google",
+          "Three sections only: problem, plan, price",
+          "Long proposals get skimmed, not read"
+        ],
+        "alt": "Slide advising freelance proposals stay one page covering only the problem, the plan, and the price."
+      },
+      {
+        "heading": "Send within 24 hours",
+        "points": [
+          "Speed signals you want the work",
+          "Late replies lose to faster ones",
+          "A template saves you the time"
+        ],
+        "alt": "Slide noting that sending a proposal within 24 hours wins more freelance work than a slower, polished one."
+      }
+    ],
+    "style": "dark",
+    "subtitle": "The one page structure clients actually reply to",
+    "takeaway": "One page. One price. One next step.",
+    "title": "Write a proposal that wins the job",
+    "posted_at": "2026-10-18T13:49:04+00:00",
+    "media_id": "17948146917068330"
   }
 ]

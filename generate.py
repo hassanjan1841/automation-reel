@@ -12,7 +12,8 @@ Usage:
   python generate.py --visuals  pick code, terminal or screenshot visuals for queued reels that have none
 
 Uses the Claude Code CLI, so it runs on a Claude Pro/Max subscription via CLAUDE_CODE_OAUTH_TOKEN.
-Env (also read when publish.py writes the day's reel): SLOT (1, 2 or 3), THREE_D=on|off, THREE_D_CHANCE,
+Env (also read when publish.py writes the day's reel): SLOT (1, 2 or 3), THREE_D=on|off, THREE_D_CHANCE, STAGE=on|off,
+STAGE_CHANCE,
 EXPERIMENT=off|<name>; REEL_FORMAT forces reel 3's format (local only: no workflow passes it).
 """
 
@@ -23,6 +24,7 @@ import random
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 import history
@@ -30,6 +32,19 @@ import render
 from voice import strip_cues
 
 MODEL = 'claude-sonnet-5'
+
+
+# The writer's effort stays the Claude CLI's default: lower efforts were faster in a benchmark (2026-10-23), but low
+# got a fact wrong and a medium draft invented a grep output that the frame review caught as dishonest, which cost a
+# whole rewrite. The checklist and fix_alternatives are what cut the writing time without that risk.
+WRITER_EFFORT = 'default'
+
+
+def effort():
+    """WRITER_EFFORT (low, medium, high...) for the writer, its repairs and the hook judge; unset or "default" leaves it
+    to the Claude CLI."""
+    level = os.environ.get('WRITER_EFFORT', '').strip().lower() or WRITER_EFFORT
+    return [] if level == 'default' else ['--effort', level]
 BATCH = 14
 POST_HOUR_UTC = 12
 
@@ -41,13 +56,27 @@ PILLARS = {
               'the real steps (walkthrough, ide recording or screenshots)', 'AI tool in 30s'),
     1: ('devtip', 'Dev tip on Next.js, React, TypeScript, Supabase, Stripe or Postgres: a mistake and its fix '
                   '(diff or ide recording)', 'Dev mistake'),
-    2: ('relatable', 'Myth vs fact: a belief many developers hold that is wrong, proven wrong on screen with real '
-                     'code, a real recording or the official docs, then what to do instead', 'Myth vs fact'),
+    2: ('relatable', 'Myth vs fact: one thing most developers believe about a famous basic that is wrong or half '
+                     'true (CORS, JWT, var vs let, == vs ===, async and await, setTimeout and the event loop, '
+                     'Promise.all, 0.1 + 0.2, typeof null, Array.sort, git reset, localStorage, cookies, HTTP '
+                     'caching, SQL indexes, React re-renders, useEffect, environment variables), proven on screen with '
+                     'real code or its real output, then the one-line truth to remember. A topic every web developer '
+                     'has met, not a niche setup. The hook is a statement that names the thing and flips what people '
+                     'assume, like "Your CORS header isn\'t *security*" or "*await* doesn\'t pause everything": one '
+                     'highlighted word, never a question. The hook_visual is code: when the myth is about what code '
+                     'does, a short puzzle of 3 to 8 lines whose real output most developers guess wrong (the order '
+                     'of the logs, a surprising value); line 1 says what most devs expect, points 1 and 2 build that '
+                     'expectation, and point 3, the last point, proves the real output with "reveal": 3 (the answer '
+                     'held to the end is what kept people watching): best a predict animation (the same code, the '
+                     'usual wrong guess and the real output as its choices), or a stepper, terminal or outputmap. The output '
+                     'shown must be exactly what the code really prints', 'Myth vs fact'),
     3: ('freelance', 'Freelance playbook: one copyable thing for a common client situation (the exact message to '
                      'send when the scope grows, a contract clause, how to price a fix, a line for the invoice), '
                      'shown as the real text on screen in a code card titled like "message.txt", plus why it works. '
                      'A template, never an invented conversation', 'Freelance playbook'),
-    4: ('concept', 'Tech concept explained simply, or myth vs fact about a tool or practice', 'Explained'),
+    4: ('concept', 'Tech concept explained simply as a small story: the problem in plain words first (who it '
+                   'hurts and how), then what is going on, then the fix. Clear, never a mystery. Or myth vs fact '
+                   'about a tool or practice', 'Explained'),
     5: ('relatable', 'Ranked: three real tools or habits for one job, ranked with the real reason for each, shown '
                      'with real code, docs or screenshots, and a clear verdict on which to pick', 'Ranked'),
     6: ('saas', 'Build X in one afternoon: one real feature with Next.js, Supabase or Stripe (auth, checkout, '
@@ -57,7 +86,17 @@ PILLARS = {
 EMOJI = re.compile('[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍]')
 HASHTAG = re.compile(r'^#[A-Za-z0-9_]+$')
 SYMBOLS = re.compile(r'[/&%$#;()\[\]{}<>=_|\\]')
-VO_MIN_WORDS, VO_MAX_WORDS = 40, 55
+# Worn-out phrases that make a reel sound like every other one: bad writing, refused wherever they appear (hook,
+# points, cta, voiceover, caption). A list of our own (2026-10-22, after reviewing an Instagram skills pack's lexicon).
+STOCK = re.compile(r"\b(in (today'?s|this) (video|reel)|stop scrolling|follow for more|let'?s dive in|dive (deep )?into|"
+                   r"game[- ]changer|you won'?t believe|tag (someone|a friend)|level up your|unlock the (power|secrets?)|"
+                   r"supercharge|mind[- ]blowing|secret sauce|run,? don'?t walk|the algorithm loves|must-have|"
+                   r"without further ado|buckle up|hidden gem)\b", re.I)
+# Instagram shows about the first 125 characters of a caption before "... more": the first line must fit in it.
+CAPTION_VISIBLE = 125
+# 36 to 46 words keeps a reel under 20 seconds (posted reels: about 0.5 s a word; at 48 words they averaged 19.6 s,
+# and reels of 23 s or more got half the views of shorter ones, 2026-10-14).
+VO_MIN_WORDS, VO_MAX_WORDS = 36, 46
 
 
 def words(text):
@@ -152,6 +191,9 @@ def validate(reel):
         errors.append('hook_word must be one word from the hook, 2 to 10 letters')
     if three_d_count(reel) > 2:
         errors.append(f'{three_d_count(reel)} 3D moments; use at most 2 (hook_word and 3D visuals together)')
+    if reel.get('scenes') is not None:
+        import stage
+        errors += stage.scene_errors(reel)
 
     cta = reel.get('cta', '').strip()
     spans = highlights(cta)
@@ -170,6 +212,15 @@ def validate(reel):
         errors.append(f'caption needs 2 to 3 lines, got {len(lines)}')
     elif not (lines[-1].rstrip().endswith('👇') and ('?' in lines[-1] or (keyword and keyword in lines[-1]))):
         errors.append('caption must end with a question followed by 👇')
+    if lines and len(lines[0]) > CAPTION_VISIBLE:
+        errors.append(f'caption first line has {len(lines[0])} characters; it must fit the {CAPTION_VISIBLE} the feed '
+                      'shows before "... more"')
+    texts = [reel.get('hook', ''), cta, reel.get('caption', '')] + [f"{p.get('title', '')} {p.get('body', '')}"
+                                                                    for p in points if isinstance(p, dict)]
+    texts += [str(x) for x in reel.get('voiceover') or [] if isinstance(x, str)]
+    stock = sorted({m.group(0).lower() for t in texts for m in STOCK.finditer(str(t).replace('*', ''))})
+    if stock:
+        errors.append(f"stock phrase {', '.join(repr(s) for s in stock)}: worn out; say it plainly in your own words")
 
     vo = reel.get('voiceover')
     if not isinstance(vo, list) or len(vo) != 5:
@@ -254,17 +305,19 @@ HOOK_TYPES = ('problem', 'before_after', 'shortcut', 'mistake', 'test', 'news')
 # once; a terminal types itself out and a recording or a 3D scene needs time to start).
 HOOK_VISUALS = ('code', 'diff', 'screenshot', 'morph', 'stepper', 'build')
 PLAYBOOK = render.ROOT / 'playbook.md'
+DIRECTOR = render.ROOT / 'director.md'
 
 
 def playbook():
-    """The researched rules for hooks, scripts and visuals (playbook.md), read by the writer, the hook judge and
-    the frame review."""
-    return PLAYBOOK.read_text().strip() if PLAYBOOK.exists() else ''
+    """The researched rules for hooks, scripts and visuals (playbook.md) and the creator's rules for how a reel looks,
+    moves and sounds (director.md), read by the writer, the hook judge and the frame review."""
+    parts = [p.read_text().strip() for p in (PLAYBOOK, DIRECTOR) if p.exists()]
+    return '\n\n'.join(parts)
 
 
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
-MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+MOTION = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
           'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
           'notify', 'checks', 'bignumber', 'timeline', 'latency')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
@@ -299,6 +352,19 @@ def motion_errors(i, v):
                                    for s in trace for x in s.get('vars', [])) \
                 or any(s.get('out') is not None and not short(s['out'], 24) for s in trace):
             e.append(f'point {i} stepper shows max 4 variables (names of 10, values of 16 characters), outputs of 24')
+    elif kind == 'predict':
+        lines, choices, out = v.get('code', '').rstrip('\n').split('\n'), v.get('choices', []), v.get('output', [])
+        norm_ = lambda s: ' '.join(str(s).split())
+        if not v.get('code', '').strip() or not v.get('language') or len(lines) > 8 or max(len(l) for l in lines) > 34:
+            e.append(f'point {i} predict needs code (max 8 lines of 34 characters) and a language')
+        elif not 2 <= len(choices) <= 3 or any(not short(c, 14) for c in choices) \
+                or len({norm_(c) for c in choices}) != len(choices):
+            e.append(f'point {i} predict needs 2 or 3 different answer choices of max 14 characters')
+        elif not 1 <= len(out) <= 4 or any(not short(o, 24) for o in out):
+            e.append(f'point {i} predict needs "output": the 1 to 4 lines the code really prints, max 24 characters')
+        elif sum(norm_(c) == norm_(' '.join(out)) for c in choices) != 1:
+            e.append(f'point {i} predict: exactly one choice must equal the output lines joined by spaces '
+                     f'("{norm_(" ".join(out))}"); the others are the guesses people get wrong')
     elif kind == 'flow':
         ids = {n.get('id') for n in v.get('nodes', [])}
         if not 2 <= len(v.get('nodes', [])) <= 5 or any(not short(n.get('label'), 12) for n in v.get('nodes', [])):
@@ -539,7 +605,7 @@ def motion_reel_errors(reel):
 
 
 # A point whose result finishes on screen while the voice holds a beat (voice.hold), then the voice lands the result.
-REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'ide', 'bars')
+REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'predict', 'ide', 'bars')
 
 
 def reveal_errors(reel):
@@ -561,14 +627,17 @@ def reveal_errors(reel):
 NODE_KINDS = ('client', 'server', 'db', 'cache', 'queue', 'cloud', 'phone', 'lock')
 SCENES_3D = ('diagram', 'device', 'bars', 'logos')
 THREE_D_CHANCE = 0.5
+# 2026-10-20: stage reels (stage.py), the explainer style the creator picked as the bar, on a random share of days;
+# learn.py compares them with the classic slides ("look").
+STAGE_CHANCE = 0.5
 
 
-# Reel 1 teaches, reel 2 is relatable; each rotates through its own series (indexes into PILLARS) by weekday,
-# so the two reels of a day are always different kinds. The freelance playbook comes up most (2026-10-01: the
-# relatable POV and client-chat skits were invented scenes with nothing to take away, and Instagram barely showed
-# them: 5 and 9 views).
-TEACH = (0, 1, 4, 6)
-RELATE = (3, 2, 3, 5)
+# Each slot rotates through its own series (indexes into PILLARS) by weekday. Reel 1 is Myth vs fact every day:
+# the myths about famous basics were the reels people stayed on (2026-10-14: CORS 1,105 views at 58.6% skip, JWT
+# 172, var vs let 151, against about 110 for the rest). Reel 2 (off by default, scheduler.REEL_SLOTS) no longer
+# runs the freelance playbook: it averaged 25 views, the client skits 5 to 9.
+TEACH = (2,)
+RELATE = (4, 0, 5, 1)
 
 
 # Reel 3 of the day picks one of these at random (fixed per date), so it never becomes a routine. "news" is only
@@ -583,15 +652,23 @@ EXTRA_FORMATS = {
                          'small concept a beginner can follow, with a code visual', 'Next.js from zero'),
     'build': ('build', 'Build it live: one small UI piece (a button, a card, a toggle, a badge, a loader) going from '
                        'plain HTML to a finished design in 2 to 4 CSS stages, as a build visual: the plain "before" '
-                       'under the hook, the finished look held at the end. Real CSS that works in any browser; the '
-                       'dm_guide holds the full code', 'Build it live'),
+                       'under the hook, the finished look held at the end. Real CSS that works in any browser, the '
+                       'finished code on screen long enough to screenshot', 'Build it live'),
 }
-SLOT3_FORMATS = ('news', 'trick', 'versus', 'series', 'build')
+# Myth is listed twice, so it comes up on about a third of days (the main format, see TEACH). Build it live left the
+# rotation (60 views), and so did the beginner series "Next.js from zero" (2026-10-19: 86% skip over 4 reels);
+# Explained took its place (CORS, 1,107 views, and JWT, 172, were Explained reels). REEL_FORMAT=build or series
+# still forces those. News left too (2026-10-23: 9 reels, 94 views on average, skip above the usual);
+# REEL_FORMAT=news still runs the trend scan's story by hand.
+EXTRA_FORMATS['myth'] = PILLARS[2]
+EXTRA_FORMATS['explained'] = PILLARS[4]
+MYTH = PILLARS[2][2]
+SLOT3_FORMATS = ('myth', 'myth', 'trick', 'versus', 'explained')
 
 
 def slot():
-    """Which of the day's reels this run writes: 1 (a how-to), 2 (the evening, relatable reel) or 3 (news, a
-    trick, X vs Y or the beginner series)."""
+    """Which of the day's reels this run writes: 1 (Myth vs fact), 2 (off by default: explained, AI, ranked or a
+    dev mistake) or 3 (a myth, news, a trick, X vs Y or an explainer)."""
     value = os.environ.get('SLOT', '').strip()
     return int(value) if value in ('2', '3') else 1
 
@@ -599,7 +676,7 @@ def slot():
 def slot3_format(day=None, skip=()):
     """Reel 3's format for the day, random but fixed per date; skip formats already ruled out (news with no story)."""
     forced = os.environ.get('REEL_FORMAT', '').strip()
-    if forced in SLOT3_FORMATS and forced not in skip:
+    if (forced in EXTRA_FORMATS or forced == 'news') and forced not in skip:
         return forced
     day = day or datetime.now(timezone.utc).date()
     options = [f for f in SLOT3_FORMATS if f not in skip]
@@ -611,7 +688,8 @@ def pillar_for(day):
     if slot() == 3:
         fmt = slot3_format(day)
         return EXTRA_FORMATS[fmt if fmt != 'news' else slot3_format(day, skip=('news',))]
-    return PILLARS[(TEACH if slot() == 1 else RELATE)[day.weekday() % 4]]
+    series = TEACH if slot() == 1 else RELATE
+    return PILLARS[series[day.weekday() % len(series)]]
 
 
 def three_d_today(day=None):
@@ -625,6 +703,60 @@ def three_d_today(day=None):
     return random.Random(f'3d-{day.isoformat()}' + (f'-{slot()}' if slot() > 1 else '')).random() < chance
 
 
+def stage_today(day=None):
+    """Whether today's reel is a stage reel (stage.py). Like three_d_today: random, fixed per date and slot.
+    STAGE=on or off overrides; STAGE_CHANCE sets the odds."""
+    forced = os.environ.get('STAGE', '').strip().lower()
+    if forced in ('on', 'off'):
+        return forced == 'on'
+    day = day or datetime.now(timezone.utc).date()
+    chance = float(os.environ.get('STAGE_CHANCE', '').strip() or STAGE_CHANCE)
+    return random.Random(f'stage-{day.isoformat()}-{slot()}').random() < chance
+
+
+def stage_note():
+    import stage
+    if not stage_today():
+        return 'Leave "scenes" out today: this reel uses the classic slides.'
+    return ('''Today this is a stage reel: add "scenes", exactly one per slide (hook, each point, cta), drawn as one
+animated piece in the director's style (director.md). Keep hook_visual and the point visuals as well: they are the
+fallback if a scene fails the review. Each scene is an object with "kind" and that kind's fields:
+- file: title, lines (1 to 7, at most 40 characters each), strike (true to strike the lines out on the beat), tag
+  (a short label that pops on, like "NO EFFECT").
+- code: title (the file name), language, code (at most ''' + f'{stage.MAX_CODE_LINES} lines of {stage.MAX_CODE_COLS}' + '''
+  columns), highlight (line numbers of the line that matters).
+- edit: title (the file name), lines (2 to 7, at most 34 characters), find (text that appears 2 to 8 times in the
+  lines), typed (what is typed once), key (the shortcut, default Ctrl+D). The trick is performed on screen: the key
+  is pressed once per match (a counter shows 1/3, 2/3, 3/3), each press adds a cursor, then typed lands at every
+  cursor at once. The result is worked out from these fields, so say the real count ("three times" for three
+  matches). Best for any editor trick: show it happening, never only tell it.
+- docs: url (one of "sources"), title (the page's heading), text (the page's exact words, 20 to 240 characters),
+  mark (the phrase of text that proves the point; it is highlighted as it is said).
+- checklist: title, items (2 to 5, each {label of at most 28 characters, ok}); each item ticks (ok true) or crosses
+  (ok false) as it is said, then the card is stamped PASSED or FAILED. Every tick or cross must be proven on screen
+  in this same reel (real output in a terminal or code scene, or the docs line); never tick a result the reel does
+  not show, like a production build it never runs. Best for "what done looks like" or a fix verified.
+- steps: items (2 to 4, each {label of at most 14 characters, note}); each lights up as its label is said. stop
+  (optional): {request, result (at most 12 characters, like "BLOCKED"), at (the index of the item that stops it)}.
+- counter: label, value (the real number), prefix, suffix, source (one of "sources"); it ticks up to the value.
+- bars: title, items (2 to 5 {label, value}), unit, and source (one of "sources") for real numbers, or
+  illustration: true when the bars only sketch an idea (they are tagged so on screen).
+- terminal: command, output (1 to 6 lines the command really prints).
+- repo: name (owner/repo), description, stars (its real star count), url (one of "sources").
+- words: lines (1 to 3 of at most 18 characters), set huge in a condensed capital face; a *word* is the accent.
+  Each word lands as an outline and fills in letter by letter. label (optional, at most 24 characters): one small
+  word or two over the big words ("unnecessary" over "EXPOSURE"). motif (optional: wave, brackets or rings): an
+  abstract shape pulsing behind them that fits the words (brackets for code). Best for the cta or a turn.
+Any scene may add: at (one word of that slide's voiceover where its main move lands), light (true for the one light
+chapter: at most 2 scenes, never the hook), accent (true for one bold full-colour beat, at the reel's turn; never
+the hook, never with light), carry (short text shown on the previous scene and this one; it flies across). A point
+scene may add chapter (its short name, at most 14 characters, like "Toolbox"): a big numbered card opens it; give
+all three points a chapter or none, for reels that are a method in steps. The hook's scene shows its proof from frame 0: file, code, docs, terminal, repo or counter. Every value is
+real; never a made-up number, output or quote. Every result must follow from the steps the reel shows: a key
+pressed the number of times it really takes, typed text that is the same on every cursor, a command's output that
+the files on screen would really give.''')
+
+
 def three_d_note():
     return ('3D is allowed today: use it for at most 2 moments in the reel (a hook_word and/or 3D visuals), only '
             'where it explains better than a flat visual.' if three_d_today()
@@ -634,6 +766,7 @@ def three_d_note():
 # The weekly test (learn.py starts one at a time, in experiments.json): each reel gets one option by chance, fixed
 # per date and slot, the writer is told which, validate() holds the reel to it, and learn.py compares the options.
 # Only things the writer controls and code can check; none of them bends the honesty rules.
+SEND = re.compile(r'\b(send|share|forward)\b', re.I)
 NUMBER = re.compile(r'\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|'
                     r'hundred|thousand)\b', re.I)
 EXPERIMENTS = {
@@ -653,11 +786,40 @@ EXPERIMENTS = {
                     lambda r: words(strip_cues((r.get('voiceover') or [''])[0])) <= 10,
                     'voiceover line 1 must have at most 10 spoken words'),
     },
+    'cta_style': {
+        'question': ('The ending (cta and voiceover line 5) is a direct question about the viewer\'s own code or '
+                     'experience, answered in the comments. It does not ask them to send or share the reel.',
+                     lambda r: not SEND.search(strip_cues((r.get('voiceover') or [''])[-1])),
+                     'voiceover line 5 must be a question for the comments, without asking to send or share'),
+        'share': ('The ending asks the viewer to send the reel to one developer who needs it: voiceover line 5 says '
+                  'so naturally ("Send this to the friend who still trusts that header."), and the cta is a short '
+                  'question that points at that person ("Know a dev who still *believes* this?").',
+                  lambda r: bool(SEND.search(strip_cues((r.get('voiceover') or [''])[-1]))),
+                  'voiceover line 5 must ask the viewer to send the reel to a developer who needs it'),
+    },
+    # 2026-10-19: the creator asked whether AI coding tools give viewers more value than famous basics. Our five setup
+    # tutorials about AI tools got about the usual views and no shares; this tests the topic in the shape that works
+    # (a myth proven on screen), with only verified facts (ai_facts.md). News reels sit it out (EVERGREEN_ONLY).
+    'topic': {
+        'basics': ('The topic is a famous web development basic (the language, the browser, HTTP, git, databases, '
+                   'CSS), not an AI tool and not how AI models behave.',
+                   lambda r: not AI_TOPIC.search(topic_text(r)),
+                   'the topic must be a famous web development basic, not an AI tool or AI model'),
+        'ai_tool': ('The topic is an AI coding tool or how AI models behave, taken only from the verified facts '
+                    'given with this test: a commonly misunderstood fact a developer can use today, proven on screen '
+                    'with the real config, a real command or the docs line itself. A claim about a product is what '
+                    'its own docs say ("GitHub\'s docs say ..."). Put the official pages you used in "sources". '
+                    'No model names or version numbers (they go stale). Never a setup tutorial, a list of tools or a '
+                    'promotion.',
+                    lambda r: bool(AI_TOPIC.search(topic_text(r))) and fact_sources(r),
+                    'the topic must be an AI coding tool or AI model fact from the verified list, with its official '
+                    'pages (from that list) in "sources"'),
+    },
     'length': {
-        'short': ('Keep the voiceover short: 40 to 46 words in total.',
-                  lambda r: 40 <= vo_words(r) <= 46, 'the voiceover must have 40 to 46 words'),
-        'long': ('Use the full voiceover length: 49 to 55 words in total.',
-                 lambda r: 49 <= vo_words(r) <= 55, 'the voiceover must have 49 to 55 words'),
+        'short': ('Keep the voiceover short: 36 to 40 words in total.',
+                  lambda r: 36 <= vo_words(r) <= 40, 'the voiceover must have 36 to 40 words'),
+        'long': ('Use the full voiceover length: 42 to 46 words in total.',
+                 lambda r: 42 <= vo_words(r) <= 46, 'the voiceover must have 42 to 46 words'),
     },
     'hook_number': {
         'number': ('The hook contains a number (a time, a count or a size), written as digits.',
@@ -668,27 +830,64 @@ EXPERIMENTS = {
 }
 
 
+# Words that make a reel about AI tools or models (topic test). Cursor is matched only capitalised: a SQL or CSS
+# cursor is a web basic.
+AI_TOPIC = re.compile(r'(?i:\b(?:claude(?:\.md)?|copilot|codex|chatgpt|gpt[-\d.]*|gemini|llms?|mcp|ai|agents\.md|'
+                      r'subagents?|coding agents?|tokenizers?|prompts?)\b|\.claudeignore\b)|\bCursor\b')
+AI_FACTS = render.ROOT / 'ai_facts.md'
+EVERGREEN_ONLY = ('topic',)  # tests news reels sit out: the news is about whatever happened that day
+
+
+def topic_text(reel):
+    """The words that say what a reel is about: hook, payoff, points, voiceover and caption (not its code)."""
+    parts = [reel.get('hook', ''), reel.get('payoff', ''), reel.get('caption', '')]
+    parts += [p.get('title', '') + ' ' + p.get('body', '') for p in reel.get('points', [])]
+    return ' '.join(parts + [strip_cues(l) for l in reel.get('voiceover') or []])
+
+
+def ai_facts():
+    """The verified AI-tool facts (ai_facts.md), or an empty string."""
+    return AI_FACTS.read_text().strip() if AI_FACTS.exists() else ''
+
+
+def fact_pages():
+    """The official pages ai_facts.md cites: links outside `code`, so a quoted example command's URL is never one."""
+    return [u.rstrip('.,);') for u in re.findall(r'https://\S+', re.sub(r'`[^`]*`', '', ai_facts()))]
+
+
+def fact_sources(reel):
+    """The reel lists its sources and every one is an official page from ai_facts.md."""
+    known = set(fact_pages())
+    sources = reel.get('sources') or []
+    return bool(sources) and all(s in known for s in sources)
+
+
 def vo_words(reel):
     return sum(words(strip_cues(l)) for l in reel.get('voiceover') or [])
 
 
-def experiment_today(day=None):
+def experiment_today(day=None, news=False):
     """{'name', 'arm'} of the running test for this reel, or None. EXPERIMENT=off stops it, EXPERIMENT=<name>
-    forces a test (for trying it out)."""
+    forces a test (for trying it out). A news reel (news=True) sits out the tests in EVERGREEN_ONLY."""
     forced = os.environ.get('EXPERIMENT', '').strip()
     if forced == 'off':
         return None
     name = forced if forced in EXPERIMENTS else ((history.experiments().get('active') or {}).get('name'))
-    if name not in EXPERIMENTS:
+    if name not in EXPERIMENTS or (news and name in EVERGREEN_ONLY):
         return None
     day = day or datetime.now(timezone.utc).date()
     arms = sorted(EXPERIMENTS[name])
     return {'name': name, 'arm': random.Random(f'test-{name}-{day.isoformat()}-{slot()}').choice(arms)}
 
 
-def experiment_note():
-    test = experiment_today()
-    return f"This week's test, follow it exactly: {EXPERIMENTS[test['name']][test['arm']][0]}" if test else ''
+def experiment_note(news=False):
+    test = experiment_today(news=news)
+    if not test:
+        return ''
+    note = f"This week's test, follow it exactly: {EXPERIMENTS[test['name']][test['arm']][0]}"
+    if test == {'name': 'topic', 'arm': 'ai_tool'}:
+        note += '\n\nThe verified facts (use only these; quote the docs line as written):\n' + ai_facts()
+    return note
 
 
 def experiment_errors(reel):
@@ -703,6 +902,11 @@ def three_d_count(reel):
     firsts = [(p.get('visual') or [None]) for p in reel.get('points', [])]
     firsts = [f if isinstance(f, list) else [f] for f in firsts]
     return bool(reel.get('hook_word')) + sum(1 for f in firsts if f and f[0] and f[0].get('type') in SCENES_3D)
+
+
+def strip_stage(reel):
+    """The same reel as classic slides, for a day that is not a stage day (the writer is told; this is the net)."""
+    return {k: v for k, v in reel.items() if k != 'scenes'}
 
 
 def strip_3d(reel):
@@ -795,6 +999,7 @@ VISUAL_SCHEMA = {
             'type': 'object', 'additionalProperties': False, 'required': ['name', 'to'],
             'properties': {'name': {'type': 'string'}, 'to': {'type': 'string'}}}},
         'command': {'type': 'string'}, 'output': {'type': 'array', 'items': {'type': 'string'}},
+        'choices': {'type': 'array', 'items': {'type': 'string'}},
         'html': {'type': 'string'}, 'stages': {'type': 'array', 'items': {'type': 'string'}},
         'lines': {'type': 'array', 'items': {'type': 'string'}}, 'tag': {'type': 'string'},
         'marks': {'type': 'array', 'items': {
@@ -930,6 +1135,37 @@ def dm_errors(post, offer):
     return errors
 
 
+HASH_COMMENTS = {'python', 'py', 'bash', 'sh', 'shell', 'zsh', 'console', 'yaml', 'yml', 'ruby', 'rb', 'toml',
+                 'dockerfile', 'env', 'dotenv', 'ini', 'conf', 'makefile', 'r', 'perl'}
+DASH_COMMENTS = {'sql', 'postgres', 'postgresql', 'psql', 'plpgsql', 'mysql', 'sqlite', 'lua', 'haskell'}
+PROSE = {'', 'text', 'txt', 'plaintext', 'md', 'markdown'}
+
+
+def comment_lines(code, language):
+    """How many of the code's non-empty lines are comments, and how many non-empty lines it has."""
+    language = (language or '').lower()
+    marks = ('//', '/*', '*', '<!--', '{/*') + (('#',) if language in HASH_COMMENTS else ()) \
+        + (('--',) if language in DASH_COMMENTS else ())
+    lines = [l.strip() for l in code.split('\n') if l.strip()]
+    return sum(l.startswith(marks) for l in lines), len(lines)
+
+
+def comment_errors(i, v):
+    """A code card, or either side of a diff, that is mostly comments explains the point in code clothing instead of
+    showing it (2026-10-14, reel 72: an all-comment "after" was rejected and the reel opened on text). Prose (md,
+    text) has no comments to count."""
+    if (v.get('language') or '').lower() in PROSE:
+        return []
+    errors = []
+    for part in (('code',) if v.get('type') == 'code' else ('before', 'after')):
+        found, total = comment_lines(v.get(part) or '', v.get('language'))
+        if total > (1 if part != 'code' else 0) and found * 2 > total:  # a diff side may be one placeholder line
+            name = 'code' if part == 'code' else f'diff "{part}"'
+            errors.append(f'point {i} {name} is mostly comments ({found} of {total} lines): show the real code that '
+                          'proves the point and let the voice explain it')
+    return errors
+
+
 def visual_errors(i, visual):
     """A point's visuals: a list of up to 3 choices, best first, each small enough to read on a phone."""
     if visual is None:
@@ -947,6 +1183,8 @@ def visual_errors(i, visual):
         if missing:
             errors.append(f'point {i} names packages that do not exist: {", ".join(missing)}; use the real, '
                           'official package')
+        if kind in ('code', 'diff'):
+            errors += comment_errors(i, v)
         if kind == 'code':
             lines = v.get('code', '').rstrip('\n').split('\n')
             if not v.get('code', '').strip() or not v.get('language'):
@@ -1073,6 +1311,28 @@ def build_errors(i, v):
     return []
 
 
+_TEXT, _NUM = {'type': 'string'}, {'type': 'number'}
+SCENE_SCHEMA = {  # stage.py scenes; stage.scene_errors checks each kind's fields
+    'type': 'object', 'additionalProperties': False, 'required': ['kind'],
+    'properties': {
+        'kind': {'type': 'string', 'enum': ['file', 'code', 'edit', 'docs', 'steps', 'checklist', 'counter', 'bars',
+                                            'terminal', 'repo', 'words']},
+        'find': _TEXT, 'typed': _TEXT, 'key': _TEXT, 'motif': _TEXT,
+        'title': _TEXT, 'lines': {'type': 'array', 'items': _TEXT}, 'strike': {'type': 'boolean'}, 'tag': _TEXT,
+        'language': _TEXT, 'code': _TEXT, 'highlight': {'type': 'array', 'items': {'type': 'integer'}},
+        'url': _TEXT, 'text': _TEXT, 'mark': _TEXT,
+        'items': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
+                                             'properties': {'label': _TEXT, 'note': _TEXT, 'value': _NUM,
+                                                            'ok': {'type': 'boolean'}}}},
+        'stop': {'type': 'object', 'additionalProperties': False,
+                 'properties': {'request': _TEXT, 'result': _TEXT, 'at': {'type': 'integer'}}},
+        'label': _TEXT, 'value': _NUM, 'prefix': _TEXT, 'suffix': _TEXT, 'source': _TEXT, 'unit': _TEXT,
+        'illustration': {'type': 'boolean'}, 'command': _TEXT, 'output': {'type': 'array', 'items': _TEXT},
+        'name': _TEXT, 'description': _TEXT, 'stars': {'type': 'integer'},
+        'at': _TEXT, 'light': {'type': 'boolean'}, 'carry': _TEXT, 'chapter': _TEXT, 'accent': {'type': 'boolean'},
+    },
+}
+
 SCHEMA = {
     'type': 'object',
     'properties': {
@@ -1103,6 +1363,8 @@ SCHEMA = {
                     'cta': {'type': 'string'},
                     'dm_keyword': {'type': 'string'}, 'dm_guide': {'type': 'string'},
                     'reveal': {'type': 'integer'},
+                    'sources': {'type': 'array', 'items': {'type': 'string'}},
+                    'scenes': {'type': 'array', 'items': SCENE_SCHEMA},
                     'caption': {'type': 'string'},
                     'hashtags': {'type': 'array', 'items': {'type': 'string'}},
                     'voiceover': {'type': 'array', 'items': {'type': 'string'}},
@@ -1130,11 +1392,15 @@ Field rules:
 - hook_visual: the proof under the hook from the very first frame: a code, diff, screenshot, morph, stepper or build visual
   showing the problem or the result itself (the bad line, the error, the slow version next to the fast one).
   Same size limits as point visuals. It is what makes a viewer stop scrolling, so it must be readable at a glance.
+  Prefer code: the few real lines people get wrong. Use a diff only when the change itself is the payoff, and
+  never fill a code or diff card with comments that explain the point (the voice explains; the card shows code).
 - alternatives: 3 more hooks for the same payoff, each a different hook_type where it fits, each with "hook" (the
   on-screen text, same rules as hook) and "spoken" (a replacement for voiceover line 1 with the same rules: it
   starts with a high-energy [cue], has at most 14 words and a fresh cue within every 10 spoken words). A
   reviewer picks the strongest of the four, so make every one good and honest.
 - kicker: short label shown above the slides, 1 to 3 words, e.g. "Honest take", "Dev tip", "AI tools".
+- sources: leave out, unless this week's test asks for them: then the official pages behind the reel's claims,
+  exactly as given.
 - hook: 3 to 6 words on screen, a phrase people take in at a glance, not a sentence to read ("Your API key is
   *public*", "Stale *cache* after every save"). The spoken line 1 carries the full sentence.
   Wrap the key word or two in *asterisks* to highlight them in the accent color.
@@ -1143,17 +1409,9 @@ Field rules:
   real comparison). Never three points of equal weight. Each has a title (max 3 words, a label like "Delete the key", not a
   sentence; it says less than the voice, which carries the detail) and a body (max 8 words, no asterisks; shown only when there is no visual). Few words on screen, lots of space:
   the voice carries the detail.
-- cta: a short question for the comments with exactly one *highlighted* word. With a dm_keyword it is instead the
-  offer, e.g. "Comment *MCP* for the setup", with the keyword highlighted.
-- dm_keyword and dm_guide (comment-to-DM; people who comment the keyword get dm_guide as a private message):
-  every how-to, build, trick, versus, beginner, dev-mistake, AI and freelance-playbook reel carries them, and the
-  offer names a concrete freebie: the code, the file, the template ("Comment *CODE* for the code"). Leave them
-  out of myth, ranked and explained reels, which end with a question instead. The
-  reel itself always delivers its payoff; the guide is the extended version, never the payoff held back. dm_keyword: one short word in capitals
-  (3 to 10 letters) tied to the topic, e.g. "MCP", "STRIPE", "RLS". dm_guide: the full thing the reel promises,
-  written as a plain message: the steps, the exact commands or code and the official links, 150 to 900
-  characters, no invented facts. It starts with anything to install first (uv for uvx, Node for npx, Python for
-  pip) so the steps work on a clean machine. The reel only promises what dm_guide really contains.
+- cta: a short question with exactly one *highlighted* word, about the viewer's own code or experience. Never a
+  comment-to-DM offer ("Comment X for the code"): leave dm_keyword and dm_guide out; the reel itself delivers
+  everything it promises.
 - reveal (optional): the number of the point (1 to 3) whose visual finishes a result on screen (a terminal or
   outputmap printing it, a build reaching its finished look, race or bars growing, a stepper reaching its
   output). The voice holds a short silent beat on that slide while the result lands, then its line says it.
@@ -1162,7 +1420,10 @@ Field rules:
 - hashtags: 3 to 5 focused tags that name the topic exactly, each like #nextjs, no spaces. Instagram now reads
   captions for topics more than hashtags, so fewer and precise beats many.
 - caption: the first line says the topic in plain searchable words (what someone would type into Instagram
-  search, e.g. "Zod schema validation in TypeScript"), not a teaser.
+  search, e.g. "Zod schema validation in TypeScript"), not a teaser, and fits the first 125 characters the feed
+  shows before "... more".
+- No worn-out stock phrases anywhere ("in this video", "stop scrolling", "game changer", "dive into", "level up
+  your", "must-have", "follow for more"): say it plainly.
 - voiceover: exactly 5 lines, what a narrator says out loud over the slides: one for the hook, one per point, one for the cta.
 
 Voiceover rules (it is heard, not read, while the viewer reads the slides):
@@ -1173,8 +1434,8 @@ Voiceover rules (it is heard, not read, while the viewer reads the slides):
 - Lines 2 to 4 flow into each other, like one short explanation, not three separate reads. Line 2 is heard
   over point 1, line 3 over point 2 and line 4 over point 3, together with that point's visual, so each line
   must talk about its own point; never jump ahead to a later point.
-- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that. With a dm_keyword, line 5 says the keyword and what they get, e.g. "Comment MCP and I'll send you the whole setup."
-- 40 to 55 words in total. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
+- Line 5 asks for a comment in a natural way, tied to the topic. Do not say "comment below" or "follow"; the slide already says that. Never offer to send a guide, code or file.
+- 36 to 46 words in total, so the reel stays under 20 seconds. The voice speaks at a relaxed pace (about 2.6 words a second) with a beat between
   lines, so every idea lands for slower viewers too; saying less, clearly, beats saying more, fast.
 - Write for the ear: no symbols, slashes, code, URLs, parentheses or asterisks. Write numbers and prices as they are said ("five point six", "ten cents per million", "twenty percent"). Product names are written normally.
 
@@ -1224,6 +1485,13 @@ numbers only from a cited page.
 - stepper: the code runs line by line while a panel shows variables changing. "language", "code" (max 10 lines of 34
   characters), "trace" (2 to 6 steps: "line" 1-based, "vars" [{"name", "value"}] after that line ran, optional "out"
   what it prints). Best for closures, loops, async order, off-by-one bugs.
+- predict: guess the output. The code, 2 or 3 answer chips and an empty console are on screen; a ring counts down,
+  the real output prints, the wrong chips are struck through and the chip that equals the output is stamped.
+  "language", "code" (max 8 lines of 34 characters, the same snippet as the hook_visual when the hook is the puzzle),
+  "choices" (2 or 3, max 14 characters each: the real output as one line, e.g. "A C B", and the guesses most
+  developers make), "output" (1 to 4 lines, exactly what the code prints; exactly one choice must equal them joined
+  by spaces). Best with "reveal" on its point, for "guess the output" myths: event loop order, closures in loops,
+  typeof, equality, sort, floating point. Never invent an output: run it in your head step by step and be sure.
 - flow: a request travelling between parts. "nodes" (2 to 5, as for diagram), "hops" (1 to 6: "from", "to", optional
   "label" of max 14 characters like "cache miss" or "GET /user"). Best for caching, auth, webhooks, "why it is slow".
 - morph: "before" code turns into "after"; unchanged tokens glide, removed fade red, added arrive green. "language",
@@ -1361,6 +1629,25 @@ The playbook (researched rules for what makes people stay, save and send; follow
 """ + playbook()
 
 
+def checklist():
+    """The rules drafts broke most often (2026-10-23 benchmark: almost every draft needed a repair round, mostly for
+    the alternatives' spoken lines), checked by the writer before it answers. Built from the validator's own
+    numbers so the two never disagree; validate stays the judge."""
+    return f"""Before you answer, check every reel against this list; each miss costs a repair round:
+- Voiceover: exactly 5 lines, {VO_MIN_WORDS} to {VO_MAX_WORDS} spoken words in total (count them), every line opens
+  with a [cue], a fresh [cue] at least every {CUE_GAP} spoken words, line 1 opens with a high-energy cue, at most one
+  low-energy cue, at least 5 different cues. Point lines add to their slide instead of repeating its text.
+- Each of the 3 alternatives: a 3 to 6 word hook with one *highlight*, a hook_type, and a spoken line that opens
+  with a high-energy cue, has at most 14 words, a fresh cue at least every {CUE_GAP} words, and is within a word or
+  two of voiceover line 1's length (it replaces line 1, so the total must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}).
+- hook_visual is one of {', '.join(HOOK_VISUALS)}, complete on the first frame.
+- At most one animation as a point's first visual, and every animation choice is followed by a flat choice
+  ({', '.join(FLAT_VISUALS)}).
+- "reveal" point's first visual finishes on screen: one of {', '.join(REVEAL_VISUALS)}.
+- predict: 2 or 3 different choices of max 14 characters, exactly one equal to the real output.
+- The caption's last line is a question ending with 👇; the cta is a question with exactly one *highlight*."""
+
+
 def ask_claude(plan, existing_hooks, feedback=None, context=None):
     lines = [f'{i + 1}. {date:%A}: {label}' for i, (date, (_, label)) in enumerate(plan)]
     prompt = (
@@ -1373,14 +1660,17 @@ def ask_claude(plan, existing_hooks, feedback=None, context=None):
         prompt += '\n\n' + context
     if feedback:
         prompt += f'\n\nA previous attempt had these problems, avoid them:\n{feedback}'
+    prompt += '\n\n' + checklist()
 
     # Claude Code CLI in print mode bills the Claude subscription (CLAUDE_CODE_OAUTH_TOKEN), not the API.
+    start = time.monotonic()
     proc = subprocess.run(
         ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
          '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-         '--json-schema', json.dumps(SCHEMA)],
+         '--json-schema', json.dumps(SCHEMA)] + effort(),
         capture_output=True, text=True, timeout=900,
     )
+    print(f'  draft: {time.monotonic() - start:.0f}s', flush=True)
     if proc.returncode != 0:
         raise ValueError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-500:]}')
     result = json.loads(proc.stdout)
@@ -1419,10 +1709,12 @@ def pick_hook(reel):
               f"Points: {json.dumps([p.get('title') for p in reel.get('points', [])], ensure_ascii=False)}\n\n"
               f"Hooks:\n{listing}")
     try:
+        start = time.monotonic()
         proc = subprocess.run(['claude', '-p', prompt, '--model', MODEL, '--system-prompt', HOOK_JUDGE, '--tools', '',
                                '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-                               '--json-schema', json.dumps(HOOK_SCHEMA)],
+                               '--json-schema', json.dumps(HOOK_SCHEMA)] + effort(),
                               capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL)
+        print(f'  hook judge: {time.monotonic() - start:.0f}s', flush=True)
         verdict = json.loads(proc.stdout).get('structured_output') or {}
         best = int(verdict['best'])
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as e:
@@ -1439,6 +1731,9 @@ def pick_hook(reel):
     chosen = options[best - 1]
     swapped = {**reel, 'hook': chosen['hook'], 'hook_type': chosen['hook_type'], 'voiceover': [chosen['spoken']] + vo[1:],
                'alternatives': [o for k, o in enumerate(options, 1) if k != best]}
+    if reel.get('scenes'):
+        # The hook scene's beat word was picked from the writer's line; with a new line it lands on its default beat.
+        swapped['scenes'] = [{k: v for k, v in reel['scenes'][0].items() if k != 'at'}] + reel['scenes'][1:]
     errors = validate(swapped)
     if errors:
         print(f"  the judge's pick breaks the rules ({'; '.join(errors)[:200]}); keeping the writer's hook")
@@ -1455,47 +1750,110 @@ def tidy(reel):
     return reel
 
 
+ALTERNATIVES_SCHEMA = {
+    'type': 'object', 'additionalProperties': False, 'required': ['alternatives'],
+    'properties': {'alternatives': SCHEMA['properties']['reels']['items']['properties']['alternatives']},
+}
+
+
+def fix_alternatives(reel, errors):
+    """Only the alternative hooks are wrong (the usual case, 2026-10-23): Claude rewrites just those three, which
+    takes seconds, instead of returning the whole reel. The reel with its new alternatives, or None."""
+    vo = reel.get('voiceover') or []
+    prompt = ('These alternative hooks break some rules. Rewrite only the alternatives (3 of them, same ideas, same '
+              'reel) so they pass:\n' + '\n'.join(f'- {e}' for e in errors)
+              + f"\n\nVoiceover line 1 they would replace: {vo[0] if vo else ''}"
+              + f"\nThe whole voiceover has {vo_words(reel)} spoken words; with any alternative in place of line 1 it "
+              f'must stay {VO_MIN_WORDS} to {VO_MAX_WORDS}.'
+              + '\n\nThe reel:\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+    start = time.monotonic()
+    proc = subprocess.run(
+        ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
+         '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
+         '--json-schema', json.dumps(ALTERNATIVES_SCHEMA)] + effort(),
+        capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL,
+    )
+    print(f'  alternatives fix: {time.monotonic() - start:.0f}s', flush=True)
+    try:
+        alts = (json.loads(proc.stdout).get('structured_output') or {}).get('alternatives')
+    except ValueError:
+        alts = None
+    return {**reel, 'alternatives': alts} if alts else None
+
+
 def repair(reel, errors, rounds=2, extra=None):
     """Have Claude fix only the listed problems in a draft, keeping everything else. The fixed reel, or None.
-    extra(reel) adds checks validate does not know (the day's format)."""
+    extra(reel) adds checks validate does not know (the day's format). When only the alternative hooks are wrong,
+    a quick rewrite of just those comes first."""
     check = (lambda r: validate(r) + extra(r)) if extra else validate
     reel = tidy(reel)
     errors = check(reel)
+    if errors and all(e.startswith('alternative ') for e in errors):
+        fixed = fix_alternatives(reel, errors)
+        if fixed is not None:
+            left = check(fixed)
+            print(f"  alternatives: {'fixed' if not left else '; '.join(left)}")
+            if len(left) < len(errors):
+                reel, errors = fixed, left
     for _ in range(rounds):
         if not errors:
             return reel
         prompt = ('This reel breaks some rules. Fix only these problems and keep everything else as it is, '
                   'including the topic, facts and sources:\n' + '\n'.join(f'- {e}' for e in errors)
                   + '\n\nReturn it as the single item of "reels".\n\n' + json.dumps(reel, indent=2, ensure_ascii=False))
+        start = time.monotonic()
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', MODEL, '--system-prompt', SYSTEM, '--tools', '',
              '--setting-sources', '', '--no-session-persistence', '--output-format', 'json',
-             '--json-schema', json.dumps(SCHEMA)],
+             '--json-schema', json.dumps(SCHEMA)] + effort(),
             capture_output=True, text=True, timeout=600, stdin=subprocess.DEVNULL,
         )
+        print(f'  repair round: {time.monotonic() - start:.0f}s', flush=True)
         try:
             fixed = (json.loads(proc.stdout).get('structured_output') or {}).get('reels', [])
         except ValueError:
             fixed = []
         if not fixed:
             continue
-        reel = tidy({**reel, **fixed[0]})
+        # Claude returns the whole reel: an optional field it left out was removed on purpose (a dm_keyword the fix
+        # dropped), so it goes; fields Claude never writes (id, series, test) stay.
+        optional = set(SCHEMA['properties']['reels']['items']['properties']) - set(fixed[0])
+        reel = tidy({**{k: v for k, v in reel.items() if k not in optional}, **fixed[0]})
         errors = check(reel)
         print(f"  repair: {'fixed' if not errors else '; '.join(errors)}")
     return None if errors else reel
 
 
-# How-tos carry a comment-to-DM freebie: the creators who get thousands of comments all offer the real file or tool.
-# Myth, ranked and explained reels end on a question instead.
-DM_PILLARS = ('ai', 'devtip', 'saas', 'freelance', 'trick', 'versus', 'series', 'build')
+MYTH_PROOF = ('code', 'stepper')
 
 
-def pillar_errors(reel, pillar):
-    """Rules that depend on the day's format: a how-to offers its freebie, a build reel shows a build."""
+def pillar_errors(reel, pillar, series=None):
+    """Rules for freshly written reels: no comment-to-DM offer (2026-10-14: 29 reels offered one, not one keyword
+    comment came in, and they were watched less, 13% against 22%; carousels keep theirs), a build reel shows a
+    build, and a Myth vs fact reel opens on code under a statement hook with one highlighted word (2026-10-19: its
+    two breakouts, CORS at 1,107 views and await at 1,938, both opened on code under "Your X isn't Y" statements;
+    text-only openings averaged 84% skip, code ones 72%)."""
     errors = []
-    if pillar in DM_PILLARS and not reel.get('dm_keyword'):
-        errors.append('this format offers a freebie: add dm_keyword and a dm_guide with the full code or template, '
-                      'and make the cta "Comment *KEYWORD* for the code"')
+    if series == MYTH:
+        if (reel.get('hook_visual') or {}).get('type') not in MYTH_PROOF:
+            errors.append('a Myth vs fact reel opens on the code people get wrong: make hook_visual a code visual '
+                          '(or a stepper), ideally a short snippet whose real output most developers guess wrong')
+        # The finished hook_style test's question option, if it is ever run again, outranks the statement rule.
+        asks = reel.get('test') == {'name': 'hook_style', 'arm': 'question'}
+        for h in [reel.get('hook', '')] + [a.get('hook', '') for a in reel.get('alternatives') or []]:
+            if '?' in h and not asks:
+                errors.append(f'Myth vs fact hooks are statements, never questions: "{h}"')
+            elif len(highlights(h) or []) != 1:
+                errors.append(f'a Myth vs fact hook highlights exactly one word or phrase: "{h}"')
+        # 2026-10-23: both breakout myths (await, 2,126 views; fetch cookies, 1,433) proved the real output on the last
+        # point; the three that showed it on point 2 stopped at 170 to 210 views. The answer is held to the end.
+        if reel.get('reveal') != len(reel.get('points') or []) or not reel.get('points'):
+            errors.append('a Myth vs fact reel proves the real output on its last point: set "reveal" to 3 and make '
+                          "point 3's first visual show the real output (predict, stepper, terminal or outputmap); "
+                          'points 1 and 2 build the expectation')
+    if reel.get('dm_keyword') or reel.get('dm_guide'):
+        errors.append('reels end on a question, not a comment-to-DM offer: drop dm_keyword and dm_guide and make the '
+                      'cta and voiceover line 5 a question')
     if pillar == 'build':
         firsts = [reel.get('hook_visual') or {}] + [(p.get('visual') or [{}])[0] for p in reel.get('points', [])]
         if not any(v.get('type') == 'build' for v in firsts):
@@ -1523,11 +1881,12 @@ def generate(reels, count, dates=None, context=None, test=None):
         problems, missed = [], todo[len(candidates):]
         for slot, cand in zip(todo, candidates):
             date, (pillar, _) = slot
+            series = pillar_for(date)[2]
             cand = tidy({**cand, **({'test': test} if test else {})})
-            errs = validate(cand) + pillar_errors(cand, pillar)
+            errs = validate(cand) + pillar_errors(cand, pillar, series)
             if errs and norm(cand.get('hook', '')) not in seen:
                 print(f"Repairing {cand.get('hook', '?')!r}: {'; '.join(errs)}")
-                fixed = repair(cand, errs, extra=lambda r: pillar_errors(r, pillar))
+                fixed = repair(cand, errs, extra=lambda r: pillar_errors(r, pillar, series))
                 if fixed:
                     cand, errs = fixed, []
             if norm(cand.get('hook', '')) in seen:
@@ -1579,9 +1938,13 @@ def today(reels, performance=()):
     if asked():
         parts.append(asked())
     parts.append(three_d_note())
+    parts.append(stage_note())
     test = experiment_today()
     if test:
         parts.append(experiment_note())
+    if 'AI coding tool' in learned() and test != {'name': 'topic', 'arm': 'ai_tool'}:
+        # The topic test's AI option became a kept rule: the writer still needs the facts it may use.
+        parts.append('The verified AI-tool facts (use only these; quote the docs line as written):\n' + ai_facts())
     context = '\n\n'.join(parts)
     new = generate(reels, 1, dates=[datetime.now(timezone.utc).date()], context=context, test=test)
     if not new and test:
@@ -1745,7 +2108,8 @@ def add_visuals(reels):
 
 
 # Reels posted before the playbook (2026-10-01) have none of these.
-NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out')
+NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out',
+              'mostly comments')
 
 
 def main():
@@ -1776,7 +2140,8 @@ def main():
         # Posted reels predate later rules (voiceover, cues, 3 to 5 hashtags); only unposted ones must meet them.
         bad = [(r['id'], [e for e in validate(r) if not (r.get('posted_at') and ('voiceover' in e or 'cue' in e
                                                                                    or 'hashtags' in e or 'hook has' in e or 'body has' in e
-                                                                                   or 'title has' in e
+                                                                                   or 'title has' in e or 'stock phrase' in e
+                                                                                   or 'caption first line' in e
                                                                                    or any(k in e for k in NEW_FIELDS)))])
                for r in reels]
         bad = [(i, e) for i, e in bad if e]

@@ -1,0 +1,115 @@
+{
+  "style": "dark",
+  "pillar": "timely",
+  "series": null,
+  "kicker": "AI news",
+  "payoff": "Claude Duet keeps working when you step away, asks before it sends, pays, signs or deletes, and for now is only for US Pro and Max users, by waitlist.",
+  "hook": "Claude keeps working *when you leave*",
+  "hook_type": "news",
+  "hook_visual": {
+    "type": "screenshot",
+    "url": "https://claude.com/resources/articles/claude-duet",
+    "find": "keeps working even when you step away"
+  },
+  "alternatives": [
+    {
+      "hook": "Meet *Claude Duet*",
+      "spoken": "[excited] Anthropic opened Claude Duet, (break) [curious] an agent for when you're away.",
+      "hook_type": "news"
+    },
+    {
+      "hook": "Claude now asks *before paying*",
+      "spoken": "[fired up] Claude Duet can pay and send, (break) [firm] only after you approve.",
+      "hook_type": "news"
+    },
+    {
+      "hook": "Claude Duet is *US only*",
+      "spoken": "[fired up] Claude Duet launched this week, (break) [plain] but only in the US.",
+      "hook_type": "problem"
+    }
+  ],
+  "points": [
+    {
+      "title": "Missed messages",
+      "body": "Gmail and Slack, plus replies"
+    },
+    {
+      "title": "Asks first",
+      "body": "Before paying, signing, deleting"
+    },
+    {
+      "title": "US only",
+      "body": "Research preview, invites in waves"
+    }
+  ],
+  "cta": "Your *inbox*, its job?",
+  "caption": "Claude Duet: Anthropic's new agent that keeps working when you step away.\nAnthropic says it finds the Gmail and Slack messages you've missed and helps you reply, and before it sends a message, makes a payment, signs a document or deletes anything, it waits for your approval. Research preview from 21 October 2026: US Pro and Max only, by waitlist. Sources: claude.com and support.claude.com.\nWould you hand it your inbox? 👇",
+  "hashtags": [
+    "#claude",
+    "#ai",
+    "#aiagents",
+    "#anthropic"
+  ],
+  "voiceover": [
+    "[fired up] Claude's new agent keeps working (break) [curious] when you step away.",
+    "[explaining] It finds missed Gmail and Slack messages (break) [warm] and helps you reply.",
+    "[firm] It asks first, (break) [serious] before it sends, pays, signs or deletes.",
+    "[matter-of-fact] Only US Pro and Max, (break) [plain] through a waitlist.",
+    "[warm, curious] Would you hand it your inbox?"
+  ],
+  "sources": [
+    "https://claude.com/resources/articles/claude-duet",
+    "https://support.claude.com/en/articles/17631495-get-started-with-claude-duet"
+  ],
+  "scenes": [
+    {
+      "kind": "docs",
+      "url": "https://claude.com/resources/articles/claude-duet",
+      "title": "Introducing Claude Duet",
+      "text": "It comes to you with what needs your attention, completes tasks you ask of it, keeps working even when you step away, and checks with you before it acts on your behalf.",
+      "mark": "keeps working even when you step away"
+    },
+    {
+      "kind": "steps",
+      "items": [
+        {
+          "label": "Missed Gmail"
+        },
+        {
+          "label": "Missed Slack"
+        },
+        {
+          "label": "Draft reply"
+        }
+      ],
+      "at": "Gmail"
+    },
+    {
+      "kind": "docs",
+      "url": "https://claude.com/resources/articles/claude-duet",
+      "title": "Introducing Claude Duet",
+      "text": "But before it sends a message, makes a payment, signs a document, or deletes anything, it shows you exactly what it’s about to do and waits for your approval.",
+      "mark": "waits for your approval",
+      "accent": true,
+      "at": "asks"
+    },
+    {
+      "kind": "docs",
+      "url": "https://support.claude.com/en/articles/17631495-get-started-with-claude-duet",
+      "title": "Get started with Claude Duet",
+      "text": "Claude Duet is available in the US only during the research preview.",
+      "mark": "in the US only",
+      "at": "US"
+    },
+    {
+      "kind": "words",
+      "label": "Claude Duet",
+      "lines": [
+        "Your inbox,",
+        "*its job?*"
+      ],
+      "motif": "rings",
+      "at": "inbox"
+    }
+  ]
+}

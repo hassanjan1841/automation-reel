@@ -10,6 +10,8 @@ thing always in the same colour. Abstract shapes only: boxes, dots, arrows, code
 
 Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   stepper    code run line by line; a panel shows the variables changing      language, code, trace
+  predict    guess the output: code, answer chips, a countdown, the real output   language, code, choices, output
+             prints, wrong chips struck, the matching chip stamped
   flow       a request travelling between parts, a label at each hop          nodes, hops
   morph      before code turns into after code; unchanged tokens glide         language, title, before, after
   git        commits on branch lanes, then a merge or a rebase replay          commits, op, head, base
@@ -52,7 +54,7 @@ import sys
 
 import render
 
-TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+TYPES = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
          'notify', 'checks', 'bignumber', 'timeline', 'latency')
 FRAMES = render.OUT_DIR / 'motion'
@@ -61,7 +63,7 @@ MAX_SECONDS = 12.0
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}
-text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono'}.serif{font-family:'Instrument Serif'}
+text{font-family:Poppins;dominant-baseline:alphabetic;white-space:pre}.mono{font-family:'JetBrains Mono';font-variant-ligatures:none;font-feature-settings:'calt' 0,'liga' 0}.serif{font-family:'Instrument Serif'}
 </style></head><body><svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg><script>
 const P = window.PARAMS, S = P.spec, W = P.w, H = P.h;
 const C = {panel: '#1E2230', bar: '#161A25', text: '#E6E9F2', dim: '#8A91A5', line: 'rgba(230,233,242,0.18)',
@@ -228,6 +230,68 @@ T.stepper = () => {
     t += step;
   });
   END = Math.max(END, t + 0.6);
+};
+
+// Guess the output: the code, answer chips and an empty console are in place at once; a ring counts down, the real
+// output prints line by line, then the wrong chips are struck through and the chip that matches the output is stamped.
+// The right chip is never chosen by the writer: prepare() marks the one equal to the output lines joined by spaces.
+T.predict = () => {
+  const lines = S.tokens, out = S.output, n = S.choices.length;
+  const chipH = 92, conH = 70 + out.length * 50 + 24;
+  const cols = Math.max(8, ...lines.map(l => l.reduce((k, t) => k + t[0].length, 0)));
+  let maxSize = 40;
+  while (maxSize > 24) { const size = Math.min(maxSize, Math.floor((W - 90) / (cols * 0.6)));
+    if (56 + 30 + Math.round(size * 1.6) * lines.length + 26 + 32 + chipH + 32 + conH <= H - 8) break; maxSize -= 2; }
+  const cw = codeWindow(0, 0, W, lines, S.title || '', maxSize);
+  pop(cw.g, 0, W / 2, cw.h / 2, 0.5);
+  // Answer chips: a letter badge and the guess in mono, side by side.
+  const cy = cw.h + 32, gap = 24, chipW = (W - gap * (n - 1)) / n;
+  const chips = S.choices.map((c, i) => { const x = i * (chipW + gap), g = mk('g', {opacity: 0}, L1);
+    const r = mk('rect', {x, y: cy, width: chipW, height: chipH, rx: 24, fill: C.panel, stroke: C.line, 'stroke-width': 2,
+      filter: 'url(#shadow)'}, g);
+    mk('circle', {cx: x + 44, cy: cy + chipH / 2, r: 24, fill: C.bar, stroke: C.dim, 'stroke-width': 2}, g);
+    txt(g, x + 44, cy + chipH / 2 + 10, 'ABC'[i], 28, {'text-anchor': 'middle', fill: C.text, 'font-weight': 700});
+    const tint = mk('rect', {x, y: cy, width: chipW, height: chipH, rx: 24, fill: C.green, opacity: 0}, g);
+    fit(txt(g, x + 84, cy + chipH / 2 + 14, c, 40, {class: 'mono', 'font-weight': 500}), chipW - 104);
+    pop(g, 0.12 + i * 0.08, x + chipW / 2, cy + chipH / 2, 0.45);
+    return {g, r, tint, x, w: chipW, right: i === S.answer}; });
+  // The console, empty until the countdown ends; a thin ring beside its label counts down.
+  const top = cy + chipH + 32, pg = mk('g', {opacity: 0}, L1);
+  panel(pg, 0, top, W, conH); txt(pg, 34, top + 48, 'Console', 26, {fill: C.dim, 'font-weight': 500});
+  pop(pg, 0.25, W / 2, top + conH / 2, 0.45);
+  SETTLE = 0.7;
+  const rx = W - 56, ry = top + 39, rr = 20, circ = 2 * Math.PI * rr;
+  mk('circle', {cx: rx, cy: ry, r: rr, fill: 'none', stroke: C.line, 'stroke-width': 4}, pg);
+  const ring = mk('circle', {cx: rx, cy: ry, r: rr, fill: 'none', stroke: C.accent, 'stroke-width': 4, 'stroke-linecap': 'round',
+    'stroke-dasharray': circ, 'stroke-dashoffset': 0, transform: `rotate(-90 ${rx} ${ry})`}, pg);
+  const count = 1.4, t0 = 0.8;
+  at(t0, count, p => ring.setAttribute('stroke-dashoffset', circ * p), E.lin);
+  for (let k = 0; k < 4; k++) snd(t0 + k * count / 4, 'tick');
+  const ask = txt(pg, 34, top + 70 + 34, 'Guess first\u2026', 34, {fill: C.dim, 'font-weight': 500});
+  at(t0 + count, 0.2, p => ask.setAttribute('opacity', 1 - p));
+  set(t0 + count, () => ring.setAttribute('opacity', 0));
+  let t = t0 + count + 0.2;
+  out.forEach((o, i) => { const e = txt(L2, 34, top + 70 + i * 50 + 34, o, 34, {class: 'mono', fill: C.green, opacity: 0});
+    fit(e, W - 70); at(t, 0.3, (p, raw) => { e.setAttribute('opacity', Math.min(1, raw * 1.6));
+      e.setAttribute('transform', `translate(0 ${18 * (1 - p)})`); }); snd(t, 'pop'); t += 0.4; });
+  // The verdict: a hand-drawn strike on each wrong chip, then a stamp ring around the right one.
+  t += 0.15;
+  chips.filter(c => !c.right).forEach((c, k) => { const y = cy + chipH / 2, x0 = c.x + 18, x1 = c.x + c.w - 18;
+    const l = mk('path', {d: `M${x0} ${y + 6} C ${x0 + (x1 - x0) * 0.3} ${y - 4}, ${x0 + (x1 - x0) * 0.7} ${y + 8}, ${x1} ${y - 3}`,
+      fill: 'none', stroke: C.red, 'stroke-width': 7, 'stroke-linecap': 'round'}, L2);
+    const len = l.getTotalLength(); l.setAttribute('stroke-dasharray', len); l.setAttribute('stroke-dashoffset', len);
+    at(t + k * 0.12, 0.35, p => l.setAttribute('stroke-dashoffset', len * (1 - p)), E.inout);
+    dim(c.g, t + k * 0.12, 0.45, 0.35); });
+  snd(t, 'scribble'); t += 0.45;
+  const w = chips.find(c => c.right), pad = 10;
+  if (!w) { END = Math.max(END, t + 1.0); return; }  // validation makes one chip match; never stamp a wrong one
+  const stamp = mk('rect', {x: w.x - pad, y: cy - pad, width: w.w + pad * 2, height: chipH + pad * 2, rx: 32, fill: 'none',
+    stroke: C.green, 'stroke-width': 6}, L2);
+  const slen = 2 * (w.w + chipH + pad * 4); stamp.setAttribute('stroke-dasharray', slen); stamp.setAttribute('stroke-dashoffset', slen);
+  at(t, 0.45, p => stamp.setAttribute('stroke-dashoffset', slen * (1 - p)), E.inout);
+  at(t, 0.35, p => w.tint.setAttribute('opacity', 0.3 * p));  // over the dark chip, so it reads on both themes
+  pop(w.g, t, w.x + w.w / 2, cy + chipH / 2, 0.5); snd(t + 0.3, 'thud');
+  END = Math.max(END, t + 0.45 + 1.0);
 };
 
 T.flow = () => {
@@ -1347,11 +1411,20 @@ def dot_raster(word, rows=9):
                      if r0 <= r <= r1 and c0 <= c <= c1]}
 
 
+def predict_answer(spec):
+    """Index of the choice that equals the real output (its lines joined by spaces, spacing ignored), or -1."""
+    said = ' '.join(' '.join(spec.get('output', [])).split())
+    return next((i for i, c in enumerate(spec.get('choices', [])) if ' '.join(str(c).split()) == said), -1)
+
+
 def prepare(spec, w):
     """The spec with what the page needs computed here: highlighted tokens, a font size, a source's host."""
     spec = dict(spec)
     if spec['type'] == 'stepper':
         spec['tokens'] = tokens(spec['code'], spec.get('language'))
+    elif spec['type'] == 'predict':
+        spec['tokens'] = tokens(spec['code'], spec.get('language'))
+        spec['answer'] = predict_answer(spec)
     elif spec['type'] == 'morph':
         toks, removed, added = morph_plan(spec['before'], spec['after'], spec.get('language'))
         cols = max(len(l) for l in (spec['before'] + '\n' + spec['after']).split('\n'))
@@ -1378,7 +1451,7 @@ def prepare(spec, w):
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes',
+                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes', 'choices',
                 'notes', 'columns', 'checks', 'events'):
         spec.setdefault(key, [])
     return spec
@@ -1393,6 +1466,8 @@ def font_css():
     faces.append(('JetBrains Mono', '500', 'normal', visuals.MONO))
     faces += [('Instrument Serif', '400', style.lower(), render.FONT_DIR / f'InstrumentSerif-{style}.ttf')
               for style in render.SERIF_STYLES if (render.FONT_DIR / f'InstrumentSerif-{style}.ttf').exists()]
+    if render.DISPLAY.exists():
+        faces.append(('Anton', '400', 'normal', render.DISPLAY))
     return ''.join(f"@font-face{{font-family:'{fam}';font-weight:{wt};font-style:{fs};src:url(data:font/ttf;base64,"
                    f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, fs, path in faces)
 
@@ -1441,6 +1516,9 @@ EXAMPLES = {
                 'trace': [{'line': 5, 'vars': [{'name': 'n', 'value': '0'}]},
                           {'line': 6, 'vars': [{'name': 'n', 'value': '1'}], 'out': '1'},
                           {'line': 7, 'vars': [{'name': 'n', 'value': '2'}], 'out': '2'}]},
+    'predict': {'type': 'predict', 'language': 'js', 'title': 'order.js',
+                'code': 'console.log("A")\nsetTimeout(() => {\n  console.log("B")\n}, 0)\nconsole.log("C")',
+                'choices': ['A B C', 'A C B'], 'output': ['A', 'C', 'B']},
     'flow': {'type': 'flow', 'nodes': [{'id': 'app', 'label': 'Browser', 'kind': 'client'},
                                        {'id': 'api', 'label': 'API', 'kind': 'server'},
                                        {'id': 'cache', 'label': 'Redis', 'kind': 'cache'},

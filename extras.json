@@ -13,5 +13,32 @@
     "media_id": "18151517065545035",
     "caption": "I put a cat in my terminal 🐈\n\nChai sits above my Claude Code prompt and reacts to my work: a happy jump when tests pass, a hiss at errors, zoomies on /pet run, a nap when I go idle.\n\nHow it's built:\n1. A free 3D cat model from Sketchfab\n2. Rigged and posed in Blender with Python\n3. 17 moves animated by hand, all flowing into each other\n4. Paws checked against the floor so they never slide\n5. Rendered and packed into 28 x 6 terminal cells\n\nCredits: cat model \"An Animated Cat\" by Evil_Katz (CC BY 4.0, Sketchfab). Cat sounds by kerzoven (CC0, OpenGameArt). Walk and gallop keyed from AI4Animation motion capture (CC BY-NC 4.0).\n\n#claudecode #blender #coding #devlife #terminal #3danimation #programming",
     "posted_at": "2026-10-05T13:00:49+00:00"
+  },
+  {
+    "video": "videos/inside-an-ai-agent.mp4",
+    "caption": "How an AI coding agent works, in 60 seconds\nPrompt, tokens, attention, the next token, tools, and the loop that repeats until the checks pass.\nThe bars and numbers are an illustration, not real model values. Animated in code with Claude.\nWhich step surprised you? 👇\n\n#ai #aiagents #llm #programming #webdev",
+    "media_id": "18221160226344059",
+    "posted_at": "2026-10-22T12:03:44+00:00"
+  },
+  {
+    "video": "videos/php2shell.mp4",
+    "caption": "PHP2Shell: critical PHP remote code execution flaws, CVE-2026-109618 and CVE-2026-109619\nFixed in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 on 21 October 2026. php.net says there are no complete mitigations: updating is the only safe choice. Source: the php.net security advisory (php.net/archive/2026.php).\nSo what does your server run? 👇\n\n#php #websecurity #cybersecurity #webdev",
+    "media_id": "18153246685547514",
+    "posted_at": "2026-10-23T05:09:30+00:00"
+  },
+  {
+    "video": "videos/php2shell-story.mp4",
+    "caption": "Two critical PHP bugs can let a request with no login run code on your server.\nOn mod_php, php.net shows the attack can start before any application code runs (CVE-2026-109618, CVE-2026-109619). The fix: update to PHP 8.5.12, 8.4.27, 8.3.36 or 8.2.35 (21 October 2026); php.net says \"There are no complete mitigations, updating is the only safe choice.\" Source: php.net/archive/2026.php\nWhich version runs your server? 👇\n\n#php #websecurity #cybersecurity #webdev",
+    "media_id": "17934878313403565",
+    "posted_at": "2026-10-23T08:33:39+00:00"
+  },
+  {
+    "video": "videos/claude-duet.mp4",
+    "caption_file": "videos/claude-duet.txt",
+    "cover": "videos/claude-duet-cover.jpg",
+    "post_at": "2026-10-24T16:00:00+00:00",
+    "media_id": "18647016115002280",
+    "caption": "Claude Duet: Anthropic's new agent that keeps working when you step away.\nAnthropic says it finds the Gmail and Slack messages you've missed and helps you reply, and before it sends a message, makes a payment, signs a document or deletes anything, it waits for your approval. Research preview from 21 October 2026: US Pro and Max only, by waitlist. Sources: claude.com and support.claude.com.\nWould you hand it your inbox? 👇\n\n#claude #ai #aiagents #anthropic",
+    "posted_at": "2026-10-24T16:01:06+00:00"
   }
 ]

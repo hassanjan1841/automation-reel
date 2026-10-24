@@ -40,16 +40,17 @@ jobs:
           python-version: '3.12'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - run: pip install requests pillow numpy
 
       - run: python test_study.py -v
 
   motion:
-    # Renders every animation template of motion.py for real in headless Chromium (test_motion.py).
+    # Renders every animation template of motion.py for real in headless Chromium (test_motion.py), plus a real stage
+    # reel and a real showcase (stage.py, showcase.py), which encode with ffmpeg.
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -57,10 +58,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install packages and the browser
-        run: |
-          pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
-          python -m playwright install --with-deps chromium
+      - name: Install ffmpeg
+        uses: ./.github/actions/ffmpeg
+
+      - name: Install packages
+        run: pip install requests pillow numpy "$(grep -i '^pygments' requirements.txt)" "$(grep -i '^playwright' requirements.txt)" "$(grep -i '^fonttools' requirements.txt)"
+
+      - name: Install the browser
+        uses: ./.github/actions/browser
 
       - name: Download fonts
         run: python render.py --fonts

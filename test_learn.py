@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -37,9 +38,9 @@ import trends
 
 ROOT = Path(__file__).resolve().parent
 
-# A reel that passes generate.validate: a statement hook, 49 spoken words.
+# A reel that passes generate.validate: a statement hook, 43 spoken words.
 VALID = {
-    'pillar': 'concept', 'series': 'Explained', 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
+    'pillar': 'concept', 'series': 'Explained', 'reveal': 3, 'episode': 1, 'style': 'dark', 'kicker': 'Explained #1',
     'payoff': 'Delete the cached key on every write so readers never get the old row',
     'hook': 'Your *cache* serves old data', 'hook_type': 'problem',
     'hook_visual': {'type': 'code', 'language': 'ts', 'title': 'profile.ts',
@@ -65,12 +66,13 @@ VALID = {
     'caption': 'Why a cache serves stale data after an update.\nReads use the cache, writes skip it.\nHow do you invalidate yours? 👇',
     'hashtags': ['#webdev', '#redis', '#backend'],
     'voiceover': ['[fired up] Users update a profile, [puzzled] the app shows the old one.',
-                  '[explaining] Reads check the cache first, [confident] only a miss hits the database.',
+                  '[explaining] Reads hit the cache first, [confident] misses reach the database.',
                   '[building tension] A write updates the database, [knowing] nobody tells the cache.',
-                  '[punchy] The fix is small. [warm] Delete that key on every write.',
-                  '[curious] So tell me, [grinning] do you clear keys or wait?'],
+                  '[punchy] The fix: [warm] delete that key on every write.',
+                  '[curious] So, [grinning] do you clear keys or wait?'],
 }
 QUESTION_HOOK = 'Why is your *cache* stale?'
+SHARE_LINE = '[warm, curious] Send this to the dev who never clears keys.'
 
 
 class Sandbox(unittest.TestCase):
@@ -89,7 +91,7 @@ class Sandbox(unittest.TestCase):
             mock.patch.object(learn, 'CAROUSELS', self.tmp / 'carousels.json'),
             mock.patch.object(learn, 'REPORT', self.tmp / 'out' / 'report.md'),
             mock.patch.dict(os.environ, {'EXPERIMENT': '', 'SLOT': '', 'THREE_D': '', 'DRY_RUN': '',
-                                         'FORCE_POST': '', 'REEL_FORMAT': ''}),
+                                         'FORCE_POST': '', 'REEL_FORMAT': '', 'REEL_SLOTS': '', 'GITHUB_EVENT_NAME': ''}),
         ]
         for p in self.patches:
             p.start()
@@ -207,11 +209,13 @@ class ExperimentTest(Sandbox):
         cases = {('hook_style', 'question'): ({'hook': QUESTION_HOOK}, {}),
                  ('hook_style', 'statement'): ({}, {'hook': QUESTION_HOOK}),
                  ('hook_number', 'number'): ({'hook': 'Fix a stale *cache* in 2 minutes'}, {}),
-                 ('hook_number', 'no_number'): ({}, {'hook': 'Fix a stale *cache* in 2 minutes'})}
+                 ('hook_number', 'no_number'): ({}, {'hook': 'Fix a stale *cache* in 2 minutes'}),
+                 ('cta_style', 'question'): ({}, {'voiceover': reel['voiceover'][:4] + [SHARE_LINE]}),
+                 ('cta_style', 'share'): ({'voiceover': reel['voiceover'][:4] + [SHARE_LINE]}, {})}
         for (name, arm), (good, bad) in cases.items():
             self.assertEqual(generate.experiment_errors({**reel, **good, 'test': {'name': name, 'arm': arm}}), [], (name, arm))
             self.assertEqual(len(generate.experiment_errors({**reel, **bad, 'test': {'name': name, 'arm': arm}})), 1, (name, arm))
-        self.assertEqual(generate.vo_words(reel), 49)
+        self.assertEqual(generate.vo_words(reel), 43)
         self.assertEqual(generate.experiment_errors({**reel, 'test': {'name': 'length', 'arm': 'long'}}), [])
         self.assertEqual(len(generate.experiment_errors({**reel, 'test': {'name': 'length', 'arm': 'short'}})), 1)
         self.assertEqual(generate.experiment_errors({**reel, 'test': {'name': 'gone', 'arm': 'x'}}), [])
@@ -287,6 +291,90 @@ class ExperimentTest(Sandbox):
 
 
 # ---------- the news writer and the daily performance lines ----------
+
+class TopicTestTest(Sandbox):
+    """The topic test (2026-10-19): famous basics against AI coding tools, both as myths proven on screen. The AI side
+    may use only the verified facts in ai_facts.md and must cite their official pages; news reels sit it out."""
+    AI = {'hook': '.claudeignore does *nothing*', 'payoff': 'Move .claudeignore entries into Read deny rules',
+          'voiceover': ['[urgent] Your .claudeignore file is not hiding anything from Claude Code.'] + VALID['voiceover'][1:],
+          'sources': ['https://code.claude.com/docs/en/permissions']}
+
+    def test_both_options_check_the_topic(self):
+        basics, ai = {**VALID, 'test': {'name': 'topic', 'arm': 'basics'}}, {**VALID, **self.AI, 'test': {'name': 'topic', 'arm': 'ai_tool'}}
+        self.assertEqual(generate.experiment_errors(basics), [])
+        self.assertEqual(generate.experiment_errors(ai), [])
+        self.assertIn('famous web development basic', ' '.join(generate.experiment_errors({**ai, 'test': basics['test']})))
+        self.assertIn('AI coding tool', ' '.join(generate.experiment_errors({**basics, 'test': ai['test']})))
+        for sources in ([], ['https://example.com/blog'], ['https://code.claude.com/docs/en/permissions', 'https://x.com/a']):
+            self.assertTrue(generate.experiment_errors({**ai, 'sources': sources}), sources)  # official pages only
+
+    def test_ai_words(self):
+        for text, ai in (('Your SQL cursor is slow', False), ('Cursor rules skip Tab', True), ('Your CORS header', False),
+                         ('Your CLAUDE.md isn\'t a rule', True), ('.claudeignore does nothing', True),
+                         ('AI review won\'t block merges', True), ('Your JWT tokens expire', False),
+                         ('A malicious MCP server', True), ('mail the admin', False)):
+            self.assertEqual(bool(generate.AI_TOPIC.search(text)), ai, text)
+        code = {**VALID, 'hook_visual': {**VALID['hook_visual'], 'code': 'const prompt = ask()'}}
+        self.assertNotIn('prompt', generate.topic_text(code))  # code on screen does not decide the topic
+
+    def test_news_sits_out_and_the_ai_side_gets_the_facts(self):
+        history.save_experiments({'active': {'name': 'topic', 'since': '2026-10-20'}, 'done': []})
+        self.assertIsNotNone(generate.experiment_today(date(2026, 10, 20)))
+        self.assertIsNone(generate.experiment_today(date(2026, 10, 20), news=True))
+        self.assertEqual(generate.experiment_note(news=True), '')
+        with mock.patch.object(generate, 'experiment_today', return_value={'name': 'topic', 'arm': 'ai_tool'}):
+            self.assertIn('https://code.claude.com/docs/en/checkpointing', generate.experiment_note())
+        with mock.patch.object(generate, 'experiment_today', return_value={'name': 'topic', 'arm': 'basics'}):
+            self.assertNotIn('https://', generate.experiment_note())
+        history.save_experiments({'active': {'name': 'cta_style', 'since': '2026-10-15'}, 'done': []})
+        self.assertIsNotNone(generate.experiment_today(date(2026, 10, 20), news=True))  # other tests still apply
+
+    def test_a_news_reel_is_not_held_to_the_topic(self):
+        history.save_experiments({'active': {'name': 'topic', 'since': '2026-10-20'}, 'done': []})
+        option = {'reach_score': 9, 'reason': 'big', 'sources': ['https://example.com/a'],
+                  'reel': {**copy.deepcopy(VALID), **{k: v for k, v in self.AI.items() if k != 'sources'}}}
+        with mock.patch.object(trends, 'collect', return_value=([{'title': str(i)} for i in range(12)], [])), \
+                mock.patch.object(trends, 'pick', return_value={'options': [option]}), \
+                mock.patch.object(trends, 'fact_check', side_effect=lambda r, s: {'verdict': 'pass', 'problems': [], 'reel': r}), \
+                mock.patch.object(generate, 'repair', return_value=None), contextlib.redirect_stdout(io.StringIO()):
+            reel = trends.timely_reel([], perf=[])
+        self.assertIsNotNone(reel)
+        self.assertNotIn('test', reel)
+
+    def test_the_facts_stay_when_the_ai_side_becomes_a_rule(self):
+        captured = []
+        with mock.patch.object(generate, 'learned', return_value=generate.EXPERIMENTS['topic']['ai_tool'][0]), \
+                mock.patch.object(generate, 'experiment_today', return_value=None), \
+                mock.patch.object(generate, 'generate', side_effect=lambda *a, **k: captured.append(k['context']) or [VALID]):
+            generate.today([])
+        self.assertIn('https://code.claude.com/docs/en/permissions', captured[0])
+        with mock.patch.object(generate, 'learned', return_value='Open on real code.'), \
+                mock.patch.object(generate, 'experiment_today', return_value=None), \
+                mock.patch.object(generate, 'generate', side_effect=lambda *a, **k: captured.append(k['context']) or [VALID]):
+            generate.today([])
+        self.assertNotIn('code.claude.com', captured[1])
+
+    def test_screenshots_find_docs_text_with_typographic_quotes(self):
+        # The Claude Code docs print can’t; the writer types can't. The proof slide fell back to text (2026-10-19).
+        import visuals
+        self.assertIn("An allow rule can\u2019t carve", visuals.find_variants("An allow rule can't carve"))
+        self.assertIn("can't do", visuals.find_variants("can\u2019t do"))
+        self.assertIn('say \u201chi\u201d now', visuals.find_variants('say "hi" now'))
+        self.assertEqual(visuals.find_variants('plain text'), ['plain text'])
+        self.assertEqual(visuals.find_variants("it's")[0], "it's")  # as typed first
+
+    def test_it_runs_after_cta_style_and_the_facts_are_official_pages(self):
+        names = list(generate.EXPERIMENTS)
+        self.assertEqual(names.index('topic'), names.index('cta_style') + 1)
+        done = [{'name': n, 'since': '2026-10-01', 'until': '2026-10-05', 'result': 'x'} for n in ('hook_style', 'hook_pace', 'cta_style')]
+        exp, _ = learn.run_experiment({'active': None, 'done': done}, [], [], date(2026, 10, 25))
+        self.assertEqual(exp['active']['name'], 'topic')
+        urls = generate.fact_pages()
+        self.assertFalse(generate.fact_sources({'sources': ['https://example.com/evil-location']}))  # quoted, not cited
+        self.assertGreaterEqual(len(urls), 10)
+        self.assertTrue(all(re.match(r'https://(code\.claude\.com|docs\.github\.com|cursor\.com|modelcontextprotocol\.io|'
+                                     r'platform\.claude\.com|claude\.com|support\.claude\.com)/', u) for u in urls), urls)
+
 
 class TrendsTest(Sandbox):
     def test_timely_reel_carries_and_enforces_the_test(self):
@@ -378,10 +466,40 @@ class PublishTest(Sandbox):
                 mock.patch.object(publish, 'upload', return_value='https://x/y.mp4'), \
                 mock.patch.object(publish, 'delete_upload'), mock.patch.object(publish, 'wait_for_post_time'), \
                 mock.patch.object(publish, 'publish_to_instagram', return_value='17999'), \
-                mock.patch.object(publish, 'output'), \
+                mock.patch.object(publish, 'output'), mock.patch.object(publish, 'check_login'), \
                 mock.patch.object(publish, 'todays_reel', return_value=todays):
             publish.main()
         return json.loads(render.QUEUE.read_text())
+
+    def test_a_dead_token_stops_before_any_work_and_leaves_an_alert(self):
+        # 2026-10-03: an invalidated token failed every run for two days at the last step, after 7 minutes of work.
+        render.QUEUE.write_text('[]')
+        refused = SimpleNamespace(ok=False, status_code=400, text='', json=lambda: {'error': {
+            'message': 'Error validating access token secret-token: The session has been invalidated', 'code': 190}})
+        alert = self.tmp / 'out' / 'alert.md'
+        with mock.patch.object(publish, 'ALERT', alert), mock.patch.object(publish.render, 'OUT_DIR', self.tmp / 'out'), \
+                mock.patch.object(publish.requests, 'get', return_value=refused), \
+                mock.patch.dict(os.environ, {'IG_TOKEN': 'secret-token', 'SUPABASE_SERVICE_KEY': ''}), \
+                mock.patch.object(publish, 'todays_reel') as write, mock.patch.object(publish, 'output'):
+            with self.assertRaises(SystemExit) as stop:
+                publish.main()
+        write.assert_not_called()
+        self.assertIn('session has been invalidated', str(stop.exception))
+        self.assertIn('IG_TOKEN', alert.read_text())
+        self.assertNotIn('secret-token', alert.read_text())
+        ok = SimpleNamespace(ok=True)
+        with mock.patch.object(publish.requests, 'get', return_value=ok), mock.patch.dict(os.environ, {'IG_TOKEN': 't'}):
+            self.assertIsNone(publish.check_login())
+
+    def test_a_slot_that_is_off_does_nothing_on_its_cron(self):
+        render.QUEUE.write_text('[]')
+        with mock.patch.dict(os.environ, {'SLOT': '2', 'GITHUB_EVENT_NAME': 'schedule'}), \
+                mock.patch.object(publish, 'check_login') as login, mock.patch.object(publish, 'todays_reel') as write, \
+                mock.patch.object(publish, 'output'), contextlib.redirect_stdout(io.StringIO()) as out:
+            publish.main()
+        login.assert_not_called()
+        write.assert_not_called()
+        self.assertIn('is off', out.getvalue())
 
     def test_records_what_the_learning_loop_needs(self):
         hand = {**copy.deepcopy(VALID), 'id': 5, 'posted_at': None, 'media_id': None}
@@ -535,7 +653,7 @@ class MeasureTest(Sandbox):
 class ScoreTest(Sandbox):
     def test_looks(self):
         base = reel(1, datetime(2026, 9, 1, tzinfo=timezone.utc))
-        plain = {'reveal': 'no beat', 'offer': 'question'}
+        plain = {'reveal': 'no beat', 'offer': 'question', 'look': 'classic'}
         self.assertEqual(learn.looks(base), {'visuals': ['text'], 'hook_word': 'text only', 'three_d': 'flat',
                                              'hook_type': 'untagged', 'opening': 'text', **plain})
         self.assertEqual(learn.looks({**base, 'shown': ['word', 'diagram', 'terminal', 'text', 'text']}),
@@ -551,6 +669,9 @@ class ScoreTest(Sandbox):
         fell_back = {**base, 'hook_word': 'RLS', 'shown': ['text', 'code', 'text', 'text', 'text']}
         fell_back['points'][0]['visual'] = [{'type': 'diagram'}, {'type': 'code'}]
         self.assertEqual(learn.looks(fell_back)['three_d'], 'flat')
+        # A stage reel (stage.py): its hook scene is always a proof from frame 0.
+        staged = learn.looks({**base, 'shown': ['stage-file', 'stage-docs', 'stage-code', 'stage-steps', 'stage-words']})
+        self.assertEqual((staged['look'], staged['opening']), ('stage', 'proof'))
         self.assertEqual(learn.looks({k: v for k, v in fell_back.items() if k != 'shown'})['three_d'], '3D')
 
     def test_slot_of(self):
@@ -566,7 +687,7 @@ class ScoreTest(Sandbox):
         snaps = [{'date': '2026-09-05', 'kind': 'reel', 'id': i, 'age_days': 4, 'views': 50, 'reels_skip_rate': s,
                   'ig_reels_avg_watch_time': w} for i, s, w in ((1, 60, 8000), (2, 70, 4000), (3, 80, 5000))]
         snaps.append({'date': '2026-09-12', 'kind': 'reel', 'id': 1, 'age_days': 11, 'views': 90, 'reels_skip_rate': 58,
-                      'ig_reels_avg_watch_time': 8000})
+                      'ig_reels_avg_watch_time': 8000, 'reach': 400, 'shares': 6, 'follows': 2})
         rows, usual = learn.table(reels, [], history.by_post(snaps))
         by = {r['id']: r for r in rows}
         self.assertEqual(set(by), {1, 2, 3})            # 4 has no snapshot yet
@@ -577,6 +698,8 @@ class ScoreTest(Sandbox):
         self.assertIsNone(by[2]['views_7d'])
         self.assertEqual(by[1]['watched_share'], 0.4)
         self.assertIsNone(by[3]['watched_share'])        # length unknown
+        self.assertEqual((by[1]['shares_per_1k'], by[1]['follows_per_1k']), (15.0, 5.0))  # per 1,000 reached
+        self.assertIsNone(by[2]['shares_per_1k'])        # no reach measured
         self.assertEqual(by[1]['test'], 'hook_style: question')
         self.assertEqual(by[2]['test'], 'none')
         self.assertEqual(by[3]['slot'], 'slot 2')
@@ -1019,10 +1142,12 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30, sunday), [run(at(10, 5, sunday))]))
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
-    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None):
+    def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None,
+                      showcased=None):
         learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
         studied = [run(now)] if studied is None else studied   # and the Sunday study
         dms = [run(now, 'in_progress')] if dms is None else dms  # and the comment replies are running
+        showcased = [run(now)] if showcased is None else showcased  # and a showcase day's showcase
         os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
@@ -1031,7 +1156,7 @@ class SchedulerTest(Sandbox):
             calls.append(args)
             if args[:2] == ('run', 'list'):
                 return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned,
-                                   'study.yml': studied, 'dm.yml': dms}[args[3]])
+                                   'study.yml': studied, 'dm.yml': dms, 'showcase.yml': showcased}[args[3]])
             return ''
 
         class Now(datetime):
@@ -1045,11 +1170,25 @@ class SchedulerTest(Sandbox):
         return [c for c in calls if c[0] == 'workflow']
 
     def test_main_starts_the_missing_slot(self):
+        os.environ['REEL_SLOTS'] = '1,2,3'
         started = self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [])
         self.assertEqual(started, [('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', 'slot=2')])
         self.assertEqual(self.run_scheduler(at(15, 20), [self.posted(at(14, 26), slot=1)], [], [], argv=['--dry']), [])
         self.assertEqual(self.run_scheduler(at(16, 5), [self.posted(at(14, 26), slot=1), self.posted(at(16, 0), slot=2)],
                                             [], []), [])
+
+    def test_two_reels_a_day_by_default(self):
+        # 2026-10-14: slot 2 averaged 25 views against about 115; REEL_SLOTS="1,2,3" brings it back.
+        self.assertEqual(scheduler.active_slots(''), {1, 3})
+        self.assertEqual(scheduler.active_slots('1,2,3'), {1, 2, 3})
+        self.assertRaises(SystemExit, scheduler.active_slots, '1,4')
+        one = [self.posted(at(12, 0), slot=1)]
+        self.assertEqual(self.run_scheduler(at(15, 20), one, [], []), [])          # slot 2 never starts
+        self.assertIsNone(scheduler.window(at(10, 0), {1, 3}))
+        self.assertEqual(scheduler.window(at(15, 20), {1, 3}), 1)               # slot 1's window runs to 19:07
+        self.assertEqual(scheduler.due_reel(at(15, 20), [], [], {1, 3}), 1)     # a late slot 1 can still post
+        started = self.run_scheduler(at(19, 30), one, [], [])
+        self.assertEqual(started, [('workflow', 'run', 'daily-reel.yml', '-f', 'dry_run=false', '-f', 'slot=3')])
 
     def test_main_starts_the_comment_replies(self):
         self.assertEqual(self.run_scheduler(at(9, 0), [], [], [], dms=[run(at(8, 50))]),
@@ -1101,6 +1240,30 @@ class SchedulerTest(Sandbox):
         started = [c[2] for c in calls if c[:2] == ('workflow', 'run')]
         self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml', 'dm.yml'])
         self.assertIn('Could not start daily-reel.yml: workflow is disabled', out.getvalue())
+
+    def test_showcase_days(self):
+        wednesday = date(2026, 9, 30)
+        self.assertEqual(scheduler.showcase_days(''), {2, 5})            # Wednesday and Saturday
+        self.assertEqual(scheduler.showcase_days('off'), set())
+        self.assertEqual(scheduler.showcase_days('mon, fri'), {0, 4})
+        with self.assertRaises(SystemExit):
+            scheduler.showcase_days('someday')
+        days = scheduler.showcase_days('')
+        self.assertTrue(scheduler.due_showcase(at(15, 50, wednesday), [], days))
+        self.assertFalse(scheduler.due_showcase(at(15, 30, wednesday), [], days))          # before its time
+        self.assertFalse(scheduler.due_showcase(at(15, 50, wednesday), [run(at(15, 41, wednesday))], days))
+        self.assertFalse(scheduler.due_showcase(at(15, 50), [], days))                     # a Monday
+        os.environ['SHOWCASE_DAYS'] = ''
+        started = self.run_scheduler(at(15, 50, wednesday), [], [], [], showcased=[])
+        self.assertIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'), started)
+        self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
+                         self.run_scheduler(at(15, 50, wednesday), [], [], []))            # it already ran today
+        started = self.run_scheduler(at(16, 27, wednesday), [], [], [], showcased=[run(at(8, 29, wednesday))])
+        self.assertIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'), started)  # a morning dry run is not it
+        os.environ['SHOWCASE_DAYS'] = 'off'
+        self.assertNotIn(('workflow', 'run', 'showcase.yml', '-f', 'dry_run=false'),
+                         self.run_scheduler(at(15, 50, wednesday), [], [], [], showcased=[]))
+        os.environ['SHOWCASE_DAYS'] = ''
 
     def test_learn_days(self):
         self.assertEqual(scheduler.learn_days(''), set(range(7)))
@@ -1173,6 +1336,16 @@ class PlaybookTest(Sandbox):
     """The playbook's rules (playbook.md): one payoff, a short hook with its proof from frame 0, the strongest of
     four hooks, no invented chats or posts, and the frame review of frame 0."""
 
+    def test_writers_and_reviewer_read_the_director_file(self):
+        rules = generate.playbook()
+        self.assertIn('# Reel playbook', rules)
+        self.assertIn('# Director', rules)
+        self.assertIn('## Creator notes', rules)
+        import qa
+        self.assertIn('# Director', qa.SYSTEM)  # the frame review judges by the creator's rules too
+        self.assertIn('# Director', generate.HOOK_JUDGE)
+        self.assertIn('# Director', generate.SYSTEM)
+
     def test_validate_holds_new_reels_to_the_playbook(self):
         self.assertEqual(generate.validate(VALID), [])
         broken = {**VALID, 'payoff': '', 'hook_type': 'clickbait', 'hook_visual': {'type': 'terminal', 'commands': ['ls']},
@@ -1200,11 +1373,11 @@ class PlaybookTest(Sandbox):
 
     def test_alternatives_fit_the_word_budget(self):
         long = copy.deepcopy(VALID)
-        long['voiceover'][3] = '[punchy] The fix is small and quick. [warm] Delete that cached key on every single write.'
+        long['voiceover'][3] = '[punchy] The fix is small. [warm] Delete that key on every write.'
         long['alternatives'][0]['spoken'] = '[urgent] You saved the profile, [exasperated] the cache shows the old one.'
-        self.assertEqual(generate.validate(long), [])  # 53 words, line 1 has 10, every alternative fits
+        self.assertEqual(generate.validate(long), [])  # 45 words, line 1 has 10, every alternative (11) fits: 46
         long['alternatives'][1]['spoken'] = ('[fired up] One delete call after every single write, [confident] and '
-                                             'stale reads are gone for good.')  # 14 words: 57 in total
+                                             'stale reads are gone for good.')  # 14 words: 49 in total
         self.assertIn('alternative 2 spoken line would take the voiceover outside', ' '.join(generate.validate(long)))
 
     def test_an_offer_needs_something_to_send(self):
@@ -1304,6 +1477,67 @@ class PlaybookTest(Sandbox):
         self.assertEqual(reel['review']['first_frame'], {'ok': True, 'problem': ''})  # the last review is recorded
 
 
+    def test_a_rejected_diff_proof_comes_back_as_code(self):
+        # 2026-10-19: 12 of 17 diff hooks were dropped and those reels opened on text (84% skip against 72%).
+        reel = {**copy.deepcopy(VALID), 'id': 1,
+                'hook_visual': {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'var a = 1\nuse(a)',
+                                'after': 'const a = 1\nuse(a)'}}
+        slides = [SimpleNamespace(visual=SimpleNamespace(spec=reel['hook_visual']))] + \
+                 [SimpleNamespace(visual=None) for _ in range(4)]
+        reject = {'slides': [{'slide': 0, 'ok': True, 'visual_ok': False, 'honest': True, 'problem': 'no red'}]}
+        rendered = []
+        with mock.patch.object(publish.qa, 'review', side_effect=[reject, reject, {'slides': []}]), \
+                mock.patch.object(publish.render, 'render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v', slides)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            publish.check_visuals(reel, None, 'v', slides)
+        self.assertEqual(rendered[0]['hook_visual'], {'type': 'code', 'code': 'const a = 1\nuse(a)', 'language': 'js',
+                                                      'title': 'a.js', 'highlight': [1]})
+        self.assertEqual(generate.visual_errors('hook', [rendered[0]['hook_visual']]), [])
+        self.assertNotIn('hook_visual', rendered[1])  # the code card rejected too: the hook stands alone
+        self.assertEqual(reel['hook_visual']['type'], 'diff')  # the queue keeps what was written
+        rendered.clear()
+        with mock.patch.object(publish.qa, 'review', side_effect=[reject]), \
+                mock.patch.object(publish.render, 'render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v', slides)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            publish.check_visuals(reel, None, 'v', slides, rounds=1)
+        self.assertNotIn('hook_visual', rendered[0])  # no round left to review a new card: never posted unreviewed
+
+    def test_the_review_sees_a_diff_before_beside_its_after(self):
+        import visuals
+        from PIL import Image
+        states = iter([Image.new('RGB', (400, 200), (c, c, c)) for c in (10, 20, 30)])
+        with mock.patch.object(visuals, 'code_image', side_effect=lambda *a, **k: (next(states), [])), \
+                mock.patch.object(visuals, 'widen', side_effect=lambda box: box):
+            card = visuals.Diff({'before': 'a', 'after': 'b'}, (0, 0, 400, 600), render.THEMES['dark'])
+        card.duration = 6
+        for at in card.marked:
+            self.assertAlmostEqual(card.layer(at)[0].mean(), 20)  # the red "before" stage, start to end
+        self.assertAlmostEqual(card.layer(5.9)[0].mean(), 30)     # what the late frame alone showed
+        import shutil
+        if not shutil.which('ffmpeg'):
+            self.skipTest('ffmpeg is not installed')
+        video = self.tmp / 'v.mp4'
+        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=270x480:rate=10:duration=8',
+                        str(video)], check=True)
+        slides = [SimpleNamespace(start=0, end=4, lead=0.7, visual=card),
+                  SimpleNamespace(start=4, end=8, lead=0, visual=None)]
+        paths = publish.qa.frames(video, slides, self.tmp)
+        self.assertEqual(Image.open(paths[0]).width, 540 * 2 + 12)
+        self.assertEqual(Image.open(paths[1]).width, 540)
+        sharp, soft = self.tmp / 'sharp.png', self.tmp / 'soft.png'
+        Image.open(paths[1]).save(sharp)
+        Image.open(paths[1]).resize((54, 96)).resize((540, 960)).save(soft)
+        self.assertGreater(publish.qa.sharpness(sharp), publish.qa.sharpness(soft))
+
+        def fake_grab(video, at, path):  # the middle "before" moment is the sharp one
+            src = sharp if str(path).endswith('-before-1.png') or 'before' not in str(path) else soft
+            Image.open(src).save(path)
+        with mock.patch.object(publish.qa, 'grab', side_effect=fake_grab):
+            paths = publish.qa.frames(video, slides[:1], self.tmp)
+        left = Image.open(paths[0]).crop((0, 0, 540, 960))
+        self.assertAlmostEqual(np.abs(np.asarray(left, np.float32) - np.asarray(Image.open(sharp), np.float32)).mean(), 0)
+
+
 class ReelFormatTest(Sandbox):
     """What the study of creators with thousands of comments added (2026-10-01): a build visual (the page drawn while
     its CSS is typed), a held beat before a result, a freebie on every how-to, and the hook_pace test."""
@@ -1317,7 +1551,7 @@ class ReelFormatTest(Sandbox):
                              'loads the fresh row. In Redis that is one DEL call with the same key you read from, '
                              'e.g. user colon 42. Do it after the database write succeeds, never before.',
                     caption=VALID['caption'].rsplit('\n', 1)[0] + '\nComment REDIS for the code 👇')
-        reel['voiceover'][-1] = '[grinning] Comment REDIS and [warm] I will send you the code.'
+        reel['voiceover'][-1] = '[grinning] Want it? [warm] Comment REDIS.'
         return reel
 
     def test_build_visual_rules(self):
@@ -1329,28 +1563,127 @@ class ReelFormatTest(Sandbox):
                     {'stages': ['a{\nb\nc\n}', 'd{\ne\nf\n}', 'g{}']}):
             self.assertTrue(generate.build_errors(1, {**self.BUILD, **bad}), bad)
 
+    def test_stock_phrases_and_the_visible_caption(self):
+        errs = lambda **kw: ' | '.join(generate.validate({**VALID, **kw}))
+        self.assertNotIn('stock phrase', errs())
+        vo = list(VALID['voiceover'])
+        vo[1] = vo[1].split(']')[0] + '] In this video we dive into it.'
+        self.assertIn("stock phrase 'dive into', 'in this video'", errs(voiceover=vo))
+        self.assertIn('stock phrase', errs(caption='Stop scrolling: Zod in TypeScript\nSchemas that check data\nWhat do you check? 👇'))
+        self.assertIn('stock phrase', errs(cta='Is this a *game-changer*?'))
+        self.assertNotIn('stock phrase', errs(caption='Must have tests? Zod in TypeScript\nSchemas that check data\nWhat do you check? 👇'))
+        long = 'Zod schema validation in TypeScript ' * 4
+        self.assertIn('caption first line has', errs(caption=long + '\nWhat do you check? 👇'))
+        self.assertNotIn('caption first line', errs(caption=long[:125].strip() + '\nWhat do you check? 👇'))
+
     def test_reveal_needs_a_result_to_watch(self):
         self.assertEqual(generate.validate({**VALID, 'reveal': 3}), [])  # point 3 types a real command
         self.assertIn('must open on a visual that finishes', ' '.join(generate.validate({**VALID, 'reveal': 1})))
         self.assertIn('number of a point', ' '.join(generate.validate({**VALID, 'reveal': 4})))
 
-    def test_howtos_offer_a_freebie_and_build_reels_show_a_build(self):
-        self.assertIn('freebie', ' '.join(generate.pillar_errors(VALID, 'devtip')))
-        self.assertEqual(generate.pillar_errors(VALID, 'concept'), [])
-        self.assertEqual(generate.validate(self.freebie()), [])
-        self.assertEqual(generate.pillar_errors(self.freebie(), 'devtip'), [])
-        self.assertIn('build visual', ' '.join(generate.pillar_errors(self.freebie(), 'build')))
-        self.assertEqual(generate.pillar_errors({**self.freebie(), 'hook_visual': self.BUILD}, 'build'), [])
-        self.assertIn('build', generate.SLOT3_FORMATS)
+    def test_reels_never_offer_a_freebie_and_build_reels_show_a_build(self):
+        # 2026-10-14: 29 reels offered a comment-to-DM freebie and not one keyword comment came in.
+        for pillar in ('devtip', 'concept', 'relatable', 'trick'):
+            self.assertEqual(generate.pillar_errors(VALID, pillar), [], pillar)
+            self.assertIn('comment-to-DM', ' '.join(generate.pillar_errors(self.freebie(), pillar)), pillar)
+        self.assertEqual(generate.validate(self.freebie()), [])  # still a valid reel by hand (dm.py serves it)
+        self.assertIn('build visual', ' '.join(generate.pillar_errors(VALID, 'build')))
+        self.assertEqual(generate.pillar_errors({**VALID, 'hook_visual': self.BUILD}, 'build'), [])
+        self.assertNotIn('build', generate.SLOT3_FORMATS)  # out of the rotation, still possible by hand
+        with mock.patch.dict(os.environ, {'SLOT': '3', 'REEL_FORMAT': 'build'}):
+            self.assertEqual(generate.pillar_for(date(2026, 10, 6))[2], 'Build it live')
 
-    def test_generate_repairs_a_missing_freebie(self):
-        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [self.freebie()]}}),
+    def test_myth_reels_open_on_code_under_a_statement(self):
+        # 2026-10-19: both breakouts (CORS 1,107 views, await 1,938) were myths opening on code under a statement.
+        myth = generate.MYTH
+        diff = {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'let a = 1', 'after': 'const a = 1'}
+        self.assertEqual(generate.pillar_errors(VALID, 'relatable', myth), [])
+        self.assertIn('opens on the code', ' '.join(generate.pillar_errors({**VALID, 'hook_visual': diff}, 'relatable', myth)))
+        self.assertEqual(generate.pillar_errors({**VALID, 'hook_visual': diff}, 'concept', 'Explained'), [])
+        self.assertIn('never questions', ' '.join(generate.pillar_errors({**VALID, 'hook': QUESTION_HOOK}, 'relatable', myth)))
+        alt = copy.deepcopy(VALID)
+        alt['alternatives'][1]['hook'] = 'Is your *cache* lying?'
+        self.assertIn('never questions', ' '.join(generate.pillar_errors(alt, 'relatable', myth)))  # the judge may pick it
+        two = {**VALID, 'hook': '*Your* cache serves *old* data'}
+        self.assertIn('exactly one', ' '.join(generate.pillar_errors(two, 'relatable', myth)))
+        asked = {**VALID, 'hook': QUESTION_HOOK, 'test': {'name': 'hook_style', 'arm': 'question'}}
+        self.assertEqual(generate.pillar_errors(asked, 'relatable', myth), [])  # a test's question option wins
+        # 2026-10-23: the answer is held to the end, proven on the last point.
+        early = {k: v for k, v in VALID.items() if k != 'reveal'}
+        self.assertIn('proves the real output on its last point', ' '.join(generate.pillar_errors(early, 'relatable', myth)))
+        self.assertIn('last point', ' '.join(generate.pillar_errors({**VALID, 'reveal': 2}, 'relatable', myth)))
+        self.assertEqual(generate.pillar_errors(early, 'concept', 'Explained'), [])  # myths only
+        self.assertNotIn('news', generate.SLOT3_FORMATS)                              # news left the rotation
+
+    def test_generate_holds_the_days_myth_to_its_rules(self):
+        diff = {'type': 'diff', 'language': 'js', 'title': 'a.js', 'before': 'let a = 1', 'after': 'const a = 1'}
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [copy.deepcopy(VALID)]}}),
                               stderr='')
-        with mock.patch.object(generate, 'ask_claude', lambda *a: [copy.deepcopy(VALID)]), \
+        with mock.patch.object(generate, 'ask_claude', lambda *a: [{**copy.deepcopy(VALID), 'hook_visual': diff}]), \
+                mock.patch.object(generate.subprocess, 'run', return_value=out) as run, \
+                mock.patch.dict(os.environ, {'SLOT': '1'}), contextlib.redirect_stdout(io.StringIO()):
+            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # slot 1: Myth vs fact every day
+        self.assertEqual(new[0]['hook_visual'], VALID['hook_visual'])
+        self.assertIn('opens on the code', run.call_args[0][0][2])
+
+    def test_code_cards_that_are_mostly_comments_are_sent_back(self):
+        # Reel 72 (2026-10-14): an all-comment "after" was rejected and the reel opened on text.
+        explain = {'type': 'code', 'language': 'js', 'title': 'a.js', 'code': '// reads are fast\n// writes are slow\nx()'}
+        self.assertIn('mostly comments (2 of 3', ' '.join(generate.visual_errors(1, [explain])))
+        self.assertEqual(generate.visual_errors(1, VALID['points'][0]['visual']), [])
+        self.assertEqual(generate.visual_errors(1, VALID['points'][1]['visual']), [])  # 1 of 2 is not "mostly"
+        sql = {'type': 'diff', 'language': 'sql', 'title': 'i.sql', 'before': 'CREATE INDEX i ON u (email);',
+               'after': '-- every insert\n-- rewrites the index'}
+        self.assertIn('diff "after" is mostly comments', ' '.join(generate.visual_errors(1, [sql])))
+        css = {'type': 'diff', 'language': 'css', 'title': 'a.css', 'before': '/* no styles yet */',
+               'after': '#card {\n  padding: 24px;\n}'}
+        self.assertEqual(generate.visual_errors(1, [css]), [])  # a one-line placeholder; "#card" is a selector
+        prose = {'type': 'code', 'language': 'md', 'title': 'reply.txt', 'code': '# Heading\n# Another'}
+        self.assertEqual(generate.visual_errors(1, [prose]), [])
+        py = {'type': 'code', 'language': 'python', 'title': 'a.py', 'code': '# one\n# two\nprint(1)'}
+        self.assertTrue(generate.visual_errors(1, [py]))
+        bad = copy.deepcopy(VALID)
+        bad['hook_visual'] = explain
+        self.assertIn('hook_visual code is mostly comments', ' '.join(generate.validate(bad)))
+
+    def test_the_evening_rotation_drops_the_beginner_series(self):
+        # 2026-10-19: "Next.js from zero" averaged 86% skip over 4 reels; Explained (CORS, JWT) took its place.
+        days = [date(2026, 10, 1) + timedelta(days=i) for i in range(90)]
+        self.assertNotIn('series', generate.SLOT3_FORMATS)
+        with mock.patch.dict(os.environ, {'SLOT': '3'}):
+            picked = {generate.pillar_for(d)[2] for d in days}
+        self.assertIn('Explained', picked)
+        self.assertNotIn('Next.js from zero', picked)
+        with mock.patch.dict(os.environ, {'SLOT': '3', 'REEL_FORMAT': 'series'}):
+            self.assertEqual(generate.pillar_for(date(2026, 10, 6))[2], 'Next.js from zero')  # still by hand
+
+    def test_the_closing_card_matches_the_ending(self):
+        share = copy.deepcopy(VALID)
+        share['voiceover'][-1] = SHARE_LINE
+        self.assertEqual(render.closing_prompt(VALID), 'Comment below')
+        self.assertEqual(render.closing_prompt(share), 'Send it to them')
+        self.assertEqual(render.closing_prompt(self.freebie()), "I'll send it to your DMs")
+
+    def test_myth_is_the_main_format(self):
+        # 2026-10-14: myths about famous basics were the reels people stayed on; the freelance playbook got 25 views.
+        days = [date(2026, 10, 1) + timedelta(days=i) for i in range(90)]
+        with mock.patch.dict(os.environ, {'SLOT': '1'}):
+            self.assertEqual({generate.pillar_for(d)[2] for d in days}, {'Myth vs fact'})
+        with mock.patch.dict(os.environ, {'SLOT': '3'}):
+            myths = sum(generate.pillar_for(d)[2] == 'Myth vs fact' for d in days) / len(days)
+        self.assertTrue(0.2 < myths < 0.5, myths)
+        for slot in ('1', '2', '3'):
+            with mock.patch.dict(os.environ, {'SLOT': slot}):
+                self.assertNotIn('Freelance playbook', {generate.pillar_for(d)[2] for d in days}, slot)
+
+    def test_generate_repairs_a_freebie_offer(self):
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': [copy.deepcopy(VALID)]}}),
+                              stderr='')
+        with mock.patch.object(generate, 'ask_claude', lambda *a: [self.freebie()]), \
                 mock.patch.object(generate.subprocess, 'run', return_value=out) as run:
-            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # a Tuesday: Dev mistake
-        self.assertEqual((len(new), new[0]['dm_keyword'], new[0]['pillar']), (1, 'REDIS', 'devtip'))
-        self.assertIn('freebie', run.call_args[0][0][2])
+            new = generate.generate([], 1, dates=[date(2026, 10, 6)])  # slot 1: Myth vs fact every day
+        self.assertEqual((len(new), new[0].get('dm_keyword'), new[0]['pillar']), (1, None, 'relatable'))
+        self.assertIn('comment-to-DM', run.call_args[0][0][2])
 
     def test_hook_pace_test(self):
         dense = {**VALID, 'test': {'name': 'hook_pace', 'arm': 'dense'}}
@@ -1371,6 +1704,158 @@ class ReelFormatTest(Sandbox):
             self.assertEqual(publish.paced({'test': {'name': 'hook_pace', 'arm': 'dense'}}, clips), (0, voice.FAST_HOOK))
             publish.paced({'test': {'name': 'hook_pace', 'arm': 'relaxed'}}, clips)
         self.assertEqual(tempo.call_count, 1)
+
+    def test_a_same_every_time_voice_is_not_retaken_for_nothing(self):
+        """Kokoro says the same text the same way every time, so a retake of unchanged text is skipped; a take after a
+        respelling was learned (new text) still happens, and Fish (a new delivery each time) keeps every retake."""
+        import voice
+        said = []
+
+        class Engine:
+            key, same_every_time = 'kokoro', True
+            def say(self, text):
+                said.append(text)
+                return np.zeros(100, np.float32)
+
+        with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), \
+                contextlib.redirect_stdout(io.StringIO()):
+            audio, faults = voice.clean_take(Engine(), 'jank text')
+            self.assertEqual((len(said), faults), (1, ['jank']))
+            said.clear()
+            with mock.patch.object(voice, 'speakable', side_effect=['jank text', 'jaynk text', 'jaynk text']):
+                voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), 2)                      # the text changed after learning: one more take
+            said.clear()
+            Engine.same_every_time = False
+            voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), voice.FINAL_TAKES)
+
+    def test_the_listener_hears_the_clip_with_silence_after_it(self):
+        import voice
+        heard = {}
+
+        class Model:
+            def transcribe(self, audio, **k):
+                heard['len'] = len(audio)
+                return [], None
+
+        with mock.patch.object(voice, '_whisper', Model()):
+            voice.transcribe(np.ones(render.SR, np.float32))
+        self.assertAlmostEqual(heard['len'] / 16000, 1 + voice.LISTEN_PAD, delta=0.01)
+
+    def test_every_draft_request_carries_the_checklist(self):
+        """The rules drafts broke most (the alternatives' spoken lines above all) are listed in every draft request,
+        with the validator's own limits, so the first draft passes instead of costing a repair round."""
+        sent = {}
+
+        def fake(cmd, **k):
+            sent['prompt'] = cmd[cmd.index('-p') + 1]
+            sent['cmd'] = cmd
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'reels': []}}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()), \
+                mock.patch.dict(os.environ, {'WRITER_EFFORT': 'medium'}):
+            generate.ask_claude([(date(2026, 10, 23), ('devtip', 'Dev tip'))], ['Old hook'])
+        self.assertTrue(sent['prompt'].endswith(generate.checklist()))
+        for part in (f'{generate.VO_MIN_WORDS} to {generate.VO_MAX_WORDS}', 'at most 14 words', 'alternatives',
+                     ', '.join(generate.REVEAL_VISUALS), ', '.join(generate.HOOK_VISUALS)):
+            self.assertIn(part, generate.checklist())
+        self.assertEqual(sent['cmd'][-2:], ['--effort', 'medium'])
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': ''}):
+            self.assertEqual(generate.effort(), [])                       # the CLI's own effort: quality first
+        with mock.patch.dict(os.environ, {'WRITER_EFFORT': 'default'}):
+            self.assertEqual(generate.effort(), [])
+
+    def test_only_the_alternatives_are_rewritten_when_only_they_are_wrong(self):
+        """The usual repair (2026-10-23) was the alternatives' spoken lines; a quick rewrite of just those comes
+        first, and the whole reel is sent back only when something else is still wrong."""
+        good = copy.deepcopy(VALID)
+        bad = {**good, 'alternatives': [{**a, 'spoken': a['spoken'].split('] ', 1)[-1]} for a in good['alternatives']]}
+        self.assertTrue(generate.validate(bad) and all(e.startswith('alternative ') for e in generate.validate(bad)))
+        calls = []
+
+        def fake(cmd, **k):
+            schema = json.loads(cmd[cmd.index('--json-schema') + 1])
+            calls.append(list(schema['properties']))
+            out = {'alternatives': good['alternatives']} if 'alternatives' in schema['properties'] and len(schema['properties']) == 1 \
+                else {'reels': [good]}
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': out}), stderr='')
+
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            fixed = generate.repair(bad, generate.validate(bad))
+        self.assertEqual(fixed['alternatives'], good['alternatives'])
+        self.assertEqual(calls, [['alternatives']])                      # one quick call, no whole-reel round
+        calls.clear()
+        worse = {**bad, 'hook': 'no highlight here'}
+        with mock.patch.object(generate.subprocess, 'run', side_effect=fake), contextlib.redirect_stdout(io.StringIO()):
+            generate.repair(worse, generate.validate(worse))
+        self.assertEqual(calls, [['reels']])                             # something else is wrong: the full repair
+
+    def test_the_voice_check_hears_a_clip_once_and_caps_bursts(self):
+        """verify remembers a clip it already checked (the final report re-heard every unchanged line), and a burst of
+        sound is decoded with a word cap (noise made Whisper invent long repeated lines and retry them)."""
+        import voice
+        heard = []
+        with mock.patch.object(voice, 'verify_once', side_effect=lambda a, t: (heard.append(t) or ['x'], [])):
+            voice._verified.clear()
+            clip = np.ones(1000, np.float32)
+            first = voice.verify(clip, 'a line')
+            first[0].append('changed by the caller')
+            self.assertEqual(voice.verify(clip.copy(), 'a line'), (['x'], []))   # same audio and text: remembered
+            voice.verify(clip, 'another line')
+            voice.verify(clip * 0.5, 'a line')
+        self.assertEqual(heard, ['a line', 'another line', 'a line'])
+        calls = []
+
+        class Model:
+            def transcribe(self, audio, **k):
+                calls.append(k)
+                return [], None
+
+        with mock.patch.object(voice, '_whisper', Model()):
+            voice.heard_alone(np.zeros(render.SR * 3), 1.0, 1.5)
+        self.assertEqual(calls[0]['max_new_tokens'], voice.burst_tokens(0.5))
+        self.assertEqual(len(calls), 1)                                    # no throwaway call to load the model
+        self.assertGreaterEqual(voice.burst_tokens(4), 40)                 # a long burst of real speech fits
+
+    def test_retakes_stop_when_their_time_is_up(self):
+        """VOICE_BUDGET: the first take always happens; once the retakes' time is used up the best take so far is kept
+        (2026-10-23: endless retakes of two stubborn lines cost 566 s and came out worse)."""
+        import voice
+        said = []
+
+        class Engine:
+            key, same_every_time = 'fish', False
+            def say(self, text):
+                said.append(text)
+                return np.zeros(100, np.float32)
+
+        with mock.patch.object(voice, 'verify', return_value=(['jank'], [])), mock.patch.object(voice, 'learn'), \
+                mock.patch.object(voice, 'plain_word', return_value=False), contextlib.redirect_stdout(io.StringIO()):
+            voice._deadline = None
+            voice.clean_take(Engine(), 'jank text')
+            self.assertEqual(len(said), voice.FINAL_TAKES)                 # no budget running: every retake
+            said.clear()
+            voice._deadline = time.monotonic() - 1
+            try:
+                voice.clean_take(Engine(), 'jank text')
+            finally:
+                voice._deadline = None
+            self.assertEqual(len(said), 1)                                 # out of time: the first take only
+        seen = {}
+
+        def inner(lines, voice_name=None, check=True):
+            seen['left'] = voice._deadline - time.monotonic()
+            return 'clips'
+
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': '90'}):
+            self.assertEqual(voice.synthesize(['a line']), 'clips')
+        self.assertTrue(85 < seen['left'] <= 90)
+        self.assertIsNone(voice._deadline)                                 # reset for the next voiceover
+        with mock.patch.object(voice, '_synthesize', side_effect=inner), mock.patch.dict(os.environ, {'VOICE_BUDGET': ''}):
+            voice.synthesize(['a line'])
+        self.assertTrue(voice.RETAKE_BUDGET - 5 < seen['left'] <= voice.RETAKE_BUDGET)
 
     def test_tempo_plays_faster_at_the_same_pitch(self):
         import shutil
@@ -1444,6 +1929,703 @@ class QuotesTypeTest(Sandbox):
         self.assertTrue(generate.motion_errors(1, {'type': 'quotes', 'quotes': []}))
 
 
+DOCS = 'https://redis.io/docs/latest/commands/del/'
+STAGED = {**VALID, 'sources': [DOCS], 'scenes': [
+    {'kind': 'code', 'title': 'profile.ts', 'language': 'ts',
+     'code': "await db.update(user)\nconst u = await cache.get(key)", 'highlight': [2], 'at': 'old'},
+    {'kind': 'file', 'title': 'read path', 'lines': ['cache.get(key)', 'db.query(id)'], 'at': 'cache'},
+    {'kind': 'steps', 'items': [{'label': 'write'}, {'label': 'database'}, {'label': 'cache'}], 'light': True},
+    {'kind': 'docs', 'url': DOCS, 'title': 'DEL', 'text': 'Removes the specified keys. A key is ignored if it does not exist.',
+     'mark': 'Removes the specified keys', 'carry': None},
+    {'kind': 'words', 'lines': ['Clear keys', 'or *wait?*']}]}
+STAGED['scenes'][3] = {k: v for k, v in STAGED['scenes'][3].items() if v is not None}
+
+
+class StageTest(Sandbox):
+    """Stage reels (stage.py): the scene kit's checks, the timing worked out from the spoken words, the frame
+    review's descriptions, the classic fallback, and the day's draw."""
+
+    def test_a_valid_stage_reel_passes(self):
+        import stage
+        self.assertEqual(stage.scene_errors(STAGED), [])
+        self.assertEqual(generate.validate(STAGED), [])
+        self.assertEqual(stage.scene_errors(VALID), [])  # a classic reel has no scenes to check
+
+    def test_checklist_chapters_and_the_accent_flip(self):
+        import stage
+        def errs(change):
+            scenes = copy.deepcopy(STAGED['scenes'])
+            for i, extra in change.items():
+                scenes[i] = {k: v for k, v in {**scenes[i], **extra}.items() if v is not None}
+            return ' | '.join(stage.scene_errors({**STAGED, 'scenes': scenes}))
+        check = {'kind': 'checklist', 'title': 'Done means', 'items': [{'label': 'Key deleted on write', 'ok': True},
+                                                                      {'label': 'Old row served', 'ok': False}]}
+        self.assertEqual(errs({1: {**check, 'lines': None, 'at': None}}), '')
+        self.assertIn('checklist needs', errs({1: {**check, 'items': [{'label': 'only one', 'ok': True}], 'lines': None}}))
+        self.assertIn('checklist needs', errs({1: {**check, 'items': [{'label': 'a', 'ok': 'yes'}, {'label': 'b', 'ok': True}]}}))
+        chapters = {1: {'chapter': 'Reads'}, 2: {'chapter': 'Writes'}, 3: {'chapter': 'The fix'}}
+        self.assertEqual(errs(chapters), '')
+        self.assertIn('every point scene a chapter', errs({1: {'chapter': 'Reads'}}))
+        self.assertIn('chapter is', errs({**chapters, 4: {'chapter': 'Ask'}}))          # never on the cta
+        self.assertIn('chapter is', errs({1: {'chapter': 'A name far too long'}, 2: {'chapter': 'b'}, 3: {'chapter': 'c'}}))
+        self.assertEqual(errs({4: {'accent': True}}), '')
+        self.assertIn('accent flip comes after the hook', errs({0: {'accent': True}}))
+        self.assertIn('accent flip comes after the hook', errs({2: {'accent': True}}))  # scene 2 is the light one
+        self.assertIn('at most 1 accent', errs({1: {'accent': True}, 4: {'accent': True}}))
+        # The chapter card takes the first moment; the scene arrives after it, and so do its moves.
+        stage_, slides, words = self.timed()
+        reel = copy.deepcopy(STAGED)
+        for i, extra in chapters.items():
+            reel['scenes'][i].update(extra)
+        reel['scenes'][1] = {**check, 'chapter': 'Reads'}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            plan = stage.plan(reel, slides, words)
+        one = plan['scenes'][1]
+        self.assertEqual((one['number'], one['enter']), ('01', one['start'] + stage.CHAPTER))
+        self.assertTrue(all(one['enter'] <= t <= one['latest'] + 1e-6 for t in one['times']))
+        self.assertNotIn('number', plan['scenes'][0])
+        meant = stage.describe(reel['scenes'][1])
+        self.assertIn('✗ Old row served', meant)
+        self.assertIn('FAILED', meant)                 # one false check: the stamp says so
+        self.assertIn("chapter card 'Reads'", meant)
+        self.assertIn('PASSED', stage.describe({**check, 'items': [{'label': 'a', 'ok': True}, {'label': 'b', 'ok': True}]}))
+
+    def test_scene_checks(self):
+        import stage
+        def errs(i, **change):
+            scenes = copy.deepcopy(STAGED['scenes'])
+            scenes[i] = {k: v for k, v in {**scenes[i], **change}.items() if v is not None}
+            return ' | '.join(stage.scene_errors({**STAGED, 'scenes': scenes}))
+        self.assertIn('exactly 5', ' '.join(stage.scene_errors({**STAGED, 'scenes': STAGED['scenes'][:4]})))
+        self.assertIn('frame 0', errs(0, kind='words', lines=['Hi there']))
+        self.assertIn('kind must be one of', errs(1, kind='video'))
+        self.assertIn('1 to 10 lines', errs(0, code='\n'.join('x' for _ in range(11))))
+        self.assertIn('1 to 10 lines', errs(0, code='x' * 39))
+        self.assertIn('highlight', errs(0, highlight=[9]))
+        self.assertIn('sources', errs(3, url='https://example.com/other'))           # a quote names its page
+        self.assertIn('phrase of the text', errs(3, mark='not on the page'))
+        self.assertIn('2 to 4 items', errs(2, items=[{'label': 'only'}]))
+        self.assertIn('14 characters', errs(2, items=[{'label': 'a label far too long'}, {'label': 'b'}]))
+        self.assertIn('stop needs', errs(2, stop={'request': 'r', 'result': 'BLOCKED', 'at': 7}))
+        self.assertIn('counter source', errs(1, kind='counter', value=12, label='stars', source='https://made.up'))
+        self.assertIn('illustration', errs(1, kind='bars', title='speed', items=[{'label': 'a', 'value': 1},
+                                                                                 {'label': 'b', 'value': 2}]))
+        self.assertEqual(errs(1, kind='bars', title='speed', illustration=True,
+                              items=[{'label': 'a', 'value': 1}, {'label': 'b', 'value': 2}], at=None), '')
+        self.assertIn('real output', errs(1, kind='terminal', command='ls', output=[]))
+        self.assertIn('owner/repo', errs(1, kind='repo', name='not a repo', description='d', stars=3, url=DOCS))
+        self.assertIn('real star count', errs(1, kind='repo', name='a/b', description='d', stars=2.5, url=DOCS))
+        self.assertIn('18 characters', errs(4, lines=['a line that is far too long']))
+        self.assertIn('word of that slide', errs(1, at='nonsense'))
+        self.assertIn('hook stays dark', errs(0, light=True))
+        self.assertIn('carry', errs(3, carry='not on either card'))
+        self.assertEqual(errs(4, carry='cache'), ' | '.join(stage.scene_errors({**STAGED, 'scenes': [
+            *STAGED['scenes'][:4], {**STAGED['scenes'][4], 'carry': 'cache'}]})))
+        three = copy.deepcopy(STAGED['scenes'])
+        for sc in three[1:4]:
+            sc['light'] = True
+        self.assertIn('at most 2 light', ' '.join(stage.scene_errors({**STAGED, 'scenes': three})))
+        self.assertIn('scenes', ' '.join(generate.validate({**STAGED, 'scenes': STAGED['scenes'][:2]})))
+
+    def test_words_label_and_motif(self):
+        import stage
+        words = dict(STAGED['scenes'][4])
+        errs = lambda w: ' | '.join(stage.scene_errors({**STAGED, 'scenes': STAGED['scenes'][:4] + [w]}))
+        self.assertEqual(errs({**words, 'label': 'be honest', 'motif': 'brackets'}), '')
+        self.assertIn('words label', errs({**words, 'label': 'a label far too long to sit over'}))
+        self.assertIn('words motif', errs({**words, 'motif': 'a face'}))         # only the abstract shapes
+        self.assertEqual(set(stage.MOTIFS), {'wave', 'brackets', 'rings'})
+        said = stage.describe({**words, 'label': 'be honest', 'motif': 'rings'})
+        self.assertIn("label 'be honest'", said)
+        self.assertIn('rings shape pulsing', said)
+        self.assertIn('outline', stage.describe(words))
+
+    def test_the_edit_scene_does_what_the_keys_do(self):
+        import stage
+        edit = {'kind': 'edit', 'title': '.env', 'lines': ['API_URL=CHANGE_ME', 'DB_URL=CHANGE_ME', 'SECRET=CHANGE_ME'],
+                'find': 'CHANGE_ME', 'typed': 'TODO'}
+        errs = lambda e: ' | '.join(stage.scene_errors({**STAGED, 'scenes': [STAGED['scenes'][0], e] + STAGED['scenes'][2:]}))
+        self.assertEqual(errs(edit), '')
+        self.assertIn('appearing 2 to 8 times', errs({**edit, 'find': 'API_URL'}))       # one match is no trick
+        self.assertIn('appearing 2 to 8 times', errs({**edit, 'find': 'NOPE'}))
+        self.assertIn('not the same as find', errs({**edit, 'typed': 'CHANGE_ME'}))
+        self.assertIn('within 34 characters', errs({**edit, 'typed': 'x' * 20, 'lines': ['A=CHANGE_ME' + 'y' * 20, 'B=CHANGE_ME']}))
+        self.assertIn('key is the shortcut', errs({**edit, 'key': 'Press control and D together'}))
+        # The result is worked out, never written: one match per press, the same text at every cursor.
+        self.assertEqual(stage.matches(edit), [(0, 8), (1, 7), (2, 7)])
+        self.assertEqual(stage.edited(edit)[1], ['API_URL=TODO', 'DB_URL=TODO', 'SECRET=TODO'])
+        two = {**edit, 'lines': ['a = X + X', 'b = X'], 'find': 'X', 'typed': 'Y'}
+        self.assertEqual(stage.matches(two), [(0, 4), (0, 8), (1, 4)])
+        self.assertIn('pressed 3 times', stage.describe(two))
+        self.assertIn('a = Y + Y / b = Y', stage.describe(two))
+        # Timing: one press per match, all before the typing, which ends before the cut.
+        stage_, slides, words = self.timed()
+        reel = {**STAGED, 'scenes': [STAGED['scenes'][0], edit] + STAGED['scenes'][2:]}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            sc = stage.plan(reel, slides, words)['scenes'][1]
+        self.assertEqual(len(sc['presses']), 3)
+        self.assertEqual(sc['presses'], sorted(sc['presses']))
+        self.assertGreater(sc['presses'][0], sc['enter'])
+        self.assertLess(sc['presses'][-1], sc['type_at'])
+        self.assertLessEqual(sc['type_at'] + len('TODO') * sc['step'], sc['latest'] + 0.31)
+        self.assertEqual(sc['after'], ['API_URL=TODO', 'DB_URL=TODO', 'SECRET=TODO'])
+
+    def timed(self):
+        import stage
+        from PIL import ImageFont
+        from voice import Voiceover, strip_cues
+        lines = [strip_cues(l).split() for l in STAGED['voiceover']]
+        words = [[(w, 0.1 + i * 0.38, 0.43 + i * 0.38) for i, w in enumerate(ws)] for ws in lines]
+        v = Voiceover([np.zeros(int(render.SR * (0.3 + len(ws) * 0.38)), dtype=np.float32) for ws in lines], words,
+                      continuous=True)
+        timing = {k: v2 for k, v2 in STAGED.items() if k not in ('hook_visual', 'scenes')}
+        timing['points'] = [{k: v2 for k, v2 in p.items() if k != 'visual'} for p in STAGED['points']]
+        # Pillow's built-in font: CI has no Poppins, and only timing is checked.
+        with mock.patch.object(render, 'font', lambda weight, size: ImageFont.load_default(size)):
+            slides, _ = render.build_slides(timing, v)
+        return stage, slides, render.spoken_words(v, slides)
+
+    def test_moves_land_on_spoken_words(self):
+        stage, slides, words = self.timed()
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):  # CI's job has no pygments
+            plan = stage.plan(STAGED, slides, words)
+        hook, read, steps, docs, cta = plan['scenes']
+        said = lambda i, w: next(a for x, a, _ in words[i] if stage._norm(x) == w)
+        self.assertEqual(hook['beat'], min(said(0, 'old'), hook['latest']))  # on the "at" word, unless too late to land
+        self.assertTrue(hook['ready'] and hook['start'] == 0 and hook['type_at'] < 0)  # the hook is whole on frame 0
+        self.assertEqual(read['beat'], min(said(1, 'cache'), read['latest']))
+        self.assertEqual(steps['times'][1], min(said(2, 'database'), steps['latest']))  # each step on its label
+        self.assertTrue(slides[2].start < steps['times'][0] < steps['times'][2] < slides[3].start + 0.01)
+        self.assertEqual(cta['rows'][1][1][:2], ['wait?', True])   # *word* is the accent
+        self.assertAlmostEqual(cta['end'], plan['total'] - stage.RETURN)
+        self.assertEqual(read['start'], slides[1].start)
+
+    def test_every_move_lands_before_the_cut(self):
+        # 2026-10-20 dry run: a terminal timed to the line's last word ("then timeout last") was still printing when the
+        # frame review looked, so a true reel fell back to the classic slides.
+        stage, slides, words = self.timed()
+        last = words[2][-1][0]
+        reel = copy.deepcopy(STAGED)
+        reel['scenes'][2] = {'kind': 'terminal', 'command': 'node timer.js', 'output': ['A', 'C', 'B'], 'at': last}
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            plan = stage.plan(reel, slides, words)
+        term = plan['scenes'][2]
+        self.assertLessEqual(term['beat'], slides[3].start - stage.LAND + 1e-6)
+        self.assertEqual(term['latest'], max(term['start'] + 0.4, slides[3].start - stage.LAND))
+        with mock.patch.object(stage, 'tokens', return_value=[[['x', '#fff']]]):
+            staged = stage.plan(STAGED, slides, words)
+        self.assertTrue(all(t <= staged['scenes'][4]['latest'] + 0.4 + 1e-6 for row in staged['scenes'][4]['rows']
+                            for _, _, t in row))                       # big words are all in before the cut
+        for sc in staged['scenes'][:-1]:
+            self.assertLessEqual(sc['beat'], sc['latest'] + 1e-6)
+            for t in sc.get('times', []):
+                self.assertLessEqual(t, sc['latest'] + 1e-6)
+
+    def test_the_review_looks_at_a_stage_scene_once_it_has_landed(self):
+        import qa
+        import stage
+        slides = [SimpleNamespace(visual=stage.Shown(STAGED['scenes'][1]), start=4.0, end=8.0, lead=0.0),
+                  SimpleNamespace(visual=None, start=8.0, end=12.0, lead=0.0)]
+        times = []
+        with mock.patch.object(qa, 'grab', side_effect=lambda video, t, path: times.append(t)):
+            qa.frames('v.mp4', slides, self.tmp)
+        self.assertAlmostEqual(times[0], 8.0 - 0.45)          # the stage scene: just before the cut
+        self.assertAlmostEqual(times[1], 8.0 + 3.1)           # a classic slide keeps its own moment
+        times.clear()
+        slides[1] = SimpleNamespace(visual=stage.Shown(STAGED['scenes'][4]), start=8.0, end=12.0, lead=0.0)
+        with mock.patch.object(qa, 'grab', side_effect=lambda video, t, path: times.append(t)):
+            qa.frames('v.mp4', slides, self.tmp)
+        self.assertLess(times[1], 12.0 - stage.RETURN)        # the closing words, before the glide back to the opening
+
+    def test_caption_groups(self):
+        stage, slides, words = self.timed()
+        groups = stage.caption_groups(STAGED, slides, words)
+        first = groups[0]
+        self.assertEqual([w for w, *_ in first['words']], ['Your', 'cache', 'serves', 'old', 'data'])
+        self.assertEqual(first['words'][1][1:], ['key', -1])       # the hook is complete and selected on frame 0
+        self.assertEqual(first['end'], slides[1].start)
+        spoken = [g for g in groups[1:]]
+        self.assertTrue(all(len(g['words']) <= stage.LINE_WORDS for g in spoken))
+        self.assertTrue(all(g['start'] < g['end'] for g in spoken))
+        self.assertTrue(all(a <= b for a, b in zip([g['start'] for g in spoken], [g['start'] for g in spoken][1:])))
+        self.assertTrue(all(w[-1:] not in '.?!' for g in spoken for w, *_ in g['words'][:-1]))  # a sentence ends a group
+        # A long sentence splits evenly: 10 words make 5 + 5, never 9 + a lone word.
+        line = 'one two three four five six seven eight nine ten.'
+        long = [[(w, k * 0.3 + 5, k * 0.3 + 5.2) for k, w in enumerate(line.split())]]
+        split = stage.caption_groups({**STAGED, 'voiceover': ['x', line]}, slides[:2] + slides[1:2], [[]] + long)
+        self.assertEqual([len(g['words']) for g in split[1:]], [5, 5])
+
+    def test_frame_review_reads_the_scenes(self):
+        import qa
+        import stage
+        docs = stage.Shown(STAGED['scenes'][3]).spec
+        self.assertEqual(docs['type'], 'stage-docs')
+        meant = qa.describe(docs)
+        self.assertIn(DOCS, meant)
+        self.assertIn('check the quote', meant)
+        self.assertIn('database', qa.describe(stage.Shown(STAGED['scenes'][2]).spec))
+        code = qa.describe(stage.Shown(STAGED['scenes'][0]).spec)
+        self.assertIn("2 ('const u = await cache.get(key)')", code)   # which line is marked, so the review can check it
+
+    def test_a_rejected_scene_falls_back_to_the_classic_slides(self):
+        import publish
+        import stage
+        slides = [SimpleNamespace(visual=stage.Shown(s), start=i * 3.0, end=i * 3.0 + 3) for i, s in
+                  enumerate(STAGED['scenes'])]
+        verdict = {'slides': [{'slide': 2, 'ok': True, 'visual_ok': False, 'honest': True, 'problem': 'unclear'}],
+                   'first_frame': {}, 'payoff': {}}
+        rendered = []
+        classic = [SimpleNamespace(visual=None, start=0.0, end=3.0)]
+        with mock.patch('qa.review', side_effect=[verdict, {'slides': [], 'first_frame': {}, 'payoff': {}}]), \
+                mock.patch('render.render_reel', side_effect=lambda r, voice=None: rendered.append(r) or ('v.mp4', classic)):
+            path, out = publish.check_visuals(copy.deepcopy(STAGED), None, 'v.mp4', slides)
+        self.assertEqual(len(rendered), 1)
+        self.assertNotIn('scenes', rendered[0])                    # the same reel, as classic slides
+        self.assertEqual(rendered[0]['hook_visual'], STAGED['hook_visual'])
+        self.assertIs(out, classic)
+
+    def test_the_hook_judge_can_still_swap_a_stage_hook(self):
+        # The writer's "at" word ("old") is not in the picked line; the swap must still go through.
+        out = SimpleNamespace(returncode=0, stdout=json.dumps({'structured_output': {'scores': [5, 6, 9, 4], 'best': 3,
+                                                                                    'why': ''}}), stderr='')
+        with mock.patch.object(generate.subprocess, 'run', return_value=out), contextlib.redirect_stdout(io.StringIO()):
+            picked = generate.pick_hook(copy.deepcopy(STAGED))
+        self.assertEqual(picked['hook'], STAGED['alternatives'][1]['hook'])
+        self.assertNotIn('at', picked['scenes'][0])
+        self.assertEqual(picked['scenes'][1:], STAGED['scenes'][1:])
+
+    def test_the_days_draw(self):
+        with mock.patch.dict(os.environ, {'STAGE': '', 'STAGE_CHANCE': ''}):
+            days = [date(2026, 11, 1) + timedelta(days=k) for k in range(60)]
+            draws = [generate.stage_today(d) for d in days]
+            self.assertEqual(draws, [generate.stage_today(d) for d in days])  # fixed per date: reruns agree
+            self.assertTrue(10 < sum(draws) < 50)
+        with mock.patch.dict(os.environ, {'STAGE': 'off'}):
+            self.assertFalse(generate.stage_today())
+            self.assertIn('Leave "scenes" out', generate.stage_note())
+        with mock.patch.dict(os.environ, {'STAGE': 'on'}):
+            self.assertTrue(generate.stage_today())
+            note = generate.stage_note()
+            for kind in ('file:', 'code:', 'docs:', 'steps:', 'counter:', 'bars:', 'terminal:', 'repo:', 'words:'):
+                self.assertIn(kind, note)
+        self.assertNotIn('scenes', generate.strip_stage(STAGED))
+        self.assertEqual(generate.strip_stage(VALID), VALID)
+
+
+SHOWCASE = {'title': 'How an AI agent works', 'beats': [
+    {'text': 'Start with a *goal*', 'motif': 'spark'},
+    {'text': 'The agent makes a *plan*', 'motif': 'ring'},
+    {'text': 'It *acts* on your files', 'motif': 'flow', 'labels': ['read', 'edit', 'run']},
+    {'text': 'Then it *checks* the result', 'motif': 'card', 'labels': ['tests pass'], 'light': True},
+    {'text': 'And it *repeats*', 'motif': 'loop'}],
+    'caption': 'How an AI coding agent works.\nWhich step do you trust least? 👇', 'hashtags': ['#ai', '#code', '#motion']}
+
+
+class ShowcaseTest(Sandbox):
+    """The weekly showcase (showcase.py): the writer's checks, the beat timing, and the post-once rule."""
+
+    def test_the_sound_design(self):
+        import wave
+        import numpy as np
+        import showcase
+        kit = showcase.fx_kit(np.random.default_rng(1))
+        for kind in showcase.FX_GAIN:                                   # every cue the page can ask for has a sound
+            self.assertGreater(np.abs(kit[kind]()).max(), 0.1, kind)
+        riser = kit['riser']()
+        self.assertGreater(np.abs(riser[-len(riser) // 5:]).mean(), 4 * np.abs(riser[:len(riser) // 5]).mean())  # it builds
+        wav = Path(self.tmp) / 'fx.wav'
+        showcase.sound_track([(1.0, 'impact')], 2.0, wav)
+        with wave.open(str(wav)) as w:
+            pcm = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(float)
+        sr = showcase.render.SR
+        hit, before = np.abs(pcm[sr:int(sr * 1.2)]).mean(), np.abs(pcm[int(sr * 0.6):int(sr * 0.9)]).mean()
+        self.assertGreater(before, 0)                                   # the soft bed is there
+        self.assertGreater(hit, 5 * before)                             # and the impact stands well above it
+
+    def test_a_valid_showcase_passes(self):
+        import showcase
+        self.assertEqual(showcase.errors(SHOWCASE), [])
+
+    def test_checks(self):
+        import showcase
+        def errs(i=None, **change):
+            spec = copy.deepcopy(SHOWCASE)
+            if i is None:
+                spec.update(change)
+            else:
+                spec['beats'][i] = {k: v for k, v in {**spec['beats'][i], **change}.items() if v is not None}
+            return ' | '.join(showcase.errors(spec))
+        self.assertIn('4 to 6', errs(beats=SHOWCASE['beats'][:3]))
+        self.assertIn('2 to 6 words', errs(1, text='*Plan*'))
+        self.assertIn('one key word', errs(1, text='The agent makes a plan'))
+        self.assertIn('no numbers', errs(1, text='Make *3* plans'))
+        self.assertIn('motif must be', errs(1, motif='face'))
+        self.assertIn('flow needs', errs(2, labels=None))
+        self.assertIn('card needs', errs(3, labels=['a', 'b']))
+        self.assertIn('beat 1 stays dark', errs(0, light=True))
+        self.assertIn('at most one light', errs(4, light=True))
+        self.assertIn('spark or a ring', errs(0, motif='blob'))
+        self.assertIn('caption', errs(caption='Just one line'))
+        self.assertIn('hashtags', errs(hashtags=['#a']))
+
+    def test_beats_and_words(self):
+        import showcase
+        beats, total = showcase.timeline(SHOWCASE)
+        self.assertAlmostEqual(total, 5 * showcase.BEAT + showcase.BACK)
+        self.assertEqual([b['start'] for b in beats], [k * showcase.BEAT for k in range(5)])
+        self.assertTrue(all(at == -1.0 for _, _, at in beats[0]['words']))   # the first words are there on frame 0
+        self.assertEqual([w for w, k, _ in beats[0]['words'] if k], ['goal'])  # *word* is the key word
+        later = [at for _, _, at in beats[1]['words']]
+        self.assertTrue(beats[1]['start'] < later[0] and later == sorted(later))
+
+    def test_posts_once_a_day(self):
+        import showcase
+        today = datetime.now(timezone.utc).date()
+        self.assertFalse(showcase.posted_today([]))
+        self.assertFalse(showcase.posted_today([{'media_id': None, 'posted_at': f'{today}T16:00:00+00:00'}]))
+        self.assertTrue(showcase.posted_today([{'media_id': '1', 'posted_at': f'{today}T16:00:00+00:00'}]))
+        self.assertFalse(showcase.posted_today([{'media_id': '1', 'posted_at': '2020-01-01T16:00:00+00:00'}]))
+        written = []
+        with mock.patch.object(showcase, 'load', return_value=[{'media_id': '1', 'posted_at': f'{today}T16:00:00+00:00'}]), \
+                mock.patch.object(showcase, 'write', side_effect=lambda log: written.append(1)), \
+                mock.patch.dict(os.environ, {'FORCE_POST': ''}), mock.patch('publish.output'), \
+                mock.patch.object(sys, 'argv', ['showcase.py']), contextlib.redirect_stdout(io.StringIO()):
+            showcase.main()
+        self.assertEqual(written, [])                                          # nothing written twice in a day
+
+    def test_a_failed_review_posts_nothing(self):
+        import showcase
+        uploads = []
+        with mock.patch.object(showcase, 'load', return_value=[]), \
+                mock.patch.object(showcase, 'write', return_value=copy.deepcopy(SHOWCASE)), \
+                mock.patch.object(showcase, 'render_showcase', return_value=(Path(self.tmp) / 's.mp4', 14.9)), \
+                mock.patch.object(showcase, 'review', return_value={'ok': False, 'problem': 'a face'}), \
+                mock.patch('publish.upload', side_effect=lambda *a, **k: uploads.append(a)), mock.patch('publish.output'), \
+                mock.patch.dict(os.environ, {'DRY_RUN': '', 'FORCE_POST': ''}), mock.patch.object(showcase, 'LOG', Path(self.tmp) / 'showcases.json'), \
+                mock.patch.object(render, 'OUT_DIR', Path(self.tmp)), \
+                mock.patch.object(sys, 'argv', ['showcase.py']), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                showcase.main()
+        self.assertEqual(uploads, [])
+
+
+LI_TEXT = ('Your cache can serve old data after every update.\n\nReads go to the cache first, but writes only touch the '
+           'database, so the cached row stays stale until it expires.\n\nThe fix is one line: delete the cached key on '
+           'every write. Readers then miss once and load the new row from the database.\n\nHow do you invalidate yours?'
+           '\n#webdev #redis')
+
+
+class FakeLinkedIn:
+    """Answers LinkedIn's upload and post calls the way the docs describe, and records them."""
+
+    def __init__(self, status=200):
+        self.calls, self.status = [], status
+
+    def response(self, status=200, body=None, headers=None):
+        r = SimpleNamespace(status_code=status, ok=status < 400, headers=headers or {}, text=json.dumps(body or {}))
+        r.json = lambda: body or {}
+        return r
+
+    def post(self, url, **kw):
+        self.calls.append(('POST', url, kw.get('json')))
+        if self.status == 401:
+            return self.response(401)
+        if 'videos?action=initializeUpload' in url:
+            size = kw['json']['initializeUploadRequest']['fileSizeBytes']
+            parts = [{'uploadUrl': f'https://up/{k}', 'firstByte': k * 4, 'lastByte': min(size, (k + 1) * 4) - 1}
+                     for k in range((size + 3) // 4)]
+            return self.response(body={'value': {'uploadInstructions': parts, 'video': 'urn:li:video:V1', 'uploadToken': 't'}})
+        if 'documents?action=initializeUpload' in url:
+            return self.response(body={'value': {'uploadUrl': 'https://up/doc', 'document': 'urn:li:document:D1'}})
+        if url.endswith('/rest/posts'):
+            return self.response(201, headers={'x-restli-id': 'urn:li:share:42'})
+        return self.response()
+
+    def put(self, url, **kw):
+        self.calls.append(('PUT', url, len(kw.get('data') or b'')))
+        return self.response(headers={'ETag': f'"etag-{url[-1]}"'})
+
+    def get(self, url, **kw):
+        self.calls.append(('GET', url, None))
+        return self.response(body={'status': 'AVAILABLE', 'sub': 'abc'})
+
+
+def FakeResp(status, body, headers=None):
+    r = SimpleNamespace(status_code=status, headers=headers or {}, text=json.dumps(body))
+    r.json = lambda: body
+    def raise_for_status():
+        if status >= 400:
+            raise RuntimeError(f"HTTP {status}")
+    r.raise_for_status = raise_for_status
+    return r
+
+
+class FakeYouTube:
+    """Google's token endpoint and YouTube's resumable upload, recording every call."""
+
+    def __init__(self, refuse=False):
+        self.calls, self.refuse = [], refuse
+
+    def post(self, url, params=None, json=None, data=None, headers=None, timeout=None):
+        self.calls.append(('POST', url, json or data))
+        if 'oauth2' in url:
+            if self.refuse:
+                return FakeResp(400, {'error': 'invalid_grant'})
+            return FakeResp(200, {'access_token': 'at'})
+        return FakeResp(200, {}, headers={'Location': 'https://up/session'})
+
+    def put(self, url, data=None, headers=None, timeout=None):
+        self.calls.append(('PUT', url, data.read() if hasattr(data, 'read') else data))
+        return FakeResp(200, {'id': 'YT123'})
+
+
+class YouTubeTest(Sandbox):
+    """youtube.py: the title and description taken from the reel (never invented), the upload against a fake
+    YouTube, the expired-login alert, and never uploading twice."""
+
+    def setUp(self):
+        super().setUp()
+        import youtube
+        self.yt = youtube
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(youtube, 'ALERT', out / 'youtube-alert.md')):
+            patch.start()
+            self.addCleanup(patch.stop)
+        render.QUEUE.write_text(json.dumps([{**VALID, 'id': 7, 'sources': ['https://redis.io/docs/del'],
+                                             'posted_at': '2026-10-22T12:00:00+00:00'}]))
+        (out / 'reel-7.mp4').write_bytes(b'video')
+        self.env = {'YT_CLIENT_ID': 'cid', 'YT_CLIENT_SECRET': 'sec', 'YT_REFRESH_TOKEN': 'ref', 'DRY_RUN': '', 'YT_PRIVACY': ''}
+
+    def test_words_come_from_the_reel(self):
+        yt = self.yt
+        entry = {**VALID, 'hook': 'Your <cache> lies *twice*', 'sources': ['https://redis.io/docs/del']}
+        self.assertEqual(yt.title_for(entry, 'reel'), 'Your cache lies twice')      # no < >, no highlights
+        self.assertLessEqual(len(yt.title_for({'hook': 'word ' * 40}, 'reel')), yt.MAX_TITLE)
+        desc = yt.description_for(entry, 'reel')
+        self.assertTrue(desc.startswith(VALID['caption'].replace('*', '').strip()[:20]))
+        self.assertIn('https://redis.io/docs/del', desc)
+        self.assertIn(yt.AI_VOICE, desc)                                          # the AI voice is said plainly
+        self.assertIn('#Shorts', desc)
+        self.assertNotIn(yt.AI_VOICE, yt.description_for({'title': 'Loops', 'caption': 'x'}, 'showcase'))  # no voice
+        self.assertLessEqual(len(yt.description_for({**entry, 'caption': 'x' * 6000}, 'reel').encode()), yt.MAX_DESCRIPTION)
+
+    def test_uploads_a_reel_and_records_it(self):
+        yt, fake = self.yt, FakeYouTube()
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                mock.patch.object(yt.requests, 'put', fake.put), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(yt.post('reel', '7'), 'YT123')
+        self.assertEqual(fake.calls[0][2]['grant_type'], 'refresh_token')
+        meta = fake.calls[1][2]
+        self.assertEqual((meta['status']['privacyStatus'], meta['status']['selfDeclaredMadeForKids'],
+                          meta['snippet']['categoryId']), ('public', False, '28'))
+        self.assertEqual(fake.calls[2], ('PUT', 'https://up/session', b'video'))
+        self.assertEqual(json.loads(render.QUEUE.read_text())[0]['youtube_id'], 'YT123')
+        fake.calls.clear()                                                        # never twice
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yt.post('reel', '7')
+        self.assertEqual(fake.calls, [])
+
+    def test_uploads_a_ready_made_video_once(self):
+        yt, fake = self.yt, FakeYouTube()
+        video = Path(self.tmp) / 'tour.mp4'
+        video.write_bytes(b'film')
+        video.with_suffix('.json').write_text(json.dumps({'title': 'Inside an <AI> agent', 'description': 'A tour.', 'tags': ['ai']}))
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                mock.patch.object(yt.requests, 'put', fake.put), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(yt.post_file(video), 'YT123')
+        meta = fake.calls[1][2]
+        self.assertEqual((meta['snippet']['title'], meta['snippet']['tags']), ('Inside an AI agent', ['ai']))
+        self.assertEqual(json.loads(video.with_suffix('.json').read_text())['youtube_id'], 'YT123')
+        fake.calls.clear()
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            yt.post_file(video)                                                   # recorded: never twice
+        self.assertEqual(fake.calls, [])
+
+    def test_not_set_up_dry_run_and_expired_login(self):
+        yt, fake = self.yt, FakeYouTube()
+        with mock.patch.dict(os.environ, {**self.env, 'YT_REFRESH_TOKEN': ''}), \
+                mock.patch.object(yt.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(yt.post('reel', '7'))
+        with mock.patch.dict(os.environ, {**self.env, 'DRY_RUN': 'true'}), \
+                mock.patch.object(yt.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(yt.post('reel', '7'))
+        self.assertEqual(fake.calls, [])
+        refused = FakeYouTube(refuse=True)
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(yt.requests, 'post', refused.post), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(yt.LoginExpired):
+            yt.post('reel', '7')
+        self.assertTrue(yt.ALERT.exists())
+        self.assertNotIn('youtube_id', json.loads(render.QUEUE.read_text())[0])
+
+
+class StoriesTest(Sandbox):
+    """stories.py: which reels get a puzzle story (and only one a day), the teaser for every reel, the record that
+    stops a second posting, the off switch and the dry run. The images and video are stubbed (test_motion makes them
+    for real)."""
+
+    def setUp(self):
+        super().setUp()
+        import stories
+        self.st = stories
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(stories, 'OUT', out / 'stories'),
+                      mock.patch.object(stories, 'puzzle_image', side_effect=lambda r, c, p: p),
+                      mock.patch.object(stories, 'teaser_video', side_effect=lambda r, v, p: p)):
+            patch.start()
+            self.addCleanup(patch.stop)
+        self.myth = {**VALID, 'id': 7, 'series': 'Myth vs fact', 'posted_at': '2026-10-22T12:00:00+00:00',
+                     'hook_visual': {'type': 'code', 'language': 'js', 'code': 'console.log(typeof null)'}}
+        (out / 'reel-7.mp4').write_bytes(b'v')
+        (out / 'reel-8.mp4').write_bytes(b'v')
+        self.now = datetime(2026, 10, 22, 12, 5, tzinfo=timezone.utc)
+
+    def test_which_reels_get_a_puzzle(self):
+        st = self.st
+        self.assertEqual(st.puzzle_code(self.myth), 'console.log(typeof null)')
+        self.assertIsNone(st.puzzle_code({**self.myth, 'series': 'Quick trick'}))                    # myths only
+        self.assertIsNone(st.puzzle_code({**self.myth, 'hook_visual': {'type': 'code', 'code': 'cd -'}}))  # nothing printed
+        self.assertIsNone(st.puzzle_code({**self.myth, 'hook_visual': {'type': 'diff', 'code': 'print(1)'}}))
+        done = {**self.myth, 'stories': [{'kind': 'puzzle', 'id': '1'}]}
+        self.assertTrue(st.puzzled_today([done], self.now))
+        self.assertFalse(st.puzzled_today([{**done, 'posted_at': '2026-10-21T12:00:00+00:00'}], self.now))
+
+    def run_stories(self, reels, reel_id, env=None):
+        render.QUEUE.write_text(json.dumps(reels))
+        posted = []
+        with mock.patch.dict(os.environ, {'DRY_RUN': '', 'STORIES': '', **(env or {})}), \
+                mock.patch.object(self.st, 'post_story', side_effect=lambda k, p, c: posted.append((k, c)) or f'S-{k}'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.st.run(reel_id, now=self.now)
+        return posted, {r['id']: r for r in json.loads(render.QUEUE.read_text())}
+
+    def test_posts_puzzle_then_teaser_once(self):
+        posted, saved = self.run_stories([self.myth], 7)
+        self.assertEqual(posted, [('puzzle', 'image/jpeg'), ('teaser', 'video/mp4')])     # the question before the reel
+        self.assertEqual(saved[7]['stories'], [{'kind': 'puzzle', 'id': 'S-puzzle'}, {'kind': 'teaser', 'id': 'S-teaser'}])
+        again, _ = self.run_stories(list(saved.values()), 7)
+        self.assertEqual(again, [])                                                         # never twice
+        second = {**self.myth, 'id': 8}                                                     # a second myth that day
+        posted, _ = self.run_stories(list(saved.values()) + [second], 8)
+        self.assertEqual(posted, [('teaser', 'video/mp4')])                                 # one puzzle a day
+
+    def test_off_and_dry_run_post_nothing(self):
+        self.assertEqual(self.run_stories([self.myth], 7, {'STORIES': 'off'})[0], [])
+        posted, saved = self.run_stories([self.myth], 7, {'DRY_RUN': 'true'})
+        self.assertEqual(posted, [])
+        self.assertNotIn('stories', saved[7])
+
+
+class LinkedInTest(Sandbox):
+    """linkedin.py: the post text's checks and LinkedIn's little text format, the upload and post calls against a
+    fake LinkedIn, the expired-token alert, and never posting twice."""
+
+    def setUp(self):
+        super().setUp()
+        import linkedin
+        self.li = linkedin
+        out = Path(self.tmp) / 'out'
+        out.mkdir()
+        for patch in (mock.patch.object(render, 'OUT_DIR', out), mock.patch.object(linkedin, 'ALERT', out / 'linkedin-alert.md')):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_text_checks_and_escaping(self):
+        li = self.li
+        self.assertEqual(li.text_errors(LI_TEXT), [])
+        self.assertIn('characters', ' '.join(li.text_errors('Too short?')))
+        self.assertIn('question', ' '.join(li.text_errors(LI_TEXT.replace('How do you invalidate yours?', 'That is all.'))))
+        self.assertIn('hashtags', ' '.join(li.text_errors(LI_TEXT + ' #a #b')))
+        self.assertIn('comment', ' '.join(li.text_errors(LI_TEXT.replace('How do', 'Comment CACHE and how do'))))
+        self.assertIn('Source', ' '.join(li.text_errors(LI_TEXT, ['https://redis.io/docs'])))
+        self.assertEqual(li.little('Use Read(./.env) [now] #webdev'), 'Use Read\\(./.env\\) \\[now\\] {hashtag|\\#|webdev}')
+        self.assertEqual(li.little('a_b *c* @me'), 'a\\_b \\*c\\* \\@me')
+
+    def fixture(self, reels):
+        render.QUEUE.write_text(json.dumps(reels))
+        (render.OUT_DIR / 'reel-7.mp4').write_bytes(b'0123456789')  # 10 bytes: three upload parts of 4
+
+    def test_posts_a_reel_and_records_it(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7, 'sources': [], 'posted_at': '2026-10-20T12:00:00+00:00'}])
+        fake = FakeLinkedIn()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'LINKEDIN_AUTHOR': '', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.time, 'sleep'), \
+                mock.patch.object(li.requests, 'post', fake.post), mock.patch.object(li.requests, 'put', fake.put), \
+                mock.patch.object(li.requests, 'get', fake.get), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(li.post('reel', '7'), 'urn:li:share:42')
+        kinds = [(m, u.split('?')[0].replace('https://api.linkedin.com', '')) for m, u, _ in fake.calls]
+        self.assertEqual(kinds[0], ('GET', '/v2/userinfo'))                     # who the token posts as
+        self.assertEqual(kinds[1], ('POST', '/rest/videos'))                    # initializeUpload
+        self.assertEqual([k for k in kinds if k[0] == 'PUT'], [('PUT', 'https://up/0'), ('PUT', 'https://up/1'), ('PUT', 'https://up/2')])
+        final = next(j for m, u, j in fake.calls if 'finalizeUpload' in u)
+        self.assertEqual(final['finalizeUploadRequest']['uploadedPartIds'], ['etag-0', 'etag-1', 'etag-2'])
+        body = next(j for m, u, j in fake.calls if u.endswith('/rest/posts'))
+        self.assertEqual((body['author'], body['content']['media']['id'], body['visibility']),
+                         ('urn:li:person:abc', 'urn:li:video:V1', 'PUBLIC'))
+        self.assertIn('{hashtag|\\#|webdev}', body['commentary'])
+        saved = json.loads(render.QUEUE.read_text())[0]
+        self.assertEqual(saved['linkedin_id'], 'urn:li:share:42')
+        # Never twice: a second run sees the recorded id and sends nothing.
+        fake.calls.clear()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', side_effect=AssertionError('not again')), \
+                mock.patch.object(li.requests, 'post', fake.post), contextlib.redirect_stdout(io.StringIO()):
+            li.post('reel', '7')
+        self.assertEqual(fake.calls, [])
+
+    def test_no_token_or_dry_run_sends_nothing(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7}])
+        fake = FakeLinkedIn()
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': ''}), mock.patch.object(li.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(li.post('reel', '7'))
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'tok', 'DRY_RUN': 'true'}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.requests, 'post', fake.post), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(li.post('reel', '7'))
+        self.assertEqual(fake.calls, [])
+        self.assertNotIn('linkedin_id', json.loads(render.QUEUE.read_text())[0])
+
+    def test_an_expired_token_leaves_an_alert(self):
+        li = self.li
+        self.fixture([{**VALID, 'id': 7}])
+        li.ALERT.unlink(missing_ok=True)
+        fake = FakeLinkedIn(status=401)
+        with mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 'old', 'LINKEDIN_AUTHOR': 'urn:li:person:x', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.requests, 'post', fake.post), \
+                mock.patch.object(sys, 'argv', ['linkedin.py', 'reel', '7']), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                li.main()
+        self.assertIn('LINKEDIN_TOKEN', li.ALERT.read_text())
+        li.ALERT.unlink()
+
+    def test_posts_the_carousel_as_a_document(self):
+        from PIL import Image
+        li = self.li
+        folder = render.OUT_DIR / 'carousel'
+        folder.mkdir(parents=True, exist_ok=True)
+        for k in range(3):
+            Image.new('RGB', (108, 135), (k * 80, 20, 20)).save(folder / f'slide-{k:02d}.jpg')
+        log = Path(self.tmp) / 'carousels.json'
+        log.write_text(json.dumps([{'title': 'Git cheat sheet', 'media_id': '9'}]))
+        fake = FakeLinkedIn()
+        with mock.patch.object(li, 'CAROUSELS', log), mock.patch.dict(os.environ, {'LINKEDIN_TOKEN': 't', 'LINKEDIN_AUTHOR': 'urn:li:person:x', 'DRY_RUN': ''}), \
+                mock.patch.object(li, 'write_text', return_value=LI_TEXT), mock.patch.object(li.time, 'sleep'), \
+                mock.patch.object(li.requests, 'post', fake.post), mock.patch.object(li.requests, 'put', fake.put), \
+                mock.patch.object(li.requests, 'get', fake.get), contextlib.redirect_stdout(io.StringIO()):
+            li.post('carousel')
+        self.assertTrue((folder / 'carousel.pdf').read_bytes().startswith(b'%PDF'))
+        self.assertIn(('PUT', 'https://up/doc'), [(m, u) for m, u, _ in fake.calls])
+        body = next(j for m, u, j in fake.calls if u.endswith('/rest/posts'))
+        self.assertEqual(body['content']['media']['id'], 'urn:li:document:D1')
+        self.assertEqual(json.loads(log.read_text())[0]['linkedin_id'], 'urn:li:share:42')
+
+
 class MotionTest(Sandbox):
     """The writer's side of the 2D animations (motion.py): each type's data is checked, a reel has at most one
     animation and always a flat backup after it, and the card plays at the animation's own pace."""
@@ -1453,7 +2635,7 @@ class MotionTest(Sandbox):
         return copy.deepcopy(motion.EXAMPLES)
 
     def test_every_example_is_valid_and_every_type_checks_something(self):
-        broken = {'stepper': {'trace': [{'line': 99, 'vars': []}]}, 'flow': {'hops': [{'from': 'app', 'to': 'nowhere'}]},
+        broken = {'stepper': {'trace': [{'line': 99, 'vars': []}]}, 'predict': {'output': ['C', 'B', 'A']}, 'flow': {'hops': [{'from': 'app', 'to': 'nowhere'}]},
                   'morph': {'after': 'same'}, 'git': {'head': 'nobranch'}, 'eventloop': {'cards': []},
                   'structure': {'ops': [{'op': 'set', 'at': 'k', 'value': 'v'}]},
                   'sequence': {'calls': [{'from': 'App', 'to': 'App', 'label': 'x'}]},
@@ -1496,6 +2678,29 @@ class MotionTest(Sandbox):
         self.assertIn('point 2 needs a code, diff, terminal or screenshot choice after its animation', errors)
         self.assertIn('2 animations; use at most one per reel', errors)
 
+    def test_predict_stamps_only_the_real_output(self):
+        # The guess-the-output quiz (2026-10-19, the shape of the 1,938-view await reel): the chip stamped as right
+        # is computed from the output, never picked by the writer, and exactly one chip must match it.
+        import motion
+        ex = self.examples()['predict']
+        self.assertEqual(motion.predict_answer(ex), 1)                                     # "A C B"
+        self.assertEqual(motion.predict_answer({**ex, 'output': ['A', ' C', 'B ']}), 1)    # spacing ignored
+        self.assertEqual(motion.predict_answer({**ex, 'output': ['B']}), -1)
+        with mock.patch.object(motion, 'tokens', return_value=[]):  # CI's learning job has no pygments
+            self.assertEqual(motion.prepare(ex, 900)['answer'], 1)
+        for bad, why in (({'choices': ['A B C']}, '2 or 3 different'), ({'choices': ['A C B', 'A  C B']}, '2 or 3 different'),
+                         ({'choices': ['A B C', 'A C B', 'B A C', 'C B A']}, '2 or 3 different'),
+                         ({'choices': ['A B C', 'a choice far too long']}, '2 or 3 different'),
+                         ({'output': []}, '"output"'), ({'output': ['x' * 30]}, '"output"'),
+                         ({'output': ['B', 'A', 'C']}, 'exactly one choice'),
+                         ({'code': '\n'.join(['x()'] * 9)}, 'max 8 lines'), ({'language': ''}, 'max 8 lines')):
+            self.assertIn(why, ' '.join(generate.motion_errors(2, {**ex, **bad})), bad)
+        reel = copy.deepcopy(VALID)
+        reel['points'][1]['visual'] = [ex, reel['points'][1]['visual'][0]]
+        self.assertEqual(generate.validate({**reel, 'reveal': 2}), [])  # the quiz is a result worth a held beat
+        self.assertIn('hook_visual must be one', ' '.join(generate.validate({**VALID, 'hook_visual': ex})))
+        self.assertIn('the console prints A / C / B', publish.qa.describe(ex))
+
     def test_morph_and_stepper_can_be_the_hooks_proof(self):
         ex = self.examples()
         for kind in ('morph', 'stepper'):
@@ -1523,6 +2728,14 @@ class WorkflowTest(unittest.TestCase):
         self.assertIsNotNone(block, 'README lost its "Add a reel by hand" example')
         self.assertEqual(generate.validate(json.loads(block.group(1))), [])
 
+    def test_the_daily_run_alerts_and_follows_the_slots(self):
+        daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
+        self.assertIn('issues: write', daily)
+        self.assertIn("if: failure() && hashFiles('out/alert.md') != ''", daily)
+        self.assertIn('gh issue create', daily)
+        self.assertIn('REEL_SLOTS: ${{ vars.REEL_SLOTS }}', daily)
+        self.assertIn('REEL_SLOTS: ${{ vars.REEL_SLOTS }}', (ROOT / '.github/workflows/scheduler.yml').read_text())
+
     def test_empty_repo_variables_mean_the_default(self):
         # Workflows pass ${{ vars.X }}, which is an empty string when the variable is not set.
         for name in ('carousel.py', 'learn.py', 'qa.py', 'study.py', 'trends.py', 'dm.py', 'insights.py', 'publish.py'):
@@ -1532,6 +2745,58 @@ class WorkflowTest(unittest.TestCase):
         daily = (ROOT / '.github/workflows/daily-reel.yml').read_text()
         for var in ('VOICE_PITCH', 'CLAUDE_MODEL', 'GRAPH_VERSION'):
             self.assertIn(f'{var}: ${{{{ vars.{var} }}}}', daily)
+
+    def test_setup_never_waits_on_apt(self):
+        """ffmpeg comes from the static build (apt only as its fallback), and the browser's few missing packages come
+        from the Actions cache (apt only fills it, within 4 minutes): a slow mirror once cost 31 and 11 minutes
+        (2026-10-22). Long jobs print their log as it happens."""
+        for f in (ROOT / '.github/workflows').glob('*.yml'):
+            text = f.read_text()
+            self.assertNotIn('apt-get install -y -q ffmpeg', text, f.name)
+            self.assertNotIn('--with-deps', text, f.name)
+            self.assertNotIn('install-deps', text, f.name)          # the browser action does it, from the cache
+        for name in ('daily-reel', 'showcase', 'demo-preview', 'tests'):     # every workflow that draws with Chromium
+            self.assertIn('uses: ./.github/actions/browser', (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
+        browser = (ROOT / '.github/actions/browser/action.yml').read_text()
+        self.assertIn('actions/cache/restore@', browser)
+        self.assertIn('actions/cache/save@', browser)
+        self.assertIn("if: steps.install.outputs.fresh == 'true'", browser)        # saved only when freshly fetched
+        self.assertIn('timeout 240 sudo bash -c "apt-get update', browser)
+        self.assertIn('exit 0', browser.split('timeout 240')[1])                    # a slow apt never fails the run
+        action = (ROOT / '.github/actions/ffmpeg/action.yml').read_text()
+        self.assertIn('ffmpeg-n8.1-latest-linux64-gpl', action)
+        self.assertIn('apt-get install -y -q ffmpeg', action.split('else')[1])
+        for name in ('daily-reel', 'showcase', 'weekly', 'post-video', 'learn', 'study'):
+            self.assertIn("PYTHONUNBUFFERED: '1'", (ROOT / f'.github/workflows/{name}.yml').read_text(), name)
+        self.assertIn('uses: ./.github/actions/ffmpeg', (ROOT / '.github/workflows/daily-reel.yml').read_text())
+
+    def test_post_now_skips_the_wait(self):
+        """A video made on demand (POST_NOW) posts as soon as it is ready; otherwise the run sleeps until POST_AT_UTC."""
+        now = datetime.now(timezone.utc)
+        if now.hour == 23 and now.minute >= 28:
+            self.skipTest('the post time would wrap past midnight')
+        soon = (now + timedelta(minutes=30)).strftime('%H:%M')
+        with mock.patch.object(publish.time, 'sleep') as sleep, contextlib.redirect_stdout(io.StringIO()):
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': 'true'}):
+                publish.wait_for_post_time()
+            self.assertFalse(sleep.called)
+            with mock.patch.dict(os.environ, {'POST_AT_UTC': soon, 'POST_NOW': ''}):
+                publish.wait_for_post_time()
+            self.assertTrue(sleep.called)
+        self.assertIn("POST_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.post_now",
+                      (ROOT / '.github/workflows/daily-reel.yml').read_text())
+
+    def test_each_part_of_the_run_says_how_long_it_took(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), mock.patch.object(publish.time, 'monotonic', side_effect=[10.0, 52.4]):
+            with publish.took('writing'):
+                pass
+        self.assertEqual(out.getvalue(), 'Took 42s: writing\n')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), self.assertRaises(ValueError):
+            with publish.took('voice'):
+                raise ValueError
+        self.assertIn('voice', out.getvalue())                 # a failing part still says how long it ran
 
     def test_a_posted_reel_is_always_recorded(self):
         """Once posted, reels.json is committed even if a later step (the pronunciation test) fails; otherwise the
@@ -1583,13 +2848,13 @@ class SimulationTest(Sandbox):
     learn.main (the daily default) against a fake Instagram in which question hooks really do hold viewers better
     and views keep growing for a month."""
 
-    EFFECT = {'question': -5.0, 'statement': 5.0}
+    EFFECT = {('hook_style', 'question'): -5.0, ('hook_style', 'statement'): 5.0}  # only the hook style matters
 
     def metrics(self, media, name):
         r = self.by_media[media]
         age = (self.now - datetime.fromisoformat(r['posted_at'])).total_seconds() / 86400
         noise = random.Random(f"{r['id']}-{name}").uniform(-1.5, 1.5)
-        arm = (r.get('test') or {}).get('arm')
+        arm = ((r.get('test') or {}).get('name'), (r.get('test') or {}).get('arm'))
         return {'views': round(100 + 20 * min(age, 30)), 'reach': 90, 'saved': 2, 'shares': 1, 'likes': 5,
                 'comments': 1, 'profile_visits': 3,
                 'reels_skip_rate': round(70 + self.EFFECT.get(arm, 0) + noise, 1),

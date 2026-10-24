@@ -4191,5 +4191,3944 @@
     ],
     "slot": 1,
     "seconds": 24.2
+  },
+  {
+    "id": 63,
+    "style": "light",
+    "payoff": "CORS only blocks requests made from inside a browser — curl, Postman, and server-to-server calls ignore the header completely, so it was never a security control; a real auth check on the server is.",
+    "kicker": "Explained #3",
+    "hook": "Your CORS header isn't *security*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "server.js",
+      "code": "app.use((req, res, next) => {\n  res.setHeader(\n    'Access-Control-Allow-Origin',\n    'https://app.com'\n  )\n  next()\n})",
+      "highlight": [
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your API still isn't *protected*",
+        "hook_type": "problem",
+        "spoken": "[fired up] That CORS header means nothing past the browser. (break) [urgent] curl or Postman walks through it."
+      },
+      {
+        "hook": "Browser blocked, *curl* walked right in",
+        "hook_type": "before_after",
+        "spoken": "[amused] Chrome blocks the request, (break) [deadpan] but curl just walks in like nothing happened at all."
+      },
+      {
+        "hook": "We tested CORS *bypass*",
+        "hook_type": "test",
+        "spoken": "[excited] We tested it with a blocked curl call. (break) [confident and fast] It still got the data instantly."
+      }
+    ],
+    "points": [
+      {
+        "title": "Browser only check",
+        "body": "Only browsers read that CORS header",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "server.js",
+            "code": "app.use((req, res, next) => {\n  res.setHeader(\n    'Access-Control-Allow-Origin',\n    'https://app.com'\n  )\n  next()\n})",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Curl ignores it",
+        "body": "Any non-browser tool skips the check",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "curl https://api.example.com/data",
+              "curl -H 'Origin: evil.com' $URL"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real protection",
+        "body": "Auth tokens are the real security",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "auth.js",
+            "before": "app.get('/data', (req, res) => {\n  res.json(data)\n})",
+            "after": "app.get(\n  '/data',\n  requireAuth,\n  (req, res) => res.json(data)\n)"
+          }
+        ]
+      }
+    ],
+    "cta": "Did you think CORS was *security*?",
+    "caption": "CORS explained: why it isn't real API security\nIt only runs inside the browser — curl skips it completely\nDid you believe this too? 👇",
+    "hashtags": [
+      "#cors",
+      "#api",
+      "#webdev",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[fired up] Your CORS header only stops browsers. (break) [urgent] curl, Postman, and servers walk straight through it.",
+      "[knowing] That header only tells the browser what's allowed.",
+      "[matter-of-fact] Outside a browser, nothing enforces it, so requests still succeed.",
+      "[confident] Real security checks a token on the server, every time.",
+      "[warm, curious] So tell me, (break) [teasing] did you think that header was keeping you safe?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 3,
+    "posted_at": "2026-10-11T12:00:45+00:00",
+    "media_id": "18124440434491536",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "text",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.3
+  },
+  {
+    "id": 64,
+    "style": "dark",
+    "payoff": "The clause: 'If cancelled after work has started, completed milestones are due in full and the deposit is non-refundable.'",
+    "kicker": "Freelance playbook #5",
+    "hook": "Still get paid if they *cancel*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "contract.md",
+      "language": "md",
+      "before": "## Cancellation\n(no clause)",
+      "after": "## Cancellation\nCompleted milestones\ndue in full.\nDeposit kept."
+    },
+    "alternatives": [
+      {
+        "hook": "Your contract has *no exit* clause",
+        "hook_type": "problem",
+        "spoken": "[fired up] Most freelance contracts never mention what happens if clients ghost. [serious, fast] Yours should."
+      },
+      {
+        "hook": "Doing *unpaid* work after cancellation",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Freelancers keep finishing projects for free after a client cancels. [annoyed] That stops now."
+      },
+      {
+        "hook": "One *clause* that guarantees payment",
+        "hook_type": "shortcut",
+        "spoken": "[confident] Add one short clause to your contract and guarantee payment. [emphasis] No matter what."
+      }
+    ],
+    "points": [
+      {
+        "title": "No cancel clause",
+        "body": "clients disappear, you lose everything",
+        "visual": [
+          {
+            "type": "code",
+            "title": "contract.md",
+            "language": "md",
+            "code": "## Scope\n- Design\n- Build\n- Launch\n\n(no cancellation terms)",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add this line",
+        "body": "milestones due in full, period",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "contract.md",
+                "content": "## Scope\n- Design\n- Build\n- Launch\n\n(no cancellation terms)"
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "contract.md"
+              },
+              {
+                "do": "type",
+                "file": "contract.md",
+                "text": "## Cancellation\nIf cancelled after work\nhas started, completed\nmilestones are due in\nfull. Deposit is non-\nrefundable."
+              },
+              {
+                "do": "save",
+                "file": "contract.md"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "contract.md",
+            "language": "md",
+            "code": "## Cancellation\nIf the project is cancelled\nafter work has started,\ncompleted milestones are\ndue in full. Deposit is\nnon-refundable.",
+            "highlight": [
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Send this message",
+        "body": "quote the clause, attach invoice",
+        "visual": [
+          {
+            "type": "code",
+            "title": "message.txt",
+            "language": "md",
+            "code": "Per our agreement,\ncompleted milestones are\ndue in full now that\nwork has stopped.\nInvoice attached below.",
+            "highlight": [
+              3,
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 2,
+    "cta": "Comment *CANCEL* for the clause",
+    "dm_keyword": "CANCEL",
+    "dm_guide": "Add this to your contract: 'If this project is cancelled after work has started, all completed milestones are due in full and the deposit is non-refundable.' When a client actually cancels, send this: 'Per our agreement, completed milestones are due in full now that work has stopped. Invoice attached below.' Attach your invoice and you're covered either way.",
+    "caption": "Freelance contract cancellation clause for client projects\nStop losing paid work when a client disappears mid project\nWhat's the worst mid-project cancellation you've had? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancer",
+      "#contract",
+      "#webdev",
+      "#clientwork"
+    ],
+    "voiceover": [
+      "[urgent] Here's the one line that gets you paid. [serious, fast] Even if the client cancels halfway.",
+      "[exasperated] Most contracts never say what happens when clients disappear.",
+      "[confident and fast] This line guarantees you get paid for finished work.",
+      "[knowing] Point to it, then invoice for the work already done.",
+      "[warm, curious] Comment cancel and I will send the clause."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 5,
+    "posted_at": "2026-10-11T16:00:47+00:00",
+    "media_id": "18134090377647706",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Headline is a short readable phrase, but the code window only shows the placeholder '(no clause)' instead of the actual payoff/proof, and the frame is mostly empty blank space below it."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The full clause only appears in slide 2, where it's merged with leftover placeholder text ('(no cancellation terms)## Cancellation' runs together on one line), making it look broken rather than a clean, screenshot-able clause."
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "ide",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 18.8
+  },
+  {
+    "id": 65,
+    "style": "light",
+    "payoff": "cd - jumps straight back to your last directory, no retyping the path",
+    "kicker": "Quick trick #4",
+    "hook": "Stop retyping *long paths*",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "terminal",
+      "before": "cd ~/projects/acme-app/src/components\ncd ~/projects/acme-app/scripts\ncd ~/projects/acme-app/src/components",
+      "after": "cd ~/projects/acme-app/src/components\ncd ~/projects/acme-app/scripts\ncd -"
+    },
+    "alternatives": [
+      {
+        "hook": "You keep typing *full paths*",
+        "spoken": "[exasperated] You keep retyping that long path every time you switch. [urgent] Stop that now.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Long path, then *one keystroke*",
+        "spoken": "[grinning, punchy] Picture typing a long path every time you switch folders. (break) [confident and fast] Now, one keystroke.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Still cd-ing the *long way*",
+        "spoken": "[fired up] Still cd-ing into folders the long way, typing full paths? [serious, fast] Huge time sink.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Long path habit",
+        "body": "You retype full paths constantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/projects/acme-app/src/components",
+              "ls",
+              "cd ~/projects/acme-app/scripts"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Type cd dash",
+        "body": "Jumps straight back one line",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Toggle two folders",
+        "body": "Bounce back and forth instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd -",
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Comment *CDTRICK* for the full guide",
+    "dm_keyword": "CDTRICK",
+    "dm_guide": "cd - is built into bash and zsh, nothing to install. Try it: 1) cd into a folder, like cd ~/projects/app. 2) cd into another folder, like cd ~/projects/app/src. 3) run cd - to jump straight back to the first folder, it even prints the path. 4) run cd - again to jump back to the second one. It toggles between your last two directories. For jumping across more than two, install zoxide (https://github.com/ajeetdsouza/zoxide) and use z instead of cd.",
+    "caption": "cd dash command to jump back to your last terminal directory\nComment CDTRICK for the full guide\nWhat's the terminal shortcut you use every day? 👇",
+    "hashtags": [
+      "#bash",
+      "#terminal",
+      "#cli",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[fired up] Stop retyping that long folder path every time. [quick] Jump back in one keystroke instead.",
+      "[knowing] Every long cd command wastes seconds you never notice.",
+      "[excited] Type cd dash, jump straight back to your last folder.",
+      "[confident and fast] Keep tapping it. (break) You bounce between your last two folders.",
+      "[warm, curious] Comment CDTRICK and I will send the full guide."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 4,
+    "posted_at": "2026-10-11T20:00:45+00:00",
+    "media_id": "18150717574551090",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "terminal",
+      "terminal",
+      "terminal",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.3
+  },
+  {
+    "id": 66,
+    "style": "dark",
+    "payoff": "One MCP config file (mcp.json) gives Claude Code real access to a folder, so you can ask it to sort files by type and it actually moves them, not just tells you how.",
+    "kicker": "AI tool in 30s #5",
+    "hook": "Claude Code can *sort* your files",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "~/Downloads",
+      "language": "bash",
+      "before": "report.pdf\nphoto.jpg\ninvoice.pdf\nscreenshot.png\ninstaller.exe\nnotes.txt",
+      "after": "PDFs/\n  report.pdf\n  invoice.pdf\nImages/\n  photo.jpg\n  screenshot.png\nInstallers/\n  installer.exe\nDocs/\n  notes.txt"
+    },
+    "alternatives": [
+      {
+        "hook": "Your *Downloads* folder is chaos",
+        "spoken": "[exasperated] Your Downloads folder is complete chaos right now.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Claude Code can't *touch* files",
+        "spoken": "[urgent] Claude Code can't touch a single file yet.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "I let Claude *organize* my files",
+        "spoken": "[fired up] I actually let Claude sort my messy files.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "Add the server",
+        "body": "One small MCP config gives file access",
+        "visual": [
+          {
+            "type": "code",
+            "title": "mcp.json",
+            "language": "json",
+            "code": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\",\n        \"@modelcontextprotocol/...\",\n        \"~/Downloads\"]\n    }\n  }\n}",
+            "highlight": [
+              3,
+              6
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "claude mcp add filesystem"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Ask to sort",
+        "body": "Tell it to sort the folder by type",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "claude",
+              "sort ~/Downloads by file type"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Files actually move",
+        "body": "Downloads folder finally sorted into subfolders",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "ls ~/Downloads",
+            "output": [
+              "PDFs/",
+              "Images/",
+              "Installers/",
+              "Docs/"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "~/Downloads",
+            "language": "bash",
+            "before": "report.pdf\nphoto.jpg\ninvoice.pdf\nscreenshot.png\ninstaller.exe\nnotes.txt",
+            "after": "PDFs/\n  report.pdf\n  invoice.pdf\nImages/\n  photo.jpg\n  screenshot.png\nInstallers/\n  installer.exe\nDocs/\n  notes.txt"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *FILES* for the full setup",
+    "dm_keyword": "FILES",
+    "dm_guide": "Install Node.js first (needed for npx). Then in Claude Code, add a server with: claude mcp add filesystem npx -y @modelcontextprotocol/server-filesystem ~/Downloads. That gives Claude real read and write access to one folder using the official MCP filesystem server. Open a chat in Claude Code and ask it to sort that folder by file type, it will actually move the files, not just describe how. Full docs and other official servers: https://modelcontextprotocol.io/quickstart",
+    "caption": "Claude Code MCP filesystem server setup\nI asked it to sort my Downloads folder and it really moved the files.\nWhat would you let Claude Code touch first? 👇",
+    "hashtags": [
+      "#ClaudeCode",
+      "#MCP",
+      "#AIautomation",
+      "#DevTips"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[grinning, punchy] This one command lets Claude actually sort your files.",
+      "[confident and fast] You drop in one MCP config file. (break) [quick] That's the filesystem server added.",
+      "[excited] Then you just ask it to sort the folder. (break) [knowing] No scripts, no manual moving.",
+      "[amazed] And look, (break) [confident] every file actually lands in the right folder.",
+      "[warm, curious] Comment files and I'll send you the exact setup."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "ai",
+    "series": "AI tool in 30s",
+    "episode": 5,
+    "posted_at": "2026-10-12T12:00:45+00:00",
+    "media_id": "17911287057488637",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "terminal",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 22.8
+  },
+  {
+    "id": 67,
+    "style": "light",
+    "payoff": "message.txt: \"I don't discount my rate, but I can trim the scope to fit your budget\" — keeps your price intact instead of cutting it.",
+    "kicker": "Freelance playbook #6",
+    "hook": "One line beats any *discount*",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "title": "reply.txt",
+      "language": "md",
+      "before": "Sure, I can take 20% off.",
+      "after": "I don't discount my rate,\nbut I can trim the scope\nto fit your budget instead."
+    },
+    "alternatives": [
+      {
+        "hook": "Stop *discounting* your rate",
+        "spoken": "[fired up] Stop cutting your rate every time a client asks.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Client just asked for a *discount*",
+        "hook_type": "problem",
+        "spoken": "[tense] A client just asked you to lower your price."
+      },
+      {
+        "hook": "Same ask, *different* reply",
+        "hook_type": "before_after",
+        "spoken": "[confident] Here's the old reply, then the one that works."
+      }
+    ],
+    "points": [
+      {
+        "title": "The discount ask",
+        "body": "Lower price signals lower perceived value"
+      },
+      {
+        "title": "Send this instead",
+        "body": "The exact reply that keeps rate",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "reply.txt",
+            "code": "I don't discount my rate,\nbut I can adjust the scope\nto fit your budget instead.\nWant me to trim it down?",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Rate protection clause",
+        "body": "One contract line prevents repeats",
+        "visual": [
+          {
+            "type": "code",
+            "language": "md",
+            "title": "clause.md",
+            "code": "Rate is fixed for the\nagreed project scope. Any\nscope changes adjust timeline\nor price accordingly.",
+            "highlight": [
+              1,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *DISCOUNT* for the script",
+    "dm_keyword": "DISCOUNT",
+    "dm_guide": "Here's the full script. When a client asks for a lower price, reply: \"I don't discount my rate, but I can trim the scope to fit your budget — want me to cut it down to the core pages instead?\" Then add this line to every contract so it doesn't happen again: \"Rate is fixed for the agreed project scope. Any scope changes will adjust the timeline or price accordingly.\" Use the reply for the ask, and the clause so you never have to write it twice.",
+    "caption": "How to reply when a client asks for a discount\nKeep your rate, adjust the scope instead\nWhat's the lowest a client has ever asked you to go? 👇",
+    "hashtags": [
+      "#freelance",
+      "#freelancing",
+      "#webdev",
+      "#pricing"
+    ],
+    "voiceover": [
+      "[excited] Use this one line instead of discounting your rate.",
+      "[knowingly] Lower your price once, and they'll remember it forever.",
+      "[confident and fast] So don't cut the rate — [sharp] offer to cut the scope instead.",
+      "[steady] Lock it into your contract, [plainly] so this never comes up again.",
+      "[warm, curious] Comment discount and I will send you the exact script."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "freelance",
+    "series": "Freelance playbook",
+    "episode": 6,
+    "posted_at": "2026-10-12T16:00:44+00:00",
+    "media_id": "17975003706133701",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the hook text on an empty background with no code, diff, or screenshot proof under it, so the frame looks mostly empty."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 18.7
+  },
+  {
+    "id": 68,
+    "style": "dark",
+    "payoff": "Cloudflare just bought the Deno team: Deno Deploy shuts down in 6 months (migration help for paying users) and the Deno runtime itself only gets 1 more year of bugfix and security releases before development stops.",
+    "kicker": "Dev news",
+    "hook": "Your Deno app has *6 months*",
+    "hook_type": "news",
+    "hook_visual": {
+      "type": "screenshot",
+      "url": "https://deno.com/blog/cloudflare",
+      "find": "Deno Deploy will continue operating for six months before shutting down."
+    },
+    "alternatives": [
+      {
+        "hook": "Still paying for *Deno Deploy*?",
+        "spoken": "[exasperated] Still paying for Deno Deploy? (break) [serious] Cloudflare is shutting it down in six months.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Deno Deploy's *six month* deadline",
+        "spoken": "[urgent] Deno Deploy got a six month deadline. (break) [knowing] Cloudflare bought the whole team.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Deno: *independent*, then Cloudflare's",
+        "spoken": "[fired up] Deno once ran its own independent cloud. (break) [serious, fast] Now Cloudflare owns the team.",
+        "hook_type": "before_after"
+      }
+    ],
+    "points": [
+      {
+        "title": "Deno joins Cloudflare",
+        "body": "Runtime team merges into Workers",
+        "visual": [
+          {
+            "type": "quotes",
+            "quotes": [
+              {
+                "author": "Cloudflare",
+                "platform": "Blog",
+                "url": "https://blog.cloudflare.com/deno-joins-cloudflare/",
+                "text": "The Deno team is joining Cloudflare, and we're merging workerd and celld!"
+              }
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://blog.cloudflare.com/deno-joins-cloudflare/",
+            "find": "merging workerd and celld"
+          }
+        ]
+      },
+      {
+        "title": "Deploy: 6 months",
+        "body": "Paying users get migration help",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://deno.com/blog/cloudflare",
+            "find": "Deno Deploy will continue operating for six months before shutting down."
+          }
+        ]
+      },
+      {
+        "title": "Runtime: 1 year",
+        "body": "Then Deno CLI updates stop",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://deno.com/blog/cloudflare",
+            "find": "support the Deno runtime for another year"
+          }
+        ]
+      }
+    ],
+    "cta": "Still building on *Deno*?",
+    "caption": "Cloudflare acquires Deno: what happens to Deno Deploy and the Deno runtime\nDeploy shuts down in 6 months, runtime gets 1 more year of updates\nAre you moving off Deno already? 👇",
+    "hashtags": [
+      "#deno",
+      "#cloudflare",
+      "#webdev",
+      "#javascript",
+      "#cloudflareworkers"
+    ],
+    "voiceover": [
+      "[urgent] Cloudflare just bought Deno. (break) [serious, fast] Your Deno Deploy app has six months left.",
+      "[grinning, punchy] The Deno team just moved into Cloudflare, runtime and all.",
+      "[serious, fast] Deno Deploy itself shuts down in six months, full stop.",
+      "[knowing] But here's the bigger hit. (break) [serious] The Deno runtime only gets one more year of updates.",
+      "[warm, curious] Are you still building on Deno today?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "timely",
+    "sources": [
+      "https://blog.cloudflare.com/deno-joins-cloudflare/",
+      "https://deno.com/blog/cloudflare"
+    ],
+    "posted_at": "2026-10-12T20:00:54+00:00",
+    "media_id": "18143179876719018",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "screenshot",
+      "quotes",
+      "screenshot",
+      "screenshot",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.8
+  },
+  {
+    "id": 69,
+    "style": "light",
+    "payoff": "Next.js's <Link> component from next/link replaces <a> tags so internal pages navigate without a full reload and preload automatically.",
+    "kicker": "Next.js from zero #3",
+    "hook": "Skip the reload with *one* swap",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "tsx",
+      "title": "page.tsx",
+      "before": "<a href=\"/about\">About</a>",
+      "after": "<Link href=\"/about\">\n  About\n</Link>"
+    },
+    "alternatives": [
+      {
+        "hook": "Your links are *reloading* everything",
+        "spoken": "[fired up] Every link tag in your Next.js app (break) [urgent] might reload the whole page instantly.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Full reload becomes *instant* navigation",
+        "hook_type": "before_after",
+        "spoken": "[mock outraged] Your anchor tags force a full page reload every click (break) [excited] Link makes it instant."
+      },
+      {
+        "hook": "Only one of these *reloads*",
+        "hook_type": "test",
+        "spoken": "[urgent] I tested two links side by side (break) [deadpan] only one triggers a full page reload."
+      }
+    ],
+    "points": [
+      {
+        "title": "Full page reload",
+        "body": "Anchor tags refresh everything on click",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "page.tsx",
+            "code": "<a href=\"/about\">\n  About\n</a>",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Import Link",
+        "body": "Swaps pages without a reload",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "nav.tsx",
+            "code": "import Link from \"next/link\"\n\nexport default function Nav() {\n  return (\n    <Link href=\"/about\">\n      About\n    </Link>\n  )\n}",
+            "highlight": [
+              1,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Instant navigation",
+        "body": "No reload, state stays intact",
+        "visual": [
+          {
+            "type": "device",
+            "device": "laptop",
+            "show": {
+              "type": "code",
+              "title": "page.tsx",
+              "code": "<Link href=\"/about\">\n  About\n</Link>",
+              "language": "tsx"
+            }
+          },
+          {
+            "type": "diff",
+            "language": "tsx",
+            "title": "page.tsx",
+            "before": "<a href=\"/about\">About</a>",
+            "after": "<Link href=\"/about\">\n  About\n</Link>"
+          }
+        ]
+      }
+    ],
+    "cta": "Comment *LINK* for the full before and after code.",
+    "dm_keyword": "LINK",
+    "dm_guide": "Quick fix: in any Next.js app, swap <a> tags for the Link component on internal pages. Import Link from next/link, then use it like this: import Link from \"next/link\" and write <Link href=\"/about\">About</Link> instead of <a href=\"/about\">About</a>. This skips the full browser reload and Next.js automatically preloads the linked page when it scrolls into view, so navigation feels instant. Full docs: https://nextjs.org/docs/app/api-reference/components/link",
+    "caption": "Next.js Link component explained for beginners\nSkip the reload, keep your app state\nStill using anchor tags for internal pages? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#reactjs",
+      "#webdev",
+      "#beginnercoder",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[grinning, punchy] Swap your anchor tag for one import (break) [confident] and skip every page reload.",
+      "[knowing] Anchor tags force a full reload and wipe state.",
+      "[confident and fast] Swap it in for Next's Link and navigate instantly.",
+      "[excited] Link even preloads the page before you click it.",
+      "[warm, curious] Type LINK and I'll send you the whole code swap."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 3,
+    "posted_at": "2026-10-13T01:38:14+00:00",
+    "media_id": "18110554904162908",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The hook text is on screen but there is no code, diff, or screenshot proof shown yet — just two text boxes on an empty background."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.0
+  },
+  {
+    "id": 70,
+    "style": "dark",
+    "payoff": "Drop the NEXT_PUBLIC_ prefix from a secret key and read it only inside a server component, route handler or server action, never in a client file.",
+    "kicker": "Dev mistake #3",
+    "hook": "Hidden key, then *fully* public",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "language": "ts",
+      "title": "checkout flow",
+      "before": "// app/checkout/page.tsx\n'use client'\nconst key = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY",
+      "after": "// app/api/checkout/route.ts\nconst key = process.env\n  .STRIPE_SECRET_KEY"
+    },
+    "alternatives": [
+      {
+        "hook": "One *prefix* leaks your key",
+        "spoken": "[urgent] Typing next public before a secret key ships it straight [serious, fast] into your browser bundle.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your *secret* key is public",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your Stripe secret key might already be sitting inside [emphasis] your public browser bundle."
+      },
+      {
+        "hook": "I grepped the bundle for *secrets*",
+        "hook_type": "test",
+        "spoken": "[confident and fast] I grepped a real Next.js build and found [serious] a secret key exposed."
+      }
+    ],
+    "points": [
+      {
+        "title": "The leak",
+        "body": "NEXT_PUBLIC_ ships the key to browsers",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "bash",
+            "title": ".env.local",
+            "before": "NEXT_PUBLIC_STRIPE_SECRET_KEY=sk_x",
+            "after": "STRIPE_SECRET_KEY=sk_x"
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "page.tsx (bad)",
+            "code": "'use client'\nconst pk = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY\nfetch('/charge', {pk})",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Prove it",
+        "body": "Grep the build, find it there",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npm run build",
+              "grep -r sk_ .next/static"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The fix",
+        "body": "Drop prefix, keep key server-only",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "grep -r sk_ .next/static/chunks",
+            "output": [
+              "no matches found",
+              "0 secrets in client bundle"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "ts",
+            "title": "route.ts",
+            "before": "'use client'\nconst key = process.env\n  .NEXT_PUBLIC_STRIPE_SECRET_KEY",
+            "after": "// app/api/checkout/route.ts\nconst key = process.env\n  .STRIPE_SECRET_KEY"
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Comment *KEYS* for the checklist",
+    "dm_keyword": "KEYS",
+    "dm_guide": "Install Node and Next.js first if you haven't (npx create-next-app). To find exposed secrets: 1) grep your repo for NEXT_PUBLIC_ next to any key, token or secret. 2) Rename it without the prefix, e.g. STRIPE_SECRET_KEY. 3) Only read it inside Server Components, Route Handlers or Server Actions, never a file with 'use client'. 4) Run npm run build then grep .next/static for the key value to confirm it's gone. Docs: https://nextjs.org/docs/app/building-your-application/configuring/environment-variables and https://docs.stripe.com/keys",
+    "caption": "Next.js environment variables and secret key leaks\nOne wrong prefix ships your secret straight to the browser\nComment KEYS for the leak-proofing checklist 👇",
+    "hashtags": [
+      "#nextjs",
+      "#stripe",
+      "#webdev",
+      "#javascript"
+    ],
+    "voiceover": [
+      "[fired up] Your secret key starts hidden, (break) [alarmed] then one prefix makes it fully public.",
+      "[exasperated] That prefix copies the key straight into client code.",
+      "[knowing] Build the app, then grep the output for your key.",
+      "[confident and fast] Drop the prefix and keep it inside your server [emphasis] code only.",
+      "[warm, curious] Comment KEYS for the full leak-proofing checklist."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "devtip",
+    "series": "Dev mistake",
+    "episode": 3,
+    "posted_at": "2026-10-13T12:00:45+00:00",
+    "media_id": "17922181782440682",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is just the hook text with nothing below it — the 'public' proof badge that appears later in slide 0 isn't present yet, so the required visual proof isn't on screen at frame 0."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The fix slide only says 'Drop prefix, keep key server-only' in text; it never shows the actual corrected code (renamed env var read inside a server component/route handler), so there's nothing concrete to screenshot or copy."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.3
+  },
+  {
+    "id": 71,
+    "style": "light",
+    "payoff": "Swapping var for let in a for loop with setTimeout makes each callback log its own loop index (0, 1, 2) instead of the final value three times over.",
+    "kicker": "Myth vs fact #2",
+    "hook": "Your loop logs *three three three*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "loop.js",
+      "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}\n// logs: 3 3 3",
+      "highlight": [
+        1,
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "var in a loop *doesn't* work",
+        "spoken": "[mock outraged] Everyone believes var captures the right loop index. [knowing] It actually doesn't, every single time.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "I *tested* the var loop myth",
+        "hook_type": "test",
+        "spoken": "[confident and fast] I ran the var loop myth in node. (break) [deadpan] It failed, instantly, every single run."
+      },
+      {
+        "hook": "Your *setTimeout* loop is broken",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your setTimeout inside that loop grabs the wrong value. (break) [knowing] Same index, every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common belief",
+        "body": "var keeps each loop's own index",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loop.js",
+            "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real output",
+        "body": "Node prints three, three, three",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "loop.js",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "loop.js"
+              },
+              {
+                "do": "type",
+                "text": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node loop.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 1
+              }
+            ]
+          },
+          {
+            "type": "outputmap",
+            "command": "node loop.js",
+            "output": [
+              "3",
+              "3",
+              "3"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loop.js",
+            "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}\n// logs: 3 3 3",
+            "highlight": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The fix",
+        "body": "let gives zero, one, two",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "for (let i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "trace": [
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "0"
+                  }
+                ]
+              },
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "1"
+                  }
+                ]
+              },
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "2"
+                  }
+                ]
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "0"
+                  }
+                ],
+                "out": "0"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "1"
+                  }
+                ],
+                "out": "1"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "i",
+                    "value": "2"
+                  }
+                ],
+                "out": "2"
+              }
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "loop.js",
+            "before": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}",
+            "after": "for (let i = 0; i < 3; i++) {\n  setTimeout(() => {\n    console.log(i);\n  }, 0);\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Did this loop bug fool *you*?",
+    "caption": "var vs let in a JavaScript for loop with setTimeout\nThe classic interview trap, tested for real on the terminal\nWhich output did you expect? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#coding",
+      "#programming",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[urgent] You expect zero one two, (break) [deadpan] but that var loop gives three three three.",
+      "[knowing] Var shares one value across the whole loop, every time.",
+      "[exasperated] Run it, and all three timeouts print the same three.",
+      "[confident and fast] Swap in let, (break) [excited] and you get zero, one, two.",
+      "[warm, curious] Did you expect zero one two, or three three three?"
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "hook_pace",
+      "arm": "dense"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 2,
+    "posted_at": "2026-10-13T16:02:08+00:00",
+    "media_id": "18040750205834006",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "ide",
+      "stepper",
+      "text"
+    ],
+    "slot": 2,
+    "seconds": 22.8
+  },
+  {
+    "id": 72,
+    "style": "dark",
+    "payoff": "CREATE INDEX idx_email ON users(email) turns a Seq Scan into an Index Scan for reads, but every INSERT and UPDATE now has to rewrite that index too.",
+    "kicker": "Myth vs fact #3",
+    "hook": "Your index has a *downside*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "diff",
+      "language": "sql",
+      "title": "index.sql",
+      "before": "CREATE INDEX idx_email\nON users (email);\n-- SELECT: much faster",
+      "after": "-- but every INSERT/UPDATE\n-- now rewrites idx_email\n-- writes got slower"
+    },
+    "alternatives": [
+      {
+        "hook": "Seq Scan turns into *Index Scan*",
+        "hook_type": "before_after",
+        "spoken": "[excited] Watch a slow scan turn instant now."
+      },
+      {
+        "hook": "We *tested* the index myth",
+        "hook_type": "test",
+        "spoken": "[urgent] We ran one query two different ways."
+      },
+      {
+        "hook": "One line, *faster* reads",
+        "hook_type": "shortcut",
+        "spoken": "[confident] One line turns your slow select instant."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common belief",
+        "body": "Add an index, get speed",
+        "visual": [
+          {
+            "type": "code",
+            "language": "sql",
+            "title": "add_index.sql",
+            "code": "CREATE INDEX idx_email\nON users (email);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "True for reads",
+        "body": "Seq Scan becomes Index Scan",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "EXPLAIN SELECT * FROM users...",
+            "output": [
+              "Index Scan using idx_email",
+              "on users",
+              "Index Cond: email = $1"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "sql",
+            "title": "explain.sql",
+            "before": "EXPLAIN SELECT * FROM users\nWHERE email = 'a@x.com';\n-- Seq Scan on users",
+            "after": "EXPLAIN SELECT * FROM users\nWHERE email = 'a@x.com';\n-- Index Scan using idx_email"
+          }
+        ]
+      },
+      {
+        "title": "Cost on writes",
+        "body": "Every insert updates the index too",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "sql",
+            "title": "write_cost.sql",
+            "before": "-- 1 index\n-- INSERT = 1 table write",
+            "after": "-- 3 indexes\n-- INSERT = 1 table write\n-- + 3 index writes"
+          }
+        ]
+      }
+    ],
+    "cta": "How many *indexes* does your biggest table carry?",
+    "caption": "SQL index tradeoffs: faster reads, slower writes\nThe myth that quietly costs you performance\nHow many indexes are on your biggest table? 👇",
+    "hashtags": [
+      "#sql",
+      "#postgres",
+      "#databases",
+      "#webdev",
+      "#backend"
+    ],
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Indexes don't always make your queries faster.",
+      "[knowing] We add an index and assume it only helps.",
+      "[excited] Run explain and the seq scan becomes an index scan.",
+      "[serious, fast] But every insert now rewrites that index too, slowing writes.",
+      "[warm, curious] Go count the indexes sitting on your busiest table."
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 3,
+    "posted_at": "2026-10-14T12:00:32+00:00",
+    "media_id": "18124477036922366",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is only the text hook and a tiny caption bubble ('faster') with no code, diff, or screenshot proof visible, so there's nothing to look at beyond the words."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows a real EXPLAIN output (Seq Scan vs Index Scan) or any evidence that inserts slow down — slides 2 and 3 only assert this in text, with no screenshot to copy."
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
+  },
+  {
+    "id": 73,
+    "style": "light",
+    "payoff": "Drizzle's query builder reads like raw SQL with no extra engine; Prisma trades that control for a generated client built from its own schema file.",
+    "kicker": "X vs Y #2",
+    "hook": "Prisma vs Drizzle: *real tradeoffs*",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "language": "ts",
+      "title": "schema.ts",
+      "code": "export const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  email: text('email').notNull(),\n});",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Less *code*, or more control",
+        "spoken": "[grinning] Want less code, or full SQL control? Pick one.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Skip the *engine*, write SQL",
+        "spoken": "[confident] Skip Prisma's engine. Write SQL straight from TypeScript.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Picking an *ORM* by habit",
+        "spoken": "[fired up] Stop picking your ORM by habit, know the tradeoff.",
+        "hook_type": "mistake"
+      }
+    ],
+    "points": [
+      {
+        "title": "Schema syntax",
+        "body": "Prisma's DSL vs plain TypeScript",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "schema.ts",
+            "code": "export const users = pgTable('users', {\n  id: serial('id').primaryKey(),\n  email: text('email').notNull(),\n});",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Query style",
+        "body": "Same query, written two different ways",
+        "visual": [
+          {
+            "type": "variants",
+            "title": "Query style",
+            "variants": [
+              {
+                "label": "Prisma",
+                "rows": [
+                  "prisma.user.findMany({",
+                  "where: { active: true }",
+                  "})"
+                ]
+              },
+              {
+                "label": "Drizzle",
+                "rows": [
+                  "db.select().from(users)",
+                  ".where(eq(users.active,",
+                  "true))"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "ts",
+            "title": "query.ts",
+            "before": "prisma.user.findMany({\n  where: { active: true }\n})",
+            "after": "db.select().from(users)\n  .where(eq(users.active,\n  true))"
+          }
+        ]
+      },
+      {
+        "title": "No engine binary",
+        "body": "Drizzle skips the extra binary",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "drizzle.ts",
+            "code": "import { sql } from 'drizzle-orm';\nconst rows = await db.execute(\n  sql`select * from users`\n);",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which ORM is in your *current* project?",
+    "caption": "Prisma vs Drizzle: picking the right ORM\nSchema style, query syntax, and runtime weight compared\nWhich one matches your project? 👇",
+    "hashtags": [
+      "#prisma",
+      "#drizzleorm",
+      "#typescript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[energetic] Picking between Prisma and Drizzle? Here's the real tradeoff.",
+      "[confident] Prisma's schema lives in its own DSL file.",
+      "[curious] Same query, two syntaxes, one reads like SQL.",
+      "[serious, fast] Prisma adds a query engine binary. Drizzle skips it entirely.",
+      "[warm, curious] So which one's in your current stack?"
+    ],
+    "test": {
+      "name": "hook_pace",
+      "arm": "relaxed"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 2,
+    "posted_at": "2026-10-14T20:00:45+00:00",
+    "media_id": "18093973073556574",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "Only Drizzle code ever appears on screen (pgTable schema, query builder, raw SQL execute); Prisma's DSL schema file and generated client are only described in text/badges, never shown, so half the promised comparison isn't actually demonstrated."
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "variants",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 16.4
+  },
+  {
+    "id": 74,
+    "style": "dark",
+    "payoff": "Cache-Control: no-cache still caches the response and revalidates with If-None-Match (usually a 304) before reuse; no-store is what skips caching entirely.",
+    "kicker": "Myth vs fact #4",
+    "hook": "*no-cache* still caches it",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "cache-control.http",
+      "language": "http",
+      "code": "Cache-Control: no-cache\nCache-Control: no-store\nCache-Control: max-age=3600",
+      "highlight": [
+        1,
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *no-cache* header isn't that",
+        "spoken": "[urgent] Your no-cache header isn't blocking caching like you think. (break) [knowing] It still saves a copy.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Empty cache assumed, *full copy* found",
+        "spoken": "[surprised] You'd expect an empty cache here. (break) [amused] But the browser kept a full copy.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "I checked: *no-cache* still caches",
+        "spoken": "[confident] I actually tested the no-cache header myself. (break) [sharp] It still stored a cached copy.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "The common myth",
+        "body": "No-cache blocks all caching, right?",
+        "visual": [
+          {
+            "type": "code",
+            "title": "assumption.http",
+            "language": "http",
+            "code": "// what devs assume:\nCache-Control: no-cache\n// = never cache this",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real meaning",
+        "body": "It caches, then checks first",
+        "visual": [
+          {
+            "type": "inspect",
+            "title": "Cache-Control",
+            "language": "http",
+            "code": "Cache-Control: no-cache\nCache-Control: no-store",
+            "marks": [
+              {
+                "line": 1,
+                "label": "Caches, revalidates"
+              },
+              {
+                "line": 2,
+                "label": "Never stores a copy"
+              }
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "curl -I https://developer.mozilla.org"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof: still cached",
+        "body": "304 reuses the stored file",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "curl -I example.com",
+              "curl -I -H 'If-None-Match:x' example.com"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "response.http",
+            "language": "http",
+            "code": "HTTP/1.1 304 Not Modified\nETag: \"a1b2c3\"",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "What's your *cache* header set to right now?",
+    "caption": "HTTP Cache-Control: no-cache vs no-store explained\nThe header doesn't do what most devs think.\nWhat does your cache header actually do? 👇",
+    "hashtags": [
+      "#http",
+      "#caching",
+      "#webdev",
+      "#frontend"
+    ],
+    "voiceover": [
+      "[fired up] You think no-cache stops your browser from caching, (break) [knowing] but it still caches it anyway.",
+      "[exasperated] Most developers think it disables caching entirely.",
+      "[confident and fast] It stores the file, then rechecks with the server.",
+      "[excited] That's the three oh four reusing your cache.",
+      "[warm, curious] So what does your cache header actually do?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 4,
+    "posted_at": "2026-10-15T12:00:44+00:00",
+    "media_id": "18148241026576321",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "inspect",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.7
+  },
+  {
+    "id": 75,
+    "style": "light",
+    "payoff": "A folder named [id] in app/ matches any url segment, so app/blog/[id]/page.tsx renders every post from one file using params.id instead of a separate page per post.",
+    "kicker": "Next.js from zero #4",
+    "hook": "Your routes don't *scale* yet",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "app/blog/",
+      "before": "blog/1/page.tsx\nblog/2/page.tsx\nblog/3/page.tsx",
+      "after": "blog/[id]/page.tsx"
+    },
+    "alternatives": [
+      {
+        "hook": "No *page* per blog post",
+        "spoken": "[urgent] You don't need a page per blog post anymore.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "A hundred posts, *one* file",
+        "spoken": "[confident] Picture a hundred blog posts sharing one single page file.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "Square brackets build *dynamic* routes",
+        "spoken": "[excited] Wrap a folder in brackets to match any url.",
+        "hook_type": "shortcut"
+      }
+    ],
+    "points": [
+      {
+        "title": "The id folder",
+        "body": "Square brackets match any url value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "folder structure",
+            "code": "app/\n  blog/\n    [id]/\n      page.tsx",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Read the param",
+        "body": "params.id reads that matched value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "title": "app/blog/[id]/page.tsx",
+            "code": "export default function Page({\n  params\n}) {\n  const { id } = params\n  return <h1>Post {id}</h1>\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One file, everywhere",
+        "body": "Every blog id renders from one file",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "every id, one file",
+            "code": "/blog/1 -> Post 1\n/blog/2 -> Post 2\n/blog/42 -> Post 42",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which of your pages could become *one* dynamic route?",
+    "caption": "Next.js dynamic routes explained for beginners\nOne folder named [id] handles every blog post url\nWhich page in your project could become one dynamic route? 👇",
+    "hashtags": [
+      "#nextjs",
+      "#webdev",
+      "#javascript",
+      "#reactjs"
+    ],
+    "voiceover": [
+      "[fired up] Hardcoding every blog url breaks the moment your content grows.",
+      "[curious] That bracket folder name isn't literal, it's dynamic.",
+      "[confident] Params dot id hands you that exact value inside.",
+      "[excited] One file now renders every single post you have.",
+      "[warm, curious] Where could one dynamic route replace your copy pasted pages?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "series",
+    "series": "Next.js from zero",
+    "episode": 4,
+    "posted_at": "2026-10-15T20:00:55+00:00",
+    "media_id": "17998839947820355",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is only a text hook with no code, diff, or screenshot proof visible beneath it, and is mostly empty."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3
+  },
+  {
+    "id": 76,
+    "style": "dark",
+    "payoff": "=== always returns false when types differ, while == quietly converts types first, so 0 == '0' and even [] == ![] both return true.",
+    "kicker": "Myth vs fact #5",
+    "hook": "Your *if* statement might lie",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "quirks.js",
+      "code": "0 == '0'        // true\n'' == 0         // true\n[] == ![]       // true",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "== *lies* about equality",
+        "spoken": "[grinning, punchy] Double equals in JavaScript secretly changes type before comparing values.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "== then *===*: watch it flip",
+        "hook_type": "before_after",
+        "spoken": "[fired up] Watch this exact comparison flip from true to false instantly."
+      },
+      {
+        "hook": "We tested *==* on weird values",
+        "hook_type": "test",
+        "spoken": "[urgent] We tested odd comparisons, and double equals said they matched."
+      }
+    ],
+    "points": [
+      {
+        "title": "Type coercion",
+        "body": "== converts types before comparing",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "loose.js",
+            "code": "0 == '0'           // true\n'' == 0            // true\nnull == undefined  // true",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Strict comparison",
+        "body": "=== checks type and value",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "strict.js",
+            "code": "0 === '0'             // false\n'' === 0              // false\nnull === undefined    // false",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The classic trap",
+        "body": "Empty array equals its negation",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "trap.js",
+            "code": "[] == ![]      // true\n[] === ![]     // false",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *trusts* double equals?",
+    "caption": "Double equals vs triple equals in JavaScript\nType coercion makes == behave in surprising ways\nWhich weird comparison surprised you most? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#coding",
+      "#programming"
+    ],
+    "voiceover": [
+      "[fired up] Your if statement can pass even when the values differ.",
+      "[exasperated] It quietly converts types, so zero equals empty string.",
+      "[confident and fast] Triple equals skips that trick and checks type too.",
+      "[mock outraged] Even an empty array equals its own negation here.",
+      "[warm, curious] Send this to the dev who trusts double equals."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 5,
+    "posted_at": "2026-10-16T12:00:34+00:00",
+    "media_id": "18175034788453334",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 16.1
+  },
+  {
+    "id": 77,
+    "style": "light",
+    "payoff": "A child component re-renders every time its parent re-renders, even if its own props never change, unless you wrap it in React.memo.",
+    "kicker": "Myth vs fact #6",
+    "hook": "Your *child* won't stop rendering",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "stepper",
+      "language": "jsx",
+      "code": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+      "trace": [
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "1"
+            }
+          ],
+          "out": "child render"
+        },
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "2"
+            }
+          ],
+          "out": "child render"
+        },
+        {
+          "line": 2,
+          "vars": [
+            {
+              "name": "clicks",
+              "value": "3"
+            }
+          ],
+          "out": "child render"
+        }
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Same *props*, still re-renders",
+        "spoken": "[urgent] A child component can re-render even when its props never [emphasis] change at all.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Plain child, then *memoized*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Watch the same child component stop rendering once we [confident] wrap it in memo."
+      },
+      {
+        "hook": "Three clicks, *one* log line",
+        "hook_type": "test",
+        "spoken": "[fired up] We clicked the button three times and compared [confident] renders with and without memo."
+      }
+    ],
+    "points": [
+      {
+        "title": "Zero props passed",
+        "body": "Child never receives any props",
+        "visual": [
+          {
+            "type": "code",
+            "title": "Child.jsx",
+            "language": "jsx",
+            "code": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Parent re-renders",
+        "body": "State updates re-render the child too",
+        "visual": [
+          {
+            "type": "code",
+            "title": "Parent.jsx",
+            "language": "jsx",
+            "code": "function Parent() {\n  const [n, setN] = useState(0)\n  return (\n    <>\n      <button onClick={bump}>+</button>\n      <Child />\n    </>\n  )\n}\nfunction bump() { setN(n => n+1) }",
+            "highlight": [
+              5,
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Memo stops renders",
+        "body": "React.memo skips unneeded re-renders",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "Child.jsx",
+            "language": "jsx",
+            "before": "function Child() {\n  console.log(\"child render\")\n  return <p>Hi</p>\n}",
+            "after": "const Child = memo(() => {\n  console.log(\"child render\")\n  return <p>Hi</p>\n})"
+          }
+        ]
+      }
+    ],
+    "cta": "Which *component* in your app re-renders too often?",
+    "caption": "React re-renders and React.memo explained\nA child can re-render even when its props never change\nWhich component in your app re-renders too often? 👇",
+    "hashtags": [
+      "#react",
+      "#reactjs",
+      "#javascript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Your child component keeps rendering even though its props never [emphasis] changed at all.",
+      "[knowing] This child receives zero props, yet it rerenders.",
+      "[fast] Every parent state update re-renders its children too.",
+      "[confident] Wrap it in react dot memo. (break) [satisfied] rendering finally stops.",
+      "[warm, curious] Which component re-renders more than you expect?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 6,
+    "posted_at": "2026-10-16T20:01:32+00:00",
+    "media_id": "18017067359958148",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The proof (Variables/Console panels) is still empty on frame 0, so the claim isn't backed by visible evidence yet."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stepper",
+      "code",
+      "code",
+      "diff",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.3
+  },
+  {
+    "id": 78,
+    "style": "dark",
+    "payoff": "await only pauses the async function it's in — the rest of your program, like a console.log right after you call it, keeps running on the event loop while you wait.",
+    "kicker": "Myth vs fact #7",
+    "hook": "*await* doesn't pause everything",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "run.js",
+      "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "*Await* isn't pausing anything",
+        "hook_type": "problem",
+        "spoken": "[alert] Here's the problem: await doesn't pause your whole program, (break) [deadpan] just one function."
+      },
+      {
+        "hook": "Expected order vs *real* order",
+        "hook_type": "before_after",
+        "spoken": "[fired up] You'd expect await to block everything, (break) [surprised] but the real order says otherwise."
+      },
+      {
+        "hook": "I *ran* this async code",
+        "hook_type": "test",
+        "spoken": "[fired up] I actually ran this async code, (break) [surprised] and the print order surprised me."
+      }
+    ],
+    "points": [
+      {
+        "title": "The myth",
+        "body": "Await blocks your whole app",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "What really happens",
+        "body": "Other code keeps running",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "trace": [
+              {
+                "line": 2,
+                "vars": [],
+                "out": "A"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "run()",
+                    "value": "paused"
+                  }
+                ]
+              },
+              {
+                "line": 7,
+                "vars": [],
+                "out": "B"
+              },
+              {
+                "line": 4,
+                "vars": [],
+                "out": "C"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real run proof",
+        "body": "Node confirms the order",
+        "visual": [
+          {
+            "type": "ide",
+            "files": [
+              {
+                "name": "index.js",
+                "content": ""
+              }
+            ],
+            "steps": [
+              {
+                "do": "open",
+                "file": "index.js"
+              },
+              {
+                "do": "type",
+                "text": "function task() {\n  return new Promise(r => setTimeout(r, 0))\n}\n\nasync function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\n\nrun()\nconsole.log(\"B\")"
+              },
+              {
+                "do": "save"
+              },
+              {
+                "do": "run",
+                "command": "node index.js"
+              },
+              {
+                "do": "wait",
+                "seconds": 1
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "async function run() {\n  console.log(\"A\")\n  await task()\n  console.log(\"C\")\n}\nrun()\nconsole.log(\"B\")",
+            "highlight": [
+              2,
+              7,
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Has await ever *tripped* up your code?",
+    "caption": "Async await explained: what it actually pauses in JavaScript\nMost devs get this wrong, here's the real execution order\nWhat's one async bug that confused you? 👇",
+    "hashtags": [
+      "#javascript",
+      "#asyncawait",
+      "#eventloop",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Most devs think await freezes your whole running app.",
+      "[knowing] It feels like everything halts.",
+      "[confident] Only that function actually pauses.",
+      "[excited] Run it in Node: A prints first, (break) [confident] then B logs right after, (break) [matter-of-fact] C finally waits for await to finish.",
+      "[warm, curious] Has await tripped you up?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 7,
+    "posted_at": "2026-10-18T12:00:49+00:00",
+    "media_id": "17990788119098710",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "ide",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
+  },
+  {
+    "id": 79,
+    "style": "light",
+    "payoff": "Supabase's select('*, users(name)') loads a post and its author in one call because Postgres can join; Firestore needs two separate reads because it has no joins at all.",
+    "kicker": "X vs Y #3",
+    "hook": "Only one can *join*",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "title": "supabase.js",
+      "language": "js",
+      "code": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Firebase doesn't do *joins*",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Many devs assume Firebase can join data like SQL. [deadpan] It can't."
+      },
+      {
+        "hook": "Two backends, two *data models*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Supabase and Firebase handle the exact same job. (break) [deadpan] Opposite data models though."
+      },
+      {
+        "hook": "Your backend pick *locks you in*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Choosing Supabase or Firebase locks you in fast. [serious, fast] Your queries differ completely."
+      }
+    ],
+    "points": [
+      {
+        "title": "Different data models",
+        "body": "Postgres tables versus NoSQL documents",
+        "visual": [
+          {
+            "type": "code",
+            "title": "schema.sql",
+            "language": "sql",
+            "code": "create table posts (\n  id uuid primary key,\n  user_id uuid references users(id)\n);",
+            "highlight": [
+              3
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://firebase.google.com/docs/firestore",
+            "find": "NoSQL, document-oriented database"
+          }
+        ]
+      },
+      {
+        "title": "One query joins",
+        "body": "Supabase joins tables in one request",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node fetchPost.js",
+            "output": [
+              "[",
+              "  { id: 1, title: 'Hello',",
+              "    users: { name: 'Jo' } }",
+              "]"
+            ]
+          },
+          {
+            "type": "diff",
+            "title": "fetchPost.js",
+            "language": "js",
+            "before": "const postSnap = await getDoc(postRef)\nconst post = postSnap.data()\nconst userSnap = await getDoc(userRef)\nconst user = userSnap.data()",
+            "after": "const { data } = await supabase\n  .from('posts')\n  .select('*, users(name)')"
+          }
+        ]
+      },
+      {
+        "title": "Offline-first sync",
+        "body": "Firebase caches data for offline use",
+        "visual": [
+          {
+            "type": "code",
+            "title": "listen.js",
+            "language": "js",
+            "code": "import {\n  initializeFirestore,\n  persistentLocalCache\n} from 'firebase/firestore'\n\nconst db = initializeFirestore(app, {\n  localCache: persistentLocalCache()\n})",
+            "highlight": [
+              7
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which one powers your *current* project?",
+    "caption": "Supabase vs Firebase for your next backend\nSupabase for SQL joins, Firebase for offline-first realtime apps\nWhich one are you building with right now? 👇",
+    "hashtags": [
+      "#supabase",
+      "#firebase",
+      "#postgres",
+      "#webdev"
+    ],
+    "reveal": 2,
+    "voiceover": [
+      "[fired up] Supabase and Firebase seem similar. (break) [knowing] They store your data in opposite ways.",
+      "[confident] One uses real SQL tables and relations.",
+      "[excited] Watch one query pull a post with its author.",
+      "[serious, fast] Firebase still wins for offline, realtime mobile apps.",
+      "[warm, curious] So which setup are you shipping with these days?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 3,
+    "posted_at": "2026-10-18T20:00:43+00:00",
+    "media_id": "17907584355571785",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only demonstrates the Supabase one-query join; it never shows Firestore needing two separate reads to get a post and its author, so half the promised payoff is never proven on screen."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "outputmap",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.6
+  },
+  {
+    "id": 80,
+    "style": "dark",
+    "payoff": "Promise.all rejects the instant one promise fails and throws away the results of the others — use Promise.allSettled if you need every result no matter what.",
+    "kicker": "Myth vs fact #8",
+    "hook": "Promise.all doesn't wait for *all*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "race.js",
+      "code": "const p1 = new Promise(res =>\n  setTimeout(() => res('A'), 100))\nconst p2 = new Promise((_, rej) =>\n  setTimeout(() => rej('B'), 10))\nPromise.all([p1, p2])\n  .then(console.log)\n  .catch(console.log)",
+      "highlight": [
+        4,
+        7
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "One rejection *erases* two results",
+        "hook_type": "problem",
+        "spoken": "[alarmed] One rejection erases two results that already succeeded, (break) [grim] gone without a trace."
+      },
+      {
+        "hook": "Only the *failing* promise logs",
+        "hook_type": "test",
+        "spoken": "[fired up] We ran three promises together, (break) [surprised] only the failing one actually got logged."
+      },
+      {
+        "hook": "Swap *all* for allSettled",
+        "hook_type": "shortcut",
+        "spoken": "[snappy] Swap Promise.all for allSettled, (break) [quick] and stop losing results when one promise fails."
+      }
+    ],
+    "points": [
+      {
+        "title": "Fails fast",
+        "body": "One rejection stops it instantly",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "race.js",
+            "code": "const p1 = new Promise(res =>\n  setTimeout(() => res('A'), 100))\nconst p2 = new Promise((_, rej) =>\n  setTimeout(() => rej('B'), 10))\nPromise.all([p1, p2])\n  .then(console.log)\n  .catch(console.log)",
+            "highlight": [
+              1,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Results lost",
+        "body": "Other results finish, then vanish",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "const p1 = resolve('A', 100)\nconst p2 = reject('B', 10)\nPromise.all([p1, p2])\n  .then(console.log)\n  .catch(console.log)",
+            "trace": [
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "p1",
+                    "value": "pending (100ms)"
+                  }
+                ]
+              },
+              {
+                "line": 2,
+                "vars": [
+                  {
+                    "name": "p2",
+                    "value": "pending (10ms)"
+                  }
+                ]
+              },
+              {
+                "line": 5,
+                "vars": [
+                  {
+                    "name": "p2",
+                    "value": "rejected: 'B'"
+                  }
+                ],
+                "out": "B"
+              },
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "p1",
+                    "value": "ignored: 'A'"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "race.js",
+            "code": "const p1 = resolve('A', 100)\nconst p2 = reject('B', 10)\nPromise.all([p1, p2])\n  .then(console.log)\n  .catch(console.log)",
+            "highlight": [
+              2,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Use allSettled",
+        "body": "Keeps every result, success or failure",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "fix.js",
+            "before": "Promise.all([p1, p2])\n  .then(console.log)\n  .catch(console.log)",
+            "after": "Promise.allSettled([p1, p2])\n  .then(results => {\n    console.log(results)\n  })"
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "allSettled output",
+            "code": "[\n  { status: 'rejected', reason: 'B' },\n  { status: 'fulfilled', value: 'A' }\n]",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Ever lost *data* to a rejection?",
+    "caption": "Promise.all in JavaScript explained\nIt fails fast and throws away the results that already succeeded\nHave you ever lost good data to one Promise.all rejection? 👇",
+    "hashtags": [
+      "#javascript",
+      "#promises",
+      "#asyncawait",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Promise.all doesn't wait for every promise, (break) [blunt] it fails the instant one rejects.",
+      "[sharp] One rejection and the entire call stops.",
+      "[quiet] The other promises keep running, but their results vanish.",
+      "[confident] Switch to allSettled so nothing good gets thrown away.",
+      "[warm, curious] Did one rejection ever wipe out data you needed?"
+    ],
+    "reveal": 2,
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 8,
+    "posted_at": "2026-10-19T12:00:45+00:00",
+    "media_id": "17942856432362687",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "stepper",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.1
+  },
+  {
+    "id": 81,
+    "style": "light",
+    "payoff": "console.log(0.1 + 0.2 === 0.3) prints false, because binary can't store 0.1 exactly, so you compare with a small tolerance instead of ===",
+    "kicker": "Explained #4",
+    "hook": "*0.1 + 0.2* isn't 0.3",
+    "hook_type": "test",
+    "hook_visual": {
+      "type": "code",
+      "title": "math.js",
+      "language": "js",
+      "code": "console.log(0.1 + 0.2 === 0.3);",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *===* check can lie",
+        "spoken": "[fired up] Your equality check can silently fail on simple decimal math. [knowing] Here's the real output.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Decimal math *breaks* in JS",
+        "spoken": "[urgent] Adding point one and point two in JavaScript breaks [knowing] the math you'd expect.",
+        "hook_type": "problem"
+      },
+      {
+        "hook": "Exact sum, then *weird* decimal",
+        "spoken": "[grinning, punchy] You'd expect zero point three exactly, but JavaScript prints something [amused] totally different. Watch.",
+        "hook_type": "before_after"
+      }
+    ],
+    "points": [
+      {
+        "title": "Binary math",
+        "body": "Binary storage can't hold 0.1 exactly",
+        "visual": [
+          {
+            "type": "code",
+            "title": "sum.js",
+            "language": "js",
+            "code": "let sum = 0.1 + 0.2;\nconsole.log(sum);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Guess it",
+        "body": "True or false: does it match?",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "console.log(0.1 + 0.2 === 0.3);",
+            "choices": [
+              "true",
+              "false"
+            ],
+            "output": [
+              "false"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "check.js",
+            "language": "js",
+            "code": "console.log(0.1 + 0.2 === 0.3);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Safe compare",
+        "body": "Swap equals for a tolerance check",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "fix.js",
+            "language": "js",
+            "before": "if (0.1 + 0.2 === 0.3) {\n  console.log(\"equal\");\n}",
+            "after": "if (Math.abs(0.1+0.2-0.3) < 1e-9) {\n  console.log(\"equal\");\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Has *floating-point* math broken your code?",
+    "caption": "Floating point math in JavaScript\n0.1 + 0.2 is not 0.3, and here's the real output\nHas this ever broken your code? 👇",
+    "hashtags": [
+      "#javascript",
+      "#floatingpoint",
+      "#webdevelopment",
+      "#codingtips"
+    ],
+    "voiceover": [
+      "[fired up] Quick test: point one plus point two should equal [knowing] point three, right?",
+      "[exasperated] Binary can't store point one exactly.",
+      "[knowing] So that equals check actually returns false.",
+      "[confident and fast] Use a tiny tolerance instead of exact equals.",
+      "[warm, curious] Has floating point math broken your code before?"
+    ],
+    "reveal": 2,
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 4,
+    "posted_at": "2026-10-19T20:01:25+00:00",
+    "media_id": "18347170456268413",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "diff",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.8
+  },
+  {
+    "id": 82,
+    "style": "dark",
+    "payoff": "typeof null returns the string 'object' (a 40-year-old JS bug kept for compatibility), so never trust typeof alone for null checks: compare directly with value === null.",
+    "kicker": "Myth vs fact #9",
+    "hook": "typeof null isn't *null*",
+    "hook_type": "test",
+    "reveal": 2,
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "quirk.js",
+      "code": "console.log(typeof null);\nconsole.log(typeof undefined);\nconsole.log(typeof 42);",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *object* check lies",
+        "hook_type": "mistake",
+        "spoken": "[urgent] Your typeof check for objects breaks silently. (break) [serious] The moment a value is null."
+      },
+      {
+        "hook": "Null check: *wrong*, then right",
+        "hook_type": "before_after",
+        "spoken": "[confident] Most null checks using typeof are wrong. (break) [sharp] Until you add one simple fix."
+      },
+      {
+        "hook": "Your *null* check has a hole",
+        "hook_type": "problem",
+        "spoken": "[blunt] If you test typeof for objects, null slips through. (break) [sharp] Undetected, every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The Assumption",
+        "body": "Most devs expect typeof null to equal null",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "guess.js",
+            "code": "console.log(typeof null);\nconsole.log(typeof undefined);\nconsole.log(typeof 42);",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The Real Output",
+        "body": "It actually prints the string object",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "console.log(typeof null);",
+            "choices": [
+              "null",
+              "object"
+            ],
+            "output": [
+              "object"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "output.js",
+            "code": "typeof null; // \"object\"\ntypeof undefined; // \"undefined\"\ntypeof 42; // \"number\"",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The Fix",
+        "body": "Compare directly to null, not typeof",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "check.js",
+            "before": "if (typeof value === 'object') {\n  useObject(value);\n}",
+            "after": "if (value !== null &&\n    typeof value === 'object') {\n  useObject(value);\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "What does *your* null check look like?",
+    "caption": "typeof null in JavaScript explained\nA famous bug kept for backward compatibility\nWhere does your code check for null? 👇",
+    "hashtags": [
+      "#javascript",
+      "#typeof",
+      "#jsbugs",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[blunt] Quick test, guess what typeof null actually prints. (break) [sharp] Right now, in JavaScript.",
+      "[knowing] Everyone assumes it, since the value is null.",
+      "[hyped] But it prints object, a decades old bug.",
+      "[serious] So never trust typeof alone. (break) [firm] Add a strict null check.",
+      "[warm, curious] Where do you check for null today?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 9,
+    "posted_at": "2026-10-20T12:00:44+00:00",
+    "media_id": "17975872136940587",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "diff",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.4
+  },
+  {
+    "id": 83,
+    "style": "light",
+    "payoff": "setTimeout(fn, 0) never fires immediately: it queues fn behind every pending synchronous line, so logging A, scheduling B, then logging C always prints A, C, B.",
+    "kicker": "Myth vs fact #10",
+    "hook": "Your *zero* second delay lies",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "order.js",
+      "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+      "highlight": [
+        2,
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "setTimeout zero still *waits*",
+        "spoken": "[grinning, punchy] Most developers assume a zero millisecond timeout runs instantly, (break) [confident] where you call it.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "What you *expect* vs reality",
+        "spoken": "[confident] You'd expect A, B, C printed in order, (break) [surprised, fast] reality is A, C, B.",
+        "hook_type": "before_after"
+      },
+      {
+        "hook": "We *ran* the zero delay",
+        "spoken": "[fired up] We actually ran this zero millisecond timeout in Node, (break) [amused] the order surprised everyone.",
+        "hook_type": "test"
+      }
+    ],
+    "points": [
+      {
+        "title": "Looks instant",
+        "body": "It still waits behind your synchronous code",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "order.js",
+            "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+            "highlight": [
+              2,
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Stack clears first",
+        "body": "Both logs finish before the timer can fire",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "order.js",
+            "code": "console.log('A')\nsetTimeout(() => {\n  console.log('B')\n}, 0)\nconsole.log('C')",
+            "highlight": [
+              1,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real run proof",
+        "body": "node prints A, C, B every time",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node order.js",
+            "output": [
+              "A",
+              "C",
+              "B"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node order.js"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know someone who still thinks it's *instant*?",
+    "caption": "JavaScript setTimeout zero delay explained\nZero milliseconds does not mean instant\nWhat does your console actually print first? 👇",
+    "hashtags": [
+      "#javascript",
+      "#settimeout",
+      "#eventloop",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Your zero millisecond timeout still waits, (break) [serious, fast] it never actually runs right away.",
+      "[knowing] It just queues up instead of firing.",
+      "[confident and fast] Both logs finish first, (break) [excited] then it fires.",
+      "[amused] Run it yourself, (break) [emphasis] the real order is A, C, B.",
+      "[warm, curious] Send this to the friend who swears it's instant."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 10,
+    "posted_at": "2026-10-20T20:00:46+00:00",
+    "media_id": "18122589413515018",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "text",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.8
+  },
+  {
+    "id": 84,
+    "style": "dark",
+    "payoff": "In development, React 18 Strict Mode double-fires useEffect on purpose — add a cleanup function instead of removing the empty dependency array.",
+    "kicker": "Myth vs fact #11",
+    "hook": "Expected once, logged *twice*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "App.jsx",
+      "language": "jsx",
+      "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+      "highlight": [
+        2,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "useEffect doesn't run *once*",
+        "spoken": "[fired up] Most developers think useEffect with an empty array fires (break) [urgent] only once, ever.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Your useEffect *lies*",
+        "spoken": "[mock outraged] You assume useEffect runs once, (break) [urgent] but Strict Mode proves you dead wrong.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your component *mounts* twice",
+        "spoken": "[exasperated] Ever wonder why console logs mount twice? (break) [knowing] Strict Mode's doing that.",
+        "hook_type": "problem"
+      }
+    ],
+    "points": [
+      {
+        "title": "The assumption",
+        "body": "Empty array should mean just once",
+        "visual": [
+          {
+            "type": "code",
+            "title": "App.jsx",
+            "language": "jsx",
+            "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Strict Mode remounts",
+        "body": "Dev console prints the log twice",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "jsx",
+            "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "choices": [
+              "mount",
+              "mount mount"
+            ],
+            "output": [
+              "mount",
+              "mount"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "npm run dev"
+            ],
+            "output": [
+              "mount",
+              "mount"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add a cleanup",
+        "body": "Make the effect safe to repeat",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "App.jsx",
+            "language": "jsx",
+            "before": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+            "after": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n    return () => {\n      console.log(\"cleanup\");\n    };\n  }, []);\n  return <h1>Hi</h1>;\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *believes* this?",
+    "caption": "React useEffect double render in Strict Mode\nDevelopment only — here's why, and the real fix\nStill think your effect fires only once? 👇",
+    "hashtags": [
+      "#react",
+      "#useeffect",
+      "#reactjs",
+      "#javascript",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[grinning, punchy] You expect one mount log in development, (break) [amused] but React fires it twice.",
+      "[knowing] That's exactly what the empty array promises.",
+      "[urgent] But Strict Mode mounts, unmounts, and remounts it fast.",
+      "[confident and fast] Fix it with cleanup, not by removing the array.",
+      "[warm, curious] Send this to the dev who believes it's once."
+    ],
+    "reveal": 2,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          4
+        ],
+        "at": "promises"
+      },
+      {
+        "kind": "terminal",
+        "command": "npm run dev",
+        "output": [
+          "mount",
+          "mount"
+        ],
+        "accent": true,
+        "at": "remounts"
+      },
+      {
+        "kind": "code",
+        "title": "App.jsx",
+        "language": "jsx",
+        "code": "function App() {\n  useEffect(() => {\n    console.log(\"mount\");\n    return () => {\n      console.log(\"cleanup\");\n    };\n  }, []);\n  return <h1>Hi</h1>;\n}",
+        "highlight": [
+          4,
+          5
+        ],
+        "at": "cleanup"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Still think",
+          "*once*?"
+        ],
+        "at": "once"
+      }
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 11,
+    "posted_at": "2026-10-21T12:00:45+00:00",
+    "media_id": "18031733162906045",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The actual cleanup-function code is never shown on screen — slide 3 (the fix) is just the text 'Add a cleanup / Make the effect safe to repeat' with no code, so there's nothing to copy or screenshot for the promised fix."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "predict",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0
+  },
+  {
+    "id": 85,
+    "style": "light",
+    "payoff": "cd - jumps you back to whatever directory you were just in, no retyping the path, and you can chain it to bounce between two folders instantly",
+    "kicker": "Quick trick #5",
+    "hook": "Full path *twice*, then one key",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "terminal",
+      "code": "cd ~/code/app/src/components\ncd ~/code/app/server/routes\ncd -",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Teleport to your *last* folder",
+        "spoken": "[grinning, punchy] This terminal command jumps you back to your last folder (break) [confident] no retyping.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Retyping the *same* path again",
+        "hook_type": "problem",
+        "spoken": "[exasperated] You keep retyping the same folder path (break) [annoyed] every time you switch terminals."
+      },
+      {
+        "hook": "You keep typing *cd* twice",
+        "hook_type": "mistake",
+        "spoken": "[fired up] Most developers still type cd then the full path again (break) [urgent] every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "Long paths",
+        "body": "Typing the full path every switch",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/code/app/src/components",
+              "cd ~/code/app/server/routes"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One shortcut",
+        "body": "cd - jumps back instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd ~/code/app/src/components",
+              "cd -"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Bounce between",
+        "body": "Chain it to swap folders instantly",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cd -",
+              "pwd",
+              "cd -",
+              "pwd"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "How many times do you *retype* a path today?",
+    "caption": "The cd - command in your terminal\nJump back to your last folder without retyping the path\nHow many times do you retype a path today? 👇",
+    "hashtags": [
+      "#bash",
+      "#terminal",
+      "#cli",
+      "#devtips",
+      "#productivity"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[mock outraged] You used to type the full path twice (break) [confident] one shortcut fixes it.",
+      "[exasperated] Switching folders usually means retyping full paths.",
+      "[excited] Typing cd then a dash jumps you right back.",
+      "[knowing] Chain it to bounce between folders with zero retyping.",
+      "[warm, curious] How often do you retype the same folder path."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 5,
+    "posted_at": "2026-10-21T20:00:57+00:00",
+    "media_id": "18122249650944611",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "cd - jumping back is shown in the terminal, but chaining cd - to bounce between two folders is only claimed in text (slide 3), never actually demonstrated running in the terminal."
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.8
+  },
+  {
+    "id": 86,
+    "style": "dark",
+    "payoff": "fetch(url, { credentials: 'include' }) is the line that actually makes the browser attach a cookie on a cross-origin request; without it your server never sees the cookie at all, no matter how real it looks in devtools.",
+    "kicker": "Myth vs fact #12",
+    "hook": "fetch doesn't *send* cookies",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "client.js",
+      "code": "fetch('https://api.foo.com/me')\n  .then(r => r.json())\n  .then(console.log)",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *cookie* never reaches the server",
+        "hook_type": "problem",
+        "spoken": "[urgent] Picture this, your login cookie exists. (break) [serious] But your backend never gets it."
+      },
+      {
+        "hook": "Add one flag, cookie *arrives*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Before, the cookie never shows up. (break) [excited] After one flag, it's right there."
+      },
+      {
+        "hook": "I *tested* cross-origin cookies live",
+        "hook_type": "test",
+        "spoken": "[fired up] I ran a real cross origin fetch test. (break) [excited] And logged exactly what arrived."
+      }
+    ],
+    "points": [
+      {
+        "title": "Cookies aren't automatic",
+        "body": "Cross-origin fetch skips cookies by default",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "client.js",
+            "code": "fetch('https://api.foo.com/me')\n  .then(r => r.json())\n  .then(console.log)",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add credentials include",
+        "body": "Server must allow it too",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "auth.js",
+            "before": "fetch('https://api.foo.com/me')\n  .then(r => r.json())",
+            "after": "fetch('https://api.foo.com/me', {\n  credentials: 'include'\n}).then(r => r.json())"
+          }
+        ]
+      },
+      {
+        "title": "Server sees it",
+        "body": "Server log proves the cookie arrived",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "node server.js",
+            "output": [
+              "GET /me cookies {}",
+              "GET /me cookies { sid: 9f21ac }"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node server.js",
+              "curl https://api.foo.com/me -i"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev fighting *cookie* bugs?",
+    "caption": "Cross-origin cookies in JavaScript fetch requests\nMost broken logins live here, and it's not CORS alone\nWhich part trips you up most? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#cookies",
+      "#fetchapi",
+      "#cors"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[urgent] Your fetch call never sends the cookie. (break) [serious] Your server is still waiting for it.",
+      "[knowing] Cross origin fetch calls skip cookies by default.",
+      "[confident and fast] Add credentials include and it attaches instantly.",
+      "[excited] Watch the log flip from empty to real.",
+      "[warm, curious] Send this to the dev chasing that empty cookie."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 12,
+    "posted_at": "2026-10-22T12:01:17+00:00",
+    "media_id": "18116077073468142",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "diff",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.9,
+    "youtube_id": "oq6It0yNjHg"
+  },
+  {
+    "id": 87,
+    "style": "light",
+    "payoff": "Array.prototype.sort() with no compare function sorts numbers as text, so [10,2,1].sort() prints [1,10,2]; pass (a,b) => a - b to sort numbers correctly.",
+    "kicker": "Myth vs fact #13",
+    "hook": "Numbers in, *strings* sort out",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "sort.js",
+      "language": "js",
+      "code": "const nums = [10, 2, 1];\nnums.sort();",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Array.sort breaks on *numbers*",
+        "spoken": "[mock outraged] Most developers assume sort puts numbers in order, (break) [deadpan] but it never does.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your array isn't *sorted* right",
+        "hook_type": "problem",
+        "spoken": "[fired up] If you think sort handles numbers correctly, (break) [deadpan] your own console output disagrees."
+      },
+      {
+        "hook": "We *tested* sort on three numbers",
+        "hook_type": "test",
+        "spoken": "[excited] We ran three numbers through sort, (break) [stunned] and the order came out wrong."
+      }
+    ],
+    "points": [
+      {
+        "title": "Sorts as text",
+        "body": "sort() compares values like strings",
+        "visual": [
+          {
+            "type": "code",
+            "title": "sort.js",
+            "language": "js",
+            "code": "const nums = [10, 2, 1];\nnums.sort();",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real output shown",
+        "body": "Ten, two, one turn into this",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "const nums = [10, 2, 1];\nnums.sort();",
+            "choices": [
+              "[ 1, 2, 10 ]",
+              "[ 1, 10, 2 ]"
+            ],
+            "output": [
+              "[ 1, 10, 2 ]"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node sort.js"
+            ],
+            "output": [
+              "[ 1, 10, 2 ]"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Fix with compare",
+        "body": "Pass a, b => a minus b",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "sort.js",
+            "language": "js",
+            "before": "const nums = [10, 2, 1];\nnums.sort();",
+            "after": "const nums = [10, 2, 1];\nnums.sort((a, b) => a - b);"
+          }
+        ]
+      }
+    ],
+    "cta": "Have you ever shipped a *sort* bug?",
+    "caption": "JavaScript Array.sort default sorting behavior explained\nIt turns numbers into strings unless you add a compare function\nEver shipped a hidden sort bug? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#arraymethods",
+      "#codingtips"
+    ],
+    "voiceover": [
+      "[grinning, punchy] You pass in numbers, (break) [deadpan] but sort quietly treats them as plain strings.",
+      "[knowing] It secretly compares every value as text.",
+      "[urgent] Watch ten, two, one turn into one, ten, two.",
+      "[confident and fast] Add a compare function so it subtracts, not compares.",
+      "[warm, curious] Did a sort bug ever slip into your app?"
+    ],
+    "reveal": 2,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort();",
+        "highlight": [
+          2
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort();",
+        "highlight": [
+          2
+        ],
+        "carry": "nums.sort();",
+        "at": "text"
+      },
+      {
+        "kind": "terminal",
+        "command": "node sort.js",
+        "output": [
+          "[ 1, 10, 2 ]"
+        ],
+        "at": "two"
+      },
+      {
+        "kind": "code",
+        "title": "sort.js",
+        "language": "js",
+        "code": "const nums = [10, 2, 1];\nnums.sort((a, b) => a - b);",
+        "highlight": [
+          2
+        ],
+        "accent": true,
+        "at": "subtracts"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Check your",
+          "*sort* calls"
+        ],
+        "motif": "brackets",
+        "at": "bug"
+      }
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 13,
+    "posted_at": "2026-10-22T20:04:21+00:00",
+    "media_id": "17953714848271885",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-code",
+      "stage-terminal",
+      "stage-code",
+      "stage-words"
+    ],
+    "slot": 3,
+    "seconds": 20.8,
+    "youtube_id": "erZkrWJT4cQ",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18129539365848362"
+      }
+    ]
+  },
+  {
+    "id": 88,
+    "style": "dark",
+    "payoff": "Number.isNaN(x) is the only reliable NaN check, because x === NaN is always false, even when x really is NaN.",
+    "kicker": "Myth vs fact #14",
+    "hook": "Your NaN *check* is broken",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "nan.js",
+      "code": "let x = NaN;\nconsole.log(x === x);\nconsole.log(Number.isNaN(x));",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "NaN *never* equals itself",
+        "spoken": "[fired up] NaN is the one JavaScript value that never equals itself. [serious] Not even to itself.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "We *tested* NaN equality",
+        "hook_type": "test",
+        "spoken": "[confident] We ran NaN against itself using triple equals. [shocked] It still failed, completely."
+      },
+      {
+        "hook": "Expected *true*, got false",
+        "hook_type": "before_after",
+        "spoken": "[surprised] You'd expect NaN compared to NaN to return true. [flat] It actually returns false."
+      }
+    ],
+    "points": [
+      {
+        "title": "The expectation",
+        "body": "Normally, a value always equals itself",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "equal.js",
+            "code": "let a = 5;\nconsole.log(a === a);",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Looks normal",
+        "body": "NaN still looks like a normal number",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "typeof.js",
+            "code": "let x = NaN;\nconsole.log(typeof x);",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Never equal",
+        "body": "NaN never equals NaN, ever",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "let x = NaN;\nconsole.log(x === x);\nconsole.log(Number.isNaN(x));",
+            "choices": [
+              "true true",
+              "false true",
+              "false false"
+            ],
+            "output": [
+              "false",
+              "true"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "nan.js",
+            "code": "let x = NaN;\nconsole.log(x === x);\nconsole.log(Number.isNaN(x));",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Know a dev who still *trusts* this?",
+    "caption": "NaN equality in JavaScript explained\nTriple equals never confirms a number is NaN\nKnow a dev who still trusts that check? 👇",
+    "hashtags": [
+      "#javascript",
+      "#jsmyths",
+      "#webdev",
+      "#coding"
+    ],
+    "voiceover": [
+      "[urgent] Checking for NaN with triple equals will always fail. [flat-out] Every single time, guaranteed.",
+      "[knowing] You'd expect equal values to match with triple equals.",
+      "[sharp] Typeof NaN even says number, oddly normal.",
+      "[steady] (break) [emphasis] The console prints false, every single time.",
+      "[grinning] Send this to the dev who trusts that check."
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 14,
+    "posted_at": "2026-10-23T12:00:45+00:00",
+    "media_id": "18198900745390417",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "predict",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.4,
+    "youtube_id": "LbqVGR4H37c",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18143245456526160"
+      },
+      {
+        "kind": "teaser",
+        "id": "18101671733430355"
+      }
+    ]
+  },
+  {
+    "id": 89,
+    "style": "light",
+    "payoff": "aspect-ratio: 16 / 9 on the box replaces the old padding-top percentage hack, so you drop the wrapper div and the absolute positioning entirely.",
+    "kicker": "Quick trick #6",
+    "hook": "Skip the *padding-top* hack",
+    "hook_type": "shortcut",
+    "hook_visual": {
+      "type": "diff",
+      "language": "css",
+      "title": "box.css",
+      "before": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n  inset: 0;\n}",
+      "after": ".box {\n  aspect-ratio: 16 / 9;\n}\n.box img {\n  width: 100%;\n  height: 100%;\n}"
+    },
+    "alternatives": [
+      {
+        "hook": "You're still faking *aspect ratio*",
+        "hook_type": "mistake",
+        "spoken": "[urgent] You're faking aspect ratio with that old hack— [blunt] nobody needs it."
+      },
+      {
+        "hook": "Padding hack *gone*, one line left",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] This box used a padding hack before— [confident] now it's one line."
+      },
+      {
+        "hook": "Tested: *aspect-ratio* vs the padding hack",
+        "hook_type": "test",
+        "spoken": "[fired up] I tested aspect-ratio against the padding hack— [surprised] it won easily."
+      }
+    ],
+    "points": [
+      {
+        "title": "The old hack",
+        "body": "A wrapper div plus absolute positioning",
+        "visual": [
+          {
+            "type": "code",
+            "language": "css",
+            "title": "old.css",
+            "code": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n  inset: 0;\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One line now",
+        "body": "Aspect ratio replaces that whole hack",
+        "visual": [
+          {
+            "type": "morph",
+            "language": "css",
+            "title": "box.css",
+            "before": ".box {\n  position: relative;\n  padding-top: 56.25%;\n}\n.box img {\n  position: absolute;\n}",
+            "after": ".box {\n  aspect-ratio: 16 / 9;\n}"
+          },
+          {
+            "type": "code",
+            "language": "css",
+            "title": "box.css",
+            "code": ".box {\n  aspect-ratio: 16 / 9;\n}\n.box img {\n  width: 100%;\n  height: 100%;\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof it holds",
+        "body": "Ratio stays locked as it resizes",
+        "visual": [
+          {
+            "type": "build",
+            "title": "box.css",
+            "html": "<div class=\"box\">\n  <div class=\"pic\"></div>\n</div>",
+            "stages": [
+              ".box{width:100%;aspect-ratio:16/9}\n.pic{width:100%;height:100%}",
+              ".pic{background:#4f46e5}\n.box{border-radius:8px}"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "css",
+            "title": "final.css",
+            "code": ".box {\n  width: 100%;\n  aspect-ratio: 16/9;\n  border-radius: 8px;\n}\n.pic {\n  width: 100%;\n  height: 100%;\n  background: #4f46e5;\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Still *faking* aspect ratio somewhere?",
+    "caption": "CSS aspect-ratio property replaces the old padding-top hack for responsive boxes.\nNo wrapper div, no absolute positioning, just one line.\nWhere in your CSS are you still using that old trick? 👇",
+    "hashtags": [
+      "#css",
+      "#webdev",
+      "#frontend",
+      "#aspectratio"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[excited] One CSS line replaces that old padding-top hack— [confident] no wrapper needed.",
+      "[exasperated] That hack means extra markup and tricky percentage math.",
+      "[impressed] Aspect ratio alone keeps the box in shape.",
+      "[pumped] Watch it hold ratio while the image fills perfectly.",
+      "[warm, curious] Where in your CSS are you still faking ratio?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 6,
+    "posted_at": "2026-10-23T20:00:34+00:00",
+    "media_id": "17885755854512405",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "morph",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3,
+    "youtube_id": "qhsQkunjznk",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18114734948142636"
+      }
+    ]
   }
 ]

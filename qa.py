@@ -2,8 +2,9 @@
 
 A visual (code, terminal, screenshot) that is irrelevant, unreadable or broken (cookie banner, login wall,
 error page, blank page) is reported so publish.py re-renders that slide with the point's next visual choice (or as text); a rejected hook
-proof is dropped. A dishonest claim (honest=false) stops the post. The frame-0 and payoff checks and other problems
-are returned as warnings.
+proof is dropped (a diff first gets one more try as a code card of its "after"). A diff's frame is its red "before"
+and its green "after" side by side, because its last frame alone shows only the after. A dishonest claim
+(honest=false) stops the post. The frame-0 and payoff checks and other problems are returned as warnings.
 
 Env: CLAUDE_MODEL (optional, defaults to claude-sonnet-5)
 
@@ -51,10 +52,15 @@ Judge each frame:
   broken, captions readable.
 - honest: false only for deception: claimed results that are not real (income, revenue, followers, metrics),
   an invented scene presented as a real event, "I tested/built" without the reel showing it, someone else's
-  work shown as the creator's own, or a claim that the listed sources contradict. News claims that the
+  work shown as the creator's own, a claim that the listed sources contradict, or a result that could not come
+  from the steps the reel shows (a key pressed fewer times than the matches it selects, different text on each
+  line after typing once with several cursors, output the files on screen could not give). News claims that the
   sources support are honest even if dramatic. A visual that does not match what is said is not dishonest:
   mark visual_ok false instead. Otherwise true.
 - problem: one short sentence on what is wrong, or an empty string.
+The one to three words in the lower part of the frame (the word being said on an accent pill) are a live caption:
+they show the spoken line a few words at a time, so read them as a fragment of the spoken line given for that
+slide, never as a claim of its own (a frame of "never lets allow win" can show just "allow win").
 Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false.
 
 Then judge the reel as a whole, by the playbook below:
@@ -80,17 +86,59 @@ def frames(video, slides, folder):
     paths = []
     for i, s in enumerate(slides):
         t = s.start + max(min(1.2, s.end - s.start - 0.3), s.end - s.start - 0.9)
+        if str((getattr(s.visual, 'spec', None) or {}).get('type', '')).startswith('stage-'):
+            # A stage scene has landed by then (stage.LAND) and the next one has not arrived; the last one is caught
+            # before the reel glides back to its opening (stage.RETURN).
+            t = min(s.end - 0.45, slides[-1].end - 1.3)
         path = Path(folder) / f'slide-{i}.png'
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(video), '-frames:v', '1',
-                        '-vf', 'scale=540:-1', str(path)], check=True)
+        grab(video, t, path)
+        marked = getattr(s.visual, 'marked', None) if s.visual else None
+        if marked:
+            # A diff ends on its "after" alone; show its red "before" beside it, as one image (before | after). Three
+            # moments of the red stage, the sharpest kept: a camera punch on a spoken word blurs the frame it hits.
+            a, b = (s.start - s.lead + m for m in marked)
+            times = [x for x in (a, (a + b) / 2, b) if s.start <= x < t]
+            shots = []
+            for k, x in enumerate(times):
+                shots.append(Path(folder) / f'slide-{i}-before-{k}.png')
+                grab(video, x, shots[-1])
+            if shots:
+                side_by_side(max(shots, key=sharpness), path, path)
         paths.append(path)
     return paths
 
 
+def grab(video, t, path):
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(video), '-frames:v', '1',
+                    '-vf', 'scale=540:-1', str(path)], check=True)
+
+
+def sharpness(path):
+    """Edge energy of a frame: higher is sharper (motion blur smears the edges)."""
+    import numpy as np
+    from PIL import Image
+    g = np.asarray(Image.open(path).convert('L'), dtype=np.float32)
+    return float(np.abs(np.diff(g, axis=1)).mean() + np.abs(np.diff(g, axis=0)).mean())
+
+
+def side_by_side(left, right, out):
+    from PIL import Image
+    a, b = Image.open(left).convert('RGB'), Image.open(right).convert('RGB')
+    gap = 12
+    img = Image.new('RGB', (a.width + gap + b.width, max(a.height, b.height)), (255, 255, 255))
+    img.paste(a, (0, 0))
+    img.paste(b, (a.width + gap, 0))
+    img.save(out)
+
+
 def describe(visual):
     """What a slide's visual is meant to show, in words for the reviewer."""
+    if str(visual.get('type', '')).startswith('stage-'):
+        import stage
+        return stage.describe(visual)
     return {'code': 'a code window', 'terminal': 'a terminal typing commands',
-             'diff': 'code before and after (removed lines red, added lines green)',
+             'diff': 'code before and after, shown as two frames side by side: left, the before with its removed '
+                     'lines struck through in red; right, the after with its added lines green',
              'tweet': "a post card in the creator's own name", 'chat': 'a Client / Me chat (POV)',
              'walkthrough': 'a real screen recording of ' + visual.get('url', ''),
              'ide': 'a real VS Code recording typing and running code',
@@ -108,6 +156,9 @@ def describe(visual):
                                              for b in visual.get('bars', []))
                      + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
              'logos': '3D logos: ' + ', '.join(visual.get('items', [])),
+             'predict': 'a guess-the-output quiz: the code, answer chips ' + ' / '.join(visual.get('choices', []))
+                        + ', a countdown, then the console prints ' + ' / '.join(visual.get('output', []))
+                        + ' and the matching chip is stamped (check that output is exactly what the code prints)',
              'stepper': 'an animation stepping through code line by line with its variables changing '
                         '(check the values are what the code really does)',
              'flow': 'an animated request travelling between ' + ', '.join(n.get('label', '') for n in visual.get('nodes', [])),

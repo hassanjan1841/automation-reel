@@ -1,0 +1,145 @@
+name: Showcase
+
+# The weekly showcase reels (showcase.py): a fully animated piece with no voice, written, rendered, reviewed and
+# posted on Wednesdays and Saturdays around 16:00 UTC (repo variable SHOWCASE_DAYS; "off" stops them). scheduler.py
+# starts a run GitHub's schedule dropped.
+on:
+  schedule:
+    - cron: '41 15 * * 3,6' # Wednesdays and Saturdays, 15:41 UTC; posts when ready, around 16:00
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Render and review only, do not post
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  issues: write   # the alert when LinkedIn refuses its token
+
+concurrency:
+  group: reels-queue
+  cancel-in-progress: false
+
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  showcase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install ffmpeg
+        uses: ./.github/actions/ffmpeg
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Download fonts
+        run: python render.py --fonts
+
+      - name: Install screenshot browser
+        uses: ./.github/actions/browser
+
+      - name: Install Claude Code
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
+
+      - name: Write, render, review and post
+        id: showcase
+        if: github.event_name == 'workflow_dispatch' || vars.SHOWCASE_DAYS != 'off'
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+        run: python showcase.py
+
+      - name: Post to LinkedIn
+        # The same showcase on the creator's LinkedIn profile (linkedin.py; does nothing without LINKEDIN_TOKEN). It may
+        # fail without stopping the record of the Instagram post below.
+        id: linkedin
+        if: steps.showcase.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          LINKEDIN_TOKEN: ${{ secrets.LINKEDIN_TOKEN }}
+          LINKEDIN_AUTHOR: ${{ vars.LINKEDIN_AUTHOR }}
+          LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION }}
+        run: python linkedin.py showcase
+
+      - name: Alert when LinkedIn refuses the token
+        if: steps.linkedin.outcome == 'failure' && hashFiles('out/linkedin-alert.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "LinkedIn login expired"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/linkedin-alert.md
+          else
+            gh issue create --title 'LinkedIn login expired: posts are not going to LinkedIn' --body-file out/linkedin-alert.md
+          fi
+
+      - name: Upload to YouTube Shorts
+        # The same showcase as a YouTube Short (youtube.py; does nothing without the YT_ secrets). It may fail without
+        # stopping the record of the Instagram post below.
+        id: youtube
+        if: steps.showcase.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY }}
+        run: python youtube.py showcase
+
+      - name: Alert when YouTube refuses the login
+        if: steps.youtube.outcome == 'failure' && hashFiles('out/youtube-alert.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "YouTube login expired"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/youtube-alert.md
+          else
+            gh issue create --title 'YouTube login expired: Shorts are not going to YouTube' --body-file out/youtube-alert.md
+          fi
+
+      - name: Upload video
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: showcase-${{ github.run_number }}
+          path: |
+            out/showcase-*.mp4
+            out/showcase-*.jpg
+            out/showcase-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Record it
+        if: always() && steps.showcase.outputs.posted == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add showcases.json
+          git commit -m 'Posted a showcase'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

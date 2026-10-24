@@ -5,7 +5,8 @@ on:
     # Starts an hour early (4 PM Pakistan) to research, write, voice, render and review today's reel, then posts
     # at POST_AT_UTC (12:00, 5 PM Pakistan). Off the hour because GitHub delays jobs queued exactly on the hour.
     - cron: '7 11 * * *'
-    # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York).
+    # The second reel of the day: starts 3 PM UTC, posts at 16:00 UTC (9 PM Pakistan, noon New York). Off by default
+    # (repo variable REEL_SLOTS, "1,3"): its scheduled run exits at once; set REEL_SLOTS to "1,2,3" to post it.
     - cron: '7 15 * * *'
     # The third reel: starts 19:07 UTC, posts at 20:00 UTC (1 AM Pakistan, 4 PM New York).
     - cron: '7 19 * * *'
@@ -15,6 +16,10 @@ on:
         description: Render only, do not post
         type: boolean
         default: true
+      post_now:
+        description: Post as soon as it is ready instead of at the slot's time (counts as that slot's reel today)
+        type: boolean
+        default: false
       slot:
         description: Which reel of the day (1 how-to at 12:00, 2 evening reel at 16:00, 3 at 20:00 UTC)
         type: choice
@@ -25,13 +30,23 @@ on:
         type: choice
         options: [random, 'on', 'off']
         default: random
+      stage:
+        description: 'Stage reel today (random: repo variable STAGE, else STAGE_CHANCE)'
+        type: choice
+        options: [random, 'on', 'off']
+        default: random
 
 permissions:
   contents: write
+  issues: write   # the alert when Instagram refuses the token
 
 concurrency:
   group: reels-queue
   cancel-in-progress: false
+
+# Log lines appear as they happen, so the step's timestamps show where the time goes.
+env:
+  PYTHONUNBUFFERED: '1'
 
 jobs:
   publish:
@@ -50,7 +65,7 @@ jobs:
           node-version: '22'
 
       - name: Install ffmpeg
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+        uses: ./.github/actions/ffmpeg
 
       - name: Install Python packages
         run: pip install -r requirements.txt
@@ -58,14 +73,8 @@ jobs:
       - name: Download fonts
         run: python render.py --fonts
 
-      - name: Cache screenshot browser
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('requirements.txt') }}
-
       - name: Install screenshot browser
-        run: python -m playwright install --with-deps chromium
+        uses: ./.github/actions/browser
 
       - name: Cache voice and speech-to-text models
         uses: actions/cache@v6
@@ -74,14 +83,16 @@ jobs:
           key: kokoro-v1.0-whisper-small.en
 
       - name: Install Claude Code
-        run: |
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
 
       - name: Render and publish
         id: publish
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          POST_NOW: ${{ github.event_name == 'workflow_dispatch' && inputs.post_now && 'true' || 'false' }}
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
@@ -97,12 +108,91 @@ jobs:
           TRENDING: ${{ vars.TRENDING }}
           THREE_D: ${{ github.event_name == 'workflow_dispatch' && inputs.three_d != 'random' && inputs.three_d || vars.THREE_D }}
           THREE_D_CHANCE: ${{ vars.THREE_D_CHANCE }}
+          STAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.stage != 'random' && inputs.stage || vars.STAGE }}
+          STAGE_CHANCE: ${{ vars.STAGE_CHANCE }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+          REEL_SLOTS: ${{ vars.REEL_SLOTS }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python publish.py
+
+      - name: Alert when Instagram refuses the token
+        # publish.check_login leaves out/alert.md: one open issue (GitHub emails you), a comment on it per failed run.
+        if: failure() && hashFiles('out/alert.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "Instagram login failed"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/alert.md
+          else
+            gh issue create --title 'Instagram login failed: reels are not posting' --body-file out/alert.md
+          fi
+
+      - name: Post to LinkedIn
+        # The same reel on the creator's LinkedIn profile (linkedin.py; does nothing without LINKEDIN_TOKEN). It may
+        # fail without stopping the record of the Instagram post below.
+        id: linkedin
+        if: steps.publish.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          LINKEDIN_TOKEN: ${{ secrets.LINKEDIN_TOKEN }}
+          LINKEDIN_AUTHOR: ${{ vars.LINKEDIN_AUTHOR }}
+          LINKEDIN_VERSION: ${{ vars.LINKEDIN_VERSION }}
+        run: python linkedin.py reel ${{ steps.publish.outputs.reel_id }}
+
+      - name: Alert when LinkedIn refuses the token
+        if: steps.linkedin.outcome == 'failure' && hashFiles('out/linkedin-alert.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "LinkedIn login expired"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/linkedin-alert.md
+          else
+            gh issue create --title 'LinkedIn login expired: posts are not going to LinkedIn' --body-file out/linkedin-alert.md
+          fi
+
+      - name: Upload to YouTube Shorts
+        # The same reel as a YouTube Short (youtube.py; does nothing without the YT_ secrets). It may fail without
+        # stopping the record of the Instagram post below.
+        id: youtube
+        if: steps.publish.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          YT_PRIVACY: ${{ vars.YT_PRIVACY }}
+        run: python youtube.py reel ${{ steps.publish.outputs.reel_id }}
+
+      - name: Alert when YouTube refuses the login
+        if: steps.youtube.outcome == 'failure' && hashFiles('out/youtube-alert.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --state open --search 'in:title "YouTube login expired"' --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file out/youtube-alert.md
+          else
+            gh issue create --title 'YouTube login expired: Shorts are not going to YouTube' --body-file out/youtube-alert.md
+          fi
+
+      - name: Post the stories
+        # A "Guess the output" story (myth reels that open on code that prints, once a day) and a teaser story (the
+        # reel's first seconds, then a "new reel" card), stories.py. It may fail without stopping the record below.
+        if: steps.publish.outputs.posted == 'true'
+        continue-on-error: true
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GRAPH_VERSION: ${{ vars.GRAPH_VERSION }}
+          STORIES: ${{ vars.STORIES }}
+        run: python stories.py reel ${{ steps.publish.outputs.reel_id }}
 
       - name: Pronunciation test
         run: python test_voice.py

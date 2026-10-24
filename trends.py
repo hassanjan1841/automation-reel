@@ -271,6 +271,15 @@ How to choose:
   pricing or policy changes that affect how people build, and breakout open source projects.
 - Strong signals: many sources covering it, high Hacker News points, fast GitHub stars, official announcements.
 - Angle it for practitioners: what changed, why it matters for their work, one practical takeaway.
+
+How to tell it (the creator, 2026-10-23: "first tell the problem, then the story, then the solution, in a simplified
+way, not some mystery"): a small, clear story, never a teaser.
+- The hook and voiceover line 1 say the problem plainly: who is affected and what can happen ("A PHP bug lets anyone
+  run code on your server"), not a riddle like "The attack starts before your code".
+- Point 1 tells what happened, in everyday words: who found it or shipped it, and what it is.
+- Point 2 says why it matters, simply: how it works or what it breaks, with one plain comparison if it helps.
+- Point 3 is the solution: the exact thing to do (the version to update to, the setting, the command).
+- No suspense and no jargon left unexplained; a beginner should follow every line.
 - Skip gossip, funding rounds, lawsuits, politics and drama unless they change how developers work.
 - Do not repeat a topic that was already posted recently.
 
@@ -292,7 +301,8 @@ Verification is mandatory:
 - Return up to 3 options: the strongest distinct stories you could verify, best first, each a complete reel.
 - Return an empty list if nothing today beats a good evergreen tip.
 - reach_score is your honest estimate from 1 to 10 of how well the reel will spread compared with a typical evergreen tip.
-- Count words carefully: hook 3 to 6, point titles max 3, point bodies max 8, voiceover 40 to 55 in total. Over-long reels are thrown away."""
+- Count words carefully: hook 3 to 6, point titles max 3, point bodies max 8, voiceover """ + \
+    f"{generate.VO_MIN_WORDS} to {generate.VO_MAX_WORDS} in total. Over-long reels are thrown away."
 
 
 def claude(prompt, system, schema, model=None):
@@ -328,7 +338,7 @@ def pick(reels, candidates, perf, model=None):
         + ('Quote visuals of real posts are allowed today.\n\n' if quotes_allowed(reels)
            else 'Quote visuals are NOT allowed today (one was used this week).\n\n')
         + generate.three_d_note() + '\n\n'
-        + (generate.experiment_note() + '\n\n' if generate.experiment_note() else '')
+        + (generate.experiment_note(news=True) + '\n\n' if generate.experiment_note(news=True) else '')
         + f"Trending items scraped in the last few days ({len(lines)}):\n" + '\n'.join(lines)
         + '\n\nRecently posted hooks (do not repeat these topics):\n' + '\n'.join(f'- {h}' for h in recent)
         + ('\n\nHow recent posts performed:\n' + '\n'.join(perf) if perf else '')
@@ -384,7 +394,7 @@ def timely_reel(reels, perf=None):
         return None
     options = sorted(pick(reels, candidates, performance() if perf is None else perf)['options'], key=lambda o: -o['reach_score'])
     used = {u for r in reels for u in r.get('sources', [])}
-    test = generate.experiment_today()
+    test = generate.experiment_today(news=True)
     tested = {'test': test} if test else {}
     hooks = {generate.norm(r['hook']) for r in reels}
     for i, option in enumerate(options, 1):

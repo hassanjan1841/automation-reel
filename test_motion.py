@@ -1,7 +1,9 @@
 """Tests for motion.py: the code-morph token plan, each template reads only fields its spec has, and a real render
 of every animation template in headless Chromium (transparent frames, a sane length, a settle frame inside it, sounds
 the sound kit knows, nothing left outside the box), plus the frame-0 rule for the two that may sit under a hook and
-readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword.
+readable labels on the light theme; the build visual drawn stage by stage, and the closing card's keyword; and the
+look (`Look`): the living background, code drawn without ligatures, titles rising out of their line, captions with
+no box; a real stage reel (`Stage`) and a real showcase (`Showcase`).
 
 Needs playwright with Chromium, pygments and the fonts (render.py --fonts; JetBrains Mono downloads on first use);
 CI installs them in the "motion" job. Without playwright the renders are skipped. E2E_CHROMIUM=<path> overrides the
@@ -169,6 +171,27 @@ class Fields(unittest.TestCase):
             self.assertEqual(set(re.findall(r'\bS\.(\w+)', body)) - set(spec), set(), kind)
 
 
+_module_patches = []
+
+
+def setUpModule():
+    """E2E_CHROMIUM=<path> makes every browser in this file launch that Chromium (as Render does for its own)."""
+    if not os.environ.get('E2E_CHROMIUM'):
+        return
+    try:
+        from playwright.sync_api import BrowserType
+    except ImportError:
+        return
+    launch = BrowserType.launch
+    _module_patches.append(mock.patch.object(BrowserType, 'launch', lambda self, **k: launch(
+        self, **{'executable_path': os.environ['E2E_CHROMIUM'], **k})))
+    _module_patches[-1].start()
+
+
+def tearDownModule():
+    for p in _module_patches:
+        p.stop()
+
 class Render(unittest.TestCase):
     """Every template rendered for real, once, at a small size."""
 
@@ -245,6 +268,24 @@ class Render(unittest.TestCase):
         ink = (last[..., 3] > 160) & (last[..., :3].max(axis=2) < 70)
         self.assertGreater(ink.mean(), 0.002)
 
+    def test_predict_stamps_the_chip_that_matches_the_output(self):
+        # The example's output "A C B" is the right-hand chip: green lands only there, after the countdown, and the
+        # left chip is struck through in red. Nothing green on the chips at settle: the answer is never given away.
+        folder, meta = self.out['predict']
+        frames = sorted(folder.glob('*.png'))
+
+        def marks(f):
+            a = np.asarray(Image.open(f).convert('RGBA')).astype(int)
+            r, g, b, seen = a[..., 0], a[..., 1], a[..., 2], a[..., 3] > 200
+            xs_g = np.nonzero(seen & (g - np.maximum(r, b) > 60))[1] / a.shape[1]
+            xs_r = np.nonzero(seen & (r - np.maximum(g, b) > 80))[1] / a.shape[1]
+            return (xs_g > 0.55).sum(), ((xs_g > 0.2) & (xs_g < 0.45)).sum(), (xs_r < 0.5).sum()
+        start, end = marks(frames[round(meta['settle'] * motion.FPS)]), marks(frames[-1])
+        self.assertEqual(start[0], 0)
+        self.assertGreater(end[0], 1000)
+        self.assertLess(end[1], 50)
+        self.assertGreater(end[2], start[2] + 1000)
+
     def test_latency_bars_finish_in_order_of_their_values(self):
         # The bars race in real time: each finishes at a time proportional to its value, the fastest first.
         _, meta = self.out['latency']
@@ -310,6 +351,289 @@ class Cards(unittest.TestCase):
         without, _ = render.build_slides({k: v for k, v in reel.items() if k != 'dm_keyword'}, clips)
         biggest = lambda s: max(e.mask.shape[0] for e in s.elements)
         self.assertGreater(biggest(slides[-1]), biggest(without[-1]) * 1.5)
+
+
+class Look(unittest.TestCase):
+    """The premium look: a living background, code drawn as typed, titles rising out of their line, captions with
+    no box."""
+
+    def test_background_moves_slowly_and_hands_out_fresh_arrays(self):
+        bg = render.Background(render.THEMES['dark'])
+        a, b = bg.at(0.0), bg.at(1 / render.FPS)
+        self.assertTrue(np.array_equal(a, b))        # refreshed every few frames, reused in between
+        a[:] = 0
+        self.assertGreater(bg.at(0.0).mean(), 5)     # drawing on a frame never touches the cache
+        later = bg.at(6.0)
+        self.assertGreater(np.abs(later - bg.at(0.0)).max(), 3)   # it moves
+        self.assertLess(np.abs(bg.at(3 / render.FPS) - bg.at(0.0)).max(), 6)   # but slowly
+        self.assertTrue(np.array_equal(render.make_background(render.THEMES['dark']), bg.at(0.0)))
+
+    def test_code_is_drawn_as_typed(self):
+        import visuals
+        from PIL import ImageDraw
+        f = visuals.mono(40)
+        for pair in ('=>', '<=', '!=', '->'):
+            whole, parts = Image.new('L', (200, 80)), Image.new('L', (200, 80))
+            ImageDraw.Draw(whole).text((10, 10), pair, font=f, fill=255)
+            d = ImageDraw.Draw(parts)
+            d.text((10, 10), pair[0], font=f, fill=255)
+            d.text((10 + f.getlength(pair[0]), 10), pair[1], font=f, fill=255)
+            self.assertTrue(np.array_equal(np.asarray(whole), np.asarray(parts)), pair)
+        self.assertIn('font-variant-ligatures:none', motion.PAGE)
+
+    def test_title_word_rises_out_of_its_line(self):
+        mask = np.ones((40, 60), dtype=np.float32)
+        el = render.El(mask, np.full(3, 255.0, dtype=np.float32), 100, 200, 0.0, dur=0.4, rise=44, clip=240)
+        early = np.zeros((render.H, render.W, 3), dtype=np.float32)
+        render.draw_element(early, el, 0.05)
+        self.assertGreater(early.max(), 0)
+        self.assertEqual(early[240:].max(), 0)        # nothing below the line's bottom edge
+        done = np.zeros_like(early)
+        render.draw_element(done, el, 1.0)
+        self.assertGreater(done[200:240, 100:160].min(), 250)   # fully in place once it lands
+
+    def test_cards_glow_and_the_marked_line_takes_focus(self):
+        import visuals
+        spec = {'type': 'code', 'language': 'python', 'code': 'a = 1\nb = 2\nc = 3\nd = 4', 'highlight': [1]}
+        card = visuals.build(spec, render.THEMES['dark'], (90, 600, 900, 700))
+        self.assertIsNotNone(card.glow)
+        frame = np.zeros((render.H, render.W, 3), dtype=np.float32)
+        card.draw(frame, 3.0, 1.0, 0)
+        self.assertGreater(frame[card.y + card.h + 20, card.x + card.w // 2].max(), 2)   # light below the card
+        (b0, b1), (a0, a1) = card.rows[0], card.rows[3]   # the marked line, and one clear of its circle
+        before, after = card.layer(card.settle)[0], card.layer(3.0)[0]
+        ink = lambda img, y0, y1: np.abs(img[y0:y1, 40:-40] - visuals.BG).mean()
+        self.assertLess(ink(after, a0, a1), ink(before, a0, a1) * 0.6)    # other lines step back
+        self.assertGreaterEqual(ink(after, b0, b1), ink(before, b0, b1))  # the marked line does not
+
+    def test_captions_have_no_box(self):
+        class Voice(list):
+            continuous = True
+        voice = Voice([np.zeros(render.SR * 3)])
+        voice.words = [[('Hello', 0.0, 0.4), ('world', 0.5, 0.9)]]
+        slide = render.Slide('hook', 0.0, 3.0)
+        caps = render.Captions(voice, [slide], render.THEMES['dark'])
+        frame = np.full((render.H, render.W, 3), 40.0, dtype=np.float32)
+        caps.draw(frame, render.VOICE_LEAD + 0.7)
+        changed = np.abs(frame - 40).max(axis=2) > 1
+        rows = np.where(changed.any(axis=1))[0]
+        self.assertTrue(len(rows))
+        band = changed[rows.min():rows.max() + 1]
+        cols = np.where(band.any(axis=0))[0]
+        # Halos fade out: the corners of the caption's band stay background, where a box would have filled them.
+        self.assertFalse(band[:4, :8].any() or band[-4:, -8:].any())
+        self.assertLess(band.mean(), 0.85)
+        accent = np.abs(frame - render.rgb(render.THEMES['dark']['accent'])).max(axis=2) < 8
+        self.assertTrue(accent.any())                 # the spoken word sits on the accent pill
+        self.assertGreater(cols.max() - cols.min(), 150)
+
+
+class Stage(unittest.TestCase):
+    """A real stage reel (stage.py) rendered in Chromium with a silent stand-in voice: the whole length, a sound
+    track, the hook complete on frame 0, and the scenes moving."""
+
+    def test_renders_a_stage_reel(self):
+        import subprocess
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'tests'))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from e2e_publish import silent_voice
+        from test_learn import STAGED
+        import copy
+        reel = {**copy.deepcopy(STAGED), 'id': 99901}
+        # The whole kit: chapter cards on the points, a checklist, and the accent flip on the closing words.
+        reel['scenes'][1] = {'kind': 'checklist', 'title': 'Done means', 'chapter': 'Reads',
+                             'items': [{'label': 'Key deleted on write', 'ok': True}, {'label': 'Old row served', 'ok': False}]}
+        reel['scenes'][2]['chapter'], reel['scenes'][3]['chapter'] = 'Writes', 'The fix'
+        reel['scenes'][4]['accent'] = True
+        # The edit scene performs its trick: a cursor per match (blue selections), then the typed text (green).
+        reel['scenes'][3] = {'kind': 'edit', 'title': '.env', 'chapter': 'The fix', 'find': 'CHANGE_ME', 'typed': 'TODO',
+                             'lines': ['API_URL=CHANGE_ME', 'DB_URL=CHANGE_ME', 'SECRET=CHANGE_ME']}
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'stage.mp4'
+            path, slides = render.render_reel(reel, out_path=out, voice=silent_voice(reel['voiceover']))
+            self.assertEqual([s.visual.spec['type'] for s in slides],
+                             ['stage-code', 'stage-checklist', 'stage-steps', 'stage-edit', 'stage-words'])
+            import stage
+            plan = stage.plan(reel, slides, render.spoken_words(silent_voice(reel['voiceover']), slides))['scenes'][3]
+            def rgb_at(t):
+                png = Path(tmp) / f'edit-{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(path), '-frames:v', '1',
+                                str(png)], check=True)
+                return np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)[400:1500]
+            blue = lambda f: ((f[..., 2] > 150) & (f[..., 2] > f[..., 0] + 60)).sum()
+            green = lambda f: ((f[..., 1] > 150) & (f[..., 1] > f[..., 0] + 50) & (f[..., 1] > f[..., 2] + 20)).sum()
+            selecting = rgb_at((plan['presses'][-1] + plan['type_at']) / 2)
+            typed = rgb_at(plan['type_at'] + 4 * plan['step'] + 0.3)
+            self.assertGreater(blue(selecting), 3 * 2500)               # all three matches selected
+            self.assertGreater(green(typed), 3 * 600)                   # TODO typed at all three cursors
+            self.assertLess(blue(typed), blue(selecting) / 4)            # the selections were replaced
+            warm = lambda f: float((f[..., 0] - f[..., 2]).mean())
+            self.assertGreater(warm(rgb_at(slides[1].start + 0.05)), warm(rgb_at(slides[1].start + 0.9)) + 15)  # light leak
+            probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
+                                    '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout
+            import json
+            info = json.loads(probe)
+            self.assertAlmostEqual(float(info['format']['duration']), slides[-1].end, delta=0.25)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            frames = []
+            for t in (0.0, slides[2].start + 1.5, slides[-1].end - 0.4, slides[-1].start + 1.0, slides[1].end - 0.5,
+                      slides[1].start + 0.3):
+                png = Path(tmp) / f'{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(path), '-frames:v', '1',
+                                str(png)], check=True)
+                frames.append(np.asarray(Image.open(png).convert('L'), dtype=np.float32))
+            zero, chapter, last, flip, checked, _ = frames
+            png = Path(tmp) / 'flip.png'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{slides[-1].end - 1.3:.2f}', '-i', str(path),
+                            '-frames:v', '1', str(png)], check=True)                # every closing word is in
+            flip_rgb = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)
+            r, g, b = flip_rgb[400:1400].mean(axis=(0, 1))
+            self.assertGreater(r, g + 60)                               # the accent flip fills the screen
+            ink = flip_rgb[560:1440].sum(axis=2) < 200
+            self.assertGreater(ink.sum(), 2000)                          # the accent word turns dark on it, still readable
+            filled = flip_rgb[560:1440].min(axis=2) > 230
+            self.assertGreater(filled.sum(), 25000)                      # the outlined words have filled in, solid white
+            self.assertGreater(flip.mean(), zero.mean() + 40)
+            self.assertGreater((checked[560:1440] > 200).sum(), (zero[560:1440] > 200).sum())  # the checklist card
+            png = Path(tmp) / 'card.png'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{slides[1].start + 0.3:.2f}', '-i', str(path),
+                            '-frames:v', '1', str(png)], check=True)
+            rgb = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)[760:1100]
+            orange = (rgb[..., 0] > 200) & (rgb[..., 1] < 160) & (rgb[..., 2] < 120)
+            self.assertGreater(orange.sum(), 3000)                      # the chapter card's big orange number
+            self.assertGreater((zero[244:330] > 200).sum(), 2000)      # the hook's words, white, on frame 0
+            self.assertGreater((zero[560:1440] > 120).sum(), 5000)     # its proof (the code card) already in place
+            self.assertGreater(chapter.mean(), zero.mean() + 60)        # the light chapter
+            self.assertLess(np.abs(last - zero).mean(), 25)             # it glides back to the opening for the loop
+            ghost = (last[560:1440] > 200) & (zero[560:1440] < 100)      # the closing words gone, not left over it
+            self.assertLess(ghost.sum(), 2000)
+
+
+class Stories(unittest.TestCase):
+    """stories.py's files made for real: the teaser is the reel's first seconds then the card, 9:16 with sound; the
+    puzzle shows the reel's own code."""
+
+    def test_teaser_and_puzzle(self):
+        import json
+        import subprocess
+        import stories
+        with tempfile.TemporaryDirectory() as tmp:
+            reel_video = Path(tmp) / 'reel.mp4'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=blue:s=1080x1920:r=30:d=8',
+                            '-f', 'lavfi', '-i', f'sine=f=300:r={render.SR}:d=8', '-shortest', '-c:v', 'libx264',
+                            '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(reel_video)], check=True)
+            reel = {'id': 5, 'hook': 'typeof null *lies*', 'series': 'Myth vs fact',
+                    'hook_visual': {'type': 'code', 'language': 'javascript', 'title': 'quirk.js', 'code': 'console.log(typeof null);'}}
+            with mock.patch.object(stories, 'OUT', Path(tmp)):
+                out = stories.teaser_video(reel, reel_video, Path(tmp) / 'teaser.mp4')
+                puzzle = stories.puzzle_image(reel, reel['hook_visual']['code'], Path(tmp) / 'puzzle.jpg')
+            info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height',
+                                              '-of', 'json', str(out)], capture_output=True, text=True, check=True).stdout)
+            self.assertAlmostEqual(float(info['format']['duration']), stories.TEASER_SECONDS + stories.CARD_SECONDS, delta=0.3)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            self.assertEqual([(x['width'], x['height']) for x in info['streams'] if x['codec_type'] == 'video'], [(1080, 1920)])
+            frames = []
+            for t in (1.0, stories.TEASER_SECONDS + 1.5):
+                png = Path(tmp) / f'{t}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', str(t), '-i', str(out), '-frames:v', '1', str(png)], check=True)
+                frames.append(np.asarray(Image.open(png).convert('RGB'), dtype=np.float32))
+            self.assertGreater(frames[0][..., 2].mean(), 150)                 # the reel's opening (blue here)
+            card = frames[1][600:800]
+            self.assertGreater(((card[..., 0] > 200) & (card[..., 2] < 120)).sum(), 5000)   # then the orange NEW REEL
+            img = Image.open(puzzle)
+            self.assertEqual(img.size, (1080, 1920))
+            code = np.asarray(img.convert('RGB'), dtype=np.float32)[760:1000]
+            self.assertGreater((code.min(axis=2) > 200).sum(), 1000)          # the code card's light text (an empty card has none)
+
+
+class ParallelFrames(unittest.TestCase):
+    """stage.frames draws frames in several browsers at once: the frames must be exactly those one browser draws (the
+    page is a pure function of time; each frame waits for every tile to be painted), and a broken page still fails."""
+
+    def test_many_browsers_draw_the_same_frames(self):
+        import importlib.util
+        if importlib.util.find_spec('playwright') is None:
+            self.skipTest('playwright is not installed')
+        import copy
+        import stage
+        sys.path.insert(0, str(Path(__file__).resolve().parent / 'tests'))
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from e2e_publish import silent_voice
+        from test_learn import STAGED
+        reel = {**copy.deepcopy(STAGED), 'id': 99902}
+        got = {}
+
+        class Caught(Exception):
+            pass
+
+        def catch(page_html, total, frames_path, label='stage'):
+            got.update(page=page_html, total=total)
+            raise Caught
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(stage, 'film', catch), self.assertRaises(Caught):
+            render.render_reel(reel, out_path=Path(tmp) / 'x.mp4', voice=silent_voice(reel['voiceover']))
+        page_html = got['page']
+        start = got['total'] * 0.25          # a stretch with scenes on the move
+        seconds = 1.2
+        # Only the frames from the cut: the page is shifted in time so frame 0 is `start`.
+        page_html = page_html.replace('window.renderAt = t => {', f'window.renderAt = t => {{ t += {start:.3f};', 1)
+        sounds_1, one = stage.frames(page_html, seconds, n_workers=1)
+        sounds_3, three = stage.frames(page_html, seconds, n_workers=3)
+        one, three = list(one), list(three)
+        self.assertEqual(len(one), round(seconds * render.FPS))
+        self.assertEqual(sounds_1, sounds_3)
+        self.assertEqual([i for i, (a, b) in enumerate(zip(one, three)) if a != b], [])
+        self.assertGreater(len(set(one)), len(one) // 2)       # the frames really move
+        with self.assertRaises(RuntimeError) as caught:
+            stage.frames('<script>window.ERROR = "boom";</script>', 1, label='broken', n_workers=2)
+        self.assertIn('boom', str(caught.exception))
+
+class Showcase(unittest.TestCase):
+    """The weekly showcase (showcase.py) rendered for real: its length, a sound track and its cover, light and words
+    on frame 0, the light beat, the glide back to the opening, and an impact with a riser into every beat."""
+
+    def test_renders_a_showcase(self):
+        import json
+        import subprocess
+        import showcase
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from test_learn import SHOWCASE
+        spec = {**SHOWCASE, 'beats': SHOWCASE['beats'][:4]}
+        with tempfile.TemporaryDirectory() as tmp:
+            heard = []
+            real = showcase.sound_track
+            with mock.patch.object(showcase, 'sound_track', side_effect=lambda snd, *a: (heard.extend(snd), real(snd, *a))):
+                out, total = showcase.render_showcase(spec, Path(tmp) / 'showcase-test.mp4')
+            for k in range(1, 4):                                       # every beat after the first lands on an impact
+                start = k * showcase.BEAT                               # with a riser building into it
+                self.assertIn([round(start, 3), 'impact'], [[round(a, 3), b] for a, b in heard])
+                self.assertTrue(any(b == 'riser' and start - 1 < a < start for a, b in heard))
+            self.assertTrue((Path(tmp) / 'showcase-test-cover.jpg').exists())
+            info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type',
+                                              '-of', 'json', str(out)], capture_output=True, text=True, check=True).stdout)
+            self.assertAlmostEqual(float(info['format']['duration']), 4 * showcase.BEAT + showcase.BACK, delta=0.2)
+            self.assertEqual(sorted(x['codec_type'] for x in info['streams']), ['audio', 'video'])
+            grab = {}
+            for name, t in (('zero', 0.0), ('light', 3 * showcase.BEAT + 1.4), ('end', total - 0.1)):
+                png = Path(tmp) / f'{name}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(out), '-frames:v', '1', str(png)],
+                               check=True)
+                grab[name] = np.asarray(Image.open(png).convert('L'), dtype=np.float32)
+            leak = []
+            for t in (showcase.BEAT + 0.05, showcase.BEAT + 0.8):      # a warm light leak sweeps across the cut
+                png = Path(tmp) / f'leak-{t:.2f}.png'
+                subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.2f}', '-i', str(out), '-frames:v', '1', str(png)],
+                               check=True)
+                f = np.asarray(Image.open(png).convert('RGB'), dtype=np.float32)
+                leak.append(float((f[..., 0] - f[..., 2]).mean()))
+            self.assertGreater(leak[0], leak[1] + 15)
+            zero = grab['zero']
+            self.assertGreater((zero[1280:1400] > 180).sum(), 1500)   # the first words, on frame 0
+            self.assertGreater(zero[700:1000, 400:680].max(), 200)    # the spark's light
+            self.assertGreater(grab['light'].mean(), zero.mean() + 100)  # the light beat
+            self.assertLess(np.abs(grab['end'] - zero).mean(), 20)    # back to the opening for the loop
+            shape = lambda f: (f[620:1060, 320:760] > 150).sum()       # the light line around the centre
+            self.assertLess(shape(grab['end']), 3000)                  # the last shape has folded back into the spark
 
 
 if __name__ == '__main__':

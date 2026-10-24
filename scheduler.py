@@ -1,8 +1,8 @@
 """Catch-up scheduler: GitHub drops many scheduled runs (the Daily reel's three crons fired twice in three days),
 so this decides what should be running right now and starts it with workflow_dispatch.
 
-  Daily reel: each slot owns a window from its start (11:07, 15:07, 19:07 UTC) to the next slot's start (or
-  midnight). Inside a slot's window, if that slot has not posted today and no Daily reel run is queued or
+  Daily reel: only the slots in REEL_SLOTS post (1 and 3 by default; "1,2,3" for three a day). Each one owns a
+  window from its start (11:07, 15:07, 19:07 UTC) to the next posting slot's start (or midnight). Inside a slot's window, if that slot has not posted today and no Daily reel run is queued or
   running, start one for that slot (it waits for the post time itself, or posts right away when late), unless
   MAX_ATTEMPTS runs were already started in this window (a slot that keeps failing is left for a person). A slot
   whose window has passed is skipped, never posted late on top of the next one.
@@ -14,6 +14,8 @@ so this decides what should be running right now and starts it with workflow_dis
   Ready-made video: an extras.json entry with a post_at time and no media_id is started with post-video.yml from
   EXTRA_LEAD before that time (post_video.py waits for the minute itself), while no Post a video run is active,
   at most MAX_ATTEMPTS times, and not when more than EXTRA_LATE late.
+  Showcase: on each day in SHOWCASE_DAYS (Wednesday and Saturday by default; "off" for never) from 15:41 UTC, if no
+  Showcase run has started today, start showcase.yml (it posts the week's animated showcase, showcase.py).
   Comment replies: on every run, start dm.yml (mode send) unless one is queued or running, so new comments are
   answered within about 10 minutes (its own 15-minute cron fires every few hours at best).
 
@@ -23,7 +25,8 @@ Runs from scheduler.yml (every 10 minutes when GitHub delivers it) and from any 
 scheduler.yml. Standard library only; uses the gh CLI.
 
 Env: GH_TOKEN (Actions write), GITHUB_REPOSITORY, LEARN_DAYS (days the learning loop runs: empty or "daily" for
-     every day, or day names such as "sun,wed")
+     every day, or day names such as "sun,wed"), REEL_SLOTS (the slots that post: empty for "1,3", or e.g. "1,2,3"),
+     SHOWCASE_DAYS (days the showcase posts: empty for "wed,sat", "off" for never, or day names)
 Usage: python scheduler.py          start whatever is due
        python scheduler.py --dry    only print the decision
 """
@@ -45,9 +48,23 @@ SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
 STUDY_START = time(8, 0)    # Sundays: the weekly study of other creators (study.yml)
 LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by then
+SHOWCASE_START = time(15, 41)  # the showcase's cron; it posts when ready, around 16:00 UTC
+SHOWCASE_DAYS = 'wed,sat'
 DAYS = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
 ACTIVE = ('queued', 'in_progress', 'waiting', 'requested', 'pending')
 MAX_ATTEMPTS = 2  # runs started in one slot's window; a slot that keeps failing is left for a person to look at
+# The slots that post (repo variable REEL_SLOTS, e.g. "1,2,3"). Two a day by default since 2026-10-14: slot 2
+# averaged 25 views against about 115 for the others, and a 55-follower account does better with two strong reels.
+DEFAULT_SLOTS = '1,3'
+
+
+def active_slots(value=None):
+    """The slots that post, from REEL_SLOTS ("1,3" by default)."""
+    names = [s.strip() for s in (value or DEFAULT_SLOTS).split(',') if s.strip()]
+    unknown = [s for s in names if not s.isdigit() or int(s) not in SLOT_STARTS]
+    if unknown or not names:
+        raise SystemExit(f'REEL_SLOTS has unknown slots: {", ".join(unknown) or "none"} (use e.g. "1,3" or "1,2,3")')
+    return {int(s) for s in names}
 
 
 def slot_of(reel):
@@ -63,32 +80,33 @@ def posted_slots(reels, day):
     return {slot_of(r) for r in reels if (r.get('posted_at') or '').startswith(day.isoformat())}
 
 
-def window(now):
-    """The slot whose window contains this moment, or None before the first slot of the day."""
+def window(now, slots=None):
+    """The slot whose window contains this moment, or None before the first slot of the day. With slots, only those
+    post: a slot's window then runs until the next posting slot's start."""
     current = None
     for slot, start in sorted(SLOT_STARTS.items()):
-        if now.time() >= start:
+        if (slots is None or slot in slots) and now.time() >= start:
             current = slot
     return current
 
 
-def started_in_window(now, daily_runs):
+def started_in_window(now, daily_runs, slots=None):
     """Daily reel runs created since the current slot's window opened today."""
-    slot = window(now)
+    slot = window(now, slots)
     if slot is None:
         return 0
     opened = datetime.combine(now.date(), SLOT_STARTS[slot], timezone.utc)
     return sum(1 for r in daily_runs if datetime.fromisoformat(r['createdAt'].replace('Z', '+00:00')) >= opened)
 
 
-def due_reel(now, reels, daily_runs):
-    """The slot to start now, or None: its window is open, it has not posted today, nothing is running, and it has
-    not already been tried MAX_ATTEMPTS times in this window."""
-    slot = window(now)
+def due_reel(now, reels, daily_runs, slots=None):
+    """The slot to start now, or None: it posts (slots), its window is open, it has not posted today, nothing is
+    running, and it has not already been tried MAX_ATTEMPTS times in this window."""
+    slot = window(now, slots)
     busy = any(r['status'] in ACTIVE for r in daily_runs)
     if slot is None or busy or slot in posted_slots(reels, now.date()):
         return None
-    if started_in_window(now, daily_runs) >= MAX_ATTEMPTS:
+    if started_in_window(now, daily_runs, slots) >= MAX_ATTEMPTS:
         print(f'Slot {slot} was already tried {MAX_ATTEMPTS} times in its window; not starting it again')
         return None
     return slot
@@ -143,6 +161,22 @@ def learn_days(value):
     return {DAYS.index(n) for n in names}
 
 
+def showcase_days(value):
+    """The weekdays (0 is Monday) the showcase posts on, from SHOWCASE_DAYS: empty for Wednesday and Saturday, "off"
+    for none."""
+    if (value or '').strip().lower() == 'off':
+        return set()
+    names = [d.strip().lower()[:3] for d in (value or SHOWCASE_DAYS).replace(' ', ',').split(',') if d.strip()]
+    unknown = [n for n in names if n not in DAYS]
+    if unknown:
+        raise SystemExit(f'SHOWCASE_DAYS has unknown days: {", ".join(unknown)} (use e.g. "wed,sat" or "off")')
+    return {DAYS.index(n) for n in names}
+
+
+def due_showcase(now, showcase_runs_today, days):
+    return now.weekday() in days and now.time() >= SHOWCASE_START and not showcase_runs_today
+
+
 def due_learn(now, learn_runs_today, days):
     return now.weekday() in days and now.time() >= LEARN_START and not learn_runs_today
 
@@ -170,10 +204,12 @@ def main():
     now = datetime.now(timezone.utc)
     reels = json.loads(QUEUE.read_text())
     daily = runs('daily-reel.yml')
-    print(f"{now:%Y-%m-%d %H:%M} UTC: window slot {window(now)}, posted today {sorted(posted_slots(reels, now.date()))}, "
+    slots = active_slots(os.environ.get('REEL_SLOTS'))
+    print(f"{now:%Y-%m-%d %H:%M} UTC: slots {sorted(slots)}, window slot {window(now, slots)}, "
+          f"posted today {sorted(posted_slots(reels, now.date()))}, "
           f"daily runs active: {sum(r['status'] in ACTIVE for r in daily)}, started in this window: "
-          f"{started_in_window(now, daily)}")
-    slot = due_reel(now, reels, daily)
+          f"{started_in_window(now, daily, slots)}")
+    slot = due_reel(now, reels, daily, slots)
     if slot:
         print(f'Starting Daily reel for slot {slot}')
         if not dry:
@@ -196,6 +232,17 @@ def main():
         print('Starting the weekly study of other creators')
         if not dry:
             start('study.yml', '-f', 'auto=true')
+    days = showcase_days(os.environ.get('SHOWCASE_DAYS'))
+    # Only runs from its start time on count: a dry run earlier the same day is not the day's showcase (2026-10-21, a
+    # morning dry run kept the scheduler from starting the missed 15:41 run).
+    since = f'{now.date().isoformat()}T{SHOWCASE_START:%H:%M}'
+    showcase_today = [r for r in runs('showcase.yml') if r['createdAt'][:10] == now.date().isoformat()
+                      and r['createdAt'][:16] >= since] if now.weekday() in days else []
+    showcase = due_showcase(now, showcase_today, days)
+    if showcase:
+        print('Starting the Showcase (its schedule did not run)')
+        if not dry:
+            start('showcase.yml', '-f', 'dry_run=false')
     extras = json.loads(EXTRAS.read_text()) if EXTRAS.exists() else []
     extra = due_extra(now, extras, runs('post-video.yml')) if waiting_extras(now, extras) else None
     if extra:
@@ -203,7 +250,7 @@ def main():
         if not dry:
             start('post-video.yml', '-f', f"video={extra['video']}", '-f', f"caption={extra['caption_file']}",
                   '-f', f"cover={extra.get('cover', '')}", '-f', 'dry_run=false')
-    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra:
+    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra and not showcase:
         print('Nothing to start')
     if due_dms(runs('dm.yml')) and not dry:
         start('dm.yml', '-f', 'mode=send')

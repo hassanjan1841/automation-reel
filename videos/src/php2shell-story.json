@@ -1,0 +1,116 @@
+{
+  "style": "dark",
+  "pillar": "timely",
+  "series": null,
+  "kicker": "Dev news",
+  "payoff": "Two critical PHP bugs can let a request with no login run code on your server; the fix is updating to PHP 8.5.12, 8.4.27, 8.3.36 or 8.2.35 (21 October 2026), and php.net says no setting fully protects you.",
+  "hook": "PHP bugs let strangers *run code*",
+  "hook_type": "problem",
+  "points": [
+    {
+      "title": "One request",
+      "body": "No login, no app code yet"
+    },
+    {
+      "title": "The fix: update",
+      "body": "No complete mitigations"
+    },
+    {
+      "title": "Fixed versions",
+      "body": "Released 21 October 2026"
+    }
+  ],
+  "cta": "Which *PHP* version runs your server?",
+  "caption": "Two critical PHP bugs can let a request with no login run code on your server.\nOn mod_php, php.net shows the attack can start before any application code runs (CVE-2026-109618, CVE-2026-109619). The fix: update to PHP 8.5.12, 8.4.27, 8.3.36 or 8.2.35 (21 October 2026); php.net says \"There are no complete mitigations, updating is the only safe choice.\" Source: php.net/archive/2026.php\nWhich version runs your server? 👇",
+  "hashtags": [
+    "#php",
+    "#websecurity",
+    "#cybersecurity",
+    "#webdev"
+  ],
+  "voiceover": [
+    "[fired up] Two PHP bugs let strangers run code, (break) [serious] no login needed.",
+    "[grim] A single request does it, (break) [serious] before your own code runs.",
+    "[firm] So update now. (break) [matter-of-fact] PHP says no setting fully protects you.",
+    "[confident and fast] The fixed versions are these four.",
+    "[warm, curious] Which version runs your server? (break) Check it today."
+  ],
+  "sources": [
+    "https://www.php.net/archive/2026.php#2026-10-21-5",
+    "https://www.php.net/archive/2026.php#2026-10-21-4"
+  ],
+  "scenes": [
+    {
+      "kind": "file",
+      "title": "php.net advisory",
+      "lines": [
+        "CVE-2026-109618",
+        "RCE via OOM corruption",
+        "CVE-2026-109619",
+        "RCE via stale global state"
+      ],
+      "tag": "CRITICAL"
+    },
+    {
+      "kind": "docs",
+      "url": "https://www.php.net/archive/2026.php#2026-10-21-5",
+      "title": "Security advisory",
+      "text": "We consider the risk highest for mod_php, with a demonstrated exploit where an unauthenticated request can trigger the attack before any application code runs.",
+      "mark": "before any application code runs",
+      "at": "before"
+    },
+    {
+      "kind": "docs",
+      "url": "https://www.php.net/archive/2026.php#2026-10-21-4",
+      "title": "PHP 8.5.12 Released!",
+      "text": "There are no complete mitigations, updating is the only safe choice.",
+      "mark": "updating is the only safe choice",
+      "accent": true,
+      "at": "update"
+    },
+    {
+      "kind": "file",
+      "title": "fixed versions",
+      "lines": [
+        "PHP 8.5.12",
+        "PHP 8.4.27",
+        "PHP 8.3.36",
+        "PHP 8.2.35"
+      ],
+      "tag": "21 OCT 2026",
+      "at": "versions"
+    },
+    {
+      "kind": "words",
+      "label": "php -v",
+      "lines": [
+        "Check it",
+        "*today*"
+      ],
+      "motif": "rings",
+      "at": "today"
+    }
+  ],
+  "hook_visual": {
+    "type": "screenshot",
+    "url": "https://www.php.net/archive/2026.php#2026-10-21-5",
+    "find": "unauthenticated remote code execution"
+  },
+  "alternatives": [
+    {
+      "hook": "Update PHP *today*",
+      "spoken": "[fired up] Two critical PHP bugs, (break) [serious] and the fix is one update.",
+      "hook_type": "problem"
+    },
+    {
+      "hook": "One request, *no login*",
+      "spoken": "[urgent] One request with no login (break) [serious] can run code on a PHP server.",
+      "hook_type": "problem"
+    },
+    {
+      "hook": "PHP fixed two *critical* bugs",
+      "spoken": "[excited] PHP fixed two critical bugs (break) [serious] on October twenty first.",
+      "hook_type": "news"
+    }
+  ]
+}

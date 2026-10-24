@@ -25,6 +25,7 @@ fit); the slide then falls back to its body text.
 import hashlib
 import json
 import math
+import re
 import subprocess
 import urllib.request
 
@@ -57,7 +58,8 @@ def mono(size):
     MONO.parent.mkdir(exist_ok=True)
     if not MONO.exists():
         urllib.request.urlretrieve(MONO_URL, MONO)
-    return ImageFont.truetype(str(MONO), size)
+    # Basic layout: no shaping, so code shows exactly as typed (JetBrains Mono would join => into an arrow).
+    return ImageFont.truetype(str(MONO), size, layout_engine=ImageFont.Layout.BASIC)
 
 
 def hex_rgb(h):
@@ -188,11 +190,21 @@ class Card:
         first frame (the hook's proof) is drawn from this point in its own timeline."""
         return self.TILT
 
+    glow = None               # set by build(): a soft light of the theme's colour behind the card, for depth
+    GLOW_BLUR, GLOW_DROP = 56, 30
+
     def draw(self, frame, t, alpha, dy):
         if alpha <= 0.003:
             return
         rgb, mask = self.layer(t)
         p = min(1.0, max(0.0, t / self.TILT))
+        if self.glow is not None:
+            if not hasattr(self, '_glow'):
+                self._glow = render.glow_mask(self.mask, self.GLOW_BLUR)
+            g, gx, gy = self._glow
+            color, strength = self.glow
+            render.composite(frame, render.El(g, color, 0, 0, 0), alpha * strength * p, self.x + gx,
+                             self.y + dy + gy + self.GLOW_DROP)
         if p < 1:
             e = 1 - render.ease_out(p)
             rgb, mask = tilted(rgb, mask, self.TILT_X * e, self.TILT_Y * e)
@@ -302,9 +314,11 @@ class Code(Card):
         p = render.ease_out(min(1.0, max(0.0, (t - done) / 0.4)))
         if p > 0 and self.highlights:
             rgb = rgb.copy()
-            for i in self.highlights:
-                y0, y1 = self.rows[i]
-                rgb[y0:y1, 4:-4] += (255 - rgb[y0:y1, 4:-4]) * 0.08 * p
+            for i, (y0, y1) in enumerate(self.rows):
+                if i in self.highlights:
+                    rgb[y0:y1, 4:-4] += (255 - rgb[y0:y1, 4:-4]) * 0.08 * p
+                else:  # focus: the other lines step back
+                    rgb[y0:y1, 4:-4] += (BG - rgb[y0:y1, 4:-4]) * 0.55 * p
             # The first highlighted line gets circled by hand.
             stroke(rgb, self.circle, (t - done - 0.25) / 0.55, self.accent, 5)
         return rgb, mask
@@ -340,9 +354,20 @@ class Diff(Card):
         self.heights = [plain.height, marked.height, new.height]
         self.sounds = [(0.9, 'tick'), (1.9, 'swish')]
 
+    @property
+    def marked(self):
+        """(from, to) of the red stage (removed lines struck through, fully faded in) in the card's own timeline.
+        qa.frames shows the reviewer this stage beside the end, because the end alone (only the green "after") was
+        rejected as "not a before/after" on 12 of 17 diff hooks (2026-10-19), so those reels opened on text."""
+        return 1.2, self.switch - 0.05
+
+    @property
+    def switch(self):
+        return max(1.8, self.duration * 0.45)
+
     def layer(self, t):
         # plain until 0.9s, red marks until ~45% of the slide, then the new code
-        switch = max(1.8, self.duration * 0.45)
+        switch = self.switch
         if t < 0.9:
             k, mix, nxt = 0, 0.0, 1
         elif t < switch:
@@ -716,7 +741,7 @@ class Scene:
 
 
 SCENES_3D = ('diagram', 'device', 'bars', 'logos', 'word')
-MOTION_TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
+MOTION_TYPES = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
                 'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
                 'notify', 'checks', 'bignumber', 'timeline', 'latency')  # motion.TYPES, kept here so importing visuals does not import motion
 
@@ -933,6 +958,15 @@ class Build(Card):
 
 # ---------- screenshot ----------
 
+def find_variants(find):
+    """The text to outline as typed, then with typographic quotes and as plain quotes: docs pages print can't as
+    can’t (2026-10-19: a Claude Code docs line was never found, so the proof slide fell back to text)."""
+    curly = re.sub(r'(?<=\w)\'(?=\w)', '\u2019', find)
+    curly = re.sub(r'"([^"]*)"', '\u201c\\1\u201d', curly)
+    plain = find.replace('\u2019', "'").replace('\u2018', "'").replace('\u201c', '"').replace('\u201d', '"')
+    return list(dict.fromkeys([find, curly, plain]))
+
+
 def capture(url, find):
     """Phone-width screenshot scrolled to the text `find`, with that element outlined in the accent color.
     Returns the image and the outlined box (x0, y0, x1, y1) in image pixels. Cached per URL and text."""
@@ -954,7 +988,8 @@ def capture(url, find):
                 if not resp or resp.status >= 400:
                     raise RuntimeError(f'HTTP {resp.status if resp else "no response"}')
                 page.wait_for_timeout(1000)
-                target = page.get_by_text(find, exact=False).first
+                spellings = [page.get_by_text(f, exact=False) for f in find_variants(find)]
+                target = next((t for t in spellings if t.count()), spellings[0]).first
                 target.wait_for(state='visible', timeout=8000)
                 overflows = target.evaluate(
                     'el => { for (let n = el; n && n !== document.body; n = n.parentElement)'
@@ -1094,6 +1129,15 @@ class Screenshot(Card):
 
 
 def build(visual, theme, box):
+    card = make(visual, theme, box)
+    if isinstance(card, Card):
+        accent = render.rgb(theme['accent'])
+        dark = theme is render.THEMES['dark']
+        card.glow = (accent * 0.6 + render.rgb('#3B5BDB') * 0.4, 0.30) if dark else (accent, 0.16)
+    return card
+
+
+def make(visual, theme, box):
     kind = (visual or {}).get('type')
     try:
         if kind == 'code':
