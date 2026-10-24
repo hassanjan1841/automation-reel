@@ -144,6 +144,18 @@ def describe(visual):
                         + visual.get('title', '') + ' (check the rows are what it really produces)',
              'palette': 'a scrolling list of options for `' + visual.get('prompt', '') + '` landing on '
                         + str(visual.get('pick')) + ' (check the items are real options)',
+             'notify': 'a notification from ' + visual.get('app', '') + ' with notes: ' + ', '.join(
+                 n.get('text', '') for n in visual.get('notes', [])) + ' (check each note is true, not an invented message)',
+             'checks': 'a table of ticks and crosses comparing ' + ', '.join(visual.get('columns', []))
+                       + ' (check every mark is true for its column)',
+             'bignumber': 'the number ' + str(visual.get('prefix', '')) + str(visual.get('value')) + str(visual.get('suffix', ''))
+                          + ' counting up: ' + visual.get('label', '') + ', from ' + visual.get('source', 'no source')
+                          + ' (check it)',
+             'timeline': 'a timeline: ' + ', '.join(f"{x.get('date')} {x.get('text')}" for x in visual.get('events', []))
+                         + ' (check the dates are real)',
+             'latency': 'bars racing to latencies: ' + ', '.join(f"{b.get('label')} {b.get('value')} {visual.get('unit', '')}"
+                                                                 for b in visual.get('bars', []))
+                        + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
              }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                    + visual.get('find', '') + '" outlined')
 

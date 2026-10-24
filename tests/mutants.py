@@ -172,6 +172,17 @@ MUTANTS = [
     ('qa.py', "'inspect': 'code with selection boxes", "'inspect_': 'code with selection boxes",
      'a new animation shown to the reviewer as a screenshot', 'test_motion.py'),
     ('motion.py', "    on = grids[0] > 0.5", "    on = grids[0] > 2", 'the dot-matrix word has no dots'),
+    # The explainer layouts (2026-10-24).
+    ('motion.py', "d = D * b.value / max", "d = D", 'the latency bars all finish together'),
+    ('motion.py', "    elif spec['type'] in ('race', 'latency', 'bignumber'):", "    elif spec['type'] == 'race':",
+     'a big number or latency shows "Source: undefined"'),
+    ('generate.py', "        if not v.get('source', '').startswith('https://'):\n            e.append(f'point {i} bignumber needs",
+     "        if False:\n            e.append(f'point {i} bignumber needs", 'a big number without a source', 'test_motion.py'),
+    ('generate.py', "round(value, 2) != value or ", "", 'a big number rounded on screen', 'test_motion.py'),
+    ('generate.py', " or len(r['marks']) != len(cols)", "", 'checks marks that do not match the columns', 'test_motion.py'),
+    ('generate.py', "        if not 3 <= len(events) <= 5", "        if not 1 <= len(events) <= 9", 'a timeline of any length',
+     'test_motion.py'),
+    ('generate.py', "v.get('unit') not in ('ms', 's')", "False", 'latency in any unit', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

@@ -1466,7 +1466,10 @@ class MotionTest(Sandbox):
                   'drawn': {'lines': ['this line is far too long']}, 'dots': {'word': 'two words'},
                   'board': {'tasks': ['only one']}, 'blueprint': {'links': [{'from': 'a', 'to': 'nowhere'}]},
                   'command': {'rows': ['one row']}, 'palette': {'pick': 'accordion'},
-                  'statement': {'lines': ['only one line']}, 'quotes': {'quotes': [{'author': 'A', 'platform': 'X'}]}}
+                  'statement': {'lines': ['only one line']}, 'quotes': {'quotes': [{'author': 'A', 'platform': 'X'}]},
+                  'notify': {'notes': [{'label': 'a', 'text': 'only one'}]}, 'checks': {'pick': 'nobody'},
+                  'bignumber': {'source': 'http://x'}, 'timeline': {'events': [{'date': '2020', 'text': 'one'}]},
+                  'latency': {'unit': 'minutes'}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

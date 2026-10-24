@@ -33,6 +33,11 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   palette    a command list scrolls and lands on the pick, chips above it       prompt, items, pick, chips
   statement  short lines rising in over a drifting gradient and glass panels   lines
   quotes     real posts typed onto dark cards, then stacked into a pile         quotes
+  notify     a notification banner, then its notes stacking in one by one      app, title, notes
+  checks     a comparison table filling with ticks and crosses column by column  title, columns, checks, pick
+  bignumber  one real number counting up, its label under it, a cited source   value, prefix, suffix, label, source
+  timeline   dated events revealed in order down a vertical line               events
+  latency    bars racing in real time to their latencies, numbers rolling      title, unit, bars, source
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -48,7 +53,8 @@ import sys
 import render
 
 TYPES = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
+         'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
+         'notify', 'checks', 'bignumber', 'timeline', 'latency')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
@@ -1036,6 +1042,155 @@ T.quotes = () => {
   } else END = Math.max(END, t + 0.4);
 };
 
+T.notify = () => {
+  // A notification banner drops in, then its notes stack under it one by one; the newest is read while the earlier
+  // ones dim, and all return to full once the last has landed.
+  const notes = S.notes, bh = 140, nh = 116, gap = 18, top = bh + 34;
+  const banner = mk('g', {opacity: 0}, L1); panel(banner, 0, 0, W, bh, {rx: 30});
+  mk('rect', {x: 30, y: 34, width: 72, height: 72, rx: 18, fill: C.accent}, banner);
+  txt(banner, 66, 84, S.app.trim()[0].toUpperCase(), 40, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700});
+  fit(txt(banner, 128, 62, S.app, 24, {fill: C.dim, 'font-weight': 500}), W - 170);
+  fit(txt(banner, 128, 104, S.title, 36, {'font-weight': 700}), W - 170);
+  at(0, 0.5, (p, raw) => { banner.setAttribute('opacity', Math.min(1, raw * 2.5)); banner.setAttribute('transform', `translate(0 ${-36 * (1 - p)})`); }, E.spring);
+  snd(0, 'pop'); SETTLE = 0.5;
+  const cards = notes.map((n, k) => { const y = top + k * (nh + gap), g = mk('g', {opacity: 0}, L1);
+    panel(g, 0, y, W, nh); mk('circle', {cx: 44, cy: y + nh / 2, r: 9, fill: C.accent}, g);
+    fit(txt(g, 76, y + 44, n.label, 24, {class: 'mono', fill: C.dim, 'font-weight': 500}), W - 110);
+    fit(txt(g, 76, y + 88, n.text, 34), W - 110);
+    return g; });
+  let t = 1.0;
+  cards.forEach((g, k) => { at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${40 * (1 - p)})`); }, E.spring);
+    snd(t, 'tick'); cards.slice(0, k).forEach(o => dim(o, t, 0.5, 0.3)); t += 0.95; });
+  cards.slice(0, -1).forEach(o => fade(o, t, 0.35, 0.5, 1)); snd(t, 'click');
+  END = Math.max(END, t + 1.5);
+};
+
+T.checks = () => {
+  // A comparison table: the row labels first, then one column at a time lights up and its ticks and crosses pop in
+  // down the rows; an optional pick keeps an accent ring at the end.
+  const cols = S.columns, rows = S.checks, nc = cols.length, nr = rows.length;
+  const head = S.title ? 150 : 110, rowH = 104, colW = nc === 2 ? 190 : 170, cx0 = W - nc * colW - 10, ph = head + nr * rowH + 20;
+  const card = mk('g', {opacity: 0}, L1); panel(card, 0, 0, W, ph);
+  if (S.title) fit(txt(card, 40, 66, S.title, 36, {'font-weight': 700}), W - 80);
+  const heads = cols.map((c, j) => fit(txt(card, cx0 + j * colW + colW / 2, head - 28, c, 28, {'text-anchor': 'middle', fill: C.dim}), colW - 20));
+  mk('rect', {x: 24, y: head, width: W - 48, height: 2, fill: C.line}, card);
+  rows.forEach((r, i) => { const y = head + i * rowH;
+    if (i) mk('rect', {x: 24, y, width: W - 48, height: 1.5, fill: C.line}, card);
+    fit(txt(card, 40, y + rowH / 2 + 11, r.label, 32), cx0 - 60); });
+  pop(card, 0, W / 2, ph / 2, 0.5); snd(0, 'pop'); SETTLE = 0.5;
+  const mark = (on, x, y) => { const g = mk('g', {opacity: 0}, L2);
+    if (on) { mk('circle', {cx: x, cy: y, r: 26, fill: C.accent}, g);
+      mk('path', {d: `M${x - 11} ${y + 1} L${x - 3} ${y + 9} L${x + 12} ${y - 8}`, fill: 'none', stroke: '#fff', 'stroke-width': 5,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g); }
+    else { mk('circle', {cx: x, cy: y, r: 25, fill: 'none', stroke: C.dim, 'stroke-width': 3, opacity: 0.7}, g);
+      mk('path', {d: `M${x - 9} ${y - 9} L${x + 9} ${y + 9} M${x + 9} ${y - 9} L${x - 9} ${y + 9}`, fill: 'none', stroke: C.dim,
+        'stroke-width': 4, 'stroke-linecap': 'round'}, g); }
+    return g; };
+  const band = j => ({x: cx0 + j * colW + 8, y: head - 72, width: colW - 16, height: nr * rowH + 82, rx: 18});
+  let t = 0.9, prev = null;
+  cols.forEach((c, j) => { const x = cx0 + j * colW + colW / 2, b = mk('rect', {...band(j), fill: C.accent, opacity: 0}, L1);
+    fade(b, t, 0.3, 0, 0.12); at(t, 0.3, p => heads[j].setAttribute('fill', p > 0.5 ? C.accent : C.dim)); snd(t, 'pop');
+    if (prev) { fade(prev.b, t, 0.3, 0.12, 0); const h = prev.h; set(t, () => h.setAttribute('fill', C.dim)); }
+    rows.forEach((r, i) => { const y = head + i * rowH + rowH / 2, tm = t + 0.25 + i * 0.13;
+      pop(mark(r.marks[j], x, y), tm, x, y, 0.4); snd(tm, 'tick'); });
+    prev = {b, h: heads[j]}; t += 0.25 + nr * 0.13 + 0.55; });
+  fade(prev.b, t, 0.3, 0.12, 0);
+  const pk = cols.indexOf(S.pick);
+  if (pk >= 0) { const ring = mk('rect', {...band(pk), fill: 'none', stroke: C.accent, 'stroke-width': 4, opacity: 0}, L2);
+    fade(ring, t, 0.35); set(t, () => heads.forEach((h, k) => h.setAttribute('fill', k === pk ? C.accent : C.dim))); snd(t, 'pop'); }
+  END = Math.max(END, t + 1.4);
+};
+
+T.bignumber = () => {
+  // One real number counting up out of a soft blur with its label under it, then a marker stroke drawn beneath it.
+  const v = S.value, d = Math.min(2, (String(v).split('.')[1] || '').length);
+  const fmt = x => Number(x).toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+  svg.querySelector('defs').insertAdjacentHTML('beforeend',
+    '<filter id="bnb" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur id="bnbs" stdDeviation="0"/></filter>');
+  const blur = document.getElementById('bnbs');
+  let size = 300; const num = txt(L2, W / 2, 0, '', size, {'text-anchor': 'middle', 'font-weight': 700, fill: C.ink, opacity: 0, filter: 'url(#bnb)'});
+  const pre = mk('tspan', {fill: C.accent}, num), body = mk('tspan', {}, num), suf = mk('tspan', {fill: C.accent}, num);
+  const show = x => { pre.textContent = S.prefix; body.textContent = fmt(x); suf.textContent = S.suffix; };
+  // Measured at the final value, so the layout fit leaves room for it; frames before the count show 0.
+  show(v);
+  while (size > 80 && num.getComputedTextLength() > W - 40) { size -= 8; num.setAttribute('font-size', size); }
+  const base = size * 0.74; num.setAttribute('y', base);
+  const bb = num.getBBox(), my = base + Math.max(26, size * 0.12);
+  const mark = line(`M${bb.x + 6} ${my} Q${W / 2} ${my + size * 0.05} ${bb.x + bb.width - 6} ${my - size * 0.02}`,
+    {stroke: C.accent, 'stroke-width': Math.max(8, size * 0.04), opacity: 0.85});
+  const measure = s => { const e = txt(L2, 0, 0, s, 40, {'font-weight': 500}); const w = e.getComputedTextLength(); e.remove(); return w; };
+  const ws = S.label.split(/\s+/); let lines = [S.label];
+  if (measure(S.label) > W - 80 && ws.length > 1) { let best = Infinity;
+    for (let k = 1; k < ws.length; k++) { const a = ws.slice(0, k).join(' '), b = ws.slice(k).join(' '), m = Math.max(measure(a), measure(b));
+      if (m < best) { best = m; lines = [a, b]; } } }
+  const ly = my + 90, labs = lines.map((l, i) => fit(txt(L2, W / 2, ly + i * 54, l, 40, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0}), W - 40));
+  const src = txt(L2, W / 2, ly + lines.length * 54 + 30, `Source: ${S.source_host}`, 22, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0});
+  set(0, () => show(0));
+  at(0.1, 0.5, (p, raw) => { num.setAttribute('opacity', Math.min(1, raw * 2.5)); num.setAttribute('transform', `translate(0 ${(1 - p) * 40})`);
+    blur.setAttribute('stdDeviation', 8 * (1 - p)); }, E.spring);
+  snd(0.1, 'swish'); labs.forEach((e, i) => fade(e, 0.3 + i * 0.08)); fade(src, 0.45);
+  SETTLE = 0.6;
+  const tc = 0.7, dur = 1.5;
+  at(tc, dur, (p, raw) => { show(raw >= 1 ? v : v * p); blur.setAttribute('stdDeviation', 6 * Math.pow(1 - raw, 2)); }, E.out);
+  [0, 0.25, 0.5, 0.8].forEach(x => snd(tc + x, 'tick')); snd(tc + dur, 'pop');
+  draw(mark, tc + dur + 0.1, 0.45); snd(tc + dur + 0.1, 'scribble');
+  END = Math.max(END, tc + dur + 0.55 + 1.4);
+};
+
+T.timeline = () => {
+  // Dated events down a vertical line: the accent line grows to each dot in turn, the date and text slide in beside
+  // it while the earlier events dim, and all return to full at the end.
+  const ev = S.events, n = ev.length, ds = 30;
+  const measure = s => { const e = txt(L2, 0, 0, s, ds, {class: 'mono', 'font-weight': 500}); const w = e.getComputedTextLength(); e.remove(); return w; };
+  const lx = Math.max(...ev.map(e => measure(e.date))) + 44, tx = lx + 44, rowH = Math.min(190, (H - 120) / Math.max(1, n - 1)), y0 = 40;
+  const d = `M${lx} ${y0} L${lx} ${y0 + (n - 1) * rowH}`;
+  draw(line(d, {stroke: C.track, 'stroke-width': 6}), 0, 0.5);
+  const prog = line(d, {stroke: C.accent, 'stroke-width': 6});
+  SETTLE = 0.5;
+  let t = 0.6; const groups = [];
+  ev.forEach((e, k) => { const y = y0 + k * rowH;
+    if (k) at(t, 0.4, p => prog.p.setAttribute('stroke-dashoffset', prog.len * (1 - lerp(k - 1, k, p) / (n - 1))), E.inout);
+    const td = t + (k ? 0.35 : 0), dot = mk('g', {opacity: 0}, L3);
+    const halo = mk('circle', {cx: lx, cy: y, r: 28, fill: C.accent, opacity: 0, filter: 'url(#glow)'}, dot);
+    mk('circle', {cx: lx, cy: y, r: 13, fill: C.accent}, dot);
+    pop(dot, td, lx, y, 0.4); at(td, 0.8, (p, raw) => halo.setAttribute('opacity', 0.7 * Math.sin(Math.PI * raw))); snd(td, 'pop');
+    const g = mk('g', {opacity: 0}, L2);
+    txt(g, lx - 30, y + 11, e.date, ds, {class: 'mono', 'text-anchor': 'end', fill: C.mute, 'font-weight': 500});
+    fit(txt(g, tx, y + 12, e.text, 36, {fill: C.ink, 'font-weight': 700}), W - tx - 10);
+    if (e.note) fit(txt(g, tx, y + 54, e.note, 26, {fill: C.mute, 'font-weight': 500}), W - tx - 10);
+    at(td + 0.1, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(${24 * (1 - p)} 0)`); }, E.spring);
+    snd(td + 0.1, 'tick'); groups.forEach(o => dim(o, td, 0.45, 0.3)); groups.push(g); t = td + 1.0; });
+  groups.slice(0, -1).forEach(o => fade(o, t, 0.35, 0.45, 1)); snd(t, 'click');
+  END = Math.max(END, t + 1.5);
+};
+
+T.latency = () => {
+  // A latency race in real time: every bar starts together and grows at the same speed, so each stops at its own
+  // value and the fastest finishes first; the number beside each bar rolls with it.
+  const bars = S.bars, n = bars.length, max = Math.max(...bars.map(b => b.value)), min = Math.min(...bars.map(b => b.value));
+  const head = 120, rowH = 126, px = 40, bw = W - 2 * px, bh = 30, ph = head + n * rowH + 64, unit = ' ' + S.unit;
+  const card = mk('g', {opacity: 0}, L1); panel(card, 0, 0, W, ph);
+  fit(txt(card, px, 74, S.title, 36, {'font-weight': 700}), bw);
+  const dec = x => (String(x).split('.')[1] || '').length, dm = dec(max);
+  pop(card, 0, W / 2, ph / 2, 0.5); snd(0, 'pop'); SETTLE = 0.5;
+  const t0 = 0.9, D = 2.4;
+  bars.forEach((b, i) => { const y = head + i * rowH, win = b.value === min, w = bw * b.value / max, d = D * b.value / max, k = dec(b.value);
+    const lab = fit(txt(card, px, y + 34, b.label, 30), bw - 260);
+    const num = txt(card, W - px, y + 34, (0).toFixed(k) + unit, 30, {class: 'mono', 'text-anchor': 'end', fill: C.dim, 'font-weight': 500});
+    mk('rect', {x: px, y: y + 56, width: bw, height: bh, rx: bh / 2, fill: 'rgba(255,255,255,0.07)'}, card);
+    const r = mk('rect', {x: px, y: y + 56, width: 0, height: bh, rx: bh / 2, fill: win ? C.accent : '#5B6378'}, card);
+    at(t0, d, (p, raw) => { r.setAttribute('width', Math.max(bh, w * p)); num.textContent = (raw >= 1 ? b.value : b.value * p).toFixed(k) + unit; }, E.lin);
+    at(t0 + d, 0.25, p => num.setAttribute('fill', p > 0.5 ? (win ? C.accent : C.text) : C.dim));
+    snd(t0 + d, win ? 'pop' : 'tick');
+    if (win) { const pl = pill(card, px + lab.getComputedTextLength() + 20 + 56, y + 25, 'fastest', 20); pop(pl.g, t0 + d, pl.cx, pl.cy, 0.4); } });
+  const ay = head + n * rowH + 22;
+  txt(card, px, ay, '0', 22, {class: 'mono', fill: C.dim, 'font-weight': 500});
+  txt(card, W - px, ay, max.toFixed(dm) + unit, 22, {class: 'mono', fill: C.dim, 'font-weight': 500, 'text-anchor': 'end'});
+  const src = txt(L2, 0, ph + 44, `Source: ${S.source_host}`, 22, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
+  sweep(0, 0, W, ph, t0 + D + 0.3);
+  END = Math.max(END, t0 + D + 1.2 + 1.0);
+};
+
 Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'),
   document.fonts.load('500 34px "JetBrains Mono"'), document.fonts.load('400 34px "Instrument Serif"'),
   document.fonts.load('italic 400 34px "Instrument Serif"')]).then(() => {
@@ -1205,7 +1360,7 @@ def prepare(spec, w):
                     size=min(40, int((w - 90) / (max(cols, 8) * 0.6))))
     elif spec['type'] == 'inspect':
         spec['tokens'] = tokens(spec['code'], spec.get('language'))
-    elif spec['type'] == 'race':
+    elif spec['type'] in ('race', 'latency', 'bignumber'):
         from urllib.parse import urlparse
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
     elif spec['type'] == 'drawn':
@@ -1214,10 +1369,17 @@ def prepare(spec, w):
         spec.update(dot_raster(spec['word']))
         spec['seed'] = int(hashlib.sha1(spec['word'].encode()).hexdigest()[:8], 16)
         spec.setdefault('caption', '')
+    if spec['type'] == 'bignumber':
+        spec.setdefault('prefix', '')
+        spec.setdefault('suffix', '')
+    elif spec['type'] == 'checks':
+        spec.setdefault('title', '')
+        spec.setdefault('pick', '')
     elif spec['type'] == 'structure' and spec.get('structure') == 'map':
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
-                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes'):
+                'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes',
+                'notes', 'columns', 'checks', 'events'):
         spec.setdefault(key, [])
     return spec
 
@@ -1354,6 +1516,25 @@ EXAMPLES = {
         {'author': 'Andrej Karpathy', 'platform': 'X', 'url': 'https://x.com/karpathy/status/1886192184808149383',
          'text': 'There\'s a new kind of coding I call "vibe coding", where you fully give in to the vibes, '
                  'embrace exponentials, and forget that the code even exists.'}]},
+    'notify': {'type': 'notify', 'app': 'Dependabot', 'title': 'What it watches for you',
+               'notes': [{'label': 'alerts', 'text': 'Flags deps with known CVEs'},
+                         {'label': 'security updates', 'text': 'PRs that patch vulnerable deps'},
+                         {'label': 'version updates', 'text': 'PRs to keep packages current'}]},
+    'checks': {'type': 'checks', 'title': 'JavaScript variables', 'columns': ['let', 'const', 'var'], 'pick': 'const',
+               'checks': [{'label': 'Block scoped', 'marks': [True, True, False]},
+                          {'label': 'Can be reassigned', 'marks': [True, False, True]},
+                          {'label': 'Can be redeclared', 'marks': [False, False, True]},
+                          {'label': 'Usable before declared', 'marks': [False, False, True]}]},
+    'bignumber': {'type': 'bignumber', 'value': 79, 'label': 'characters per line, the PEP 8 limit',
+                  'source': 'https://peps.python.org/pep-0008/'},
+    'timeline': {'type': 'timeline', 'events': [
+        {'date': 'Dec 2008', 'text': 'Python 3.0 ships'},
+        {'date': 'Jul 2010', 'text': 'Python 2.7 ships', 'note': 'the last 2.x release'},
+        {'date': 'Jan 2020', 'text': 'Python 2 reaches end of life', 'note': 'no more fixes, not even security'},
+        {'date': 'Oct 2024', 'text': 'Python 3.13 ships', 'note': 'an experimental free-threaded build'}]},
+    'latency': {'type': 'latency', 'title': 'Latency numbers', 'unit': 'ms', 'source': 'https://gist.github.com/jboner/2841832',
+                'bars': [{'label': 'Read 1 MB from SSD', 'value': 1}, {'label': 'Disk seek', 'value': 10},
+                         {'label': 'Read 1 MB from disk', 'value': 20}, {'label': 'CA to NL round trip', 'value': 150}]},
 }
 
 

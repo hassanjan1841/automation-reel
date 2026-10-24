@@ -265,7 +265,8 @@ def playbook():
 # 2D explainer animations (motion.py; visuals.MOTION_TYPES). At most one per reel, always with a flat backup choice
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
-          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes')
+          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
+          'notify', 'checks', 'bignumber', 'timeline', 'latency')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
 QUOTES_TOTAL = 200  # the quotes animation types its text on and must fit MAX_SECONDS
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
@@ -286,6 +287,7 @@ def motion_errors(i, v):
     """A 2D animation's data: small enough to read on a phone and consistent with itself."""
     kind, e = v.get('type'), []
     short = lambda s, n: isinstance(s, str) and 1 <= len(s.strip()) <= n
+    num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x < 1e9
     if kind == 'stepper':
         lines = v.get('code', '').rstrip('\n').split('\n')
         trace, names = v.get('trace', []), {x.get('name') for s in v.get('trace', []) for x in s.get('vars', [])}
@@ -403,7 +405,6 @@ def motion_errors(i, v):
             e.append(f'point {i} variants needs variants that differ from each other')
     elif kind == 'wall':
         tiles, stats = v.get('tiles', []), v.get('stats', [])
-        num = lambda x: isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x < 1e9
         if not 3 <= len(tiles) <= 12 or any(not short(t, 14) for t in tiles):
             e.append(f'point {i} wall needs 3 to 12 tiles with labels of max 14 characters')
         elif not 2 <= len(stats) <= 4 or any(not isinstance(s, dict) or not num(s.get('value')) or not short(s.get('label'), 14)
@@ -476,6 +477,50 @@ def motion_errors(i, v):
             e.append(f'point {i} palette pick must be one of items, but not among the first 3 (so the list scrolls)')
         elif len(chips) > 6 or any(not short(c, 12) for c in chips):
             e.append(f'point {i} palette chips are 0 to 6 labels of max 12 characters')
+    elif kind == 'notify':
+        notes = v.get('notes', [])
+        if not short(v.get('app'), 16) or not short(v.get('title'), 32):
+            e.append(f'point {i} notify needs an "app" (max 16 characters) and a "title" (max 32)')
+        elif not 2 <= len(notes) <= 3 or any(not isinstance(n, dict) or not short(n.get('label'), 16)
+                                              or not short(n.get('text'), 34) for n in notes):
+            e.append(f'point {i} notify needs 2 to 3 notes, each a "label" of max 16 and a "text" of max 34 characters')
+    elif kind == 'checks':
+        cols, rows = v.get('columns', []), v.get('checks', [])
+        if (v.get('title') is not None and not short(v['title'], 26)) or not 2 <= len(cols) <= 3 \
+                or any(not short(c, 10) for c in cols) or len(set(cols)) != len(cols):
+            e.append(f'point {i} checks needs 2 to 3 different columns of max 10 characters (and an optional title of max 26)')
+        elif not 2 <= len(rows) <= 5 or any(not isinstance(r, dict) or not short(r.get('label'), 22)
+                                             or not isinstance(r.get('marks'), list) or len(r['marks']) != len(cols)
+                                             or any(not isinstance(m, bool) for m in r['marks']) for r in rows):
+            e.append(f'point {i} checks needs 2 to 5 rows, each a "label" of max 22 characters and one true or false '
+                     'in "marks" per column')
+        elif v.get('pick') is not None and v['pick'] not in cols:
+            e.append(f'point {i} checks pick must be one of the columns')
+    elif kind == 'bignumber':
+        value = v.get('value')
+        if not num(value) or not value > 0 or round(value, 2) != value or not short(v.get('label'), 40):
+            e.append(f'point {i} bignumber needs a positive "value" (at most 2 decimals, shown exactly) and a "label" of '
+                     'max 40 characters')
+        elif any(v.get(k) is not None and not short(v[k], n) for k, n in (('prefix', 2), ('suffix', 3))):
+            e.append(f'point {i} bignumber "prefix" is max 2 characters (like $ or #) and "suffix" max 3 (like %, ms, x)')
+        if not v.get('source', '').startswith('https://'):
+            e.append(f'point {i} bignumber needs "source": the https page the number comes from')
+    elif kind == 'timeline':
+        events = v.get('events', [])
+        if not 3 <= len(events) <= 5 or any(not isinstance(x, dict) or not short(x.get('date'), 12)
+                                             or not short(x.get('text'), 28)
+                                             or (x.get('note') is not None and not short(x['note'], 36)) for x in events):
+            e.append(f'point {i} timeline needs 3 to 5 events: a "date" of max 12, a "text" of max 28 and an optional '
+                     '"note" of max 36 characters')
+    elif kind == 'latency':
+        bars = v.get('bars', [])
+        if not short(v.get('title'), 28) or v.get('unit') not in ('ms', 's'):
+            e.append(f'point {i} latency needs a "title" (max 28 characters) and a "unit" of ms or s')
+        elif not 2 <= len(bars) <= 5 or any(not short(b.get('label'), 22) or not num(b.get('value')) or not b['value'] > 0
+                                             for b in bars):
+            e.append(f'point {i} latency needs 2 to 5 bars with labels of max 22 characters and positive values')
+        if not v.get('source', '').startswith('https://'):
+            e.append(f'point {i} latency needs "source": the https page the numbers come from')
     return e
 
 
@@ -776,6 +821,19 @@ VISUAL_SCHEMA = {
             'properties': {'part': {'type': 'string'}, 'text': {'type': 'string'}}}},
         'rows': {'type': 'array', 'items': {'type': 'string'}}, 'prompt': {'type': 'string'}, 'pick': {'type': 'string'},
         'chips': {'type': 'array', 'items': {'type': 'string'}},
+        'app': {'type': 'string'},
+        'notes': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'text'],
+            'properties': {'label': {'type': 'string'}, 'text': {'type': 'string'}}}},
+        'columns': {'type': 'array', 'items': {'type': 'string'}},
+        'checks': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['label', 'marks'],
+            'properties': {'label': {'type': 'string'}, 'marks': {'type': 'array', 'items': {'type': 'boolean'}}}}},
+        'value': {'type': 'number'}, 'label': {'type': 'string'}, 'prefix': {'type': 'string'},
+        'suffix': {'type': 'string'},
+        'events': {'type': 'array', 'items': {
+            'type': 'object', 'additionalProperties': False, 'required': ['date', 'text'],
+            'properties': {'date': {'type': 'string'}, 'text': {'type': 'string'}, 'note': {'type': 'string'}}}},
         'quotes': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['author', 'platform', 'url', 'text'],
             'properties': {'author': {'type': 'string'}, 'platform': {'type': 'string'}, 'url': {'type': 'string'},
@@ -1228,6 +1286,23 @@ numbers only from a cited page.
   3 {"author", "platform", "url", "text"}; same rules as the quote visual: a known platform, an https url, the exact
   words of the post, 10 to 220 characters each and max 200 characters in total). Only on days real posts are
   allowed, and only real posts you opened: never invent, reword or merge a quote. The caption credits each author.
+- notify: a notification banner, then 2 to 3 notes stacking in under it one by one, like a morning brief. "app"
+  (max 16 characters, the tool it comes from; its first letter is drawn, never a logo), "title" (max 32) and "notes"
+  (2 to 3 {"label" max 16, "text" max 34}). Every note states something true: a real feature, step or fact from your
+  sources. Never invent messages, names or numbers and show them as if a real app sent them.
+- checks: a comparison table that fills with ticks and crosses one column at a time. Optional "title" (max 26),
+  "columns" (2 to 3 options of max 10 characters, e.g. "let", "const", "var"), "checks" (2 to 5 {"label" max 22,
+  "marks": one true or false per column, in column order}) and an optional "pick" (one column, ringed at the end, only
+  when the point recommends it). Every mark must be true for that option.
+- bignumber: one real number counting up from 0, its label under it, then a marker stroke. "value" (positive, at most
+  2 decimals, exactly as the source gives it), optional "prefix" (max 2, like "$" or "#") and "suffix" (max 3, like
+  "%", "ms", "x"), "label" (max 40 characters, what the number counts) and "source" (the https page it comes from,
+  shown as "Source: host"). Never estimate, round or combine numbers.
+- timeline: 3 to 5 dated events revealed in order down a vertical line. "events" ({"date" max 12 like "Oct 2024",
+  "text" max 28, optional "note" max 36}), oldest first. Only real dates from your sources.
+- latency: bars racing in real time: all start together and grow at the same speed, so each stops at its own value
+  and the fastest finishes first. "title" (max 28), "unit" (ms or s), "bars" (2 to 5 {"label" max 22, "value"}) and
+  "source" (its https url). Only measured numbers from that page, never estimates.
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

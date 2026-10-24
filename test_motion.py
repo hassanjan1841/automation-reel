@@ -117,6 +117,47 @@ class Typography(unittest.TestCase):
         self.assertTrue(spec['dots'] and isinstance(spec['seed'], int))
 
 
+class ExplainerRules(unittest.TestCase):
+    """notify, checks, bignumber, timeline and latency: each bad spec fails for one reason."""
+
+    def bad_specs(self, kind, bads):
+        import generate
+        ok = dict(motion.EXAMPLES[kind])
+        self.assertEqual(generate.motion_errors(1, ok), [], kind)
+        for bad in bads(ok):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+
+    def test_notify(self):
+        self.bad_specs('notify', lambda ok: [{**ok, 'app': ''}, {**ok, 'notes': ok['notes'][:1]},
+                                             {**ok, 'notes': ok['notes'] + [{'label': 'x', 'text': 'y'}]},
+                                             {**ok, 'notes': [{'label': 'x', 'text': 'y' * 35}] * 2}])
+
+    def test_checks_marks_match_the_columns(self):
+        rows = motion.EXAMPLES['checks']['checks']
+        self.bad_specs('checks', lambda ok: [{**ok, 'columns': ['only']}, {**ok, 'columns': ['a', 'a', 'b']},
+                                             {**ok, 'checks': [{**rows[0], 'marks': [True, False]}] + rows[1:]},
+                                             {**ok, 'checks': [{**rows[0], 'marks': [1, 0, 1]}] + rows[1:]},
+                                             {**ok, 'checks': rows[:1]}, {**ok, 'pick': 'nope'}])
+
+    def test_bignumber_is_exact_and_cited(self):
+        self.bad_specs('bignumber', lambda ok: [{**ok, 'source': ''}, {**ok, 'value': 0}, {**ok, 'value': 3.14159},
+                                                {**ok, 'value': True}, {**ok, 'suffix': 'abcd'}, {**ok, 'label': ''}])
+
+    def test_timeline(self):
+        ev = motion.EXAMPLES['timeline']['events']
+        self.bad_specs('timeline', lambda ok: [{**ok, 'events': ev[:2]}, {**ok, 'events': ev + ev[:2]},
+                                               {**ok, 'events': [{**ev[0], 'date': ''}] + ev[1:]},
+                                               {**ok, 'events': [{**ev[0], 'note': 'x' * 37}] + ev[1:]}])
+
+    def test_latency_is_measured_and_cited(self):
+        self.bad_specs('latency', lambda ok: [{**ok, 'source': 'http://x'}, {**ok, 'unit': 'minutes'},
+                                              {**ok, 'bars': ok['bars'][:1]}, {**ok, 'bars': [{'label': 'x', 'value': 0}] * 2}])
+
+    def test_source_host_is_shown(self):
+        for kind in ('bignumber', 'latency'):
+            self.assertTrue(motion.prepare(dict(motion.EXAMPLES[kind]), 980)['source_host'], kind)
+
+
 class Fields(unittest.TestCase):
     def test_templates_read_only_fields_their_spec_has(self):
         # The race once printed "Source: undefined" on every reel: it read S.head_host, prepare() sets source_host.
@@ -203,6 +244,19 @@ class Render(unittest.TestCase):
         last = np.asarray(Image.open(sorted(folder.glob('*.png'))[-1]).convert('RGBA'), dtype=np.int16)
         ink = (last[..., 3] > 160) & (last[..., :3].max(axis=2) < 70)
         self.assertGreater(ink.mean(), 0.002)
+
+    def test_latency_bars_finish_in_order_of_their_values(self):
+        # The bars race in real time: each finishes at a time proportional to its value, the fastest first.
+        _, meta = self.out['latency']
+        bars = motion.EXAMPLES['latency']['bars']
+        ends = [t for t, k in meta['sounds'] if t > meta['settle']]
+        self.assertEqual(len(ends), len(bars))
+        self.assertEqual(ends, sorted(ends))
+        self.assertEqual(len(set(ends)), len(bars))
+        spans = [(t - ends[0]) / (ends[-1] - ends[0]) for t in ends]
+        values = sorted(b['value'] for b in bars)
+        for got, v in zip(spans, values):
+            self.assertAlmostEqual(got, (v - values[0]) / (values[-1] - values[0]), delta=0.01)
 
     def test_hook_proofs_are_whole_at_settle(self):
         # morph and stepper may sit under a hook from frame 0: at their settle frame the code is already there.

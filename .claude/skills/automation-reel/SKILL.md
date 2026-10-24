@@ -203,7 +203,7 @@ First run downloads Poppins and JetBrains Mono into `fonts/`, the Kokoro model i
                                     // quote (real post: author, handle, platform, url, exact text), screenshot
                                     // (url + find), walkthrough (url + steps), ide (files, setup, steps); 2D
                                     // animations: stepper, flow, morph, git, eventloop, structure, sequence, states,
-                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint, command, palette, statement, quotes (generate.MOTION, generate.motion_errors);
+                                    // race, xray, memory, outputmap, kinetic, inspect, variants, wall, drawn, dots, board, blueprint, command, palette, statement, quotes, notify, checks, bignumber, timeline, latency (generate.MOTION, generate.motion_errors);
                                     // build (html + 2-4 CSS stages, generate.build_errors, visuals.Build); on 3D
                                     // days also diagram (nodes, edges, flow), device (laptop + code, phone +
                                     // screenshot), bars (real numbers + source), logos (Simple Icons slugs);
@@ -326,6 +326,13 @@ Never print a token; `publish.redact` and the `replace(token, '***')` calls exis
     1-3 real posts typed onto dark cards (initials chip, never a photo) then piled. `quotes` is a quote: same rules
     (`generate.quote_errors`, plus max `QUOTES_TOTAL` characters in all), credited by `publish.credits`, counted by
     `trends.quotes_allowed`.
+  - `notify`, `checks`, `bignumber`, `timeline` and `latency` (motion.py, 2026-10-24, the explainer layouts from the
+    premium reel designs, in the reel's own theme): a banner then notes stacking in (earlier ones dim, all return at
+    the end; the app is drawn as its first letter, never a logo); a table whose columns fill one at a time, with an
+    optional `pick` ringed; a number counting up from 0 out of a blur, measured at its final value so the layout fit
+    has room (`generate.motion_errors` allows at most 2 decimals so it shows exactly); dated events down a line; and a
+    real-time race where every bar grows at the same speed, so finish times are proportional to the values
+    (`test_motion.py` checks the order). `bignumber` and `latency` need a `source` and show its host, like `race`.
   - `kinetic` (motion.py): a takeaway in big type word by word; the marker under the key word draws after the
     layout settles. The page loads Poppins 700 before layout, or text measures with a fallback font and overlaps.
   - `inspect` and `variants` (motion.py): selection boxes with label pills on code lines, and one card swapping
