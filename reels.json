@@ -8130,5 +8130,156 @@
         "id": "18114734948142636"
       }
     ]
+  },
+  {
+    "id": 90,
+    "style": "dark",
+    "payoff": "0 == '0' is true and '' == '0' is false, even though 0 and '' are loosely equal to each other — == isn't transitive, so chain comparisons with === instead of ==.",
+    "kicker": "Myth vs fact #15",
+    "hook": "*Equal* doesn't mean equal",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "equality.js",
+      "code": "let n = 0;\nconsole.log(n == '0');\nconsole.log('' == '0');",
+      "highlight": [
+        2,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "True, true, then *false*",
+        "hook_type": "before_after",
+        "spoken": "[shocked] You'd expect two falsy comparisons to match (break) [deadpan] but only one actually does."
+      },
+      {
+        "hook": "Your == chain *lies*",
+        "hook_type": "problem",
+        "spoken": "[alarmed] Chaining loose equals in JavaScript (break) [serious] can quietly break your own logic."
+      },
+      {
+        "hook": "We tested JS's *equal* sign",
+        "hook_type": "test",
+        "spoken": "[fired up] We ran two quick checks to see (break) [intrigued] if equal truly means equal."
+      }
+    ],
+    "points": [
+      {
+        "title": "First comparison",
+        "body": "n loosely equals the string",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "equality.js",
+            "code": "let n = 0;\nconsole.log(n == '0');\nconsole.log('' == '0');",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Same expectation",
+        "body": "So empty string should match too",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "equality.js",
+            "code": "let n = 0;\nconsole.log(n == '0');\nconsole.log('' == '0');",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real split",
+        "body": "Equality here isn't transitive",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "let n = 0;\nconsole.log(n == '0');\nconsole.log('' == '0');",
+            "choices": [
+              "true true",
+              "true false",
+              "false false"
+            ],
+            "output": [
+              "true",
+              "false"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "equality.js",
+            "code": "let n = 0;\nconsole.log(n == '0');\nconsole.log('' == '0');",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Which *comparison* tripped you up?",
+    "caption": "JavaScript double equals vs triple equals comparison\nTwo falsy values, two very different results.\nWhere has == surprised you? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#coding",
+      "#jsequality"
+    ],
+    "voiceover": [
+      "[fired up] Most developers assume these values are equal (break) [confident] just because they both equal zero.",
+      "[knowing] Zero loosely equals the string zero, no surprise.",
+      "[building] So you'd expect empty string to match it too.",
+      "[serious, fast] But empty string and zero string (break) [surprised] never match.",
+      "[warm, curious] Where has loose equality fooled your code before?"
+    ],
+    "test": {
+      "name": "cta_style",
+      "arm": "question"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 15,
+    "posted_at": "2026-10-25T12:00:56+00:00",
+    "media_id": "18053353631806291",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows 0 == '' (the link proving 0 and '' are loosely equal) or recommends using === instead of ==, so the non-transitivity point and fix are never actually shown on screen."
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "predict",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.5,
+    "youtube_id": "GAUfgG8sHZI",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18111334301225292"
+      },
+      {
+        "kind": "teaser",
+        "id": "18086309318701268"
+      }
+    ]
   }
 ]
