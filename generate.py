@@ -319,8 +319,9 @@ def playbook():
 # after it, and morph and stepper may also be the hook's proof (complete from their settle frame).
 MOTION = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
           'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
-          'notify', 'checks', 'bignumber', 'timeline', 'latency')
+          'notify', 'checks', 'bignumber', 'timeline', 'latency', 'regex', 'sql', 'bigo', 'launch', 'agentloop')
 FLAT_VISUALS = ('code', 'diff', 'terminal', 'screenshot')
+BIGO = ('O(1)', 'O(log n)', 'O(n)', 'O(n log n)', 'O(n^2)', 'O(2^n)')  # the formulas T.bigo draws
 QUOTES_TOTAL = 200  # the quotes animation types its text on and must fit MAX_SECONDS
 STRUCTURE_OPS = {'array': ('push', 'pop', 'insert', 'remove'), 'stack': ('push', 'pop'), 'queue': ('push', 'pop'),
                  'map': ('set',)}
@@ -587,6 +588,66 @@ def motion_errors(i, v):
             e.append(f'point {i} latency needs 2 to 5 bars with labels of max 22 characters and positive values')
         if not v.get('source', '').startswith('https://'):
             e.append(f'point {i} latency needs "source": the https page the numbers come from')
+    elif kind == 'regex':
+        pat, text = v.get('pattern'), v.get('text')
+        if not short(pat, 28) or not isinstance(text, str) or not 4 <= len(text) <= 36 or '\n' in text:
+            e.append(f'point {i} regex needs a "pattern" (max 28 characters) and a one-line "text" of 4 to 36 characters')
+        elif re.search(r'\([^)]*[*+][^)]*\)[*+{]', pat):
+            e.append(f'point {i} regex pattern nests repeats like (a+)+, which can hang; simplify it')
+        else:
+            try:
+                ms = list(re.finditer(pat, text))
+            except re.error as err:
+                e.append(f'point {i} regex pattern is not valid Python re: {err}')
+            else:
+                if not 1 <= len(ms) <= 5 or any(m.end() == m.start() for m in ms):
+                    e.append(f'point {i} regex needs 1 to 5 non-empty matches in its text (it found {len(ms)})')
+    elif kind == 'sql':
+        ident = lambda x: isinstance(x, str) and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,11}', x)
+        cols, recs, query = v.get('columns', []), v.get('records', []), v.get('query')
+        if not ident(v.get('table')) or not 2 <= len(cols) <= 4 or not all(ident(c) for c in cols) or len(set(cols)) != len(cols):
+            e.append(f'point {i} sql needs a "table" name and 2 to 4 different "columns" (letters, digits, _; max 12)')
+        elif not 2 <= len(recs) <= 5 or any(not isinstance(r, list) or len(r) != len(cols) or any(not short(str(x), 12) for x in r)
+                                             for r in recs):
+            e.append(f'point {i} sql needs 2 to 5 "records", each one value of max 12 characters per column')
+        elif not short(query, 60) or not query.strip().upper().startswith('SELECT'):
+            e.append(f'point {i} sql "query" is one SELECT of max 60 characters')
+        else:
+            import sqlite3
+            import motion
+            try:
+                out = motion.sql_run(v)
+            except sqlite3.Error as err:
+                e.append(f'point {i} sql query fails in SQLite: {err}')
+            else:
+                if not 1 <= len(out['result_rows']) <= 5 or len(out['result_columns']) > 4 \
+                        or any(len(x) > 14 for r in out['result_rows'] for x in r):
+                    e.append(f'point {i} sql result must be 1 to 5 rows of max 4 short columns')
+    elif kind == 'bigo':
+        cls, n = v.get('classes', []), v.get('n')
+        if not 2 <= len(cls) <= 4 or len(set(cls)) != len(cls) or any(c not in BIGO for c in cls):
+            e.append(f'point {i} bigo needs 2 to 4 different "classes" from {", ".join(BIGO)}')
+        elif not isinstance(n, int) or isinstance(n, bool) or not 2 <= n <= 100000 or ('O(2^n)' in cls and n > 30):
+            e.append(f'point {i} bigo "n" is a whole number from 2 to 100000 (max 30 with O(2^n))')
+        elif v.get('title') is not None and not short(v['title'], 28):
+            e.append(f'point {i} bigo title is max 28 characters')
+    elif kind == 'launch':
+        facts, chips = v.get('facts', []), v.get('chips', [])
+        if not short(v.get('name'), 20) or not short(v.get('maker'), 24) or not short(v.get('tagline'), 40) \
+                or (v.get('date') is not None and not short(v['date'], 12)):
+            e.append(f'point {i} launch needs a "name" (max 20), "maker" (max 24), "tagline" (max 40), optional "date" (max 12)')
+        elif not 2 <= len(facts) <= 3 or any(not short(f, 34) for f in facts) or len(chips) > 3 or any(not short(c, 14) for c in chips):
+            e.append(f'point {i} launch needs 2 to 3 "facts" of max 34 characters and 0 to 3 "chips" of max 14')
+        if not v.get('source', '').startswith('https://'):
+            e.append(f'point {i} launch needs "source": the official https page the facts come from')
+    elif kind == 'agentloop':
+        ph, loops = v.get('phases', []), v.get('loops')
+        if not short(v.get('goal'), 30) or not short(v.get('done'), 20):
+            e.append(f'point {i} agentloop needs a "goal" (max 30 characters) and a "done" condition (max 20)')
+        elif not 3 <= len(ph) <= 5 or any(not short(x, 12) for x in ph) or len(set(ph)) != len(ph):
+            e.append(f'point {i} agentloop needs 3 to 5 different "phases" of max 12 characters')
+        elif not isinstance(loops, int) or isinstance(loops, bool) or not 1 <= loops <= 3:
+            e.append(f'point {i} agentloop "loops" is 1, 2 or 3')
     return e
 
 
@@ -1039,6 +1100,12 @@ VISUAL_SCHEMA = {
         'events': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['date', 'text'],
             'properties': {'date': {'type': 'string'}, 'text': {'type': 'string'}, 'note': {'type': 'string'}}}},
+        'pattern': {'type': 'string'}, 'table': {'type': 'string'}, 'query': {'type': 'string'},
+        'records': {'type': 'array', 'items': {'type': 'array', 'items': {'type': 'string'}}},
+        'classes': {'type': 'array', 'items': {'type': 'string', 'enum': list(BIGO)}}, 'n': {'type': 'integer'},
+        'name': {'type': 'string'}, 'maker': {'type': 'string'}, 'date': {'type': 'string'}, 'tagline': {'type': 'string'},
+        'facts': {'type': 'array', 'items': {'type': 'string'}},
+        'phases': {'type': 'array', 'items': {'type': 'string'}}, 'loops': {'type': 'integer'}, 'done': {'type': 'string'},
         'quotes': {'type': 'array', 'items': {
             'type': 'object', 'additionalProperties': False, 'required': ['author', 'platform', 'url', 'text'],
             'properties': {'author': {'type': 'string'}, 'platform': {'type': 'string'}, 'url': {'type': 'string'},
@@ -1571,6 +1638,23 @@ numbers only from a cited page.
 - latency: bars racing in real time: all start together and grow at the same speed, so each stops at its own value
   and the fastest finishes first. "title" (max 28), "unit" (ms or s), "bars" (2 to 5 {"label" max 22, "value"}) and
   "source" (its https url). Only measured numbers from that page, never estimates.
+- regex: a pattern scanning a string; each match is boxed and listed with where it starts (worked out by Python's re
+  when the reel is made, so it is always right). "pattern" (max 28 characters, Python re syntax, no nested repeats
+  like (a+)+), "text" (one line of 4 to 36 characters with 1 to 5 matches). For "what does this regex match" myths.
+- sql: a real query typed against a tiny table; the rows it keeps light up, the rest dim, and the result fills in
+  below (run in SQLite when the reel is made). "table" and "columns" (2 to 4 names), "records" (2 to 5 rows of short
+  values, as strings), "query" (one SELECT of max 60 characters; its result 1 to 5 rows). For WHERE, ORDER BY,
+  NULL, JOIN-free GROUP BY and LIMIT myths.
+- bigo: step counts of 2 to 4 complexities rolling as n grows, every bar on one linear scale. "classes" (from
+  O(1), O(log n), O(n), O(n log n), O(n^2), O(2^n)), "n" (2 to 100000; max 30 with O(2^n)), optional "title" (max 28).
+  The numbers are the formulas themselves (log base 2, rounded up), so name the code each class stands for in the voice.
+- launch: a new tool or agent as its official page states it: a letter tile and the name rise in, then each fact
+  ticks in. "name" (max 20), "maker" (max 24), optional "date" (max 12), "tagline" (max 40), "facts" (2 to 3 of max 34,
+  each stated on that page), optional "chips" (0 to 3 of max 14, like "Open source" or "Free tier"), "source" (the
+  official https page). Only for a tool in ai_facts.md or a news reel made by hand; never guess a price or a date.
+- agentloop: how an agent works, as its docs describe it: its phases on a ring around the goal, a pulse running one
+  pass per loop, then the done condition. "goal" (max 30), "phases" (3 to 5 of max 12, in order, e.g. "Read code",
+  "Edit", "Run tests"), "loops" (1 to 3 passes), "done" (max 20, e.g. "Tests pass").
 
 3D (only on days the prompt allows it; at most 2 moments per reel, only where 3D explains better; never
 people, faces or animals):

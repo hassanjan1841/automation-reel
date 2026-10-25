@@ -137,6 +137,11 @@ output" puzzle is the exception: there the question is the point, and the answer
 - Captions show up to 3 words at a time in the lower band, high contrast.
 - At most one animation per reel (motion.py), on the point where movement explains better than a still: one change
   at a time with a short hold, the active part glowing and the rest dimmed, values that are true.
+- Motion timing (HyperFrames' agent skills, Material 3 motion tokens, 2026-10-25): an arrival takes 0.3 to 0.6 s
+  (one entrance at most about 0.8 s) on a long-tail ease-out that never overshoots; an exit is shorter and
+  accelerates; list items 40 to 80 ms apart and words 60 to 120 ms, at most 0.5 s of stagger in all; the next item
+  starts when the last is 30 to 50% done; landed text is dead still; hold a line 0.5 s plus 0.3 s a word; count-ups
+  run 1.2 to 1.6 s, then hold; nothing on screen stays frozen for more than 3 s.
 - One accent colour, calm moves: sections glide into each other (no jump on a slide change), and the camera
   punches only on spoken sentences. A takeaway can be big kinetic type (2 to 4 words a line, the key word in the
   accent), never a paragraph.

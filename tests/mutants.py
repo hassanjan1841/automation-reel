@@ -396,7 +396,7 @@ MUTANTS = [
     ('voice.py', "        if take and out_of_time():", "        if False:", 'speed: retakes ignore their time budget'),
     # The explainer layouts (2026-10-24).
     ('motion.py', "d = D * b.value / max", "d = D", 'the latency bars all finish together'),
-    ('motion.py', "    elif spec['type'] in ('race', 'latency', 'bignumber'):", "    elif spec['type'] == 'race':",
+    ('motion.py', "    if spec['type'] in ('race', 'latency', 'bignumber', 'launch'):", "    if spec['type'] == 'race':",
      'a big number or latency shows "Source: undefined"'),
     ('generate.py', "        if not v.get('source', '').startswith('https://'):\n            e.append(f'point {i} bignumber needs",
      "        if False:\n            e.append(f'point {i} bignumber needs", 'a big number without a source', 'test_motion.py'),
@@ -405,6 +405,18 @@ MUTANTS = [
     ('generate.py', "        if not 3 <= len(events) <= 5", "        if not 1 <= len(events) <= 9", 'a timeline of any length',
      'test_motion.py'),
     ('generate.py', "v.get('unit') not in ('ms', 's')", "False", 'latency in any unit', 'test_motion.py'),
+    # Templates whose values real code works out (2026-10-25).
+    ('motion.py', "    db.set_authorizer(lambda action, *_: sqlite3.SQLITE_OK if action in allowed else sqlite3.SQLITE_DENY)\n", "",
+     'the sql query may write'),
+    ('motion.py', "for m in re.finditer(pattern, text)]", "for m in re.finditer(pattern, text)][:1]", 'regex shows only the first match'),
+    ('generate.py', "        elif re.search(r'\\([^)]*[*+][^)]*\\)[*+{]', pat):", "        elif False:", 'a regex that can hang',
+     'test_motion.py'),
+    ('generate.py', "('O(2^n)' in cls and n > 30)", "False", 'O(2^n) at a huge n', 'test_motion.py'),
+    ('motion.py', "    jump = float((np.abs(d) > 0.3)", "    jump = float((np.abs(d) > 3)", 'a pop with no in-between goes unseen'),
+    ('motion.py', "    rgb = sum(x[..., :3] * x[..., 3:] for x in a)", "    rgb = sum(x[..., :3] for x in a)",
+     'motion blur darkens moving edges'),
+    ('generate.py', "            e.append(f'point {i} launch needs \"source\"", "            pass  # e.append(f'point {i} launch needs \"source\"",
+     'a launch card without its official page', 'test_motion.py'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

@@ -40,6 +40,11 @@ Types (fields in generate.VISUAL_SCHEMA, limits in generate.visual_errors):
   bignumber  one real number counting up, its label under it, a cited source   value, prefix, suffix, label, source
   timeline   dated events revealed in order down a vertical line               events
   latency    bars racing in real time to their latencies, numbers rolling      title, unit, bars, source
+  regex      a pattern scanning a string; matches (from Python's re) boxed     pattern, text
+  sql        a real SQLite query typed; kept rows light, the result fills in   table, columns, records, query
+  bigo       step counts of complexities rolling as n grows to its value       title, classes, n
+  launch     a new tool or agent as its official page states it               name, maker, date, tagline, facts, chips, source
+  agentloop  an agent's real loop around a ring, pass by pass, then done       goal, phases, loops, done
 
 Usage: python motion.py <type> [light|dark]   renders the built-in example to out/motion-<type>.mp4
 """
@@ -56,10 +61,11 @@ import render
 
 TYPES = ('stepper', 'predict', 'flow', 'morph', 'git', 'eventloop', 'structure', 'sequence', 'states', 'race', 'xray',
          'memory', 'outputmap', 'kinetic', 'inspect', 'variants', 'wall', 'drawn', 'dots', 'board', 'blueprint', 'command', 'palette', 'statement', 'quotes',
-         'notify', 'checks', 'bignumber', 'timeline', 'latency')
+         'notify', 'checks', 'bignumber', 'timeline', 'latency', 'regex', 'sql', 'bigo', 'launch', 'agentloop')
 FRAMES = render.OUT_DIR / 'motion'
 FPS = render.FPS
 MAX_SECONDS = 12.0
+SHUTTER = 0  # motion blur: 0.5 blends 4 moments across half a frame (a 180 degree film shutter), about 4x slower
 
 PAGE = r"""<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;overflow:hidden}svg{display:block;width:100vw;height:100vh}
@@ -93,7 +99,20 @@ const E = {
   // A damped spring (damping ratio 0.82): it lands with about 1% overshoot and settles, never bounces.
   spring: p => { if (p >= 1) return 1; const z = 0.82, w = 2 * Math.PI * 1.35, t = p * 1.6, wd = w * Math.sqrt(1 - z * z);
     return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + z * w / wd * Math.sin(wd * t)); },
+  // Pro motion eases (HyperFrames' agent skills; curves from easings.net): long-tail arrivals, accelerating exits.
+  expo: p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p),
+  quint: p => 1 - Math.pow(1 - p, 5),
+  exit: p => p * p * p * p,
+  sine: p => (1 - Math.cos(Math.PI * p)) / 2,  // count-ups: a gentle start, so the digits do not flicker
+  // Overshoot-free settle: a cubic ease-out for 78% of the time, then a tail that glides the last 7% of travel with
+  // continuous velocity, so text never stops dead (HyperFrames registry, per-word-rise).
+  settle: p => { const S = 0.78, R = 0.07; if (p >= 1) return 1;
+    if (p < S) { const x = p / S; return (1 - R) * (0.5 * (1 - Math.pow(1 - x, 3)) + 0.5 * x); }
+    const u = (p - S) / (1 - S), b = ((1 - R) / S * 0.5) * (1 - S), c = 3 * R - 2 * b, d = b - 2 * R;
+    return 1 - R + b * u + c * u * u + d * u * u * u; },
 };
+// Shared timing (seconds), from the same research: arrivals 0.3 to 0.6, exits shorter, list staggers 40 to 80 ms.
+const M = {arrive: 0.45, exit: 0.28, stagger: 0.07, count: 1.5};
 const TW = [], SND = []; let SETTLE = 0, END = 0, FIT = null;  // FIT: what to fit into the box when ROOT holds clipped overflow
 function at(start, dur, fn, ease = E.out) { TW.push({start, dur, fn, ease}); END = Math.max(END, start + dur); }
 function set(t, fn) { at(t, 0, p => p && fn()); }
@@ -722,7 +741,7 @@ T.wall = () => {
       t.g.setAttribute('opacity', clamp(Math.pow(sc, 1.6)) * dimG * (t.focus ? 1 : clamp((q - 0.02) * 6)));
       t.poly.setAttribute('stroke-width', Math.max(1, 2 * Math.min(1, sc * 2))); } };
   const t0 = 0.25, pull = 1.9;
-  at(t0, pull, frame, E.out); set(0, () => frame(0));
+  at(t0, pull, frame, E.inout); set(0, () => frame(0));  // a camera move eases in too, or the grid shimmers
   snd(t0, 'swish'); SETTLE = t0 + pull; snd(SETTLE, 'thud');
 
   // Counters over the lower part of the grid, on a soft dark scrim so they read on both themes.
@@ -1115,7 +1134,7 @@ T.notify = () => {
   txt(banner, 66, 84, S.app.trim()[0].toUpperCase(), 40, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700});
   fit(txt(banner, 128, 62, S.app, 28, {fill: C.dim, 'font-weight': 500}), W - 170);
   fit(txt(banner, 128, 104, S.title, 36, {'font-weight': 700}), W - 170);
-  at(0, 0.5, (p, raw) => { banner.setAttribute('opacity', Math.min(1, raw * 2.5)); banner.setAttribute('transform', `translate(0 ${-36 * (1 - p)})`); }, E.spring);
+  at(0, 0.5, (p, raw) => { banner.setAttribute('opacity', Math.min(1, raw * 2.5)); banner.setAttribute('transform', `translate(0 ${-36 * (1 - p)})`); }, E.settle);
   snd(0, 'pop'); SETTLE = 0.5;
   const cards = notes.map((n, k) => { const y = top + k * (nh + gap), g = mk('g', {opacity: 0}, L1);
     panel(g, 0, y, W, nh); mk('circle', {cx: 44, cy: y + nh / 2, r: 9, fill: C.accent}, g);
@@ -1123,7 +1142,7 @@ T.notify = () => {
     fit(txt(g, 76, y + 98, n.text, 36), W - 110);
     return g; });
   let t = 1.0;
-  cards.forEach((g, k) => { at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${40 * (1 - p)})`); }, E.spring);
+  cards.forEach((g, k) => { at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${40 * (1 - p)})`); }, E.settle);
     snd(t, 'tick'); cards.slice(0, k).forEach(o => dim(o, t, 0.5, 0.3)); t += 0.95; });
   cards.slice(0, -1).forEach(o => fade(o, t, 0.35, 0.5, 1)); snd(t, 'click');
   END = Math.max(END, t + 1.5);
@@ -1172,7 +1191,8 @@ T.bignumber = () => {
   svg.querySelector('defs').insertAdjacentHTML('beforeend',
     '<filter id="bnb" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur id="bnbs" stdDeviation="0"/></filter>');
   const blur = document.getElementById('bnbs');
-  let size = 300; const num = txt(L2, W / 2, 0, '', size, {'text-anchor': 'middle', 'font-weight': 700, fill: C.ink, opacity: 0, filter: 'url(#bnb)'});
+  let size = 300; const num = txt(L2, W / 2, 0, '', size, {'text-anchor': 'middle', 'font-weight': 700, fill: C.ink, opacity: 0, filter: 'url(#bnb)',
+    style: 'font-variant-numeric: tabular-nums'});
   const pre = mk('tspan', {fill: C.accent}, num), body = mk('tspan', {}, num), suf = mk('tspan', {fill: C.accent}, num);
   const show = x => { pre.textContent = S.prefix; body.textContent = fmt(x); suf.textContent = S.suffix; };
   // Measured at the final value, so the layout fit leaves room for it; frames before the count show 0.
@@ -1191,11 +1211,11 @@ T.bignumber = () => {
   const src = txt(L2, W / 2, ly + lines.length * 54 + 34, `Source: ${S.source_host}`, 26, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0});
   set(0, () => show(0));
   at(0.1, 0.5, (p, raw) => { num.setAttribute('opacity', Math.min(1, raw * 2.5)); num.setAttribute('transform', `translate(0 ${(1 - p) * 40})`);
-    blur.setAttribute('stdDeviation', 8 * (1 - p)); }, E.spring);
+    blur.setAttribute('stdDeviation', 8 * (1 - p)); }, E.settle);
   snd(0.1, 'swish'); labs.forEach((e, i) => fade(e, 0.3 + i * 0.08)); fade(src, 0.45);
   SETTLE = 0.6;
   const tc = 0.7, dur = 1.5;
-  at(tc, dur, (p, raw) => { show(raw >= 1 ? v : v * p); blur.setAttribute('stdDeviation', 6 * Math.pow(1 - raw, 2)); }, E.out);
+  at(tc, dur, (p, raw) => { show(raw >= 1 ? v : v * p); blur.setAttribute('stdDeviation', 6 * Math.pow(1 - raw, 2)); }, E.sine);
   [0, 0.25, 0.5, 0.8].forEach(x => snd(tc + x, 'tick')); snd(tc + dur, 'pop');
   draw(mark, tc + dur + 0.1, 0.45); snd(tc + dur + 0.1, 'scribble');
   END = Math.max(END, tc + dur + 0.55 + 1.4);
@@ -1222,7 +1242,7 @@ T.timeline = () => {
     txt(g, lx - 30, y + 11, e.date, ds, {class: 'mono', 'text-anchor': 'end', fill: C.mute, 'font-weight': 500});
     fit(txt(g, tx, y + 12, e.text, 36, {fill: C.ink, 'font-weight': 700}), W - tx - 10);
     if (e.note) fit(txt(g, tx, y + 54, e.note, 26, {fill: C.mute, 'font-weight': 500}), W - tx - 10);
-    at(td + 0.1, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(${24 * (1 - p)} 0)`); }, E.spring);
+    at(td + 0.1, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(${24 * (1 - p)} 0)`); }, E.settle);
     snd(td + 0.1, 'tick'); groups.forEach(o => dim(o, td, 0.45, 0.3)); groups.push(g); t = td + 1.0; });
   groups.slice(0, -1).forEach(o => fade(o, t, 0.35, 0.45, 1)); snd(t, 'click');
   END = Math.max(END, t + 1.5);
@@ -1253,6 +1273,173 @@ T.latency = () => {
   const src = txt(L2, 0, ph + 46, `Source: ${S.source_host}`, 26, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, 0.6);
   sweep(0, 0, W, ph, t0 + D + 0.3);
   END = Math.max(END, t0 + D + 1.2 + 1.0);
+};
+
+T.regex = () => {
+  // A regex scanning a string: the cursor glides between matches (positions from Python's re, never guessed), each
+  // match is boxed and listed under the string with where it starts, then the count.
+  const text = S.text, ms = S.matches, n = text.length;
+  const cwid = Math.min(46, (W - 80) / n), size = Math.min(72, cwid / 0.6), x0 = (W - n * cwid) / 2;
+  const head = mk('g', {opacity: 0}, L1); panel(head, 0, 0, W, 104);
+  txt(head, 34, 64, 're', 30, {class: 'mono', fill: C.dim, 'font-weight': 500});
+  fit(txt(head, 90, 66, S.pattern, 40, {class: 'mono', fill: C.accent, 'font-weight': 500, 'xml:space': 'preserve'}), W - 130);
+  const ty = 140, th = Math.max(120, size * 1.7), sg = mk('g', {opacity: 0}, L1); panel(sg, 0, ty, W, th);
+  const boxes = mk('g', {}, L1);
+  const str = txt(L2, x0, ty + th / 2 + size * 0.36, text, size, {class: 'mono', 'font-weight': 500, 'xml:space': 'preserve', opacity: 0});
+  pop(head, 0, W / 2, 52, 0.45); pop(sg, 0.1, W / 2, ty + th / 2, 0.45); fade(str, 0.2, 0.3); snd(0, 'pop');
+  SETTLE = 0.55;
+  const cur = mk('rect', {x: x0, y: ty + 16, width: cwid, height: th - 32, rx: 8, fill: 'none', stroke: C.accent, 'stroke-width': 3, opacity: 0}, L3);
+  const ly = ty + th + 34, rowH = 64;
+  let t = 0.8, pos = 0, w = 1;
+  fade(cur, t - 0.1, 0.2);
+  ms.forEach(([a, b, s], k) => {
+    const gap = Math.max(1, a - pos), d = Math.min(0.9, 0.12 + gap * 0.03), p0 = pos, w0 = w;
+    at(t, d, p => { cur.setAttribute('x', x0 + lerp(p0, a, p) * cwid); cur.setAttribute('width', lerp(w0, 1, p) * cwid); }, E.inout);
+    t += d;
+    at(t, 0.3, p => cur.setAttribute('width', lerp(1, b - a, p) * cwid), E.spring);
+    const box = mk('rect', {x: x0 + a * cwid, y: ty + 16, width: (b - a) * cwid, height: th - 32, rx: 8, fill: C.accent, opacity: 0}, boxes);
+    fade(box, t, 0.3, 0, 0.28); snd(t, 'tick');
+    const g = mk('g', {opacity: 0}, L2), y = ly + k * rowH;
+    panel(g, 0, y, W, rowH - 12, {rx: 18});
+    txt(g, 30, y + 36, `match ${k + 1}`, 24, {fill: C.dim, 'font-weight': 500});
+    fit(txt(g, 170, y + 38, s, 30, {class: 'mono', fill: C.text, 'font-weight': 500, 'xml:space': 'preserve'}), W - 360);
+    txt(g, W - 30, y + 36, `at ${a}`, 24, {class: 'mono', fill: C.dim, 'font-weight': 500, 'text-anchor': 'end'});
+    at(t + 0.15, 0.45, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${-24 * (1 - p)})`); }, E.settle);
+    snd(t + 0.15, 'pop');
+    pos = a; w = b - a; t += 0.6; });
+  fade(cur, t, 0.3, 1, 0);
+  const cnt = pill(L2, W / 2, ly + ms.length * rowH + 30, `${ms.length} match${ms.length > 1 ? 'es' : ''}`, 28);
+  pop(cnt.g, t + 0.1, cnt.cx, cnt.cy, 0.4); snd(t + 0.1, 'click');
+  END = Math.max(END, t + 1.6);
+};
+
+T.sql = () => {
+  // A real query against a small table (run in SQLite when the reel is made): typed in, the rows it keeps light up
+  // and the rest dim, then the result table fills in below in the query's order.
+  const cols = S.columns, rows = S.records, rc = S.result_columns, rr = S.result_rows, keep = S.keep;
+  const size = 30, chw = size * 0.6, rowH = 56, pad = 28;
+  const widths = (hs, rs) => hs.map((h, j) => (Math.max(h.length, ...rs.map(r => String(r[j]).length)) + 2) * chw);
+  const table = (y, hs, rs, label) => { const ws = widths(hs, rs), tw = Math.min(W, ws.reduce((a, b) => a + b, 0) + 2 * pad), k = Math.min(1, (W - 2 * pad) / (tw - 2 * pad));
+    const h = 64 + rs.length * rowH + 14, g = mk('g', {opacity: 0}, L1); panel(g, 0, y, W, h);
+    txt(g, pad, y - 14, label, 24, {fill: C.mute, 'font-weight': 500});
+    let x = pad; const xs = ws.map(w => { const at_ = x; x += w * k; return at_; });
+    hs.forEach((c, j) => txt(g, xs[j], y + 42, c, size * Math.min(1, k + 0.1), {class: 'mono', fill: C.dim, 'font-weight': 500}));
+    mk('rect', {x: pad - 8, y: y + 62, width: W - 2 * pad + 16, height: 2, fill: C.line}, g);
+    return {g, y, h, xs, k}; };
+  const qh = 92, qg = mk('g', {opacity: 0}, L1); panel(qg, 0, 0, W, qh);
+  txt(qg, 30, qh / 2 + 10, 'sql>', 28, {class: 'mono', fill: C.accent, 'font-weight': 500});
+  const q = fit(txt(qg, 110, qh / 2 + 11, S.query, 30, {class: 'mono', 'font-weight': 500, 'xml:space': 'preserve'}), W - 140); q.textContent = '';
+  const src = table(qh + 60, cols, rows, S.table);
+  const cells = rows.map((r, i) => { const g = mk('g', {}, src.g), y = src.y + 64 + i * rowH;
+    const band = mk('rect', {x: 10, y: y + 4, width: W - 20, height: rowH - 8, rx: 12, fill: C.accent, opacity: 0}, g);
+    r.forEach((v, j) => txt(g, src.xs[j], y + rowH / 2 + 10, String(v), size * Math.min(1, src.k + 0.1), {class: 'mono', 'font-weight': 500}));
+    return {g, band, y}; });
+  pop(qg, 0, W / 2, qh / 2, 0.45); pop(src.g, 0.12, W / 2, src.y + src.h / 2, 0.5); snd(0, 'pop');
+  SETTLE = 0.62;
+  const per = 0.035, t0 = 0.75, full = S.query;
+  at(t0, full.length * per, p => { q.textContent = full.slice(0, Math.round(p * full.length)); }, E.lin);
+  for (let i = 2; i < full.length; i += 5) snd(t0 + i * per, 'key');
+  let t = t0 + full.length * per + 0.35;
+  const kept = new Set(keep.filter(i => i >= 0));
+  if (kept.size) { cells.forEach((c, i) => { if (kept.has(i)) { fade(c.band, t, 0.3, 0, 0.22); } else dim(c.g, t, 0.3, 0.35); });
+    snd(t, 'swish'); t += 0.7; }
+  const res = table(src.y + src.h + 70, rc, rr, 'result'); pop(res.g, t, W / 2, res.y + res.h / 2, 0.45); snd(t, 'pop');
+  t += 0.35;
+  rr.forEach((r, i) => { const g = mk('g', {opacity: 0}, L2), y = res.y + 64 + i * rowH, from = keep[i] >= 0 ? cells[keep[i]].y - y : -30;
+    r.forEach((v, j) => txt(g, res.xs[j], y + rowH / 2 + 10, String(v), size * Math.min(1, res.k + 0.1), {class: 'mono', fill: C.text, 'font-weight': 500}));
+    at(t, 0.5, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(0 ${from * (1 - p)})`); }, E.settle);
+    snd(t, 'tick'); t += 0.22; });
+  END = Math.max(END, t + 1.5);
+};
+
+T.bigo = () => {
+  // How the step count of each complexity grows as n rolls up to its value: every number is the formula at that n
+  // (log base 2, rounded up), and every bar is on one linear scale, so the gap is the real one.
+  const F = {'O(1)': n => 1, 'O(log n)': n => Math.max(1, Math.ceil(Math.log2(n))), 'O(n)': n => n,
+    'O(n log n)': n => n * Math.max(1, Math.ceil(Math.log2(n))), 'O(n^2)': n => n * n, 'O(2^n)': n => Math.pow(2, n)};
+  const cls = S.classes, N = S.n, max = Math.max(...cls.map(c => F[c](N))), px = 40, bw = W - 2 * px, bh = 30, rowH = 124, head = 132;
+  const ph = head + cls.length * rowH + 20, card = mk('g', {opacity: 0}, L1); panel(card, 0, 0, W, ph);
+  if (S.title) fit(txt(card, px, 62, S.title, 32, {'font-weight': 700}), W - 360);
+  const nt = txt(card, W - px, 66, '', 40, {class: 'mono', fill: C.accent, 'font-weight': 500, 'text-anchor': 'end'});
+  const fmt = v => Math.round(v).toLocaleString('en-US');
+  const rows = cls.map((c, i) => { const y = head + i * rowH;
+    txt(card, px, y + 34, c.replace('^2', '²').replace('2^n', '2ⁿ'), 32, {class: 'mono', 'font-weight': 500});
+    const num = txt(card, W - px, y + 34, fmt(F[c](N)), 30, {class: 'mono', fill: C.dim, 'font-weight': 500, 'text-anchor': 'end'});
+    mk('rect', {x: px, y: y + 56, width: bw, height: bh, rx: bh / 2, fill: 'rgba(255,255,255,0.07)'}, card);
+    const r = mk('rect', {x: px, y: y + 56, width: bh, height: bh, rx: bh / 2, fill: i === cls.length - 1 ? C.accent : '#5B6378'}, card);
+    return {c, num, r}; });
+  pop(card, 0, W / 2, ph / 2, 0.5); snd(0, 'pop'); SETTLE = 0.5;
+  const t0 = 0.8, D = 2.8;
+  const show = n => { nt.textContent = 'n = ' + fmt(n);
+    rows.forEach(o => { const v = F[o.c](n); o.num.textContent = fmt(v); o.r.setAttribute('width', Math.max(bh, bw * v / max)); }); };
+  set(0, () => show(1));
+  at(t0, D, (p, raw) => show(raw >= 1 ? N : Math.max(1, Math.round(1 + (N - 1) * p))), E.inout);
+  [0, 0.7, 1.4, 2.1].forEach(x => snd(t0 + x, 'tick')); snd(t0 + D, 'pop');
+  at(t0 + D, 0.3, p => rows.forEach(o => o.num.setAttribute('fill', p > 0.5 ? C.text : C.dim)));
+  sweep(0, 0, W, ph, t0 + D + 0.3);
+  END = Math.max(END, t0 + D + 2.0);
+};
+
+T.launch = () => {
+  // A new tool or agent, as its official page states it: a letter tile and the name rise in, the maker and the
+  // one-line pitch follow, then each fact ticks in, the chips pop and the source shows.
+  const facts = S.facts, chips = S.chips;
+  const tile = mk('g', {opacity: 0}, L1); mk('rect', {x: 0, y: 0, width: 120, height: 120, rx: 30, fill: C.accent}, tile);
+  txt(tile, 60, 82, S.name.trim()[0].toUpperCase(), 64, {'text-anchor': 'middle', fill: '#fff', 'font-weight': 700});
+  const name = fit(txt(L2, 150, 82, S.name, 76, {fill: C.ink, 'font-weight': 700, opacity: 0, filter: 'url(#soft)'}), W - 160);
+  const by = txt(L2, 152, 140, [S.maker, S.date].filter(Boolean).join(' · '), 28, {fill: C.mute, 'font-weight': 500, opacity: 0});
+  const tag = fit(txt(L2, 0, 214, S.tagline, 40, {fill: C.ink, 'font-weight': 600, opacity: 0}), W);
+  pop(tile, 0, 60, 60, 0.45); snd(0, 'pop');
+  at(0.15, 0.5, (p, raw) => { name.setAttribute('opacity', Math.min(1, raw * 2.5)); name.setAttribute('transform', `translate(0 ${(1 - p) * 30})`);
+    if (raw > 0.5) name.removeAttribute('filter'); }, E.settle); snd(0.15, 'swish');
+  fade(by, 0.4); fade(tag, 0.55);
+  const top = 258, fh = 96, ph = facts.length * fh + 28, pg = mk('g', {opacity: 0}, L1); panel(pg, 0, top, W, ph);
+  pop(pg, 0.7, W / 2, top + ph / 2, 0.45);
+  SETTLE = 1.0;
+  let t = 1.25;
+  facts.forEach((f, k) => { const y = top + 14 + k * fh + fh / 2, g = mk('g', {opacity: 0}, L2);
+    mk('circle', {cx: 54, cy: y, r: 22, fill: C.accent}, g);
+    const tk = mk('path', {d: `M${45} ${y + 1} L${51} ${y + 7} L${63} ${y - 6}`, fill: 'none', stroke: '#fff', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g);
+    const tl = tk.getTotalLength(); tk.setAttribute('stroke-dasharray', tl); tk.setAttribute('stroke-dashoffset', tl);
+    fit(txt(g, 96, y + 12, f, 34), W - 130);
+    if (k) mk('rect', {x: 30, y: y - fh / 2, width: W - 60, height: 1.5, fill: C.line}, g);
+    at(t, 0.4, (p, raw) => { g.setAttribute('opacity', Math.min(1, raw * 2.5)); g.setAttribute('transform', `translate(${20 * (1 - p)} 0)`); }, E.settle);
+    at(t + 0.15, 0.3, p => tk.setAttribute('stroke-dashoffset', tl * (1 - p)), E.out); snd(t, 'tick');
+    t += 0.7; });
+  const cy = top + ph + 52; let cx = 0;
+  chips.forEach((c, i) => { const e = txt(L2, 0, 0, c, 26); const w = e.getComputedTextLength() + 34; e.remove();
+    const p = pill(L2, cx + w / 2, cy, c, 26, C.panel, C.text); pop(p.g, t + i * 0.12, p.cx, p.cy, 0.4); snd(t + i * 0.12, 'pop'); cx += w + 14; });
+  const src = txt(L2, 0, cy + (chips.length ? 64 : 10), `Source: ${S.source_host}`, 26, {fill: C.mute, 'font-weight': 500, opacity: 0}); fade(src, t);
+  sweep(0, top, W, ph, t + chips.length * 0.12 + 0.3);
+  END = Math.max(END, t + chips.length * 0.12 + 1.9);
+};
+
+T.agentloop = () => {
+  // An agent's real loop: steps around a ring with the goal in the middle; a pulse runs the ring once per pass, each
+  // step glowing as it arrives and a counter ticking the pass, then it exits to the done condition.
+  const st = S.phases, n = st.length, cx = W / 2, R = 290, cy = R + 70, bw = 230, bh = 96;
+  const at_ = i => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + R * Math.cos(a), cy + R * Math.sin(a)]; };
+  const ns = st.map((s, i) => { const [x, y] = at_(i); const nd = node(x - bw / 2, y - bh / 2, bw, bh, s, 34); pop(nd.g, 0.1 + i * 0.1, x, y, 0.45); snd(0.1 + i * 0.1, 'pop'); return nd; });
+  const ring = mk('path', {d: `M${cx} ${cy - R} A${R} ${R} 0 1 1 ${cx - 0.01} ${cy - R}`, fill: 'none', stroke: C.guide, 'stroke-width': 4, 'stroke-dasharray': '10 12', opacity: 0}, L0);
+  fade(ring, 0.2, 0.4);
+  const goal = pill(L2, cx, cy - 22, S.goal, 28, '#2B3142', C.text); pop(goal.g, 0.3 + n * 0.1, cx, cy - 22, 0.45);
+  const pass = txt(L2, cx, cy + 48, '', 26, {'text-anchor': 'middle', fill: C.mute, 'font-weight': 500, opacity: 0});
+  fade(pass, 0.4 + n * 0.1);
+  SETTLE = 0.55 + n * 0.1;
+  const L = S.loops, step = 0.6; let t = SETTLE + 0.4, prev = null;
+  for (let k = 0; k < L; k++) { const tk = t; set(tk, () => { pass.textContent = `pass ${k + 1} of ${L}`; }); snd(tk, 'click');
+    st.forEach((s, i) => { const nd = ns[i], ti = t + i * step;
+      if (prev) glow(prev, ti, 0, 0.2); glow(nd, ti, 1, 0.2); snd(ti, 'tick'); prev = nd; });
+    const d = n * step, len = ring.getTotalLength(), dot = mk('circle', {r: 11, fill: C.accent, opacity: 0}, L3);
+    const halo = mk('circle', {r: 26, fill: C.accent, opacity: 0, filter: 'url(#glow)'}, L3);
+    at(t, d, (p, raw) => { const pt = ring.getPointAtLength(len * p);
+      for (const e of [dot, halo]) { e.setAttribute('cx', pt.x); e.setAttribute('cy', pt.y); }
+      dot.setAttribute('opacity', raw >= 1 ? 0 : 1); halo.setAttribute('opacity', raw >= 1 ? 0 : 0.5); }, E.lin);
+    t += d + 0.25; }
+  if (prev) glow(prev, t, 0, 0.25);
+  const done = pill(L2, cx, cy + R + 90, S.done, 30); pop(done.g, t, done.cx, done.cy, 0.45); snd(t, 'pop');
+  const l = line(`M${cx} ${cy + R + 8} L${cx} ${done.cy - done.h / 2 - 6}`, {stroke: C.accent, 'stroke-width': 4}); draw(l, t - 0.2, 0.3);
+  END = Math.max(END, t + 1.6);
 };
 
 Promise.all([document.fonts.load('500 34px Poppins'), document.fonts.load('600 34px Poppins'), document.fonts.load('700 34px Poppins'),
@@ -1411,6 +1598,32 @@ def dot_raster(word, rows=9):
                      if r0 <= r <= r1 and c0 <= c <= c1]}
 
 
+def regex_matches(pattern, text):
+    """[[start, end, matched text]] for every match of pattern in text, from Python's re."""
+    return [[m.start(), m.end(), m.group(0)] for m in re.finditer(pattern, text)]
+
+
+def sql_run(spec):
+    """Run spec['query'] on an in-memory SQLite table built from spec, read-only and with a step budget:
+    {'result_columns', 'result_rows', 'keep'}, where keep[i] is the source row result row i is (or -1)."""
+    import sqlite3
+    num = lambda v: int(v) if re.fullmatch(r'-?\d+', v) else float(v) if re.fullmatch(r'-?\d+\.\d+', v) else v
+    db = sqlite3.connect(':memory:')
+    db.execute(f'CREATE TABLE "{spec["table"]}" ({", ".join(f"[{c}]" for c in spec["columns"])})')
+    db.executemany(f'INSERT INTO "{spec["table"]}" VALUES ({", ".join("?" * len(spec["columns"]))})',
+                   [[num(str(v)) for v in r] for r in spec['records']])
+    allowed = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION}
+    db.set_authorizer(lambda action, *_: sqlite3.SQLITE_OK if action in allowed else sqlite3.SQLITE_DENY)
+    db.set_progress_handler(lambda: 1, 100_000)  # a runaway query (a recursive CTE) is stopped, not waited for
+    cur = db.execute(spec['query'])
+    cols = [d[0] for d in cur.description or []]
+    fmt = lambda v: 'NULL' if v is None else (f'{v:g}' if isinstance(v, float) else str(v))
+    rows = [[fmt(v) for v in r] for r in cur.fetchall()]
+    src = [[fmt(num(str(v))) for v in r] for r in spec['records']]
+    keep = [src.index(r) if cols == list(spec['columns']) and r in src else -1 for r in rows]
+    return {'result_columns': cols, 'result_rows': rows, 'keep': keep}
+
+
 def predict_answer(spec):
     """Index of the choice that equals the real output (its lines joined by spaces, spacing ignored), or -1."""
     said = ' '.join(' '.join(spec.get('output', [])).split())
@@ -1433,7 +1646,11 @@ def prepare(spec, w):
                     size=min(40, int((w - 90) / (max(cols, 8) * 0.6))))
     elif spec['type'] == 'inspect':
         spec['tokens'] = tokens(spec['code'], spec.get('language'))
-    elif spec['type'] in ('race', 'latency', 'bignumber'):
+    elif spec['type'] == 'regex':
+        spec['matches'] = regex_matches(spec['pattern'], spec['text'])
+    elif spec['type'] == 'sql':
+        spec.update(sql_run(spec))
+    if spec['type'] in ('race', 'latency', 'bignumber', 'launch'):
         from urllib.parse import urlparse
         spec['source_host'] = urlparse(spec.get('source', '')).netloc.removeprefix('www.')
     elif spec['type'] == 'drawn':
@@ -1445,6 +1662,10 @@ def prepare(spec, w):
     if spec['type'] == 'bignumber':
         spec.setdefault('prefix', '')
         spec.setdefault('suffix', '')
+    elif spec['type'] == 'launch':
+        spec.setdefault('date', '')
+    elif spec['type'] == 'bigo':
+        spec.setdefault('title', '')
     elif spec['type'] == 'checks':
         spec.setdefault('title', '')
         spec.setdefault('pick', '')
@@ -1452,7 +1673,7 @@ def prepare(spec, w):
         spec['items'] = [str(i) for i in spec.get('items', [])]
     for key in ('ops', 'trace', 'hops', 'calls', 'moves', 'reassign', 'refs', 'objects', 'cards', 'output', 'inside',
                 'lines', 'marks', 'variants', 'tiles', 'stats', 'tasks', 'captions', 'parts', 'links', 'callouts', 'rows', 'items', 'chips', 'quotes', 'choices',
-                'notes', 'columns', 'checks', 'events'):
+                'notes', 'columns', 'checks', 'events', 'records', 'classes', 'facts', 'phases'):
         spec.setdefault(key, [])
     return spec
 
@@ -1472,12 +1693,25 @@ def font_css():
                    f"{base64.b64encode(path.read_bytes()).decode()})}}" for fam, wt, fs, path in faces)
 
 
+def blend_shots(shots):
+    """Screenshots (PNG bytes) averaged into one transparent image, weighting colour by alpha so a moving edge fades
+    instead of darkening."""
+    import io
+    import numpy as np
+    from PIL import Image
+    a = [np.asarray(Image.open(io.BytesIO(x)).convert('RGBA'), dtype=np.float32) for x in shots]
+    alpha = sum(x[..., 3] for x in a) / len(a)
+    rgb = sum(x[..., :3] * x[..., 3:] for x in a) / len(a) / np.maximum(alpha[..., None], 1e-6)
+    return Image.fromarray(np.dstack([rgb, alpha]).round().clip(0, 255).astype(np.uint8), 'RGBA')
+
+
 def render_motion(spec, theme, size):
     """Transparent RGBA frames of an animation at its natural length, and its META {duration, settle, sounds}.
     Cached per spec, theme, size and page."""
     w, h = size
     key = hashlib.sha1(json.dumps({'spec': spec, 'accent': theme['accent'], 'ink': theme['ink'], 'size': size,
-                                   'page': hashlib.sha1(PAGE.encode()).hexdigest()}, sort_keys=True).encode()).hexdigest()[:16]
+                                   'page': hashlib.sha1(PAGE.encode()).hexdigest(), 'shutter': [SHUTTER, 4]},
+                                  sort_keys=True).encode()).hexdigest()[:16]
     folder = FRAMES / key
     meta_path = folder / 'meta.json'
     if meta_path.exists() and any(folder.glob('*.png')):
@@ -1503,8 +1737,22 @@ def render_motion(spec, theme, size):
             raise RuntimeError(f"motion page failed: {(errors or [page.evaluate('window.ERROR')])[0][:300]}")
         meta = page.evaluate('window.META')
         for f in range(max(1, round(meta['duration'] * FPS))):
+            path = folder / f'{f:04d}.png'
             page.evaluate(f'window.renderAt({f / FPS})')
-            page.screenshot(path=str(folder / f'{f:04d}.png'), omit_background=True)
+            if not SHUTTER:
+                page.screenshot(path=str(path), omit_background=True)
+                continue
+            a = page.screenshot(omit_background=True)
+            page.evaluate(f'window.renderAt({(f + SHUTTER) / FPS})')
+            d = page.screenshot(omit_background=True)
+            if a == d:  # nothing moves in this frame: keep it sharp and skip the in-between shots
+                path.write_bytes(a)
+                continue
+            mid = []
+            for k in (1, 2):  # 4 moments, or a fast small dot shows twice instead of as one streak
+                page.evaluate(f'window.renderAt({(f + SHUTTER * k / 3) / FPS})')
+                mid.append(page.screenshot(omit_background=True))
+            blend_shots([a, *mid, d]).save(path)
         browser.close()
     meta_path.write_text(json.dumps(meta))
     return folder, meta
@@ -1610,13 +1858,63 @@ EXAMPLES = {
         {'date': 'Jul 2010', 'text': 'Python 2.7 ships', 'note': 'the last 2.x release'},
         {'date': 'Jan 2020', 'text': 'Python 2 reaches end of life', 'note': 'no more fixes, not even security'},
         {'date': 'Oct 2024', 'text': 'Python 3.13 ships', 'note': 'an experimental free-threaded build'}]},
+    'regex': {'type': 'regex', 'pattern': 'colou?r', 'text': 'color or colour, not colr'},
+    'sql': {'type': 'sql', 'table': 'users', 'columns': ['name', 'age', 'city'],
+            'records': [['Ana', '31', 'Lahore'], ['Bo', '17', 'Karachi'], ['Cy', '24', 'Lahore'], ['Di', '45', 'Quetta']],
+            'query': 'SELECT * FROM users WHERE age > 18 ORDER BY age'},
+    'bigo': {'type': 'bigo', 'title': 'Steps for n items', 'classes': ['O(log n)', 'O(n)', 'O(n log n)', 'O(n^2)'], 'n': 1000},
+    'launch': {'type': 'launch', 'name': 'HyperFrames', 'maker': 'HeyGen', 'tagline': 'Turns HTML into video',
+               'facts': ['Open source, Apache 2.0 license', 'Renders each exact frame', 'Made for AI agents to write'],
+               'chips': ['Open source', 'HTML', 'MP4'], 'source': 'https://hyperframes.heygen.com/introduction'},
+    'agentloop': {'type': 'agentloop', 'goal': 'Fix the failing test', 'phases': ['Read code', 'Edit', 'Run tests'],
+                  'loops': 2, 'done': 'Tests pass'},
     'latency': {'type': 'latency', 'title': 'Latency numbers', 'unit': 'ms', 'source': 'https://gist.github.com/jboner/2841832',
                 'bars': [{'label': 'Read 1 MB from SSD', 'value': 1}, {'label': 'Disk seek', 'value': 10},
                          {'label': 'Read 1 MB from disk', 'value': 20}, {'label': 'CA to NL round trip', 'value': 150}]},
 }
 
 
+def quality(folder):
+    """How smooth the rendered frames are, measured on a quarter-size grey copy (brightness times alpha), without a
+    model: jump, the biggest share of the box that changes hard in one frame (a pop with no in-between); flicker,
+    the biggest share that brightens then darkens (or the reverse) frame to frame; dead, the longest stretch in
+    seconds where nothing changes; dupes, single frozen frames between moving ones (a stutter); jerk, the biggest
+    change in acceleration of the per-frame change divided by its biggest value, over the moving span."""
+    import numpy as np
+    from PIL import Image
+    frames = []
+    for path in sorted(folder.glob('*.png')):
+        im = Image.open(path).convert('RGBA')
+        im = im.resize((im.width // 4, im.height // 4), Image.BILINEAR)
+        a = np.asarray(im, dtype=np.float32) / 255
+        frames.append(a[..., :3].mean(axis=2) * a[..., 3])
+    f = np.stack(frames)
+    d = np.diff(f, axis=0)
+    jump = float((np.abs(d) > 0.3).mean(axis=(1, 2)).max()) if len(d) else 0.0
+    rev = (np.abs(d[:-1]) > 0.08) & (np.abs(d[1:]) > 0.08) & (np.sign(d[:-1]) != np.sign(d[1:]))
+    flicker = float(rev.mean(axis=(1, 2)).max()) if len(rev) else 0.0
+    m = np.abs(d).mean(axis=(1, 2))
+    still = m < 1e-4
+    run = longest = 0
+    for x in still:
+        run = run + 1 if x else 0
+        longest = max(longest, run)
+    on = np.nonzero(~still)[0]
+    span = m[on[0]:on[-1] + 1] if len(on) else m[:0]
+    dupes = int(sum(1 for i in range(1, len(span) - 1) if span[i] < 1e-4 <= min(span[i - 1], span[i + 1])))
+    jerk = float(np.abs(np.diff(span, 2)).max() / span.max()) if len(span) > 3 else 0.0
+    return {'jump': round(jump, 4), 'flicker': round(flicker, 4), 'dead': round(longest / FPS, 2), 'dupes': dupes,
+            'jerk': round(jerk, 3)}
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--score':
+        style = sys.argv[2] if len(sys.argv) > 2 else 'dark'
+        print(f"{'type':<11} {'jerk':>6} {'jump':>6} {'flicker':>7} {'dead s':>6} {'dupes':>5}")
+        for kind in TYPES:
+            q = quality(render_motion(EXAMPLES[kind], render.THEMES[style], (980, 900))[0])
+            print(f"{kind:<11} {q['jerk']:>6.3f} {q['jump']:>6.3f} {q['flicker']:>7.4f} {q['dead']:>6.2f} {q['dupes']:>5}")
+        return
     if len(sys.argv) < 2 or sys.argv[1] not in TYPES:
         raise SystemExit(__doc__)
     kind, style = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else 'dark')

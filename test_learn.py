@@ -2651,7 +2651,8 @@ class MotionTest(Sandbox):
                   'statement': {'lines': ['only one line']}, 'quotes': {'quotes': [{'author': 'A', 'platform': 'X'}]},
                   'notify': {'notes': [{'label': 'a', 'text': 'only one'}]}, 'checks': {'pick': 'nobody'},
                   'bignumber': {'source': 'http://x'}, 'timeline': {'events': [{'date': '2020', 'text': 'one'}]},
-                  'latency': {'unit': 'minutes'}}
+                  'latency': {'unit': 'minutes'}, 'regex': {'pattern': 'zzz'}, 'sql': {'query': 'SELECT * FROM nope'},
+                  'bigo': {'classes': ['O(n)']}, 'launch': {'source': 'http://x'}, 'agentloop': {'loops': 9}}
         for kind, spec in self.examples().items():
             self.assertEqual(generate.motion_errors(1, spec), [], kind)
             if kind == 'morph':

@@ -207,6 +207,13 @@ def describe(visual):
              'latency': 'bars racing to latencies: ' + ', '.join(f"{b.get('label')} {b.get('value')} {visual.get('unit', '')}"
                                                                  for b in visual.get('bars', []))
                         + ', numbers from ' + visual.get('source', 'no source') + ' (check them)',
+             'regex': 'the regex `' + str(visual.get('pattern')) + '` scanning "' + str(visual.get('text')) + '", its matches boxed',
+             'sql': 'the query `' + str(visual.get('query')) + '` run on a small ' + str(visual.get('table')) + ' table, kept rows lit',
+             'bigo': 'step counts of ' + ', '.join(visual.get('classes', [])) + ' growing to n = ' + str(visual.get('n')),
+             'launch': 'a launch card for ' + str(visual.get('name')) + ' by ' + str(visual.get('maker')) + ': '
+                       + ', '.join(visual.get('facts', [])) + ', from ' + visual.get('source', 'no source') + ' (check the facts)',
+             'agentloop': 'an agent loop for "' + str(visual.get('goal')) + '": ' + ' -> '.join(visual.get('phases', []))
+                          + ' (check it is how that agent really works)',
              }.get(visual['type'], 'a screenshot of ' + visual.get('url', '') + ' with "'
                    + visual.get('find', '') + '" outlined')
 

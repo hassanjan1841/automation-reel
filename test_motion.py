@@ -156,8 +156,46 @@ class ExplainerRules(unittest.TestCase):
                                               {**ok, 'bars': ok['bars'][:1]}, {**ok, 'bars': [{'label': 'x', 'value': 0}] * 2}])
 
     def test_source_host_is_shown(self):
-        for kind in ('bignumber', 'latency'):
+        for kind in ('bignumber', 'latency', 'launch'):
             self.assertTrue(motion.prepare(dict(motion.EXAMPLES[kind]), 980)['source_host'], kind)
+
+
+class TruthRules(unittest.TestCase):
+    """regex, sql, bigo, launch and agentloop: what they show is worked out by real code, and bad specs fail once."""
+
+    def bad_specs(self, kind, bads):
+        import generate
+        ok = dict(motion.EXAMPLES[kind])
+        self.assertEqual(generate.motion_errors(1, ok), [], kind)
+        for bad in bads(ok):
+            self.assertEqual(len(generate.motion_errors(1, bad)), 1, bad)
+
+    def test_regex_matches_come_from_re(self):
+        spec = motion.prepare(dict(motion.EXAMPLES['regex']), 980)
+        self.assertEqual(spec['matches'], [[0, 5, 'color'], [9, 15, 'colour']])
+        self.bad_specs('regex', lambda ok: [{**ok, 'pattern': 'zzz'}, {**ok, 'pattern': '(ou+)+'}, {**ok, 'pattern': '['},
+                                            {**ok, 'text': 'x' * 37}, {**ok, 'pattern': 'o*'}])
+
+    def test_sql_runs_the_query_read_only(self):
+        import sqlite3
+        out = motion.sql_run(motion.EXAMPLES['sql'])
+        self.assertEqual(out['result_rows'], [['Cy', '24', 'Lahore'], ['Ana', '31', 'Lahore'], ['Di', '45', 'Quetta']])
+        self.assertEqual(out['keep'], [2, 0, 3])
+        for q in ('INSERT INTO users VALUES (1, 2, 3)', 'UPDATE users SET age = 1', 'CREATE TABLE x (a)',
+                  'SELECT 1; SELECT 2'):
+            with self.assertRaises(sqlite3.Error, msg=q):
+                motion.sql_run({**motion.EXAMPLES['sql'], 'query': q})
+        self.bad_specs('sql', lambda ok: [{**ok, 'query': 'SELECT * FROM nope'}, {**ok, 'query': 'UPDATE users SET age = 1'},
+                                          {**ok, 'columns': ['name']}, {**ok, 'records': [['Ana', '31']] * 2},
+                                          {**ok, 'query': 'SELECT * FROM users WHERE age > 99'}])
+
+    def test_bigo_launch_and_agentloop(self):
+        self.bad_specs('bigo', lambda ok: [{**ok, 'classes': ['O(n)']}, {**ok, 'classes': ['O(n)', 'O(n!)']},
+                                           {**ok, 'classes': ['O(n)', 'O(2^n)'], 'n': 1000}, {**ok, 'n': 1}])
+        self.bad_specs('launch', lambda ok: [{**ok, 'source': ''}, {**ok, 'facts': ok['facts'][:1]}, {**ok, 'name': ''},
+                                             {**ok, 'chips': ['x'] * 4}])
+        self.bad_specs('agentloop', lambda ok: [{**ok, 'phases': ['a', 'b']}, {**ok, 'loops': 4}, {**ok, 'done': ''},
+                                                {**ok, 'phases': ['a', 'a', 'b']}])
 
 
 class Fields(unittest.TestCase):
@@ -192,8 +230,45 @@ def tearDownModule():
     for p in _module_patches:
         p.stop()
 
+class Smoothness(unittest.TestCase):
+    """motion.quality on made-up frames: a smooth slide scores clean, a pop, a blip and a stall are caught."""
+
+    def frames(self, xs):
+        tmp = Path(tempfile.mkdtemp())
+        for i, x in enumerate(xs):
+            a = np.zeros((80, 160, 4), np.uint8)
+            if x is not None:
+                a[20:60, int(x):int(x) + 40] = 255
+            Image.fromarray(a, 'RGBA').save(tmp / f'{i:04d}.png')
+        self.addCleanup(shutil.rmtree, tmp, True)
+        return tmp
+
+    def test_a_smooth_slide_is_clean_and_faults_are_caught(self):
+        smooth = motion.quality(self.frames([4 * i for i in range(30)]))
+        self.assertLess(smooth['jump'], 0.05)
+        self.assertEqual(smooth['dupes'], 0)
+        pop = motion.quality(self.frames([None] * 10 + [60] * 10))
+        self.assertGreater(pop['jump'], 0.05)
+        blip = motion.quality(self.frames([60] * 5 + [None] + [60] * 5))
+        self.assertGreater(blip['flicker'], 0.05)
+        stall = motion.quality(self.frames([0, 4, 8, 8, 12, 16, 20]))
+        self.assertEqual(stall['dupes'], 1)
+        dead = motion.quality(self.frames([0] * 100 + [4]))
+        self.assertGreater(dead['dead'], 3)
+
+    def test_motion_blur_blends_by_alpha(self):
+        import io
+        def png(rgba):
+            b = io.BytesIO(); Image.fromarray(np.full((2, 2, 4), rgba, np.uint8), 'RGBA').save(b, 'PNG'); return b.getvalue()
+        out = np.asarray(motion.blend_shots([png((255, 0, 0, 255)), png((0, 0, 0, 0))]))
+        self.assertEqual(tuple(out[0, 0]), (255, 0, 0, 128))  # half covered, still red, never darkened
+
+
 class Render(unittest.TestCase):
     """Every template rendered for real, once, at a small size."""
+    # Smoothness limits (motion.quality), set just above the roughest template on 2026-10-25 so none gets worse;
+    # dead is the playbook's rule that nothing stays frozen for more than 3 s.
+    LIMITS = {'jump': 0.08, 'flicker': 0.09, 'dead': 3.0, 'dupes': 18, 'jerk': 2.5}
 
     @classmethod
     def setUpClass(cls):
@@ -285,6 +360,12 @@ class Render(unittest.TestCase):
         self.assertGreater(end[0], 1000)
         self.assertLess(end[1], 50)
         self.assertGreater(end[2], start[2] + 1000)
+
+    def test_every_template_moves_smoothly(self):
+        for kind, (folder, meta) in self.out.items():
+            q = motion.quality(folder)
+            for k, limit in self.LIMITS.items():
+                self.assertLessEqual(q[k], limit, (kind, k, q))
 
     def test_latency_bars_finish_in_order_of_their_values(self):
         # The bars race in real time: each finishes at a time proportional to its value, the fastest first.
