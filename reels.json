@@ -8281,5 +8281,146 @@
         "id": "18086309318701268"
       }
     ]
+  },
+  {
+    "id": 91,
+    "style": "light",
+    "payoff": "lsof -ti:3000 | xargs kill -9 kills whatever is hogging a port in one line, no more grep and kill by hand.",
+    "kicker": "Quick trick #7",
+    "hook": "Your *port* stays stuck",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "fix-port.sh",
+      "before": "ps aux | grep node\nkill -9 1234\nkill -9 1234",
+      "after": "lsof -ti:3000 | xargs kill -9"
+    },
+    "alternatives": [
+      {
+        "hook": "Stop *killing* ports by hand",
+        "spoken": "[fired up] Stop hunting process IDs by hand. [quick] One line frees any stuck port fast.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "One *command* frees your port",
+        "hook_type": "shortcut",
+        "spoken": "[hyped] One line instantly frees a stuck port. [quick] No more hunting process IDs ever."
+      },
+      {
+        "hook": "Ten *commands* become one line",
+        "hook_type": "before_after",
+        "spoken": "[fired up] Ten manual commands to find and kill it. [sharp] Now it's one line."
+      }
+    ],
+    "points": [
+      {
+        "title": "The slow way",
+        "body": "Finding the process id takes several steps",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "ps aux | grep node",
+              "kill -9 1234"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One command",
+        "body": "This single pipe finds and kills it",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "lsof -ti:3000 | xargs kill -9",
+              "lsof -ti:3000"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "fix-port.sh",
+            "code": "lsof -ti:3000 | xargs kill -9",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Save it forever",
+        "body": "Turn it into a reusable shell function",
+        "visual": [
+          {
+            "type": "code",
+            "language": "bash",
+            "title": ".zshrc",
+            "code": "function killport() {\n  lsof -ti:$1 | xargs kill -9\n}",
+            "highlight": [
+              2
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "killport 3000"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *restarts* for this?",
+    "caption": "Kill a process stuck on a port with one terminal command\nNo more ps aux and grep by hand\nKnow a dev who still restarts their laptop for this? 👇",
+    "hashtags": [
+      "#terminal",
+      "#linux",
+      "#macos",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[fired up] Your port is stuck in use again. [urgent] One line clears it right now.",
+      "[annoyed] Normally you hunt the process id by hand.",
+      "[excited] It chains the search and kill instantly.",
+      "[confident] Save it as a function for next time.",
+      "[warm] Send this to the dev who still restarts for this."
+    ],
+    "reveal": 2,
+    "test": {
+      "name": "cta_style",
+      "arm": "share"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 7,
+    "posted_at": "2026-10-25T21:15:46+00:00",
+    "media_id": "18098008898395732",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "diff",
+      "terminal",
+      "terminal",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.7,
+    "youtube_id": "u669YlUuXQ0",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18674895781008187"
+      }
+    ]
   }
 ]
