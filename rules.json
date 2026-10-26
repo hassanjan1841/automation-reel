@@ -188,5 +188,15 @@
     "evidence": "visuals diff (10 reels) beat code (40 reels): skip rate +3.7 points",
     "verdict": "",
     "checked": ""
+  },
+  {
+    "id": 20,
+    "text": "The ending asks the viewer to send the reel to one developer who needs it: voiceover line 5 says so naturally (\"Send this to the friend who still trusts that header.\"), and the cta is a short question that points at that person (\"Know a dev who still *believes* this?\").",
+    "since": "2026-10-26",
+    "status": "kept",
+    "source": "experiment",
+    "evidence": "test cta_style: share won: skip rate 5.1 points lower (question 11, share 5 reels)",
+    "verdict": "won a test",
+    "checked": "2026-10-26"
   }
 ]

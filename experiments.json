@@ -1,7 +1,7 @@
 {
   "active": {
-    "name": "cta_style",
-    "since": "2026-10-15"
+    "name": "topic",
+    "since": "2026-10-26"
   },
   "done": [
     {
@@ -15,6 +15,12 @@
       "since": "2026-10-07",
       "until": "2026-10-15",
       "result": "dense won: skip rate 4.0 points lower (dense 9, relaxed 5 reels)"
+    },
+    {
+      "name": "cta_style",
+      "since": "2026-10-15",
+      "until": "2026-10-26",
+      "result": "share won: skip rate 5.1 points lower (question 11, share 5 reels)"
     }
   ]
 }

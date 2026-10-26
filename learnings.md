@@ -1,6 +1,7 @@
 # What holds our viewers (updated by learn.py)
 
 - Voiceover line 1 is dense: 12 to 14 spoken words, the whole promise said fast (it is played a little faster too); the alternatives' spoken lines are 12 to 14 words as well. (proven)
+- The ending asks the viewer to send the reel to one developer who needs it: voiceover line 5 says so naturally ("Send this to the friend who still trusts that header."), and the cta is a short question that points at that person ("Know a dev who still *believes* this?"). (proven)
 - Open on the proof: the code or output that shows the point is on screen from frame 0, never a text card alone.
 - When the result appears, hold a short silent beat so it lands before the voice names it.
 - End on a direct question to the viewer, never a comment-for-a-guide freebie offer.
