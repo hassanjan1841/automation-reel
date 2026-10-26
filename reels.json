@@ -8665,5 +8665,197 @@
         "id": "18130804009696709"
       }
     ]
+  },
+  {
+    "id": 93,
+    "style": "light",
+    "payoff": "git merge keeps full history and adds a merge commit; git rebase replays your commits onto main but rewrites every hash — merge shared branches, rebase your own.",
+    "kicker": "X vs Y #4",
+    "hook": "Never *rebase* a shared branch",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "danger.sh",
+      "language": "bash",
+      "code": "git checkout shared-branch\ngit rebase main\ngit push --force",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Clean history, then *rewritten* hashes",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Rebase makes your history look clean, (break) [serious] but secretly rewrites every single commit hash."
+      },
+      {
+        "hook": "Rebase *before* you open a PR",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Rebase your branch clean first, (break) [confident] then merge it when opening the pull request."
+      },
+      {
+        "hook": "Same code, two *different* histories",
+        "hook_type": "test",
+        "spoken": "[fired up] I ran merge and rebase on one branch, (break) [surprised] one changed every commit hash."
+      }
+    ],
+    "points": [
+      {
+        "title": "Different history shapes",
+        "body": "merge adds a commit, rebase replays yours",
+        "visual": [
+          {
+            "type": "code",
+            "title": "combine.sh",
+            "language": "bash",
+            "code": "git merge feature\ngit rebase main",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Rebase rewrites history",
+        "body": "every commit gets a brand new hash",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "git log --oneline",
+            "language": "bash",
+            "before": "a1b2c3d fix typo\n9f8e7d6 add login feature",
+            "after": "f4a9c21 fix typo\n7b3e810 add login feature"
+          }
+        ]
+      },
+      {
+        "title": "Pick by branch",
+        "body": "shared branch merge, your branch rebase",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git log --oneline"
+            ],
+            "output": [
+              "f4a9c21 fix typo",
+              "7b3e810 add login feature",
+              "3c2d1e0 main setup"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "when-to-use.sh",
+            "language": "bash",
+            "code": "# shared branch\ngit merge feature\n\n# your branch\ngit rebase main",
+            "highlight": [
+              2,
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *rebases* shared branches?",
+    "caption": "Git merge vs rebase: what actually changes in your history\nOne keeps commits, one rewrites them\nWhich one do you reach for first? 👇",
+    "hashtags": [
+      "#git",
+      "#github",
+      "#gitworkflow",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[fired up] Rebasing a shared branch looks harmless, (break) [serious] but it quietly rewrites your teammates' history.",
+      "[quick] Merge leaves a branch point, rebase makes it look linear.",
+      "[deadpan] Teammates pulling that branch suddenly see conflicts everywhere.",
+      "[confident] So merge rules shared branches, rebase wins solo.",
+      "[warm] Send this to the force pushing teammate."
+    ],
+    "reveal": 3,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "danger.sh",
+        "language": "bash",
+        "code": "git checkout shared-branch\ngit rebase main\ngit push --force",
+        "highlight": [
+          3
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "combine.sh",
+        "language": "bash",
+        "code": "git merge feature\ngit rebase main",
+        "highlight": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "file",
+        "title": "git log --oneline",
+        "lines": [
+          "a1b2c3d fix typo",
+          "9f8e7d6 add login feature"
+        ],
+        "strike": true,
+        "tag": "NEW HASHES"
+      },
+      {
+        "kind": "terminal",
+        "command": "git log --oneline",
+        "output": [
+          "f4a9c21 fix typo",
+          "7b3e810 add login feature",
+          "3c2d1e0 main setup"
+        ]
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "MERGE OR",
+          "*REBASE*?"
+        ],
+        "label": "Pick by branch",
+        "motif": "brackets"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 4,
+    "posted_at": "2026-10-26T20:00:45+00:00",
+    "media_id": "18113649968337083",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "diff",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.1,
+    "youtube_id": "91oXRqlqFlc",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "17923943319220783"
+      }
+    ]
   }
 ]
