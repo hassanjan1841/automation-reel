@@ -8422,5 +8422,248 @@
         "id": "18674895781008187"
       }
     ]
+  },
+  {
+    "id": 92,
+    "style": "dark",
+    "payoff": "Object.freeze(obj) only locks the top-level keys — nested objects inside stay fully mutable, so obj.inner.value = x still changes it.",
+    "kicker": "Myth vs fact #16",
+    "hook": "Object.freeze isn't *deep*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "freeze.js",
+      "language": "js",
+      "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+      "highlight": [
+        1,
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Freeze doesn't go *deep*",
+        "hook_type": "problem",
+        "spoken": "[alarmed] You think Object dot freeze locks everything completely, (break) [actually] nested data still changes."
+      },
+      {
+        "hook": "Shallow lock, *open* nested",
+        "hook_type": "before_after",
+        "spoken": "[grinning] Object dot freeze locks the surface, (break) [knowing] but nested objects stay wide open."
+      },
+      {
+        "hook": "We *mutated* a frozen object",
+        "hook_type": "test",
+        "spoken": "[confident] We froze an object, then tried changing it, (break) [surprised] but the nested value changed."
+      }
+    ],
+    "points": [
+      {
+        "title": "Top level locks",
+        "body": "Reassigning name gets silently blocked",
+        "visual": [
+          {
+            "type": "code",
+            "title": "freeze.js",
+            "language": "js",
+            "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+            "highlight": [
+              2,
+              5,
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Nested stays open",
+        "body": "Editing address city seems risky too",
+        "visual": [
+          {
+            "type": "code",
+            "title": "freeze.js",
+            "language": "js",
+            "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+            "highlight": [
+              3,
+              6,
+              8
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real output revealed",
+        "body": "Max stays locked, LA slips through",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+            "choices": [
+              "Max NYC",
+              "Alex LA",
+              "Max LA"
+            ],
+            "output": [
+              "Max",
+              "LA"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node freeze.js"
+            ],
+            "output": [
+              "Max",
+              "LA"
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Ever *trusted* Object.freeze too much?",
+    "caption": "Object.freeze in JavaScript only locks the top level.\nNested objects inside stay fully mutable.\nDid you know your frozen objects could still change? 👇",
+    "hashtags": [
+      "#javascript",
+      "#objectfreeze",
+      "#webdev",
+      "#coding"
+    ],
+    "voiceover": [
+      "[fired up] Object dot freeze looks like it locks everything. (break) [knowing] Nested objects inside still change.",
+      "[confident] Changing the top name gets blocked instantly.",
+      "[uneasy] But editing the nested city works fine.",
+      "[hushed] (break) [excited] The name stays frozen, but the city sneaks right past.",
+      "[warm, curious] Send this to the dev who trusts freeze fully."
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "freeze.js",
+        "language": "js",
+        "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+        "lines": [
+          "const user = Object.freeze({",
+          "  name: \"Max\",",
+          "  address: { city: \"NYC\" }",
+          "});",
+          "user.name = \"Alex\";",
+          "user.address.city = \"LA\";",
+          "console.log(user.name);",
+          "console.log(user.address.city);"
+        ],
+        "highlight": [
+          1,
+          6
+        ],
+        "at": "change"
+      },
+      {
+        "kind": "code",
+        "title": "freeze.js",
+        "language": "js",
+        "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+        "lines": [
+          "const user = Object.freeze({",
+          "  name: \"Max\",",
+          "  address: { city: \"NYC\" }",
+          "});",
+          "user.name = \"Alex\";",
+          "user.address.city = \"LA\";",
+          "console.log(user.name);",
+          "console.log(user.address.city);"
+        ],
+        "highlight": [
+          2,
+          5,
+          7
+        ],
+        "at": "blocked"
+      },
+      {
+        "kind": "code",
+        "title": "freeze.js",
+        "language": "js",
+        "code": "const user = Object.freeze({\n  name: \"Max\",\n  address: { city: \"NYC\" }\n});\nuser.name = \"Alex\";\nuser.address.city = \"LA\";\nconsole.log(user.name);\nconsole.log(user.address.city);",
+        "lines": [
+          "const user = Object.freeze({",
+          "  name: \"Max\",",
+          "  address: { city: \"NYC\" }",
+          "});",
+          "user.name = \"Alex\";",
+          "user.address.city = \"LA\";",
+          "console.log(user.name);",
+          "console.log(user.address.city);"
+        ],
+        "highlight": [
+          3,
+          6,
+          8
+        ],
+        "at": "fine"
+      },
+      {
+        "kind": "terminal",
+        "command": "node freeze.js",
+        "output": [
+          "Max",
+          "LA"
+        ],
+        "at": "past",
+        "accent": true
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Freeze is",
+          "*shallow*"
+        ],
+        "label": "Try structuredClone",
+        "motif": "brackets",
+        "at": "fully"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 16,
+    "posted_at": "2026-10-26T13:54:05+00:00",
+    "media_id": "17984466791901260",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-code",
+      "stage-code",
+      "stage-terminal",
+      "stage-words"
+    ],
+    "slot": 1,
+    "seconds": 18.6,
+    "youtube_id": "Bg0T54J1cqg",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18119532884515140"
+      },
+      {
+        "kind": "teaser",
+        "id": "18130804009696709"
+      }
+    ]
   }
 ]
