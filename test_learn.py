@@ -15,6 +15,7 @@ import json
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1875,6 +1876,34 @@ class ReelFormatTest(Sandbox):
         self.assertEqual(render.exit_progress(9.0, 10.0), 0)
         self.assertTrue(0 < render.exit_progress(10.0, 10.0) < 1)
         self.assertEqual(render.exit_progress(10.0 + render.GLIDE, 10.0), 1)
+
+    def test_springs_and_a_clean_handoff(self):
+        # Type settles without overshoot, small UI barely past its place (Motion Reel Kit presets).
+        self.assertLessEqual(max(render.spring(i / 300, 'type') for i in range(600)), 1.0)
+        self.assertLess(max(render.spring(i / 300, 'snappy') for i in range(600)), 1.03)
+        self.assertEqual(render.spring(0, 'card'), 0)
+        self.assertAlmostEqual(render.spring(1.0, 'card'), 1, places=2)
+        # By the slide's end the old text has faded out, so it never shows on top of the next slide's words.
+        frame = np.zeros((render.H, render.W, 3), dtype=np.float32)
+        word = render.El(np.ones((20, 20), dtype=np.float32), np.array([255.0, 255, 255]), 100, 400, 0.0, slide=(0.0, 10.0))
+        render.draw_element(frame, word, 10.0)
+        self.assertLess(frame.max(), 0.1 * 255)
+
+    @unittest.skipUnless(shutil.which('ffmpeg'), 'ffmpeg is not on PATH')
+    def test_master_reaches_the_loudness_target(self):
+        import wave
+        quiet, out = self.tmp / 'quiet.wav', self.tmp / 'master.wav'
+        rng = np.random.default_rng(1)
+        audio = 0.03 * np.sin(2 * np.pi * 220 * np.arange(render.SR * 4) / render.SR) + 0.002 * rng.standard_normal(render.SR * 4)
+        audio[render.SR:render.SR + 400] = 0.9  # an effect peak the limiter must hold
+        with wave.open(str(quiet), 'wb') as w:
+            w.setnchannels(1), w.setsampwidth(2), w.setframerate(render.SR)
+            w.writeframes((audio * 32767).astype(np.int16).tobytes())
+        level, peak = render.master(quiet, out)
+        self.assertLess(abs(level - render.LOUDNESS), 0.6)
+        self.assertLessEqual(peak, render.TRUE_PEAK + 0.3)
+        with wave.open(str(out)) as w:
+            self.assertEqual(w.getframerate(), 48000)
 
     def test_slide_changes_glide_and_the_held_beat_ticks(self):
         slides = [render.Slide('hook', 0, 3), render.Slide('point', 3, 7, hold=0.9), render.Slide('cta', 7, 10)]
