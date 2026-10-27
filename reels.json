@@ -8857,5 +8857,222 @@
         "id": "17923943319220783"
       }
     ]
+  },
+  {
+    "id": 94,
+    "style": "dark",
+    "payoff": "deny: Bash(aws *) always blocks Bash(aws s3 ls), even though allow matches it exactly, since Claude Code checks deny before allow.",
+    "kicker": "Myth vs fact #17",
+    "hook": "Expected *allowed*, got blocked",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "settings.json",
+      "language": "json",
+      "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+      "highlight": [
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *allow* rule loses",
+        "spoken": "[grinning, punchy] Claude Code lets a deny rule beat your most specific [emphasis] allow rule, every time.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "That allow rule *does nothing*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your allow rule for a blocked command [serious] never actually runs in Claude Code."
+      },
+      {
+        "hook": "Same setup, blocked *anyway*",
+        "hook_type": "test",
+        "spoken": "[fired up] We tested an allow rule against a deny rule, [confident] and deny still won."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common guess",
+        "body": "Allow seems more specific, so it wins",
+        "visual": [
+          {
+            "type": "code",
+            "title": "settings.json",
+            "language": "json",
+            "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Order decides",
+        "body": "Deny is checked before allow, always",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/permissions",
+            "find": "specificity doesn't change the order"
+          },
+          {
+            "type": "code",
+            "title": "order.txt",
+            "language": "text",
+            "code": "deny\nask\nallow",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Deny always wins",
+        "body": "The aws command stays blocked anyway",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "aws s3 ls",
+            "output": [
+              "checking deny rules...",
+              "match: Bash(aws *)",
+              "result: blocked"
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/permissions",
+            "find": "can't carve an exception out of a deny rule"
+          },
+          {
+            "type": "code",
+            "title": "permissions",
+            "language": "text",
+            "code": "deny: Bash(aws *)\nallow: Bash(aws s3 ls)\nresult: blocked",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Would your *allow* rule survive this?",
+    "caption": "Claude Code permission rules: deny vs allow order explained\nA deny rule always blocks, even when an allow rule is more specific\nDoes your permissions file have this blind spot? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#devtools",
+      "#aicoding",
+      "#permissions"
+    ],
+    "voiceover": [
+      "[fired up] You'd expect that specific allow rule to work. (break) [deadpan] Claude Code still blocks it.",
+      "[amused] Most devs think the specific rule should win.",
+      "[serious, fast] Order decides it, deny goes first.",
+      "[confident and fast] So that allow rule for aws gets blocked.",
+      "[warm, curious] Send this to the teammate who trusts allow rules blindly."
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "settings.json",
+        "language": "json",
+        "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+        "highlight": [
+          3,
+          4
+        ]
+      },
+      {
+        "kind": "file",
+        "title": "settings.json",
+        "lines": [
+          "deny: Bash(aws *)",
+          "allow: Bash(aws s3 ls)"
+        ],
+        "tag": "SPECIFIC WINS?",
+        "strike": false,
+        "at": "specific"
+      },
+      {
+        "kind": "docs",
+        "url": "https://code.claude.com/docs/en/permissions",
+        "title": "Permissions",
+        "text": "Rules are evaluated in order: deny, then ask, then allow. Rule specificity doesn't change the order.",
+        "mark": "specificity doesn't change the order",
+        "at": "order"
+      },
+      {
+        "kind": "steps",
+        "items": [
+          {
+            "label": "Check deny",
+            "note": "Bash(aws *) matches"
+          },
+          {
+            "label": "Check allow",
+            "note": "never reached"
+          }
+        ],
+        "stop": {
+          "request": "aws s3 ls",
+          "result": "BLOCKED",
+          "at": 0
+        },
+        "accent": true,
+        "at": "blocked"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "DENY",
+          "ALWAYS",
+          "*WINS*"
+        ],
+        "label": "Permission rules",
+        "motif": "brackets",
+        "at": "blindly"
+      }
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/permissions"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "reveal": 3,
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 17,
+    "posted_at": "2026-10-27T14:37:14+00:00",
+    "media_id": "17963736213237787",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-file",
+      "stage-docs",
+      "stage-steps",
+      "stage-words"
+    ],
+    "slot": 1,
+    "seconds": 19.0,
+    "youtube_id": "pUpMqrzXvo0",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18074695286735296"
+      }
+    ]
   }
 ]
