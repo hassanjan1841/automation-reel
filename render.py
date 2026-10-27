@@ -27,6 +27,7 @@ QUEUE = ROOT / 'reels.json'
 
 W, H, FPS = 1080, 1920, 30
 SR = 44100
+LOUDNESS, TRUE_PEAK = -14, -1.5   # LUFS and dBTP of the final mix (render.master)
 HANDLE = '@hassanjan.k'
 
 # Instagram safe zone: UI covers the top strip, the bottom caption area and the right-hand buttons.
@@ -41,8 +42,10 @@ TEXT_W = W - 2 * MARGIN
 WORD_STEP = 0.11
 WORD_ANIM = 0.38
 EXIT = 0.3
-# A slide's exit runs this far into the next slide, so the two cross-fade and no frame between them is empty.
+# A slide's exit starts EXIT_LEAD before its end and runs GLIDE into the next slide, so no frame between them is
+# empty; it fades out fast (ease out) and moves late (ease in), so the two slides' text never shows on top of each other.
 GLIDE = 0.15
+EXIT_LEAD = 0.25
 VOICE_LEAD = 0.25
 VOICE_TAIL = 0.7          # after the last word; a long still ending is where viewers leave
 LOOP = 0.4
@@ -227,6 +230,23 @@ def ease_in(p):
 
 def expo_out(p):
     return 1.0 if p >= 1 else 1 - 2 ** (-10 * p)
+
+
+# Closed-form springs (response: seconds per undamped period, damping ratio), as in the Motion Reel Kit: type
+# settles with no overshoot, small UI with about 1.5%, cards with about 0.5%.
+SPRINGS = {'type': (0.36, 1.0), 'snappy': (0.22, 0.8), 'card': (0.4, 0.86)}
+
+
+def spring(tau, kind='card'):
+    """Unit step response of a spring released tau seconds ago: 0 before, settling at 1."""
+    if tau <= 0:
+        return 0.0
+    response, z = SPRINGS[kind]
+    w = 2 * math.pi / response
+    if z >= 1:
+        return 1 - math.exp(-w * tau) * (1 + w * tau)
+    wd = w * math.sqrt(1 - z * z)
+    return 1 - math.exp(-z * w * tau) * (math.cos(wd * tau) + z * w / wd * math.sin(wd * tau))
 
 
 def back_out(p, overshoot=1.7):
@@ -561,7 +581,7 @@ def composite(frame, el, a, x, y, mask=None):
 
 def exit_progress(t, end):
     """0 until a slide starts leaving, 1 once it is gone (GLIDE seconds after its end, under the next slide's entry)."""
-    return min(1.0, max(0.0, (t - (end - EXIT + GLIDE)) / EXIT))
+    return min(1.0, max(0.0, (t - (end - EXIT_LEAD)) / (EXIT_LEAD + GLIDE)))
 
 
 def draw_element(frame, el, t):
@@ -570,15 +590,14 @@ def draw_element(frame, el, t):
     lin = min(1.0, (t - el.t0) / el.dur)
     p = ease_out(lin)
     a = el.alpha * (p if not el.grow else 1.0)
-    dy = (1 - back_out(lin)) * el.rise
+    dy = (1 - spring(t - el.t0, 'type')) * el.rise
     if el.clip is not None:
         a = el.alpha * min(1.0, lin * 5)
         dy = (1 - expo_out(lin)) * el.rise
     q = exit_progress(t, el.slide[1])
     if q > 0:
-        e = ease_in(q)
-        a *= 1 - e
-        dy -= e * 70
+        a *= 1 - ease_out(q)
+        dy -= ease_in(q) * 70
     if a <= 0.003:
         return
     mask = el.mask
@@ -716,7 +735,7 @@ class Captions:
     def pop(self, frame, key, mask, color, x, y, t0, t, alpha):
         """Draw a mask scaled 80% -> ~105% -> 100% over POP seconds from t0, centred on its place."""
         p = min(1.0, max(0.0, (t - t0) / self.POP))
-        scale = 0.8 + 0.2 * back_out(p, 3.5)
+        scale = 0.8 + 0.2 * spring(t - t0, 'snappy')
         m = mask if p >= 1 else self.scaled(key, mask, scale)
         h, w = mask.shape
         composite(frame, El(m, color, 0, 0, 0), alpha * min(1.0, 0.4 + p),
@@ -726,7 +745,7 @@ class Captions:
         for c, (start, end, placed) in enumerate(self.chunks):
             if start <= t < end:
                 p = ease_out(min(1.0, (t - start) / 0.12))
-                dy = round((1 - back_out(min(1.0, (t - start) / 0.2))) * 14)
+                dy = round((1 - spring(t - start, 'snappy')) * 14)
                 for i, (mask, x, y, a, b, (hl_mask, hx, hy, glow), halos) in enumerate(placed):
                     if t < a:
                         break  # words appear as they are spoken
@@ -868,12 +887,18 @@ class Camera:
                              resample=Image.BILINEAR)
 
     def shoot(self, frame, t):
-        """The content frame as the camera sees it, with motion blur (3 sub-frames) during fast moves."""
+        """The content frame as the camera sees it, with motion blur during fast moves. The sub-frames sit at most
+        about 2 px apart at the frame's edge: 3 fixed ones landed far enough apart on a zoom punch that text showed
+        as stepped double outlines (the review called it ghosting)."""
         img = Image.fromarray(np.clip(frame, 0, 255).astype(np.uint8))
         if not self.fast(t):
             return np.asarray(self.apply(img, *self.params(t)), dtype=np.float32)
-        samples = [np.asarray(self.apply(img, *self.params(t + k / (3 * FPS))), dtype=np.float32) for k in (-1, 0, 1)]
-        return sum(samples) / 3
+        span = 1 / (3 * FPS)
+        a, b = self.params(t - span), self.params(t + span)
+        travel = abs(a[0] - b[0]) * H / 2 + abs(a[1] - b[1]) + abs(a[2] - b[2])
+        n = int(min(12, max(3, math.ceil(travel / 2) + 1)))
+        offsets = np.linspace(-span, span, n)
+        return sum(np.asarray(self.apply(img, *self.params(t + o)), dtype=np.float32) for o in offsets) / n
 
 
 def finishing(theme, seed=5, frames=12):
@@ -931,8 +956,9 @@ def render_frames(reel, slides, theme, pipe, captions=None, voice=None):
                     # The hook's proof is already in place on frame 0; point visuals arrive with a short pop.
                     lin = 1.0 if s.ready else min(1.0, max(0.0, (t - s.start - 0.05) / 0.35))
                     p = ease_out(lin)
-                    q = ease_in(exit_progress(t, s.end))
-                    s.visual.draw(frame, t - s.start + s.lead, p * (1 - q), round((1 - back_out(lin)) * 40 - q * 70))
+                    q = exit_progress(t, s.end)
+                    rise = 0.0 if s.ready else 1 - spring(t - s.start - 0.05, 'card')
+                    s.visual.draw(frame, t - s.start + s.lead, p * (1 - ease_out(q)), round(rise * 40 - ease_in(q) * 70))
                 for el in s.elements:
                     draw_element(frame, el, t)
         frame = camera.shoot(frame, t) * vignette
@@ -1110,6 +1136,42 @@ def build_audio(slides, path, voice=None, stage_sounds=None):
         w.writeframes(pcm.tobytes())
 
 
+def loudness(path):
+    """Integrated loudness (LUFS) and true peak (dBTP) of an audio file, measured by ffmpeg's EBU R128 scanner."""
+    out = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(path), '-af', 'ebur128=peak=true',
+                          '-f', 'null', '-'], capture_output=True, text=True, check=True).stderr
+    summary = out[out.rindex('Summary:'):]
+    return (float(re.search(r'I:\s+(-?[\d.]+|-inf) LUFS', summary).group(1)),
+            float(re.search(r'Peak:\s+(-?[\d.]+|-inf) dBFS', summary).group(1)))
+
+
+def master(src, dst):
+    """Gain the mix to LOUDNESS LUFS, with a limiter holding peaks under TRUE_PEAK, at 48 kHz. A peak-scaled mix
+    landed near -23 LUFS, about 9 dB under other Reels, so ours played quieter in the feed. The limiter shaves the
+    short effect peaks, which eats part of each gain step, so it measures again and scales the next step by how far
+    the last one really moved the level (at most 5 passes; an effects-only mix stalled near -15.5 with plain steps).
+    Returns the final (LUFS, dBTP)."""
+    level, _ = loudness(src)
+    if level == float('-inf') or level < -70:  # silence: nothing to measure, keep the mix as it is
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(src), '-ar', '48000', str(dst)], check=True)
+        return loudness(dst)
+    gain, ceiling = LOUDNESS - level, 10 ** ((TRUE_PEAK - 1.0) / 20)  # the AAC encode adds up to about 0.5 dB
+    last = None
+    for _ in range(5):
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(src), '-af',
+                        f'aresample=192000,volume={gain:.2f}dB,alimiter=limit={ceiling:.3f}:attack=2:release=60'
+                        ':level=false,aresample=48000', str(dst)], check=True)
+        level, peak = loudness(dst)
+        if abs(level - LOUDNESS) <= 0.5:
+            break
+        slope = 1.0
+        if last and gain != last[0] and level != last[1]:
+            slope = min(1.0, max(0.2, (level - last[1]) / (gain - last[0])))
+        last = (gain, level)
+        gain += min(12.0, (LOUDNESS - level) / slope)
+    return level, peak
+
+
 # ---------- entry points ----------
 
 def make_cover(reel, path):
@@ -1164,16 +1226,20 @@ def render_reel(reel, out_path=None, voice=None):
         return out_path, slides
     slides, theme = build_slides(reel, voice)
     with tempfile.TemporaryDirectory() as tmp:
-        wav = Path(tmp) / 'sfx.wav'
-        build_audio(slides, wav, voice)
+        mix, wav = Path(tmp) / 'mix.wav', Path(tmp) / 'master.wav'
+        build_audio(slides, mix, voice)
+        master(mix, wav)
         cmd = [
             'ffmpeg', '-y', '-loglevel', 'error',
             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
             '-i', str(wav),
-            '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-pix_fmt', 'yuv420p',
+            # Convert with the bt709 matrix and say so: untagged HD is guessed as bt709 or bt601 by different players.
+            '-vf', 'scale=out_color_matrix=bt709:out_range=tv',
+            '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p',
             '-profile:v', 'high', '-level', '4.1', '-maxrate', '5M', '-bufsize', '10M',
+            '-x264-params', 'colorprim=bt709:transfer=bt709:colormatrix=bt709',
             '-g', str(FPS * 2),
-            '-c:a', 'aac', '-b:a', '128k', '-ar', str(SR),
+            '-c:a', 'aac', '-b:a', '192k',
             '-shortest', '-movflags', '+faststart', str(out_path),
         ]
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)

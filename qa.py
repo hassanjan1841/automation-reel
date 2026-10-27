@@ -1,10 +1,13 @@
-"""Look at a rendered reel the way a viewer would: Claude reviews one frame per slide.
+"""Look at a rendered reel the way a viewer would: Claude reviews one settled frame per slide, a strip of the
+fastest-moving frames in each slide (pops, jumps and overlapping text only show mid-motion), and frame 0 at phone size.
 
 A visual (code, terminal, screenshot) that is irrelevant, unreadable or broken (cookie banner, login wall,
 error page, blank page) is reported so publish.py re-renders that slide with the point's next visual choice (or as text); a rejected hook
 proof is dropped (a diff first gets one more try as a code card of its "after"). A diff's frame is its red "before"
 and its green "after" side by side, because its last frame alone shows only the after. A dishonest claim
-(honest=false) stops the post. The frame-0 and payoff checks and other problems are returned as warnings.
+(honest=false) stops the post. The frame-0 and payoff checks and other problems are returned as warnings, with 1 to 10 scores
+(`SCORES`) and measured numbers (`measure`: near-blank frames, the loop seam) that publish.py records in the
+reel's review.
 
 Env: CLAUDE_MODEL (optional, defaults to claude-sonnet-5)
 
@@ -17,6 +20,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import numpy as np
+from PIL import Image
+
 import render
 from voice import strip_cues
 
@@ -25,9 +31,16 @@ def generate_playbook():
     import generate
     return generate.playbook()
 
+SCORES = ('hook', 'phone_readability', 'motion', 'polish')
+STRIP = 6          # consecutive frames per motion strip
+STRIP_W = 240      # each strip frame's width; frame 0 is also shown at PHONE_W, a phone's width in CSS pixels
+PHONE_W = 360
+
 SCHEMA = {
-    'type': 'object', 'additionalProperties': False, 'required': ['slides', 'first_frame', 'payoff'],
+    'type': 'object', 'additionalProperties': False, 'required': ['slides', 'first_frame', 'payoff', 'scores'],
     'properties': {
+        'scores': {'type': 'object', 'additionalProperties': False, 'required': list(SCORES),
+                   'properties': {k: {'type': 'integer', 'minimum': 1, 'maximum': 10} for k in SCORES}},
         'first_frame': {'type': 'object', 'additionalProperties': False, 'required': ['ok', 'problem'],
                         'properties': {'ok': {'type': 'boolean'}, 'problem': {'type': 'string'}}},
         'payoff': {'type': 'object', 'additionalProperties': False, 'required': ['ok', 'problem'],
@@ -62,22 +75,68 @@ The one to three words in the lower part of the frame (the word being said on an
 they show the spoken line a few words at a time, so read them as a fragment of the spoken line given for that
 slide, never as a claim of its own (a frame of "never lets allow win" can show just "allow win").
 Be strict about visuals: when in doubt whether a screenshot shows the point, visual_ok is false.
+Each slide also has a motion strip: consecutive frames (left to right, 1/30 s apart) at that slide's fastest
+movement. A visual that pops, jumps, overlaps text or shows two states at once (a double exposure) in its strip is
+visual_ok false; captions or titles doing that are ok false. Normal smooth movement is fine.
 
 Then judge the reel as a whole, by the playbook below:
-- first_frame: the very first frame (frame 0) is what the feed shows before anyone decides to stay. ok only if
-  the whole hook is readable at a glance (a short phrase, not a sentence), its proof (the code, diff or screenshot
-  under it) is already there and readable, and the frame is not mostly empty. problem: what to fix, or "".
+- first_frame: the very first frame (frame 0) is what the feed shows before anyone decides to stay. You get it at
+  full size and at a phone's width (360 px). ok only if the whole hook is readable at a glance at 360 px (a short
+  phrase, not a sentence), its proof (the code, diff or screenshot under it) is already there and readable, and the
+  frame is not mostly empty. problem: what to fix, or "".
 - payoff: ok only if the reel really shows the promised payoff on screen (given below), clearly enough to copy or
   screenshot, and does not hold it back for a comment. problem: what is missing, or "".
+- scores, each 1 to 10 where 8 means a demanding viewer would not notice a flaw, and no 8 without evidence in the
+  frames: hook (frame 0 stops the scroll), phone_readability (every word readable at 360 px), motion (strips smooth,
+  no pops), polish (nothing cut off, overlapping, empty or broken; a large empty area for a whole slide costs points).
 
 """ + generate_playbook()
 
 
-def first_frame(video, folder):
-    path = Path(folder) / 'frame-0.png'
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(video), '-frames:v', '1', '-vf', 'scale=540:-1', str(path)],
-                   check=True)
+def first_frame(video, folder, width=540):
+    path = Path(folder) / f'frame-0-{width}.png'
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(video), '-frames:v', '1', '-vf', f'scale={width}:-1',
+                    str(path)], check=True)
     return path
+
+
+def gray(video, w=90, h=160):
+    """Every frame, small and grey, for finding motion and blank frames cheaply."""
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(video), '-vf', f'scale={w}:{h},format=gray',
+                          '-f', 'rawvideo', '-'], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, h, w).astype(np.float32)
+
+
+def measure(video, fps=render.FPS):
+    """Numbers a look at a few frames misses: near-blank frames (almost no contrast) and how far the last frame
+    is from the first (the loop seam, 0 to 255 mean pixel difference; the reel eases back into frame 0)."""
+    g = gray(video)
+    blank = [round(i / fps, 2) for i in np.flatnonzero(g.std(axis=(1, 2)) < 4)]
+    return {'blank_frames': len(blank), 'first_blank_at': blank[0] if blank else None,
+            'loop_seam': round(float(np.abs(g[-1] - g[0]).mean()), 1) if len(g) > 1 else 0.0}
+
+
+def strips(video, slides, folder, fps=render.FPS):
+    """For each slide, STRIP consecutive frames around its fastest movement, side by side in one image."""
+    g = gray(video)
+    move = np.abs(np.diff(g, axis=0)).mean(axis=(1, 2))
+    paths = []
+    for i, s in enumerate(slides):
+        a, b = int((s.start + 0.1) * fps), min(int((s.end - render.EXIT) * fps), len(move))
+        peak = a + int(np.argmax(move[a:b])) if b > a else max(0, min(int(s.start * fps), len(g) - STRIP))
+        first = max(0, min(peak - STRIP // 2, len(g) - STRIP))
+        tiles = []
+        for k in range(STRIP):
+            path = Path(folder) / f'strip-{i}-{k}.png'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{(first + k) / fps:.4f}', '-i', str(video),
+                            '-frames:v', '1', '-vf', f'scale={STRIP_W}:-1', str(path)], check=True)
+            tiles.append(Image.open(path).convert('RGB'))
+        sheet = Image.new('RGB', (STRIP_W * STRIP + 4 * (STRIP - 1), tiles[0].height), 'white')
+        for k, tile in enumerate(tiles):
+            sheet.paste(tile, (k * (STRIP_W + 4), 0))
+        paths.append(Path(folder) / f'strip-{i}.png')
+        sheet.save(paths[-1])
+    return paths
 
 
 def frames(video, slides, folder):
@@ -220,15 +279,17 @@ def describe(visual):
 
 def review(video, reel, slides, voiceover=None):
     """{'slides': [{slide, ok, visual_ok, honest, problem}] (slide 0 is the hook, 1 to 3 the points, 4 the CTA),
-    'first_frame': {ok, problem}, 'payoff': {ok, problem}}."""
+    'first_frame': {ok, problem}, 'payoff': {ok, problem}, 'scores': {SCORES: 1 to 10}, 'metrics': measure()}."""
     spoken = [strip_cues(l) for l in (voiceover or reel.get('voiceover') or [''] * len(slides))]
     with tempfile.TemporaryDirectory() as tmp:
-        paths = frames(video, slides, tmp)
+        paths, motion = frames(video, slides, tmp), strips(video, slides, tmp)
+        metrics = measure(video)
         lines = []
         for i, path in enumerate(paths):
             visual = slides[i].visual.spec if slides[i].visual else None
             meant = describe(visual) if visual else ''
-            lines.append(f'Slide {i}: frame {path}\n  spoken: {spoken[i] if i < len(spoken) else ""}\n'
+            lines.append(f'Slide {i}: frame {path}\n  motion strip: {motion[i]}\n'
+                         f'  spoken: {spoken[i] if i < len(spoken) else ""}\n'
                          f'  visual: {meant or "none"}')
         sources = reel.get('sources') or []
         checked = ('\n\nThe reel\'s claims were fact-checked against these sources (open them if a claim looks '
@@ -237,8 +298,11 @@ def review(video, reel, slides, voiceover=None):
             checked += (f"\n\nPeople who comment {reel.get('dm_keyword')} are sent this guide by DM. honest is false for "
                         'the CTA slide if the reel promises more than this guide holds, or if the guide states '
                         f"something untrue:\n{reel['dm_guide']}")
-        zero = first_frame(video, tmp)
-        whole = (f"\n\nFrame 0 (the first frame): {zero}\nPromised payoff: {reel.get('payoff') or 'not stated'}")
+        zero, phone = first_frame(video, tmp), first_frame(video, tmp, PHONE_W)
+        whole = (f"\n\nFrame 0 (the first frame): {zero}\nFrame 0 at phone width: {phone}"
+                 f"\nPromised payoff: {reel.get('payoff') or 'not stated'}"
+                 f"\nMeasured: {metrics['blank_frames']} near-blank frames"
+                 + (f" (first at {metrics['first_blank_at']}s)" if metrics['blank_frames'] else ''))
         prompt = 'Open each frame with the Read tool and review it.\n\n' + '\n'.join(lines) + checked + whole
         proc = subprocess.run(
             ['claude', '-p', prompt, '--model', (os.environ.get('CLAUDE_MODEL') or 'claude-sonnet-5'),
@@ -252,7 +316,7 @@ def review(video, reel, slides, voiceover=None):
         raise RuntimeError(f'claude exited {proc.returncode}: {proc.stderr.strip()[-300:]}')
     out = json.loads(proc.stdout).get('structured_output') or {}
     return {'slides': out.get('slides', []), 'first_frame': out.get('first_frame') or {},
-            'payoff': out.get('payoff') or {}}
+            'payoff': out.get('payoff') or {}, 'scores': out.get('scores') or {}, 'metrics': metrics}
 
 
 def main():

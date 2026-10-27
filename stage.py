@@ -980,8 +980,10 @@ def film(page_html, total, frames_path, label='stage'):
 
 
 def mux(frames_path, wav, out_path):
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(frames_path), '-i', str(wav),
-                    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-ar', str(render.SR), '-shortest',
+    mastered = Path(wav).with_name('master.wav')
+    render.master(wav, mastered)
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(frames_path), '-i', str(mastered),
+                    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest',
                     '-movflags', '+faststart', str(out_path)], check=True)
 
 

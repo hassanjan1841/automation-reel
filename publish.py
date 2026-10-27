@@ -243,6 +243,13 @@ def check_visuals(reel, clips, path, slides, rounds=3):
                 reel.setdefault('review', {})[part] = verdict[part]
                 if not verdict[part].get('ok'):
                     print(f"Playbook warning ({part.replace('_', ' ')}): {verdict[part].get('problem', '')}")
+        # Recorded for the learning loop; a deterministic render would come out the same, so a low score warns.
+        for part in ('scores', 'metrics'):
+            if verdict.get(part):
+                reel.setdefault('review', {})[part] = verdict[part]
+        low = {k: v for k, v in (verdict.get('scores') or {}).items() if v < 8}
+        if low:
+            print(f'Review scores under 8: {low}')
         dishonest = [r for r in results if r.get('honest') is False]
         if dishonest:
             # Honesty is a hard line: better no post today than a misleading one.

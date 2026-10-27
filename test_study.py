@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -255,6 +255,24 @@ class Auto(unittest.TestCase):
             self.assertEqual(study.relevant(found), found)
         self.assertEqual(study.relevant([]), [])
 
+    def test_launches(self):
+        now = datetime(2026, 10, 5, tzinfo=timezone.utc)
+
+        def video(slug, views, days=1, category='developer-tools', seconds=40):
+            return {'slug': slug, 'title': slug.title(), 'company': 'Co', 'category': category, 'views': views,
+                    'tweetUrl': f'https://x.com/co/status/{slug}', 'authorHandle': 'co', 'durationSeconds': seconds,
+                    'videoUrl': f'https://video.twimg.com/{slug}.mp4',
+                    'publishedAt': (now - timedelta(days=days)).isoformat().replace('+00:00', 'Z')}
+        index = [video('small', 10), video('big', 900), video('old', 5000, days=30), video('lab', 9999, category='ai'),
+                 video('long', 8000, seconds=300), video('mid', 500), video('seen', 7000)]
+        study.INDEX.write_text(json.dumps({'source': 'https://video.twimg.com/seen.mp4'}) + '\n')
+        with mock.patch.object(study.requests, 'get') as get:
+            get.return_value.json.return_value = index
+            picks = study.launches(2, now)
+        self.assertEqual([p['url'] for p in picks], ['https://video.twimg.com/big.mp4', 'https://video.twimg.com/mid.mp4'])
+        self.assertIn('https://x.com/co/status/big', picks[0]['title'])  # the original post is credited
+        self.assertIn('whatships.com/videos/big/', picks[0]['title'])
+
     def test_digest_counts_itself(self):
         self.assertEqual(study.digest('.'), '')  # fewer than 3 studies: nothing to sum up
         study.INDEX.write_text(''.join(json.dumps({'source': f's{i}', 'title': f'T{i}', 'adoptable': ['p']}) + '\n'
@@ -274,9 +292,10 @@ class Auto(unittest.TestCase):
                 mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': 'k'}), mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), \
                 mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
                 mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
+                mock.patch.object(study, 'launches', side_effect=RuntimeError('whatships down')), \
                 contextlib.redirect_stdout(io.StringIO()):
             with mock.patch.object(study, 'auto_picks', return_value=[]):
-                study.main()  # nothing new: no failure
+                study.main()  # nothing new, and the launch library down: no failure
             self.assertFalse((Path(tmp) / 'study.md').exists())
             with mock.patch.object(study, 'auto_picks', return_value=[self.pick('a', 9, 'c')]), \
                     mock.patch.object(study, 'study', return_value='# Study: a'), \
@@ -316,7 +335,8 @@ class Auto(unittest.TestCase):
                 mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': 'k'}), mock.patch.object(study.render, 'OUT_DIR', Path(tmp)), \
                 mock.patch.object(study, 'OUT', Path(tmp) / 'study.md'), \
                 mock.patch.object(study.shutil, 'which', return_value='/usr/bin/ffmpeg'), \
-                mock.patch.object(study, 'study', side_effect=fake_study), contextlib.redirect_stdout(io.StringIO()):
+                mock.patch.object(study, 'study', side_effect=fake_study), \
+                mock.patch.object(study, 'launches', return_value=[]), contextlib.redirect_stdout(io.StringIO()):
             with mock.patch.object(study, 'auto_picks', return_value=picks):
                 study.main()                                     # all blocked: no failure
             self.assertEqual(len(tried), 1)                      # the other YouTube links were not tried

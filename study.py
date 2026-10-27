@@ -20,7 +20,11 @@ Sources:
                                                 the watched channels' new Shorts that beat their usual (the
                                                 watchlist, studies/channels.json, grows from big outliers), never
                                                 a video studied before; then a digest of the patterns that keep
-                                                coming back across recent studies (studies/<date>-digest.md)
+                                                coming back across recent studies (studies/<date>-digest.md);
+                                                also the most viewed recent launch videos on whatships.com
+  python study.py --launches [--top 2]          only the whatships.com launch videos (no YouTube key needed):
+                                                LAUNCH_CATEGORIES from the last LAUNCH_DAYS, most viewed first,
+                                                at most LAUNCH_SECONDS long, never one studied before
 
 Env: CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_MODEL, YOUTUBE_API_KEY (for --search and --auto), GH_TOKEN (to fetch issue attachments),
      ISSUE_BODY (with --issue)
@@ -65,6 +69,14 @@ AUTO_TOPICS = 3
 AUTO_TOP = 4
 MAX_CHANNELS = 20
 DIGEST_STUDIES = 30
+# whatships.com: a curated library of startup launch videos from X. Its robots.txt allows fetching and its terms ask
+# for the product, the company and the original X post to be named, so the study keeps all three. Big labs top raw
+# views on reach alone, so only the craft-led categories, sorted by views, short enough to learn pacing from.
+LAUNCHES = 'https://whatships.com/directory-index.json'
+LAUNCH_CATEGORIES = ('developer-tools', 'motion', 'design')
+LAUNCH_DAYS = 14
+LAUNCH_SECONDS = 90
+LAUNCH_TOP = 2
 
 
 # ---------- getting the video ----------
@@ -95,11 +107,13 @@ def youtube(source):
 
 
 def fetch(source, folder, token=None):
-    """(path to the video, what we know about it). Local files as they are; GitHub attachments with the token;
-    anything else with yt-dlp (public videos only, never a login)."""
+    """(path to the video, what we know about it). Local files as they are; GitHub attachments with the token; a
+    direct .mp4 link (whatships.com gives X's own file) as it is; anything else with yt-dlp (public videos only,
+    never a login)."""
     if Path(source).is_file():
         return Path(source), {'source': source, 'title': Path(source).stem}
-    if 'github.com/user-attachments/' in source or 'githubusercontent.com' in source:
+    direct = source.split('?')[0].endswith('.mp4')
+    if 'github.com/user-attachments/' in source or 'githubusercontent.com' in source or direct:
         path = Path(folder) / f'attachment-{abs(hash(source)) % 10**8}.mp4'
         headers = {'Authorization': f'token {token}'} if token else {}
         with requests.get(source, headers=headers, stream=True, timeout=120) as resp:
@@ -107,7 +121,7 @@ def fetch(source, folder, token=None):
             with open(path, 'wb') as f:
                 for chunk in resp.iter_content(1 << 20):
                     f.write(chunk)
-        return path, {'source': source, 'title': 'uploaded recording'}
+        return path, {'source': source, 'title': 'video file' if direct else 'uploaded recording'}
     out = subprocess.run(['yt-dlp', '--no-playlist', '--no-simulate', '-j', '--max-filesize', '300M',
                           '-f', 'bv*[height<=1920]+ba/b[height<=1920]/b', '--merge-output-format', 'mp4',
                           '-o', str(Path(folder) / '%(id)s.%(ext)s'), source],
@@ -183,6 +197,23 @@ def channel_outliers(channel_id, key, days=14):
                           'channel': v['snippet']['channelTitle'], 'channel_id': channel_id, 'views': views,
                           'followers': None, 'outlier': round(views / usual, 1), 'why': 'beat its channel usual'})
     return picks
+
+
+def launches(top=LAUNCH_TOP, now=None):
+    """The most viewed recent launch videos on whatships.com (LAUNCH_CATEGORIES, LAUNCH_DAYS, LAUNCH_SECONDS), never
+    one studied before. The source is X's own video file; the title names the product, company and X post."""
+    now = now or datetime.now(timezone.utc)
+    resp = requests.get(LAUNCHES, timeout=60, headers={'User-Agent': 'automation-reel study (weekly, a few videos)'})
+    resp.raise_for_status()
+    done, picks = studied(), []
+    for v in resp.json():
+        published = datetime.fromisoformat(v['publishedAt'].replace('Z', '+00:00'))
+        if (v.get('category') in LAUNCH_CATEGORIES and v.get('videoUrl') and v['videoUrl'] not in done
+                and now - published <= timedelta(days=LAUNCH_DAYS) and (v.get('durationSeconds') or 0) <= LAUNCH_SECONDS):
+            picks.append({'url': v['videoUrl'], 'views': v.get('views') or 0, 'why': 'whatships.com launch',
+                          'title': f"{v['title']} ({v.get('company')}, {v['tweetUrl']}, via whatships.com/videos/{v['slug']}/)",
+                          'channel': v.get('authorHandle') or v.get('company'), 'followers': None})
+    return sorted(picks, key=lambda p: -p['views'])[:top]
 
 
 def studied():
@@ -596,6 +627,19 @@ def main():
         print('Topics this week:', ', '.join(week_topics(day)))
         for pick in auto_picks(key, day):
             print(f"Found {pick['url']} ({pick['why']}): {pick['views']:,} views, {pick['outlier']}x")
+            todo.append((pick['url'], {k: pick[k] for k in ('title', 'channel', 'views', 'followers')}))
+        try:
+            found = launches()
+        except Exception as e:  # the launch library is a bonus; the YouTube picks still run
+            print(f'  launches unavailable: {type(e).__name__}: {str(e)[:200]}')
+            found = []
+        for pick in found:
+            print(f"Found {pick['title']}: {pick['views']:,} views")
+            todo.append((pick['url'], {k: pick[k] for k in ('title', 'channel', 'views', 'followers')}))
+    elif '--launches' in args:
+        top = int(args[args.index('--top') + 1]) if '--top' in args else LAUNCH_TOP
+        for pick in launches(top):
+            print(f"Found {pick['title']}: {pick['views']:,} views")
             todo.append((pick['url'], {k: pick[k] for k in ('title', 'channel', 'views', 'followers')}))
     elif '--issue' in args:
         todo = [(s, None) for s in sources_in(os.environ.get('ISSUE_BODY', ''))]
