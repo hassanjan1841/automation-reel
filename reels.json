@@ -9074,5 +9074,210 @@
         "id": "18074695286735296"
       }
     ]
+  },
+  {
+    "id": 95,
+    "style": "light",
+    "payoff": "Claude Code's .claudeignore file has no effect — add a Read(./.env) deny rule in permissions to actually block a file.",
+    "kicker": "Myth vs fact #18",
+    "hook": ".claudeignore does *nothing*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": ".claudeignore",
+      "language": "txt",
+      "code": ".env\nsecrets/**\n*.key",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *secrets* aren't hidden",
+        "hook_type": "problem",
+        "spoken": "[alarmed] That claude ignore file guarding your secrets, (break) [flat] doesn't block anything at all."
+      },
+      {
+        "hook": "Ignored file, then *real* block",
+        "hook_type": "before_after",
+        "spoken": "[fired up] You list files to ignore, (break) [sharp] but only a deny rule actually blocks them."
+      },
+      {
+        "hook": "One line *actually* blocks it",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Skip the fake ignore file, (break) [confident and fast] one real deny rule blocks it for good."
+      }
+    ],
+    "points": [
+      {
+        "title": "Fake protection",
+        "body": "Entries listed but never enforced by Claude",
+        "visual": [
+          {
+            "type": "code",
+            "title": ".claudeignore",
+            "language": "txt",
+            "code": ".env\nsecrets/**\n*.key",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Deny the path",
+        "body": "Add a real Read deny rule",
+        "visual": [
+          {
+            "type": "diff",
+            "title": "ignore vs deny",
+            "language": "json",
+            "before": ".env\nsecrets/**",
+            "after": "\"deny\": [\"Read(./.env)\"]"
+          }
+        ]
+      },
+      {
+        "title": "Docs confirm it",
+        "body": "Docs say move entries into deny rules",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "Read(./.env)",
+            "output": [
+              "Error: permission denied",
+              "Blocked by deny rule"
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/permissions",
+            "find": "has no effect"
+          }
+        ]
+      }
+    ],
+    "cta": "Still trusting your *ignore* file?",
+    "caption": "Claude Code .claudeignore file has no effect\nUse a Read deny rule instead to actually block files\nStill relying on an ignore file for secrets? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aicodingtools",
+      "#devsecurity",
+      "#permissions"
+    ],
+    "voiceover": [
+      "[urgent] Your claude ignore file looks like protection, (break) [serious] but it truly does nothing.",
+      "[exasperated] It lists secrets, but Claude never reads it.",
+      "[confident] The real fix denies read access directly.",
+      "[confident, sharp] Now the exact same path actually gets blocked.",
+      "[warm, curious] Check yours, and send this to a friend."
+    ],
+    "scenes": [
+      {
+        "kind": "file",
+        "title": ".claudeignore",
+        "lines": [
+          ".env",
+          "secrets/**",
+          "*.key"
+        ],
+        "strike": true,
+        "tag": "NO EFFECT",
+        "at": "nothing"
+      },
+      {
+        "kind": "steps",
+        "items": [
+          {
+            "label": "Claude Ignore",
+            "note": "lists .env file"
+          },
+          {
+            "label": "File Tools",
+            "note": "never check it"
+          }
+        ],
+        "at": "never"
+      },
+      {
+        "kind": "code",
+        "title": "settings.json",
+        "language": "json",
+        "code": "{\n  \"permissions\": {\n    \"deny\": [\"Read(./.env)\"]\n  }\n}",
+        "highlight": [
+          3
+        ],
+        "at": "denies"
+      },
+      {
+        "kind": "terminal",
+        "command": "claude -p \"cat .env\"",
+        "output": [
+          "Error: permission denied",
+          "Blocked by deny rule in settings.json"
+        ],
+        "at": "blocked"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "YOUR IGNORE FILE",
+          "*DOES* NOTHING"
+        ],
+        "label": "Use deny rules",
+        "motif": "brackets",
+        "at": "friend"
+      }
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/permissions"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "reveal": 3,
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 18,
+    "posted_at": "2026-10-27T20:00:43+00:00",
+    "media_id": "17880891411554684",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 11.3
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "diff",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.2,
+    "youtube_id": "jGHjtfNNNDs",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18360203302217472"
+      }
+    ]
   }
 ]
