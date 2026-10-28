@@ -103,31 +103,31 @@
     "id": 11,
     "text": "Open on the proof: the code or output that shows the point is on screen from frame 0, never a text card alone.",
     "since": "2026-10-14",
-    "status": "trial",
+    "status": "kept",
     "source": "analysis",
     "evidence": "proof-first openings skip_vs_usual -2.6 vs +1.9, watched_vs_usual +0.027 vs -0.001 (15 vs 23 reels)",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.1 points better, share watched +0.126 (20 reels after vs 44 before)",
+    "checked": "2026-10-28"
   },
   {
     "id": 12,
     "text": "When the result appears, hold a short silent beat so it lands before the voice names it.",
     "since": "2026-10-14",
-    "status": "trial",
+    "status": "kept",
     "source": "analysis",
     "evidence": "reels with a held reveal beat skip_vs_usual -3.6 vs +2.9 (16 vs 22 reels)",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.1 points better, share watched +0.126 (20 reels after vs 44 before)",
+    "checked": "2026-10-28"
   },
   {
     "id": 13,
     "text": "End on a direct question to the viewer, never a comment-for-a-guide freebie offer.",
     "since": "2026-10-14",
-    "status": "trial",
+    "status": "kept",
     "source": "analysis",
     "evidence": "question endings watched_vs_usual +0.067 vs -0.003 for freebie offers, skip about equal (12 vs 26 reels)",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.1 points better, share watched +0.126 (20 reels after vs 44 before)",
+    "checked": "2026-10-28"
   },
   {
     "id": 14,
