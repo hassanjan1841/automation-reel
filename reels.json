@@ -9437,5 +9437,152 @@
         "id": "18105011732371167"
       }
     ]
+  },
+  {
+    "id": 97,
+    "style": "light",
+    "payoff": "A Bash deny rule like Bash(rm *) only blocks that exact command text — Claude Code's docs say it 'isn't a security boundary around the program,' so /bin/rm -rf build/ or bash -c 'rm -rf build/' still run.",
+    "kicker": "Explained #5",
+    "hook": "This *path* skips your deny rule",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "terminal",
+      "before": "$ rm -rf build/\n# denied by deny rule",
+      "after": "$ /bin/rm -rf build/\n# deletes anyway"
+    },
+    "alternatives": [
+      {
+        "hook": "Your Bash *deny rule* fails",
+        "spoken": "[urgent] Your Bash deny rule in Claude Code won't [sharp] block every delete command.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Blocked *here*, allowed right there",
+        "hook_type": "before_after",
+        "spoken": "[fired up] One rm command gets blocked here, (break) [deadpan] but the same delete runs there."
+      },
+      {
+        "hook": "I just *bypassed* my own rule",
+        "hook_type": "test",
+        "spoken": "[fired up] I tested my own deny rule and broke [emphasis] right through it."
+      }
+    ],
+    "points": [
+      {
+        "title": "The deny rule",
+        "body": "Only blocks that exact command",
+        "visual": [
+          {
+            "type": "code",
+            "language": "json",
+            "title": "settings.json",
+            "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(rm *)\"]\n  }\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Blocked as expected",
+        "body": "Direct delete commands get denied",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "rm -rf build/"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real bypass",
+        "body": "Full path isn't blocked at all",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "/bin/rm -rf build/",
+              "bash -c 'rm -rf build/'"
+            ],
+            "output": [
+              "build/ deleted"
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/permissions",
+            "find": "isn't a security boundary around the program"
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Does your deny rule only *look* safe?",
+    "caption": "Claude Code Bash permission deny rules explained.\nA blocked rm command isn't the whole story.\nEver assumed a deny rule covered every path? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#devsecurity",
+      "#terminal",
+      "#aitools"
+    ],
+    "voiceover": [
+      "[alarmed] This one full path quietly skips [serious] your entire deny rule setup.",
+      "[knowing] It only stops the plain rm command.",
+      "[confident] The full system path slips right past it.",
+      "[serious, fast] (break) Bash dash c runs it anyway.",
+      "[teasing] Know a dev who trusts that rule too much?"
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/permissions"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 5,
+    "posted_at": "2026-10-28T20:56:14+00:00",
+    "media_id": "17962182660080023",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0's terminal shows 'rm -rf build/ # denied by deny rule' — the rule working as intended — not yet the full-path command that skips it, so the hook's proof isn't visible at a glance."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "Only the /bin/rm -rf build/ bypass is actually shown running on screen (slide 1's hook). The bash -c 'rm -rf build/' bypass named in the voiceover (slide 3) is never shown in a terminal, only stated as text/caption."
+      },
+      "scores": {
+        "hook": 6,
+        "phone_readability": 7,
+        "motion": 6,
+        "polish": 5
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 10.1
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.2,
+    "youtube_id": "TDCcxxNkGyo",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18348993265264097"
+      }
+    ]
   }
 ]
