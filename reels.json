@@ -9279,5 +9279,163 @@
         "id": "18360203302217472"
       }
     ]
+  },
+  {
+    "id": 96,
+    "style": "dark",
+    "payoff": "process.env.DEBUG is always a string, so if (process.env.DEBUG) is true even when it's set to the text false; check it with === 'true' instead.",
+    "kicker": "Myth vs fact #19",
+    "hook": "Your *debug flag* stays on",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "title": "env.js",
+      "language": "js",
+      "code": "process.env.DEBUG = \"false\";\nif (process.env.DEBUG) {\n  console.log(\"on\");\n} else {\n  console.log(\"off\");\n}",
+      "highlight": [
+        1,
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Env variables aren't *booleans*",
+        "spoken": "[fired up] Most developers think setting an env variable to false. [emphasis] It turns a feature off.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Guess what *this* logs",
+        "hook_type": "test",
+        "spoken": "[excited] We tested setting debug false and the app still logged. [stunned] It printed on anyway."
+      },
+      {
+        "hook": "String *false* is truthy",
+        "hook_type": "before_after",
+        "spoken": "[mock outraged] You set it to false expecting off, but it stays. [surprised] Truthy and on."
+      }
+    ],
+    "points": [
+      {
+        "title": "Still a string",
+        "body": "Every value in process.env is text",
+        "visual": [
+          {
+            "type": "code",
+            "title": "check.js",
+            "language": "js",
+            "code": "typeof process.env.DEBUG\n// \"string\"",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Looks falsy",
+        "body": "DEBUG holds the word false",
+        "visual": [
+          {
+            "type": "code",
+            "title": "app.js",
+            "language": "js",
+            "code": "process.env.DEBUG = \"false\";\nif (process.env.DEBUG) {\n  console.log(\"on\");\n} else {\n  console.log(\"off\");\n}",
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Prints on",
+        "body": "Truthy string, so it fires",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "process.env.DEBUG = \"false\";\nif (process.env.DEBUG) {\n  console.log(\"on\");\n} else {\n  console.log(\"off\");\n}",
+            "choices": [
+              "on",
+              "off"
+            ],
+            "output": [
+              "on"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node app.js"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Ever trusted an *env* flag that lied?",
+    "caption": "Environment variables in JavaScript are always strings, even true and false.\nSetting DEBUG to false does not turn it off.\nEver gotten burned by an env flag that wouldn't turn off? 👇",
+    "hashtags": [
+      "#javascript",
+      "#nodejs",
+      "#envvars",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[urgent] Your debug flag stays on even after you set it. [annoyed] To false, not off.",
+      "[knowing] Every env variable Node reads is text.",
+      "[curious] Set DEBUG to the string false here.",
+      "[confident and fast] It still prints on, since that string is truthy.",
+      "[warm, curious] Send this to the dev who trusts env flags."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 19,
+    "posted_at": "2026-10-28T15:40:57+00:00",
+    "media_id": "18209826517371848",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel proves the myth (string \"false\" is truthy, prints \"on\") but never shows the actual fix on screen — no === 'true' comparison is ever typed or run, so the promised payoff is withheld."
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.4
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "predict",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 17.9,
+    "youtube_id": "lhD4fHWQK94",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "17886988938504869"
+      },
+      {
+        "kind": "teaser",
+        "id": "18105011732371167"
+      }
+    ]
   }
 ]
