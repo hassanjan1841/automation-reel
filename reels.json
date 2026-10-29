@@ -9744,5 +9744,160 @@
         "id": "17998975532830199"
       }
     ]
+  },
+  {
+    "id": 99,
+    "style": "light",
+    "payoff": "CLAUDE.md rules are just context Claude can ignore; a PreToolUse hook in settings.json is what actually blocks the action.",
+    "kicker": "X vs Y #5",
+    "hook": "CLAUDE.md is not a *lock*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "diff",
+      "title": "settings.json",
+      "language": "json",
+      "before": "// CLAUDE.md (just a suggestion)\n\"Never run rm -rf in src/\"",
+      "after": "// settings.json PreToolUse hook\n\"matcher\": \"Bash\",\n\"hooks\": [{\"command\":\n  \"./deny-rm.sh\"}]"
+    },
+    "alternatives": [
+      {
+        "hook": "Your CLAUDE.md rule *fails*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Claude Code reads your CLAUDE.md rules. (break) [serious] It can still choose to ignore them."
+      },
+      {
+        "hook": "Advice vs *actual* enforcement",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] CLAUDE.md used to feel like a rulebook. (break) [deadpan] Turns out it's just a suggestion."
+      },
+      {
+        "hook": "We tested Claude's *memory* file",
+        "hook_type": "test",
+        "spoken": "[fired up] We checked if CLAUDE.md actually stops Claude Code. (break) [surprised] Turns out it can't."
+      }
+    ],
+    "points": [
+      {
+        "title": "Just context",
+        "body": "CLAUDE.md is advice, not enforced",
+        "visual": [
+          {
+            "type": "code",
+            "title": "memory docs",
+            "language": "md",
+            "code": "Claude treats CLAUDE.md as context,\nnot enforced configuration.",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real enforcement",
+        "body": "A hook blocks it no matter what",
+        "visual": [
+          {
+            "type": "code",
+            "title": "settings.json",
+            "language": "json",
+            "code": "\"hooks\": {\n  \"PreToolUse\": [{\n    \"matcher\": \"Bash\",\n    \"hooks\": [{\"command\":\n      \"./deny-rm.sh\"}]\n  }]\n}",
+            "highlight": [
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof it blocks",
+        "body": "The file Claude cannot override",
+        "visual": [
+          {
+            "type": "command",
+            "command": "cat .claude/settings.json",
+            "title": "settings.json",
+            "rows": [
+              "\"PreToolUse\": [{",
+              "  \"matcher\": \"Bash\",",
+              "  \"hooks\": [{\"command\":",
+              "    \"./deny-rm.sh\"}]",
+              "}]"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "settings.json",
+            "language": "json",
+            "code": "\"PreToolUse\": [{\n  \"matcher\": \"Bash\",\n  \"hooks\": [{\"command\":\n    \"./deny-rm.sh\"}]\n}]",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Does your CLAUDE.md actually *block* anything?",
+    "caption": "CLAUDE.md is not enforced in Claude Code.\nA PreToolUse hook in settings.json actually blocks actions.\nEver found a rule Claude quietly skipped? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aiagents",
+      "#devtools",
+      "#codingtips"
+    ],
+    "voiceover": [
+      "[fired up] That CLAUDE.md rule you wrote? (break) [serious] Claude Code can just ignore it completely.",
+      "[exasperated] It's just context, (break) [knowing] not an enforced rule.",
+      "[confident and fast] A real hook in settings (break) [urgent] actually blocks it.",
+      "[excited] Right there in the file, (break) [reassuring] no talking around it.",
+      "[warm, curious] Ever trusted a rule (break) [teasing] Claude quietly skipped anyway?"
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/memory"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 5,
+    "posted_at": "2026-10-29T23:26:50+00:00",
+    "media_id": "18006618773794177",
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "The window shown is labeled 'settings.json' but its body is clearly CLAUDE.md text ('// CLAUDE.md (just a suggestion)'), a mislabeled file that undercuts the otherwise strong, readable hook."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 18.7
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "code",
+      "command",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.6,
+    "youtube_id": "KvwNGhC2C9s",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18006476483991051"
+      }
+    ]
   }
 ]
