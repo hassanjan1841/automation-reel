@@ -143,21 +143,21 @@
     "id": 15,
     "text": "Before/after hook_type reels average skip_vs_usual -3.2 versus +3.1 for untagged hooks (9 vs 14 reels); favor the before/after hook structure when the topic fits.",
     "since": "2026-10-15",
-    "status": "trial",
+    "status": "kept",
     "source": "weekly",
     "evidence": "hook_type before_after (9 reels) beat untagged (14 reels): skip rate +6.3 points",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.1 points better, share watched +0.117 (20 reels after vs 46 before)",
+    "checked": "2026-10-29"
   },
   {
     "id": 16,
     "text": "Ai-pillar reels average skip_vs_usual -0.8 (5 reels) and timely-pillar +0.9 (9 reels); freelance-pillar reels average +7.7 (8 reels); favor ai or timely topics.",
     "since": "2026-10-15",
-    "status": "trial",
+    "status": "kept",
     "source": "weekly",
     "evidence": "pillar ai (5 reels) beat freelance (8 reels): skip rate +8.5 points; pillar timely (9 reels) beat freelance (8 reels): skip rate +6.8 points",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.1 points better, share watched +0.117 (20 reels after vs 46 before)",
+    "checked": "2026-10-29"
   },
   {
     "id": 17,
