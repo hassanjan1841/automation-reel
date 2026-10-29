@@ -9584,5 +9584,165 @@
         "id": "18348993265264097"
       }
     ]
+  },
+  {
+    "id": 98,
+    "style": "dark",
+    "payoff": "Setting temperature to 0 in the API does not make output deterministic, Anthropic's docs say identical inputs can still return different outputs across calls.",
+    "kicker": "Myth vs fact #20",
+    "hook": "Same input, *different* output",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "ts",
+      "title": "api.ts",
+      "code": "await client.messages.create({\n  temperature: 0,\n  messages,\n});\nawait client.messages.create({\n  temperature: 0,\n  messages,\n});",
+      "highlight": [
+        2,
+        6
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Temperature zero isn't *deterministic*",
+        "spoken": "[fired up] Setting your temperature to zero (break) [serious] doesn't make Claude's output deterministic at all.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Temperature zero breaks *reproducible* tests",
+        "hook_type": "problem",
+        "spoken": "[urgent] Tests that expect zero temperature to match exactly (break) [serious] can quietly fail."
+      },
+      {
+        "hook": "Stop trusting *temperature zero*",
+        "hook_type": "shortcut",
+        "spoken": "[confident and fast] Stop trusting zero temperature to make your output repeatable (break) [knowing] it simply won't."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common belief",
+        "body": "Temperature zero means identical output",
+        "visual": [
+          {
+            "type": "code",
+            "language": "ts",
+            "title": "api.ts",
+            "code": "await client.messages.create({\n  temperature: 0,\n  messages,\n});",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Docs say otherwise",
+        "body": "Results still are not deterministic",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://platform.claude.com/docs/en/about-claude/glossary",
+            "find": "will not be fully deterministic"
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "glossary.md",
+            "code": "Even with temperature set to 0,\nthe results will not be fully\ndeterministic"
+          }
+        ]
+      },
+      {
+        "title": "Different every time",
+        "body": "Identical inputs can return different outputs",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "cat glossary.md",
+            "output": [
+              "identical inputs may produce",
+              "different outputs across API",
+              "calls."
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://platform.claude.com/docs/en/about-claude/glossary",
+            "find": "identical inputs may produce different outputs"
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "glossary.md",
+            "code": "and identical inputs may produce\ndifferent outputs across API\ncalls."
+          }
+        ]
+      }
+    ],
+    "cta": "Do you rely on *zero* temperature?",
+    "caption": "Temperature 0 in AI APIs does not guarantee deterministic output\nAnthropic's docs confirm identical requests can still return different results\nHave you ever relied on this for repeatable results? 👇",
+    "hashtags": [
+      "#ai",
+      "#llm",
+      "#apidevelopment",
+      "#softwareengineering"
+    ],
+    "sources": [
+      "https://platform.claude.com/docs/en/about-claude/glossary"
+    ],
+    "voiceover": [
+      "[grinning, punchy] Send the same prompt twice at zero temperature (break) [surprised] and get different answers.",
+      "[knowing] Most of us assume that locks in repeatability.",
+      "[deadpan] Anthropic's own docs say that's just not guaranteed.",
+      "[urgent] Identical requests can still return completely different answers.",
+      "[warm, curious] Send this to the developer who swears zero means identical."
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "reveal": 3,
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 20,
+    "posted_at": "2026-10-29T13:38:26+00:00",
+    "media_id": "18044198255836271",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.6
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 22.4,
+    "youtube_id": "s-pN3MvQd8g",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "17998975532830199"
+      }
+    ]
   }
 ]
