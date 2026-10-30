@@ -9899,5 +9899,205 @@
         "id": "18006476483991051"
       }
     ]
+  },
+  {
+    "id": 100,
+    "style": "dark",
+    "payoff": "Claude Code checks permission rules in a fixed order, deny then ask then allow, so a deny rule like Bash(aws *) still blocks aws s3 ls even after you add an allow rule for that exact command.",
+    "kicker": "Myth vs fact #21",
+    "hook": "Your *specific* allow rule still loses",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "settings.json",
+      "language": "json",
+      "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+      "highlight": [
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *allow* rule is powerless here",
+        "hook_type": "problem",
+        "spoken": "[fired up] Here's the gap: your allow rule can't override a matching [confident] deny rule."
+      },
+      {
+        "hook": "We *tested* allow versus deny",
+        "hook_type": "test",
+        "spoken": "[excited] We tested it: specific allow rule still lost [confident] to broader deny rule."
+      },
+      {
+        "hook": "Specific *loses* to broad deny",
+        "hook_type": "before_after",
+        "spoken": "[surprised] You'd expect the specific rule to win, (break) [confident] but deny still blocks it."
+      }
+    ],
+    "points": [
+      {
+        "title": "Two rules added",
+        "body": "A deny rule plus one allow entry",
+        "visual": [
+          {
+            "type": "code",
+            "title": "settings.json",
+            "language": "json",
+            "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Specificity seems safe",
+        "body": "The exact command looks like an exception",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/permissions",
+            "find": "rule specificity doesn't change the order"
+          },
+          {
+            "type": "code",
+            "title": "settings.json",
+            "language": "json",
+            "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Deny wins anyway",
+        "body": "Blocked despite the matching allow rule",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "aws s3 ls"
+            ],
+            "output": [
+              "Permission denied: Bash(aws *)",
+              "Allow rule has no effect"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Have you *tested* your allow rules?",
+    "caption": "Claude Code permission rule order explained\nA specific allow rule never beats a matching deny rule.\nHave you checked which rule actually wins in your settings? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aicoding",
+      "#devsecurity",
+      "#permissions"
+    ],
+    "voiceover": [
+      "[urgent] Your Claude Code allow rule can never [serious] beat a matching deny rule.",
+      "[confident] First you deny it broadly, then allow narrowly.",
+      "[matter-of-fact] That exact allow looks more specific, surely wins.",
+      "[stunned] But deny still blocks it, no exceptions ever.",
+      "[teasing] Know a dev who still trusts allow rules too much?"
+    ],
+    "reveal": 3,
+    "sources": [
+      "https://code.claude.com/docs/en/permissions"
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "settings.json",
+        "language": "json",
+        "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+        "highlight": [
+          4
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "settings.json",
+        "language": "json",
+        "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(aws *)\"],\n    \"allow\": [\"Bash(aws s3 ls)\"]\n  }\n}",
+        "highlight": [
+          3,
+          4
+        ]
+      },
+      {
+        "kind": "docs",
+        "url": "https://code.claude.com/docs/en/permissions",
+        "title": "Permissions",
+        "text": "Rules are evaluated in order: deny, then ask, then allow ... rule specificity doesn't change the order.",
+        "mark": "rule specificity doesn't change the order"
+      },
+      {
+        "kind": "terminal",
+        "command": "aws s3 ls",
+        "output": [
+          "Permission denied: Bash(aws *)",
+          "Allow rule has no effect"
+        ],
+        "accent": true,
+        "at": "blocks"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "*DENY*",
+          "ALWAYS WINS"
+        ],
+        "label": "Check your rules",
+        "motif": "brackets"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 21,
+    "posted_at": "2026-10-30T16:17:14+00:00",
+    "media_id": "18138354619655304",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 9,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.0
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-code",
+      "stage-docs",
+      "stage-terminal",
+      "stage-words"
+    ],
+    "slot": 1,
+    "seconds": 17.4,
+    "youtube_id": "xO3OwMdoBPo",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18110645360353203"
+      }
+    ]
   }
 ]
