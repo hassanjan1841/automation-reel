@@ -10099,5 +10099,153 @@
         "id": "18110645360353203"
       }
     ]
+  },
+  {
+    "id": 101,
+    "style": "light",
+    "payoff": "git stash hides your uncommitted changes instantly so you can switch branches clean, then git stash pop brings every change back exactly as you left it.",
+    "kicker": "Quick trick #8",
+    "hook": "Blocked checkout, then *smooth* switch",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "language": "bash",
+      "title": "terminal",
+      "before": "$ git checkout main\nerror: local changes\nwould be overwritten\nPlease commit or stash first",
+      "after": "$ git stash\n$ git checkout main\n$ git stash pop"
+    },
+    "alternatives": [
+      {
+        "hook": "Stash it, *don't* commit it",
+        "spoken": "[fired up] Stuck mid change but still need another branch? (break) [urgent] One command saves it instantly.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Your edits *block* that switch",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your uncommitted edits stop git from switching branches (break) [serious, fast] until you deal with them."
+      },
+      {
+        "hook": "Stop *committing* just to switch",
+        "hook_type": "mistake",
+        "spoken": "[exasperated] Committing unfinished work just to switch branches wastes real time. (break) [serious, fast] Stash it instead."
+      }
+    ],
+    "points": [
+      {
+        "title": "Blocked checkout",
+        "body": "Uncommitted changes block the checkout",
+        "visual": [
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "terminal",
+            "code": "$ git checkout main\nerror: local changes to\nindex.css would be lost\nPlease commit or stash first",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "git stash",
+        "body": "One command clears the way",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git stash",
+              "git checkout main",
+              "git status"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Stash pop",
+        "body": "Stash pop brings everything back",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "git stash pop",
+            "output": [
+              "On branch main",
+              "modified: index.css",
+              "Dropped stash@{0}"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "git stash pop"
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Still *committing* junk just to switch?",
+    "caption": "Git stash: save uncommitted changes without a commit\nSwitch branches clean, then bring everything back with stash pop\nEver lost edits switching branches too fast? 👇",
+    "hashtags": [
+      "#git",
+      "#gitstash",
+      "#webdev",
+      "#terminal",
+      "#devtools"
+    ],
+    "voiceover": [
+      "[fired up] Before, switching branches with changes fails. (break) [confident and fast] After one command, it's instantly clean.",
+      "[exasperated] Git blocks the switch when changes aren't saved.",
+      "[relieved] Stash hides them fast, keeping your switch clean.",
+      "[confident and fast] Pop it back (break) [excited] and every edit returns untouched.",
+      "[warm, curious] Know a dev who still commits (break) [teasing] just to switch?"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 8,
+    "posted_at": "2026-10-30T20:41:44+00:00",
+    "media_id": "17977640798934177",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 19.4
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "terminal",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3,
+    "youtube_id": "h6XIoPdwDfc",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18129413404873359"
+      }
+    ]
   }
 ]
