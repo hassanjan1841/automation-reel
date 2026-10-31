@@ -10438,106 +10438,105 @@
     ]
   },
   {
-    "id": 103,
-    "pillar": "timely",
-    "style": "light",
-    "kicker": "Trending build #1",
-    "payoff": "Lightpanda is a new headless browser written in Zig: Puppeteer connects to it on port 9222, and in its own crawl benchmark (933 pages, 25 at a time) it peaked at 123MB where Chrome used 2GB.",
-    "hook": "One crawl, *2GB* of Chrome",
+    "id": 106,
+    "pillar": "devtip",
+    "style": "dark",
+    "hashtags": [
+      "#claudecode",
+      "#aicoding",
+      "#devtools",
+      "#git"
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "kicker": "Build log",
+    "hook": "Which Claude is *stuck*?",
     "hook_type": "problem",
+    "payoff": "cw-board shows every Claude Code worker in one table and flags what needs you: ready for review, stuck, an unsent message, or a dev server down.",
     "hook_visual": {
       "type": "code",
       "language": "text",
-      "title": "Lightpanda benchmark",
-      "code": "Crawl: 933 pages, 25 at once\nLightpanda      123MB\nHeadless Chrome 2.0GB",
+      "title": "cw-board",
+      "code": "T1 Dark mode      working RUNNING\nT2 Invoice dates  idle    RUNNING\nT3 Date tests     idle    REVIEW\n! ready for review",
       "highlight": [
-        3
+        3,
+        4
       ]
     },
     "alternatives": [
       {
-        "hook": "A browser *not* forked from Chrome",
-        "hook_type": "news",
-        "spoken": "[fired up] Lightpanda is a brand new headless browser, [curious] not another Chrome fork."
-      },
-      {
-        "hook": "Your scraper's browser is *heavy*",
-        "hook_type": "problem",
-        "spoken": "[urgent] In its own crawl test, [serious] headless Chrome peaked at two gigabytes."
-      },
-      {
-        "hook": "Same Puppeteer, *lighter* browser",
+        "hook": "Three Claudes, *one* table",
         "hook_type": "shortcut",
-        "spoken": "[excited] Keep your Puppeteer script, [confident] just point it at a lighter browser."
+        "spoken": "[excited] Three Claude sessions, [confident] and one table tells me everything."
+      },
+      {
+        "hook": "Know when Claude is *done*",
+        "hook_type": "problem",
+        "spoken": "[fired up] How do you know when a Claude session [amused] is finished?"
+      },
+      {
+        "hook": "Stop checking every *terminal*",
+        "hook_type": "before_after",
+        "spoken": "[urgent] Stop clicking through terminals [calm] to see what Claude is doing."
       }
     ],
     "points": [
       {
-        "title": "Not a fork",
-        "body": "A new browser written in Zig",
-        "visual": [
-          {
-            "type": "terminal",
-            "commands": [
-              "./lightpanda serve --port 9222"
-            ]
-          }
-        ]
-      },
-      {
-        "title": "Same Puppeteer",
-        "body": "Connect to it instead of launching",
-        "visual": [
-          {
-            "type": "code",
-            "language": "js",
-            "title": "scrape.js",
-            "code": "await puppeteer.connect({\n  browserWSEndpoint:\n    \"ws://127.0.0.1:9222\",\n});",
-            "highlight": [
-              2,
-              3
-            ]
-          }
-        ]
-      },
-      {
-        "title": "Their benchmark",
-        "body": "4.8s versus 46.7s, same crawl",
+        "title": "Working or idle",
+        "body": "Every worker on one line",
         "visual": [
           {
             "type": "code",
             "language": "text",
-            "title": "Lightpanda benchmark",
-            "code": "Crawl: 933 pages, 25 at once\nLightpanda      4.8s\nHeadless Chrome 46.7s",
+            "title": "cw-board",
+            "code": "T1 Dark mode      working RUNNING\nT2 Invoice dates  idle    RUNNING",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Flags for you",
+        "body": "Ready, stuck, unsent, server down",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "cw-board",
+            "code": "T3 Date tests     idle    REVIEW\n! ready for review",
             "highlight": [
               2
             ]
           }
         ]
+      },
+      {
+        "title": "Alerts mode",
+        "body": "Only new flags, one line each",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "cw-board --alerts 60",
+            "code": "21:35 T3 Date tests: ready for review\n21:35 T2 Invoice dates: ready for review\n21:35 T1 Dark mode: ready for review",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
       }
     ],
-    "cta": "Would you *swap* your scraper's browser?",
-    "caption": "Lightpanda: a headless browser for scraping and AI agents, by lightpanda-io (AGPL-3.0)\nNumbers are from Lightpanda's own benchmark: 933 pages, 25 at a time, on an AWS m5.large\nWhat would you run on it first? 👇",
-    "hashtags": [
-      "#webscraping",
-      "#puppeteer",
-      "#opensource",
-      "#javascript"
-    ],
-    "sources": [
-      "https://github.com/lightpanda-io/demo/blob/main/BENCHMARKS.md",
-      "https://github.com/lightpanda-io/browser"
-    ],
     "voiceover": [
-      "[urgent] In Lightpanda's own crawl test, [serious] headless Chrome peaked at two gigabytes.",
-      "[curious] It isn't a Chrome fork, [amused] it's built in Zig.",
-      "[confident, fast] Your Puppeteer script just connects to it.",
-      "[impressed] Same crawl: under five seconds, not forty six.",
-      "[warm] Send this to a dev who runs headless Chrome."
+      "[fired up] Three Claude sessions running, [amused] which one is actually stuck?",
+      "[calm] This board lists each session and its state.",
+      "[confident] It flags what needs you, like ready for review.",
+      "[serious] In alerts mode, you only hear about new problems.",
+      "[warm] The board is free on GitHub, [excited] link in my bio."
     ],
-    "posted_at": null,
-    "media_id": null,
-    "series": "Trending build",
-    "episode": 1
+    "cta": "How do you *watch* your Claude sessions?",
+    "caption": "cw-board: one table of every Claude Code worker in cmux, with flags for what needs you\nFree and open source on GitHub (github.com/hassanjan1841/cw-board); the full kit is in my bio\nHow do you keep track of parallel Claude sessions? 👇"
   }
 ]
