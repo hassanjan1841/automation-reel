@@ -10247,5 +10247,194 @@
         "id": "18129413404873359"
       }
     ]
+  },
+  {
+    "id": 102,
+    "style": "dark",
+    "payoff": "Claude Code's rewind does not restore files changed by Bash commands like rm, mv or cp — those stay changed, you need git to undo them.",
+    "kicker": "Myth vs fact #22",
+    "hook": "Rewind won't undo *deletes*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "session.sh",
+      "code": "rm -rf dist/\n/rewind\nls dist/",
+      "lines": [
+        "rm -rf dist/",
+        "/rewind",
+        "ls dist/"
+      ],
+      "highlight": [
+        1,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *deleted* files don't come back",
+        "hook_type": "problem",
+        "spoken": "[fired up] Your agent just ran a stray rm, (break) [urgent] and rewind won't bring it back."
+      },
+      {
+        "hook": "*Rewind* undoes edits, not deletes",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Rewind brings back edited files instantly, (break) [flat] but files deleted by bash never return."
+      },
+      {
+        "hook": "I tested *rewind* after rm -rf",
+        "hook_type": "test",
+        "spoken": "[fired up] I ran rm on a folder, (break) [curious] then hit rewind to see what happened."
+      }
+    ],
+    "points": [
+      {
+        "title": "What rewind misses",
+        "body": "Checkpoints track edits, not shell commands",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/checkpointing",
+            "find": "does not track files modified by Bash commands"
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "checkpointing.md",
+            "code": "Checkpointing does not track\nfiles modified by Bash commands",
+            "lines": [
+              "Checkpointing does not track",
+              "files modified by Bash commands"
+            ],
+            "highlight": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Bash slips through",
+        "body": "These file changes bash makes aren't undone",
+        "visual": [
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "bash-ops",
+            "code": "rm -rf dist/\nmv secrets.env /tmp/\ncp -r old/ new/",
+            "lines": [
+              "rm -rf dist/",
+              "mv secrets.env /tmp/",
+              "cp -r old/ new/"
+            ],
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "rm -rf dist/",
+              "mv secrets.env /tmp/",
+              "cp -r old/ new/"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Still gone",
+        "body": "The deleted folder never comes back",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "ls dist/",
+            "output": [
+              "ls: dist/: No such file",
+              "or directory"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "terminal",
+            "code": "$ ls dist/\nls: dist/: No such file or directory",
+            "lines": [
+              "$ ls dist/",
+              "ls: dist/: No such file or directory"
+            ],
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Ever trusted *rewind* after a messy command?",
+    "caption": "Claude Code's rewind does not undo files changed by Bash commands like rm or mv\nCheckpoints track edits Claude makes itself, not shell commands\nEver had rewind fail to save you after a messy command? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#devtools",
+      "#aiagents",
+      "#coding"
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/checkpointing"
+    ],
+    "voiceover": [
+      "[urgent] You hit rewind in Claude Code, (break) [serious] but it never restores files bash deleted.",
+      "[knowing] It only restores edits Claude itself made.",
+      "[exasperated] Shell commands like rm or mv skip past it.",
+      "[quiet] Check after rewind, (break) [confident] the deleted folder stays gone.",
+      "[warm, curious] Send this to the dev who trusts rewind blindly."
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 22,
+    "posted_at": "2026-10-31T12:01:22+00:00",
+    "media_id": "18468612880185546",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only proves rewind fails to restore bash-deleted files — it never shows or states the actual fix (use git to undo them), so the promised payoff is incomplete."
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.3
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "outputmap",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.4,
+    "youtube_id": "7SCrPlNJph0",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18335823460263356"
+      }
+    ]
   }
 ]

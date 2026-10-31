@@ -6,9 +6,13 @@
   },
   "fish": {
     "I": "<|phoneme_start|>AY1<|phoneme_end|>",
+    "blindly": "<|phoneme_start|>B L AY1 N D L IY0<|phoneme_end|>",
+    "dev": "<|phoneme_start|>D EH1 V<|phoneme_end|>",
     "localStorage": "<|phoneme_start|>L OW1 K AH0 L S T AO1 R IH0 JH<|phoneme_end|>",
     "login": "<|phoneme_start|>L AA1 G IH0 N<|phoneme_end|>",
+    "rewind": "<|phoneme_start|>R IY0 W AY1 N D<|phoneme_end|>",
     "sonnet": "<|phoneme_start|>S AA1 N AH0 T<|phoneme_end|>",
-    "token": "<|phoneme_start|>T OW1 K AH0 N<|phoneme_end|>"
+    "token": "<|phoneme_start|>T OW1 K AH0 N<|phoneme_end|>",
+    "trusts": "<|phoneme_start|>T R AH1 S T S<|phoneme_end|>"
   }
 }
