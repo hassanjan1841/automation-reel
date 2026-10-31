@@ -10450,9 +10450,9 @@
     "posted_at": null,
     "media_id": null,
     "kicker": "Build log",
-    "hook": "Which Claude is *stuck*?",
+    "hook": "Which Claude is *done*?",
     "hook_type": "problem",
-    "payoff": "cw-board shows every Claude Code worker in one table and flags what needs you: ready for review, stuck, an unsent message, or a dev server down.",
+    "payoff": "cw-board shows every Claude Code worker in one table and flags the ones ready for review; alerts mode prints only new flags, one line each.",
     "hook_visual": {
       "type": "code",
       "language": "text",
@@ -10470,7 +10470,7 @@
         "spoken": "[excited] Three Claude sessions, [confident] and one table tells me everything."
       },
       {
-        "hook": "Know when Claude is *done*",
+        "hook": "Know when Claude is *finished*",
         "hook_type": "problem",
         "spoken": "[fired up] How do you know when a Claude session [amused] is finished?"
       },
@@ -10498,7 +10498,7 @@
       },
       {
         "title": "Flags for you",
-        "body": "Ready, stuck, unsent, server down",
+        "body": "It flags who is ready for review",
         "visual": [
           {
             "type": "code",
@@ -10530,7 +10530,7 @@
       }
     ],
     "voiceover": [
-      "[fired up] Three Claude sessions running, [amused] which one is actually stuck?",
+      "[fired up] Three Claude sessions running, [amused] which one is already done?",
       "[calm] This board lists each session and its state.",
       "[confident] It flags what needs you, like ready for review.",
       "[serious] In alerts mode, you only hear about new problems.",
