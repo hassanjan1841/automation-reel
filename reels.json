@@ -10535,10 +10535,47 @@
       "[impressed] Same crawl: under five seconds, not forty six.",
       "[warm] Send this to a dev who runs headless Chrome."
     ],
-    "posted_at": null,
-    "media_id": null,
+    "posted_at": "2026-10-31T20:11:11+00:00",
+    "media_id": "17943338481376290",
     "series": "Trending build",
-    "episode": 1
+    "episode": 1,
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 6,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 13.7
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.1,
+    "youtube_id": "DWQi4C17WY0",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18451640497135050"
+      }
+    ]
   },
   {
     "id": 104,
