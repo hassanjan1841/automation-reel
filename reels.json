@@ -10438,62 +10438,66 @@
     ]
   },
   {
-    "id": 103,
-    "pillar": "timely",
-    "style": "light",
-    "kicker": "Trending build #1",
-    "payoff": "Lightpanda is a new headless browser written in Zig: Puppeteer connects to it on port 9222, and in its own crawl benchmark (933 pages, 25 at a time) it peaked at 123MB where Chrome used 2GB.",
-    "hook": "One crawl, *2GB* of Chrome",
-    "hook_type": "problem",
+    "id": 104,
+    "pillar": "devtip",
+    "style": "dark",
+    "kicker": "Build log",
+    "payoff": "Three Claude Code sessions each worked in their own git worktree on one demo app, and a board flagged each one ready for review in under 2 minutes.",
+    "hook": "Three Claude workers, *one* project",
+    "hook_type": "before_after",
     "hook_visual": {
       "type": "code",
       "language": "text",
-      "title": "Lightpanda benchmark",
-      "code": "Crawl: 933 pages, 25 at once\nLightpanda      123MB\nHeadless Chrome 2.0GB",
+      "title": "cw-board",
+      "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
       "highlight": [
-        3
+        4
       ]
     },
     "alternatives": [
       {
-        "hook": "A browser *not* forked from Chrome",
-        "hook_type": "news",
-        "spoken": "[fired up] Lightpanda is a brand new headless browser, [curious] not another Chrome fork."
-      },
-      {
-        "hook": "Your scraper's browser is *heavy*",
+        "hook": "One Claude session is *slow*",
         "hook_type": "problem",
-        "spoken": "[urgent] In its own crawl test, [serious] headless Chrome peaked at two gigabytes."
+        "spoken": "[urgent] One Claude session is slow, [confident] so I run three."
       },
       {
-        "hook": "Same Puppeteer, *lighter* browser",
+        "hook": "Parallel Claude, *zero* collisions",
         "hook_type": "shortcut",
-        "spoken": "[excited] Keep your Puppeteer script, [confident] just point it at a lighter browser."
+        "spoken": "[excited] Three Claude sessions in one app, [calm] and nothing collides."
+      },
+      {
+        "hook": "Three jobs, *one* board",
+        "hook_type": "test",
+        "spoken": "[fired up] Three sessions, three jobs, [impressed] and one board watching them."
       }
     ],
     "points": [
       {
-        "title": "Not a fork",
-        "body": "A new browser written in Zig",
+        "title": "One worktree each",
+        "body": "No session steps on another",
         "visual": [
           {
-            "type": "terminal",
-            "commands": [
-              "./lightpanda serve --port 9222"
+            "type": "code",
+            "language": "text",
+            "title": "terminal",
+            "code": "cw-new --name \"T1 Dark mode\" \\\n  --branch feat/dark-mode \\\n  --brief briefs/T1.md",
+            "highlight": [
+              1
             ]
           }
         ]
       },
       {
-        "title": "Same Puppeteer",
-        "body": "Connect to it instead of launching",
+        "title": "One board",
+        "body": "Working, idle, or stuck at a glance",
         "visual": [
           {
             "type": "code",
-            "language": "js",
-            "title": "scrape.js",
-            "code": "await puppeteer.connect({\n  browserWSEndpoint:\n    \"ws://127.0.0.1:9222\",\n});",
+            "language": "text",
+            "title": "cw-board",
+            "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
             "highlight": [
+              1,
               2,
               3
             ]
@@ -10501,43 +10505,37 @@
         ]
       },
       {
-        "title": "Their benchmark",
-        "body": "4.8s versus 46.7s, same crawl",
+        "title": "You review",
+        "body": "Flags tell you who is done",
         "visual": [
           {
             "type": "code",
             "language": "text",
-            "title": "Lightpanda benchmark",
-            "code": "Crawl: 933 pages, 25 at once\nLightpanda      4.8s\nHeadless Chrome 46.7s",
+            "title": "cw-board",
+            "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
             "highlight": [
-              2
+              4
             ]
           }
         ]
       }
     ],
-    "cta": "Would you *swap* your scraper's browser?",
-    "caption": "Lightpanda: a headless browser for scraping and AI agents, by lightpanda-io (AGPL-3.0)\nNumbers are from Lightpanda's own benchmark: 933 pages, 25 at a time, on an AWS m5.large\nWhat would you run on it first? 👇",
+    "cta": "Know a dev who runs *one* session?",
+    "caption": "Three Claude Code sessions on one project, each in its own git worktree\nA real run of my workers kit on a demo app; the board is free on GitHub, the kit is in my bio\nHow many Claude sessions do you run at once? 👇",
     "hashtags": [
-      "#webscraping",
-      "#puppeteer",
-      "#opensource",
-      "#javascript"
-    ],
-    "sources": [
-      "https://github.com/lightpanda-io/demo/blob/main/BENCHMARKS.md",
-      "https://github.com/lightpanda-io/browser"
+      "#claudecode",
+      "#aicoding",
+      "#devtools",
+      "#productivity"
     ],
     "voiceover": [
-      "[urgent] In Lightpanda's own crawl test, [serious] headless Chrome peaked at two gigabytes.",
-      "[curious] It isn't a Chrome fork, [amused] it's built in Zig.",
-      "[confident, fast] Your Puppeteer script just connects to it.",
-      "[impressed] Same crawl: under five seconds, not forty six.",
-      "[warm] Send this to a dev who runs headless Chrome."
+      "[fired up] Three Claude sessions fixed one app, [confident] all at the same time.",
+      "[calm] Each gets its own git worktree, so nothing collides.",
+      "[curious] One board shows who is stuck.",
+      "[impressed] Under two minutes later, all three were ready.",
+      "[warm] Send this to a dev [amused] who runs one session."
     ],
     "posted_at": null,
-    "media_id": null,
-    "series": "Trending build",
-    "episode": 1
+    "media_id": null
   }
 ]
