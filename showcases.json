@@ -45,5 +45,59 @@
     "media_id": "18251192611311540",
     "posted_at": "2026-10-21T17:04:40+00:00",
     "seconds": 17.7
+  },
+  {
+    "beats": [
+      {
+        "text": "Every *request* starts small",
+        "motif": "spark",
+        "light": false
+      },
+      {
+        "text": "It *travels* to server",
+        "motif": "flow",
+        "labels": [
+          "you",
+          "server"
+        ],
+        "light": false
+      },
+      {
+        "text": "Next time, check *cache*",
+        "motif": "card",
+        "labels": [
+          "CACHE"
+        ],
+        "light": false
+      },
+      {
+        "text": "A *hit*, instantly",
+        "motif": "ring",
+        "light": true
+      },
+      {
+        "text": "Answer *returns* fast",
+        "motif": "wave",
+        "light": false
+      },
+      {
+        "text": "That's why *caching* works",
+        "motif": "loop",
+        "light": false
+      }
+    ],
+    "title": "Why caching works",
+    "caption": "A request can travel far to get an answer.\nCache it once, skip the trip next time.\nWhat do you cache in your app? 👇",
+    "hashtags": [
+      "#webdev",
+      "#caching",
+      "#systemdesign",
+      "#coding"
+    ],
+    "id": 2,
+    "media_id": "18107043821569275",
+    "posted_at": "2026-10-31T16:13:15+00:00",
+    "seconds": 17.7,
+    "youtube_id": "E-k05QLgaWk"
   }
 ]
