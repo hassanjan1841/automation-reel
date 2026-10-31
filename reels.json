@@ -10442,7 +10442,7 @@
     "pillar": "devtip",
     "style": "dark",
     "kicker": "Build log",
-    "payoff": "Three Claude Code sessions each worked in their own git worktree on one demo app, and a board flagged each one ready for review in under 2 minutes.",
+    "payoff": "Three Claude Code sessions each worked in their own git worktree on one demo app; the board shows the first one starting at 21:33:30 and all three ready for review at 21:35:01.",
     "hook": "Three Claude workers, *one* project",
     "hook_type": "before_after",
     "hook_visual": {
@@ -10489,16 +10489,14 @@
       },
       {
         "title": "One board",
-        "body": "Working, idle, or stuck at a glance",
+        "body": "Working or done, at a glance",
         "visual": [
           {
             "type": "code",
             "language": "text",
-            "title": "cw-board",
-            "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
+            "title": "cw-board 21:34:38",
+            "code": "T2 Invoice dates  idle    REVIEW\nT1 Dark mode      idle    REVIEW\nT3 Date tests     working RUNNING",
             "highlight": [
-              1,
-              2,
               3
             ]
           }
@@ -10506,14 +10504,15 @@
       },
       {
         "title": "You review",
-        "body": "Flags tell you who is done",
+        "body": "First start to all done: 91s",
         "visual": [
           {
             "type": "code",
             "language": "text",
-            "title": "cw-board",
-            "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
+            "title": "cw-board, real times",
+            "code": "21:33:30  T1 Dark mode   RUNNING\n21:35:01  T1 Dark mode   REVIEW\n21:35:01  T2 Invoice    REVIEW\n21:35:01  T3 Date tests REVIEW",
             "highlight": [
+              1,
               4
             ]
           }
@@ -10530,9 +10529,9 @@
     ],
     "voiceover": [
       "[fired up] Three Claude sessions fixed one app, [confident] all at the same time.",
-      "[calm] Each gets its own git worktree, so nothing collides.",
-      "[curious] One board shows who is stuck.",
-      "[impressed] Under two minutes later, all three were ready.",
+      "[calm] Each gets its own git worktree, so nothing clashes.",
+      "[curious] One board shows who is working, who is done.",
+      "[impressed] Ninety one seconds later, all three were ready.",
       "[warm] Send this to a dev [amused] who runs one session."
     ],
     "posted_at": null,
