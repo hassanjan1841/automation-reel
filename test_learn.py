@@ -3022,6 +3022,23 @@ class YouTubeStatsTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': ''}):
             self.assertEqual(learn.youtube_stats(['abc']), {})
 
+class LiveYouTubeTest(unittest.TestCase):
+    """ytlive.py: fast reads while a Short is young, hourly later, and views gained in the last hour."""
+
+    def test_cadence_and_last_hour(self):
+        import ytlive
+        at = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
+        young, old = at - timedelta(hours=5), at - timedelta(days=3)
+        recent_sample = [[(at - timedelta(minutes=20)).isoformat(), 50, 1, 0]]
+        self.assertTrue(ytlive.due(young, recent_sample, at))
+        self.assertFalse(ytlive.due(old, recent_sample, at))
+        self.assertTrue(ytlive.due(old, [[(at - timedelta(hours=1)).isoformat(), 50, 1, 0]], at))
+        samples = [[(at - timedelta(minutes=m)).isoformat(), v, 0, 0] for m, v in ((90, 10), (65, 14), (10, 30))]
+        self.assertEqual(ytlive.views_last_hour(samples, at), 16)
+        self.assertIsNone(ytlive.views_last_hour(samples[-1:], at))
+        text = ytlive.table([('abc', 'A hook', young)], {'abc': samples}, at)
+        self.assertIn('| 30 | +16 |', text)
+
 class PlannedReelTest(unittest.TestCase):
     """A reel added by hand with post_on waits for its date and slot, so reels can be queued for later days."""
 
