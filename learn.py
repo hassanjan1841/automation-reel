@@ -133,6 +133,53 @@ def youtube_stats(ids):
         return {}
 
 
+YT_SOURCES = {'SHORTS': 'Shorts feed', 'YT_SEARCH': 'YouTube search', 'SUBSCRIBER': 'subscribers',
+              'YT_CHANNEL': 'channel page', 'EXT_URL': 'outside links', 'RELATED_VIDEO': 'suggested videos',
+              'BROWSE': 'home and browse', 'NO_LINK_OTHER': 'direct or unknown', 'PLAYLIST': 'playlists',
+              'NOTIFICATION': 'notifications', 'HASHTAGS': 'hashtag pages', 'YT_OTHER_PAGE': 'other YouTube pages'}
+
+
+def youtube_audience(today, days=28):
+    """The YouTube channel over the last `days`, as report lines: totals, how viewers found the Shorts (traffic
+    sources), countries, age and gender, devices. Needs the login's analytics scope; '' without it or on any failure."""
+    if not os.environ.get('YT_REFRESH_TOKEN'):
+        return ''
+    try:
+        import youtube
+        token = youtube.access_token()
+        start, end = (today - timedelta(days=days)).isoformat(), today.isoformat()
+
+        def q(metrics, dimensions=None, sort=None, rows=None):
+            params = {'ids': 'channel==MINE', 'startDate': start, 'endDate': end, 'metrics': metrics}
+            params.update({k: v for k, v in (('dimensions', dimensions), ('sort', sort), ('maxResults', rows)) if v})
+            resp = requests.get('https://youtubeanalytics.googleapis.com/v2/reports', params=params, timeout=60,
+                                headers={'Authorization': f'Bearer {token}'})
+            resp.raise_for_status()
+            return resp.json().get('rows') or []
+
+        tot = q('views,estimatedMinutesWatched,averageViewPercentage,subscribersGained,subscribersLost,shares,likes')
+        if not tot or not tot[0][0]:
+            return ''
+        views, minutes, pct, gained, lost, shares, likes = tot[0]
+        share = lambda part: f'{part / views * 100:.0f}%' if views else '-'
+        lines = [f'## YouTube audience (last {days} days)',
+                 f'{views} views, {minutes / 60:.1f} hours watched, {pct:.0f}% of each Short watched on average, '
+                 f'{likes} likes, {shares} shares, subscribers +{gained} -{lost}.']
+        src = q('views', 'insightTrafficSourceType', '-views', 6)
+        lines.append('- Found through: ' + ', '.join(f'{YT_SOURCES.get(s, s.lower())} {share(v)}' for s, v in src))
+        geo = q('views', 'country', '-views', 6)
+        lines.append('- Countries: ' + ', '.join(f'{c} {share(v)}' for c, v in geo))
+        demo = q('viewerPercentage', 'ageGroup,gender', '-viewerPercentage', 6)
+        if demo:
+            lines.append('- Viewers (signed in): ' + ', '.join(f"{g} {a.replace('age', '')} {p:.0f}%" for a, g, p in demo))
+        dev = q('views', 'deviceType', '-views', 4)
+        lines.append('- Devices: ' + ', '.join(f'{d.lower()} {share(v)}' for d, v in dev))
+        return '\n'.join(lines)
+    except Exception as e:  # noqa: BLE001 - YouTube trouble never blocks the report
+        print(f'YouTube audience unavailable: {e}')
+        return ''
+
+
 # ---------- 1. measure ----------
 
 def posts(reels, carousels):
@@ -754,6 +801,10 @@ def main():
     history.save_experiments(exp)
     history.save_ideas(ideas)
     text = report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, openings, write)
+    audience = youtube_audience(today)
+    if audience:
+        text = text.rstrip('\n') + '\n\n' + audience + '\n'
+
     history.save_report(today, text)
     REPORT.parent.mkdir(exist_ok=True)
     REPORT.write_text(text)
