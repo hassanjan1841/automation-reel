@@ -38,8 +38,10 @@ TOKEN_URL = 'https://oauth2.googleapis.com/token'
 UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos'
 CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels'
 MAX_TITLE, MAX_DESCRIPTION = 100, 5000
-# The scopes the refresh token needs: upload, and read (for --check, which channel it uploads to).
-SCOPES = 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly'
+# The scopes the refresh token needs: upload, read (for --check, which channel it uploads to) and analytics (watch time
+# and share watched per Short, read by learn.youtube_stats).
+SCOPES = ('https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly '
+          'https://www.googleapis.com/auth/yt-analytics.readonly')
 CATEGORY = '28'             # Science & Technology
 ALERT = render.OUT_DIR / 'youtube-alert.md'
 SHOWCASES = render.ROOT / 'showcases.json'

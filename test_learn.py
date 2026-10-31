@@ -3007,6 +3007,14 @@ class YouTubeStatsTest(unittest.TestCase):
                 mock.patch.object(learn.requests, 'get', return_value=reply):
             self.assertEqual(learn.youtube_stats(['abc']),
                              {'abc': {'yt_views': 120, 'yt_likes': 7, 'yt_comments': None}})
+        analytics = mock.Mock(ok=True)
+        analytics.json.return_value = {'rows': [['abc', 30, 14, 71.26, 2, 1]]}
+        with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': 'x'}), \
+                mock.patch.object(youtube, 'access_token', return_value='t'), \
+                mock.patch.object(learn.requests, 'get', side_effect=[reply, analytics]):
+            got = learn.youtube_stats(['abc'])['abc']
+        self.assertEqual((got['yt_watched_pct'], got['yt_avg_view_s'], got['yt_shares'], got['yt_subs_gained']),
+                         (71.3, 14, 2, 1))
         with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': 'x'}), \
                 mock.patch.object(youtube, 'access_token', side_effect=RuntimeError('refused')), \
                 contextlib.redirect_stdout(io.StringIO()):

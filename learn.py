@@ -112,6 +112,21 @@ def youtube_stats(ids):
                 s = v.get('statistics', {})
                 out[v['id']] = {name: int(s[key]) if key in s else None for name, key in
                                 (('yt_views', 'viewCount'), ('yt_likes', 'likeCount'), ('yt_comments', 'commentCount'))}
+        # Watch time, share watched, shares and subscribers come from the Analytics API, which needs the login's
+        # analytics scope; without it these stay out and the counts above still save.
+        resp = requests.get('https://youtubeanalytics.googleapis.com/v2/reports', timeout=60, headers={
+            'Authorization': f'Bearer {token}'}, params={
+            'ids': 'channel==MINE', 'startDate': '2020-01-01', 'endDate': utcnow().date().isoformat(),
+            'dimensions': 'video', 'filters': 'video==' + ','.join(ids[:200]),
+            'metrics': 'estimatedMinutesWatched,averageViewDuration,averageViewPercentage,shares,subscribersGained'})
+        if resp.ok:
+            for vid, minutes, avg_s, pct, shares, subs in resp.json().get('rows', []):
+                out.setdefault(vid, {}).update({'yt_watch_minutes': minutes, 'yt_avg_view_s': avg_s,
+                                                'yt_watched_pct': round(pct, 1), 'yt_shares': shares,
+                                                'yt_subs_gained': subs})
+        else:
+            print(f'YouTube Analytics unavailable ({resp.status_code}): sign in again with the analytics scope '
+                  '(README.md, "YouTube Shorts")')
         return out
     except Exception as e:  # noqa: BLE001 - any YouTube trouble only costs its own numbers
         print(f'YouTube stats unavailable: {e}')
@@ -660,7 +675,10 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
         parts.append(f"## YouTube Shorts\n{sum(r['yt_views'] for r in shorts)} views across {len(shorts)} Shorts "
                      f"({fmt(statistics.median(r['yt_views'] for r in shorts))} median). Most viewed:\n" + '\n'.join(
                          f"- #{r['id']} {r['hook']}: {r['yt_views']} views, {fmt(r.get('yt_likes'))} likes, "
-                         f"{fmt(r.get('yt_comments'))} comments (Instagram: {fmt(r.get('views'))} views)" for r in top))
+                         f"{fmt(r.get('yt_comments'))} comments"
+                         + (f", {r['yt_watched_pct']}% watched, {fmt(r.get('yt_shares'))} shares, "
+                            f"{fmt(r.get('yt_subs_gained'))} subscribers" if r.get('yt_watched_pct') is not None else '')
+                         + f" (Instagram: {fmt(r.get('views'))} views)" for r in top))
     carousels = [r for r in rows if r['kind'] == 'carousel']
     if carousels:
         parts.append('## Carousels\n' + '\n'.join(
