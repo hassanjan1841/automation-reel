@@ -10436,5 +10436,108 @@
         "id": "18335823460263356"
       }
     ]
+  },
+  {
+    "id": 103,
+    "pillar": "timely",
+    "style": "light",
+    "kicker": "Trending build #1",
+    "payoff": "Lightpanda is a new headless browser written in Zig: Puppeteer connects to it on port 9222, and in its own crawl benchmark (933 pages, 25 at a time) it peaked at 123MB where Chrome used 2GB.",
+    "hook": "One crawl, *2GB* of Chrome",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "text",
+      "title": "Lightpanda benchmark",
+      "code": "Crawl: 933 pages, 25 at once\nLightpanda      123MB\nHeadless Chrome 2.0GB",
+      "highlight": [
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "A browser *not* forked from Chrome",
+        "hook_type": "news",
+        "spoken": "[fired up] Lightpanda is a brand new headless browser, [curious] not another Chrome fork."
+      },
+      {
+        "hook": "Your scraper's browser is *heavy*",
+        "hook_type": "problem",
+        "spoken": "[urgent] In its own crawl test, [serious] headless Chrome peaked at two gigabytes."
+      },
+      {
+        "hook": "Same Puppeteer, *lighter* browser",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Keep your Puppeteer script, [confident] just point it at a lighter browser."
+      }
+    ],
+    "points": [
+      {
+        "title": "Not a fork",
+        "body": "A new browser written in Zig",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "./lightpanda serve --port 9222"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Same Puppeteer",
+        "body": "Connect to it instead of launching",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "scrape.js",
+            "code": "await puppeteer.connect({\n  browserWSEndpoint:\n    \"ws://127.0.0.1:9222\",\n});",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Their benchmark",
+        "body": "4.8s versus 46.7s, same crawl",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "Lightpanda benchmark",
+            "code": "Crawl: 933 pages, 25 at once\nLightpanda      4.8s\nHeadless Chrome 46.7s",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Would you *swap* your scraper's browser?",
+    "caption": "Lightpanda: a headless browser for scraping and AI agents, by lightpanda-io (AGPL-3.0)\nNumbers are from Lightpanda's own benchmark: 933 pages, 25 at a time, on an AWS m5.large\nWhat would you run on it first? 👇",
+    "hashtags": [
+      "#webscraping",
+      "#puppeteer",
+      "#opensource",
+      "#javascript"
+    ],
+    "sources": [
+      "https://github.com/lightpanda-io/demo/blob/main/BENCHMARKS.md",
+      "https://github.com/lightpanda-io/browser"
+    ],
+    "voiceover": [
+      "[urgent] In Lightpanda's own crawl test, [serious] headless Chrome peaked at two gigabytes.",
+      "[curious] It isn't a Chrome fork, [amused] it's built in Zig.",
+      "[confident, fast] Your Puppeteer script just connects to it.",
+      "[impressed] Same crawl: under five seconds, not forty six.",
+      "[warm] Send this to a dev who runs headless Chrome."
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "series": "Trending build",
+    "episode": 1
   }
 ]
