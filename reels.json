@@ -10539,5 +10539,426 @@
     "media_id": null,
     "series": "Trending build",
     "episode": 1
+  },
+  {
+    "id": 104,
+    "pillar": "devtip",
+    "style": "light",
+    "hashtags": [
+      "#claudecode",
+      "#aicoding",
+      "#devtools",
+      "#git"
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "kicker": "Build log",
+    "hook": "Stop waiting on *one* Claude",
+    "hook_type": "problem",
+    "payoff": "cw-new starts a Claude Code worker in one command: its own git worktree and branch, its own terminal, and the brief sent and confirmed, so several jobs run at once.",
+    "hook_visual": {
+      "type": "code",
+      "language": "text",
+      "title": "worktrees",
+      "code": "app     main\napp-T1  feat/dark-mode\napp-T2  fix/invoice-date\napp-T3  test/format-date",
+      "highlight": [
+        2,
+        3,
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "One session at a *time*?",
+        "hook_type": "problem",
+        "spoken": "[fired up] Still giving Claude one job, [amused] then waiting for it?"
+      },
+      {
+        "hook": "One command per *worker*",
+        "hook_type": "shortcut",
+        "spoken": "[excited] One command gives each Claude worker [confident] its own branch."
+      },
+      {
+        "hook": "Three branches, *three* Claudes",
+        "hook_type": "before_after",
+        "spoken": "[fired up] Three branches, three Claude sessions, [calm] one demo app."
+      }
+    ],
+    "points": [
+      {
+        "title": "The wait",
+        "body": "One session, one job, you wait",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "tracker",
+            "code": "T1  Dark mode toggle\nT2  Readable invoice dates\nT3  Tests for formatDate",
+            "highlight": [
+              1,
+              2,
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One command",
+        "body": "Worktree, terminal and brief",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "terminal",
+            "code": "cw-new --name \"T2 Invoice dates\" \\\n  --repo app --dir app-T2 \\\n  --branch fix/invoice-date \\\n  --brief briefs/T2.md",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Its own branch",
+        "body": "Nothing collides with the others",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "worktrees",
+            "code": "app-T1  feat/dark-mode\napp-T2  fix/invoice-date\napp-T3  test/format-date",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "voiceover": [
+      "[fired up] Still giving Claude one job, [amused] then waiting for it?",
+      "[calm] I had three small jobs on one demo app.",
+      "[confident] One command gives each job its own worker.",
+      "[serious] Separate branches mean their changes never clash.",
+      "[warm] Send this to a dev [amused] who still waits on Claude."
+    ],
+    "cta": "Know a dev who *waits* on Claude?",
+    "caption": "Run several Claude Code sessions at once, each in its own git worktree\nThe command is cw-new from my Claude Workers Kit (link in bio); the board is free on GitHub\nHow many Claude sessions do you run at once? 👇",
+    "post_on": {
+      "date": "2026-11-02",
+      "slot": 1
+    }
+  },
+  {
+    "id": 105,
+    "pillar": "timely",
+    "style": "dark",
+    "kicker": "Trending build #2",
+    "payoff": "Impeccable gives your coding agent design commands and a detector with 62 deterministic rules that flag AI-default design, with no LLM or API key.",
+    "hook": "62 rules that catch *AI slop*",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "text",
+      "title": "README: Why",
+      "code": "Inter for everything.\nPurple-to-blue gradients.\nCards nested in cards,",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your agent's page looks *generic*",
+        "hook_type": "problem",
+        "spoken": "[amused] Ask an agent for a page [deadpan] and you get purple gradients again."
+      },
+      {
+        "hook": "A linter for *design* tells",
+        "hook_type": "shortcut",
+        "spoken": "[excited] This tool lints the design tells [confident] every coding agent falls into."
+      },
+      {
+        "hook": "Purple gradients, *flagged* automatically",
+        "hook_type": "news",
+        "spoken": "[fired up] Impeccable flags purple gradients [serious] before your agent calls the page done."
+      }
+    ],
+    "points": [
+      {
+        "title": "The slop detector",
+        "body": "62 rules, no LLM, no key",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npx impeccable detect src/"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Design in words",
+        "body": "Commands like bolder, quieter, polish",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "agent prompt",
+            "code": "/impeccable critique the pricing cards\n/impeccable polish settings",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Inside your agent",
+        "body": "A hook checks every UI file",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npx impeccable install"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Which *tell* does your site have?",
+    "caption": "Impeccable: design commands and an AI-slop detector for coding agents, by Paul Bakaus (Apache-2.0)\nThe detector's 62 rules run without an LLM or API key\nWhich of these tells is on your site? 👇",
+    "hashtags": [
+      "#webdesign",
+      "#frontend",
+      "#claudecode",
+      "#opensource"
+    ],
+    "sources": [
+      "https://github.com/pbakaus/impeccable"
+    ],
+    "voiceover": [
+      "[amused] Ask an agent for a page: [deadpan] Inter, purple gradients, cards in cards.",
+      "[curious] Impeccable flags those tells, [confident] sixty two rules, no API key.",
+      "[confident] You steer with words like bolder.",
+      "[serious, fast] Its hook checks each UI file edited.",
+      "[warm] Send this to a dev shipping purple gradients."
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "series": "Trending build",
+    "episode": 2,
+    "post_on": {
+      "date": "2026-11-03",
+      "slot": 1
+    }
+  },
+  {
+    "id": 106,
+    "pillar": "devtip",
+    "style": "dark",
+    "kicker": "Build log",
+    "payoff": "Three Claude Code sessions each worked in their own git worktree on one demo app; the board shows the first one starting at 21:33:30 and all three ready for review at 21:35:01.",
+    "hook": "Three Claude workers, *one* project",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "text",
+      "title": "cw-board",
+      "code": "T3 Date tests     REVIEW\nT2 Invoice dates  REVIEW\nT1 Dark mode      REVIEW\n! ready for review",
+      "highlight": [
+        4
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "One Claude session is *slow*",
+        "hook_type": "problem",
+        "spoken": "[urgent] One Claude session is slow, [confident] so I run three."
+      },
+      {
+        "hook": "Parallel Claude, *zero* collisions",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Three Claude sessions in one app, [calm] and nothing collides."
+      },
+      {
+        "hook": "Three jobs, *one* board",
+        "hook_type": "test",
+        "spoken": "[fired up] Three sessions, three jobs, [impressed] and one board watching them."
+      }
+    ],
+    "points": [
+      {
+        "title": "One worktree each",
+        "body": "No session steps on another",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "terminal",
+            "code": "cw-new --name \"T1 Dark mode\" \\\n  --branch feat/dark-mode \\\n  --brief briefs/T1.md",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One board",
+        "body": "Working or done, at a glance",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "cw-board 21:34:38",
+            "code": "T2 Invoice dates  idle    REVIEW\nT1 Dark mode      idle    REVIEW\nT3 Date tests     working RUNNING",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "You review",
+        "body": "First start to all done: 91s",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "cw-board, real times",
+            "code": "21:33:30  T1 Dark mode   RUNNING\n21:35:01  T1 Dark mode   REVIEW\n21:35:01  T2 Invoice    REVIEW\n21:35:01  T3 Date tests REVIEW",
+            "highlight": [
+              1,
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who runs *one* session?",
+    "caption": "Three Claude Code sessions on one project, each in its own git worktree\nA real run of my workers kit on a demo app; the board is free on GitHub, the kit is in my bio\nHow many Claude sessions do you run at once? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aicoding",
+      "#devtools",
+      "#productivity"
+    ],
+    "voiceover": [
+      "[fired up] Three Claude sessions fixed one app, [confident] all at the same time.",
+      "[calm] Each gets its own git worktree, so nothing clashes.",
+      "[curious] One board shows who is working, who is done.",
+      "[impressed] Ninety one seconds later, all three were ready.",
+      "[warm] Send this to a dev [amused] who runs one session."
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "post_on": {
+      "date": "2026-11-05",
+      "slot": 1
+    }
+  },
+  {
+    "id": 107,
+    "pillar": "timely",
+    "style": "dark",
+    "kicker": "Trending build #3",
+    "payoff": "Hallmark is a design skill for coding agents: it deals three of fifty themes, lints the page in a real browser at eight widths, and fails a redesign that drops a link or field.",
+    "hook": "Pages that don't look *AI-made*",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "install",
+      "code": "npx skills add nutlope/hallmark -g",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "A skill that *refuses* slop",
+        "hook_type": "news",
+        "spoken": "[fired up] This design skill refuses to look AI made, [confident] and it checks itself."
+      },
+      {
+        "hook": "Redesign without *losing* links",
+        "hook_type": "problem",
+        "spoken": "[urgent] Redesigns quietly drop links and fields. [serious] This one fails instead."
+      },
+      {
+        "hook": "Fifty themes, *checked* in a browser",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Fifty themes, [confident] and every page gets checked in a real browser."
+      }
+    ],
+    "points": [
+      {
+        "title": "Fifty themes",
+        "body": "It deals three that fit your page",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "scripts",
+            "code": "scripts/theme.mjs deal",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Linted for real",
+        "body": "Checked at eight screen widths",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "scripts",
+            "code": "scripts/sloplint.mjs --render",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Redesign safely",
+        "body": "Fails if a link or field vanishes",
+        "visual": [
+          {
+            "type": "code",
+            "language": "text",
+            "title": "agent prompt",
+            "code": "/hallmark redesign ./src/app\n/hallmark audit ./index.html",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Would you let it *redesign* your page?",
+    "caption": "Hallmark: a design skill for Claude Code, Codex, Cursor and OpenCode, made by Together AI (MIT)\nIt lints each page in a real browser and fails a redesign that drops a link or field\nWould you run it on your own site? 👇",
+    "hashtags": [
+      "#webdesign",
+      "#frontend",
+      "#claudecode",
+      "#opensource"
+    ],
+    "sources": [
+      "https://github.com/Nutlope/hallmark"
+    ],
+    "voiceover": [
+      "[fired up] This design skill refuses to look AI made, [confident] and checks itself.",
+      "[curious] It deals three themes out of fifty.",
+      "[serious] Then it lints the page in a real browser.",
+      "[impressed] Drop a link in a redesign, and it fails.",
+      "[warm] Send this to a dev redesigning this week."
+    ],
+    "posted_at": null,
+    "media_id": null,
+    "series": "Trending build",
+    "episode": 3,
+    "post_on": {
+      "date": "2026-11-07",
+      "slot": 1
+    }
   }
 ]

@@ -2993,5 +2993,20 @@ class SimulationTest(Sandbox):
         self.assertEqual(json.loads((self.tmp / 'ideas.json').read_text())[0]['topic'], 'Supabase auth')
 
 
+class PlannedReelTest(unittest.TestCase):
+    """A reel added by hand with post_on waits for its date and slot, so reels can be queued for later days."""
+
+    def test_due(self):
+        import publish
+        day = date(2026, 11, 2)
+        self.assertTrue(publish.due({}, day, 1))                                          # no plan: next run
+        planned = {'post_on': {'date': '2026-11-02', 'slot': 1}}
+        self.assertFalse(publish.due(planned, date(2026, 11, 1), 3))                      # too early
+        self.assertTrue(publish.due(planned, day, 1))
+        self.assertTrue(publish.due(planned, day, 3))                                     # slot 1 was missed
+        self.assertFalse(publish.due({'post_on': {'date': '2026-11-02', 'slot': 3}}, day, 1))
+        self.assertTrue(publish.due(planned, date(2026, 11, 4), 1))                       # passed: next run
+
+
 if __name__ == '__main__':
     unittest.main(argv=[sys.argv[0]] + [a for a in sys.argv[1:] if a == '-v'])

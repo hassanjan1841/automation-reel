@@ -35,7 +35,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import requests
 
@@ -333,6 +333,17 @@ def credits(reel):
 
 # ---------- today's reel ----------
 
+def due(reel, day, slot):
+    """Whether a reel added by hand may post in this slot: always without post_on; with post_on
+    ({"date": "2026-11-02", "slot": 1}) only from that date's slot on, so reels can be queued ahead and go out
+    on their own; one whose date has passed goes at the next run."""
+    when = reel.get('post_on')
+    if not when:
+        return True
+    planned = date.fromisoformat(when['date'])
+    return planned < day or (planned == day and int(when.get('slot', slot)) <= slot)
+
+
 def todays_reel(reels):
     """Today's reel, with 3D removed on a day it is not allowed (the writer is told, this is the safety net), and
     the strongest of its hooks (generate.pick_hook) on a freshly written one."""
@@ -438,8 +449,10 @@ def main():
         print(f'Reel {generate.slot()} of today ({today} UTC) already posted; nothing to do. '
               'Set FORCE_POST=true to post again.')
         return
-    # A reel added by hand goes first; otherwise today's reel is researched and written now, not ahead of time.
-    reel = next((r for r in reels if not r.get('posted_at')), None)
+    # A reel added by hand goes first (once its post_on date and slot come); otherwise today's reel is researched
+    # and written now, not ahead of time.
+    reel = next((r for r in reels if not r.get('posted_at') and due(r, datetime.now(timezone.utc).date(),
+                                                                       generate.slot())), None)
     by_hand = reel is not None
     if by_hand:
         print('Using the reel added by hand')
