@@ -94,6 +94,30 @@ def metric(media_id, name, token):
         return None
 
 
+def youtube_stats(ids):
+    """Views, likes and comments of our YouTube Shorts, {video id: {yt_views, yt_likes, yt_comments}}, read with the
+    upload login (youtube.readonly scope). Empty without the YT_ secrets or on any failure: YouTube never blocks the
+    Instagram numbers."""
+    if not ids or not os.environ.get('YT_REFRESH_TOKEN'):
+        return {}
+    try:
+        import youtube
+        token, out = youtube.access_token(), {}
+        for k in range(0, len(ids), 50):
+            resp = requests.get('https://www.googleapis.com/youtube/v3/videos', timeout=30,
+                                params={'part': 'statistics', 'id': ','.join(ids[k:k + 50])},
+                                headers={'Authorization': f'Bearer {token}'})
+            resp.raise_for_status()
+            for v in resp.json().get('items', []):
+                s = v.get('statistics', {})
+                out[v['id']] = {name: int(s[key]) if key in s else None for name, key in
+                                (('yt_views', 'viewCount'), ('yt_likes', 'likeCount'), ('yt_comments', 'commentCount'))}
+        return out
+    except Exception as e:  # noqa: BLE001 - any YouTube trouble only costs its own numbers
+        print(f'YouTube stats unavailable: {e}')
+        return {}
+
+
 # ---------- 1. measure ----------
 
 def posts(reels, carousels):
@@ -111,6 +135,7 @@ def measure(reels, carousels, token, stored):
     """New snapshots for posts that are due one (history.snapshot_due), and the text of recent comments (for topic
     ideas)."""
     now, rows, texts = utcnow(), [], []
+    yt = youtube_stats([r['youtube_id'] for r in reels if r.get('youtube_id') and r.get('posted_at')])
     for kind, post_id, entry in posts(reels, carousels):
         hours = age_hours(entry, now)
         if hours < MIN_AGE_HOURS or not history.snapshot_due(stored.get(history.key(kind, post_id), []), hours / 24,
@@ -119,6 +144,8 @@ def measure(reels, carousels, token, stored):
         names = REEL_METRICS if kind == 'reel' else CAROUSEL_METRICS
         row = {'date': now.date().isoformat(), 'kind': kind, 'id': post_id, 'media_id': entry['media_id'],
                'age_days': round(hours / 24, 1), **{n: metric(entry['media_id'], n, token) for n in names}}
+        if kind == 'reel' and entry.get('youtube_id') in yt:
+            row.update(yt[entry['youtube_id']])
         if entry.get('dm_keyword') or hours <= IDEA_DAYS * 24:
             try:
                 found = dm.comments(entry['media_id'], token)
@@ -627,6 +654,13 @@ def report(today, rows, usual, changes, test, rules, accepted, dropped, ideas, o
                 + (f" ({fmt(r['watched_share'], 'share')} of it)" if r.get('watched_share') is not None else '') for r in group))
         if openings:
             parts.append(f'What the strong openings share: {openings}')
+    shorts = [r for r in reel_rows if r.get('yt_views') is not None]
+    if shorts:
+        top = sorted(shorts, key=lambda r: r['yt_views'], reverse=True)[:3]
+        parts.append(f"## YouTube Shorts\n{sum(r['yt_views'] for r in shorts)} views across {len(shorts)} Shorts "
+                     f"({fmt(statistics.median(r['yt_views'] for r in shorts))} median). Most viewed:\n" + '\n'.join(
+                         f"- #{r['id']} {r['hook']}: {r['yt_views']} views, {fmt(r.get('yt_likes'))} likes, "
+                         f"{fmt(r.get('yt_comments'))} comments (Instagram: {fmt(r.get('views'))} views)" for r in top))
     carousels = [r for r in rows if r['kind'] == 'carousel']
     if carousels:
         parts.append('## Carousels\n' + '\n'.join(

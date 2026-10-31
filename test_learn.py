@@ -2993,6 +2993,27 @@ class SimulationTest(Sandbox):
         self.assertEqual(json.loads((self.tmp / 'ideas.json').read_text())[0]['topic'], 'Supabase auth')
 
 
+class YouTubeStatsTest(unittest.TestCase):
+    """The learning loop reads each Short's views, likes and comments; YouTube trouble never blocks the rest."""
+
+    def test_reads_stats_and_survives_failure(self):
+        import learn
+        import youtube
+        reply = mock.Mock(ok=True, status_code=200)
+        reply.json.return_value = {'items': [{'id': 'abc', 'statistics': {'viewCount': '120', 'likeCount': '7'}}]}
+        reply.raise_for_status = lambda: None
+        with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': 'x'}), \
+                mock.patch.object(youtube, 'access_token', return_value='t'), \
+                mock.patch.object(learn.requests, 'get', return_value=reply):
+            self.assertEqual(learn.youtube_stats(['abc']),
+                             {'abc': {'yt_views': 120, 'yt_likes': 7, 'yt_comments': None}})
+        with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': 'x'}), \
+                mock.patch.object(youtube, 'access_token', side_effect=RuntimeError('refused')), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(learn.youtube_stats(['abc']), {})
+        with mock.patch.dict(os.environ, {'YT_REFRESH_TOKEN': ''}):
+            self.assertEqual(learn.youtube_stats(['abc']), {})
+
 class PlannedReelTest(unittest.TestCase):
     """A reel added by hand with post_on waits for its date and slot, so reels can be queued for later days."""
 

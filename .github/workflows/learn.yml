@@ -44,6 +44,9 @@ jobs:
       - name: Learn from the latest numbers
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
           EXPERIMENT: ${{ vars.EXPERIMENT }}
           LEARN_DAYS: ${{ vars.LEARN_DAYS }}
         run: python learn.py
