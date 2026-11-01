@@ -10997,5 +10997,150 @@
       "date": "2026-11-07",
       "slot": 1
     }
+  },
+  {
+    "id": 108,
+    "style": "dark",
+    "payoff": "A Bash(rm *) deny rule only blocks that exact text — swapping in /bin/rm -rf build/ or bash -c 'rm -rf build/' still deletes the folder, per Claude Code's docs.",
+    "kicker": "Myth vs fact #23",
+    "hook": "Blocked once, *bypassed* twice",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "json",
+      "title": "settings.json",
+      "code": "\"permissions\": {\n  \"deny\": [\"Bash(rm *)\"]\n}",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your deny rule has a *loophole*",
+        "spoken": "[fired up] You think a Bash deny rule blocks every single way, [confident and fast] to delete files.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "That rm rule isn't *complete*",
+        "hook_type": "problem",
+        "spoken": "[fired up] One deny rule for rm looks solid, [urgent] but it's missing something big."
+      },
+      {
+        "hook": "We tried *three* delete commands",
+        "hook_type": "test",
+        "spoken": "[excited] We ran three delete commands against one deny rule, [knowing] only one got stopped."
+      }
+    ],
+    "points": [
+      {
+        "title": "Pattern match only",
+        "body": "Matches the string, not the action",
+        "visual": [
+          {
+            "type": "code",
+            "language": "json",
+            "title": "settings.json",
+            "code": "{\n  \"permissions\": {\n    \"deny\": [\"Bash(rm *)\"]\n  }\n}",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Blocked as expected",
+        "body": "The plain delete command fails",
+        "visual": [
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "terminal",
+            "code": "$ rm -rf build/\nBlocked by permission rule",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Bypass confirmed",
+        "body": "Same delete, different wording",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "rm -rf build/",
+              "/bin/rm -rf build/",
+              "bash -c 'rm -rf build/'"
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Does your *deny* rule really block everything?",
+    "caption": "Claude Code Bash permission deny rules are not a security boundary\nA rule like Bash(rm *) can be bypassed with a full path or bash -c\nWould your deny rules survive that test? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#bash",
+      "#devsecurity",
+      "#permissions"
+    ],
+    "voiceover": [
+      "[confident and fast] This deny rule stops one delete command, [exasperated] but two others slip right past.",
+      "[knowing] It only matches the literal text typed.",
+      "[confident and fast] Type that plain command, [emphasis] it stops instantly.",
+      "[urgent] (break) Just change the path slightly, [exasperated] and the file still vanishes.",
+      "[teasing] Send this to whoever trusts that deny rule completely."
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/permissions"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 23,
+    "posted_at": "2026-11-01T16:35:39+00:00",
+    "media_id": "17882158539543345",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 7,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.8
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "terminal",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.8,
+    "youtube_id": "AyTbekP2QUM",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18154613815540823"
+      }
+    ]
   }
 ]
