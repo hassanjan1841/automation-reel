@@ -1,49 +1,4 @@
 {
-  "UCuJdC_Bw2vS70OG_3fz1NwA": {
-    "title": "Gaming Monster Mobile",
-    "added": "2026-09-29",
-    "outlier": 30.5
-  },
-  "UC8L6EV01fAJ2A0sDpsQ-T5g": {
-    "title": "InsiderForce",
-    "added": "2026-09-29",
-    "outlier": 24.1
-  },
-  "UCUwN9ZTN2Ns8SYWFy5-TgGg": {
-    "title": "Valeri Sabev | Building with AI",
-    "added": "2026-09-29",
-    "outlier": 15.8
-  },
-  "UCrv4B6Ku8MZceu9_MZXAD5A": {
-    "title": "Explaining AI",
-    "added": "2026-09-29",
-    "outlier": 579.0
-  },
-  "UCPz2DrQrRDMDtN2C93W1nXg": {
-    "title": "ゆう AI攻略",
-    "added": "2026-10-04",
-    "outlier": 21.0
-  },
-  "UC_a85mUHqsy5j0CYCgLnkEQ": {
-    "title": "DIY Smart Code",
-    "added": "2026-10-04",
-    "outlier": 13.2
-  },
-  "UC4cGc-OyQtfJ0q9WRpIHGBA": {
-    "title": "마일드코드",
-    "added": "2026-10-04",
-    "outlier": 10.3
-  },
-  "UCcypXKUXZ6zp9riCUucCy0A": {
-    "title": "Himan Creates",
-    "added": "2026-10-04",
-    "outlier": 27.6
-  },
-  "UCernZHseMZVq3Pf5ZnTpvHw": {
-    "title": "Rajen Purohit ",
-    "added": "2026-10-04",
-    "outlier": 8.5
-  },
   "UCxaFEobGeDhkupIwocNzv0g": {
     "title": "Jay Sim",
     "added": "2026-10-11",
@@ -88,5 +43,60 @@
     "title": "Placements@ApnaCollege",
     "added": "2026-10-25",
     "outlier": 15.1
+  },
+  "UCt57Ii1CaCuu3NbvxJgmDqQ": {
+    "title": "Твой Ai Менеджер ",
+    "added": "2026-11-01",
+    "outlier": 406.8
+  },
+  "UCuzP7SaUCkFM-Yf3h9vSdrg": {
+    "title": "Женя про AI",
+    "added": "2026-11-01",
+    "outlier": 113.8
+  },
+  "UCZ8T9erEILVrzHdTegwunOw": {
+    "title": "Worth Making | KI. Produkt. Business.",
+    "added": "2026-11-01",
+    "outlier": 76.9
+  },
+  "UCeQEapGpydl4VTmdM0dtEPg": {
+    "title": "Yerzhan Ai",
+    "added": "2026-11-01",
+    "outlier": 55.7
+  },
+  "UCssoVaSLJQivvba10Q_7SsQ": {
+    "title": "잔재미코딩(DaveLee)",
+    "added": "2026-11-01",
+    "outlier": 34.4
+  },
+  "UCKiWV-MWlQY2ptdiv1zS5MQ": {
+    "title": "Andrew Bishop",
+    "added": "2026-11-01",
+    "outlier": 18.2
+  },
+  "UCemLKtot_GRqzqmG81QHE-w": {
+    "title": "Yusuf Temel",
+    "added": "2026-11-01",
+    "outlier": 10.9
+  },
+  "UCqpgeZR_LqQ_uJVh7SrSLwA": {
+    "title": "Automation Nerd",
+    "added": "2026-11-01",
+    "outlier": 8.9
+  },
+  "UC2FO35be6wVJEw3gWb8H69A": {
+    "title": "Zac Frulloni",
+    "added": "2026-11-01",
+    "outlier": 5.8
+  },
+  "UCfvV8tTGC-uqWXXVS99kjNw": {
+    "title": "Code Trendly",
+    "added": "2026-11-01",
+    "outlier": 56.4
+  },
+  "UCsj7HJZKa5cpdXAfagRjsSw": {
+    "title": "Anastasia Moore",
+    "added": "2026-11-01",
+    "outlier": 38.4
   }
 }
