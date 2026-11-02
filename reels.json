@@ -10587,8 +10587,8 @@
       "#devtools",
       "#git"
     ],
-    "posted_at": null,
-    "media_id": null,
+    "posted_at": "2026-11-02T13:55:39+00:00",
+    "media_id": "17988263898120143",
     "kicker": "Build log",
     "hook": "Stop waiting on *one* Claude",
     "hook_type": "problem",
@@ -10682,7 +10682,44 @@
     "post_on": {
       "date": "2026-11-02",
       "slot": 1
-    }
+    },
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0 is text only (\"Stop waiting on one Claude\") with no code, diff or screenshot as proof, so the hook has nothing to look at and the payoff isn't demonstrated until later slides."
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel shows the cw-new command and the resulting worktree/branch list, but never shows the brief being sent and confirmed or the separate terminal windows running at once, so the full promised payoff (own terminal, brief sent and confirmed, several jobs running at once) isn't actually proven on screen."
+      },
+      "scores": {
+        "hook": 6,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 2.2
+      }
+    },
+    "shown": [
+      "text",
+      "code",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 16.3,
+    "youtube_id": "xs-vH8_bSvk",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18106426328004113"
+      }
+    ]
   },
   {
     "id": 105,
