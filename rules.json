@@ -163,11 +163,11 @@
     "id": 17,
     "text": "Myth vs fact reels average skip_vs_usual -12.4 and watched_vs_usual +0.081 (6 reels), versus Freelance playbook's +8.0 and -0.037 (6 reels); favor myth-busting topics over freelance-advice topics.",
     "since": "2026-10-19",
-    "status": "trial",
+    "status": "kept",
     "source": "weekly",
     "evidence": "series Myth vs fact (6 reels) beat Freelance playbook (6 reels): skip rate +20.4 points",
-    "verdict": "",
-    "checked": ""
+    "verdict": "helped: skip rate +19.7 points better, share watched +0.133 (23 reels after vs 52 before)",
+    "checked": "2026-11-02"
   },
   {
     "id": 18,
