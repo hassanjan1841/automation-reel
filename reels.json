@@ -11397,5 +11397,218 @@
         "id": "18161372122512738"
       }
     ]
+  },
+  {
+    "id": 110,
+    "style": "dark",
+    "payoff": "Claude Code's own docs say to keep CLAUDE.md under 200 lines, because longer files consume more context and reduce adherence, so trimming it to the essential rules makes Claude actually follow them.",
+    "kicker": "Quick trick #9",
+    "hook": "Your *CLAUDE.md* is bloated",
+    "hook_type": "problem",
+    "reveal": 3,
+    "sources": [
+      "https://code.claude.com/docs/en/memory"
+    ],
+    "hook_visual": {
+      "type": "diff",
+      "title": "CLAUDE.md",
+      "language": "md",
+      "before": "# Project rules\n## Style guide\n## Testing rules\n## Git workflow\n## Deploy steps\n## API conventions\n## Folder structure",
+      "after": "# Project rules\nUse TypeScript strict mode\nRun tests before commit\nFollow existing file structure\nNever commit secrets\nAsk before big refactors"
+    },
+    "alternatives": [
+      {
+        "hook": "Your *CLAUDE.md* is too long",
+        "spoken": "[urgent] Your CLAUDE.md file might be too long. (break) [serious, fast] Claude Code may stop following it well.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Bloated file, then *crisp* rules",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Picture a giant CLAUDE.md file dragging Claude down. (break) [confident and fast] Trim it and it listens better."
+      },
+      {
+        "hook": "*Trim* your CLAUDE.md today",
+        "hook_type": "shortcut",
+        "spoken": "[excited] Cut your CLAUDE.md down to size right now. (break) [confident and fast] Claude follows shorter files far better."
+      }
+    ],
+    "points": [
+      {
+        "title": "Context bloat",
+        "body": "Longer files burn more context",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/memory",
+            "find": "Longer files consume more context and reduce adherence."
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "CLAUDE.md",
+            "code": "# Project rules\n## Style guide\n## Testing rules\n## Git workflow\n## Deploy steps\n## API conventions\n## Folder structure",
+            "highlight": [
+              6,
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Trim the file",
+        "body": "Cut everything Claude doesn't need",
+        "visual": [
+          {
+            "type": "diff",
+            "language": "md",
+            "title": "CLAUDE.md",
+            "before": "# Project rules\n## Style guide\n## Testing rules\n## Git workflow\n## Deploy steps\n## API conventions\n## Folder structure",
+            "after": "# Project rules\nUse TypeScript strict mode\nRun tests before commit\nFollow existing file structure\nNever commit secrets\nAsk before big refactors"
+          }
+        ]
+      },
+      {
+        "title": "Under 200 lines",
+        "body": "Six lines, well inside the limit",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "wc -l CLAUDE.md"
+            ],
+            "output": [
+              "6 CLAUDE.md"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "CLAUDE.md",
+            "code": "# Project rules\nUse TypeScript strict mode\nRun tests before commit\nFollow existing file structure\nNever commit secrets\nAsk before big refactors",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "How long is your *CLAUDE.md* file?",
+    "caption": "Claude Code CLAUDE.md file length limit\nIts own docs say long files hurt adherence, so trim it\nHow many lines is yours? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#ai",
+      "#devtips",
+      "#cleancode"
+    ],
+    "voiceover": [
+      "[urgent] Your CLAUDE.md file is quietly growing huge. (break) [serious, fast] Claude may stop reading all of it.",
+      "[serious, fast] More headings just burn more context.",
+      "[confident and fast] Cut it down to just the core rules.",
+      "[excited] Watch it: (break) [confident] six lines, well under the limit.",
+      "[teasing] Send this to a developer. (break) [warm, curious] Whose file stops growing?"
+    ],
+    "scenes": [
+      {
+        "kind": "file",
+        "title": "CLAUDE.md",
+        "lines": [
+          "# Project rules",
+          "## Style guide",
+          "## Testing rules",
+          "## Git workflow",
+          "## Deploy steps",
+          "## API conventions",
+          "## Folder structure"
+        ],
+        "strike": false,
+        "tag": "TOO LONG"
+      },
+      {
+        "kind": "docs",
+        "url": "https://code.claude.com/docs/en/memory",
+        "title": "Managing Claude's memory",
+        "text": "target under 200 lines per CLAUDE.md file. Longer files consume more context and reduce adherence.",
+        "mark": "Longer files consume more context and reduce adherence."
+      },
+      {
+        "kind": "file",
+        "title": "CLAUDE.md",
+        "lines": [
+          "# Project rules",
+          "## Style guide",
+          "## Testing rules",
+          "## Git workflow",
+          "## Deploy steps",
+          "## API conventions",
+          "## Folder structure"
+        ],
+        "strike": true,
+        "tag": "CUT TO 6",
+        "accent": true
+      },
+      {
+        "kind": "terminal",
+        "command": "wc -l CLAUDE.md",
+        "output": [
+          "6 CLAUDE.md"
+        ]
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "KEEP IT",
+          "*SHORT*"
+        ],
+        "label": "Better adherence",
+        "motif": "brackets"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 9,
+    "posted_at": "2026-11-02T22:43:58+00:00",
+    "media_id": "17955999645039674",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 7,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.6
+      }
+    },
+    "shown": [
+      "stage-file",
+      "stage-docs",
+      "stage-file",
+      "stage-terminal",
+      "stage-words"
+    ],
+    "slot": 3,
+    "seconds": 20.8,
+    "youtube_id": "DZUgLLmRR_s",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18086082725342292"
+      }
+    ]
   }
 ]
