@@ -46,6 +46,7 @@ EXTRA_LATE = timedelta(hours=6)     # one this far past its time is left for a p
 # When each slot's run starts (UTC); the post times (12:00, 16:00, 20:00) are set in daily-reel.yml.
 SLOT_STARTS = {1: time(11, 7), 2: time(15, 7), 3: time(19, 7)}
 WEEKLY_START = time(10, 0)  # Sundays
+TOPICS_START = time(5, 23)  # the daily topic board (topics.yml), before the first reel is written
 STUDY_START = time(8, 0)    # Sundays: the weekly study of other creators (study.yml)
 LEARN_START = time(6, 0)    # 11 AM Pakistan; yesterday's reels are a day old by then
 SHOWCASE_START = time(15, 41)  # the showcase's cron; it posts when ready, around 16:00 UTC
@@ -177,6 +178,11 @@ def due_showcase(now, showcase_runs_today, days):
     return now.weekday() in days and now.time() >= SHOWCASE_START and not showcase_runs_today
 
 
+def due_topics(now, topic_runs_today):
+    """The daily topic board, once its cron time has passed and nothing ran today."""
+    return now.time() >= TOPICS_START and not topic_runs_today
+
+
 def due_learn(now, learn_runs_today, days):
     return now.weekday() in days and now.time() >= LEARN_START and not learn_runs_today
 
@@ -225,6 +231,12 @@ def main():
         print('Starting Learning (today\'s analysis)')
         if not dry:
             start('learn.yml')
+    topics_today = [r for r in runs('topics.yml') if r['createdAt'][:10] == now.date().isoformat()]
+    board = due_topics(now, topics_today)
+    if board:
+        print("Starting the Topic board (today's trends)")
+        if not dry:
+            start('topics.yml')
     study_today = [r for r in runs('study.yml') if r['createdAt'][:10] == now.date().isoformat()] \
         if now.weekday() == 6 else []
     study = due_study(now, study_today)
@@ -250,7 +262,8 @@ def main():
         if not dry:
             start('post-video.yml', '-f', f"video={extra['video']}", '-f', f"caption={extra['caption_file']}",
                   '-f', f"cover={extra.get('cover', '')}", '-f', 'dry_run=false')
-    if not slot and not due_weekly(now, weekly_today) and not learn and not study and not extra and not showcase:
+    if not slot and not due_weekly(now, weekly_today) and not learn and not board and not study and not extra \
+            and not showcase:
         print('Nothing to start')
     if due_dms(runs('dm.yml')) and not dry:
         start('dm.yml', '-f', 'mode=send')

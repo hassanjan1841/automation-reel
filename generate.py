@@ -2005,6 +2005,23 @@ def asked():
             'a named person asked, never quote them):\n' + '\n'.join(f"- {i['topic']}" for i in items))
 
 
+def trending():
+    """The daily topic board (topics.py) as a note for the evergreen writer: what developers are searching for,
+    reading and watching right now. Only the topic is taken; the facts still come from official pages."""
+    import topics
+    picks = topics.fresh()
+    if not picks:
+        return ''
+    return ('Topics developers care about right now (the daily topic board: Stack Overflow searches, YouTube Shorts '
+            'beating their channel, new GitHub tools, dev.to, Hacker News). Pick today\'s topic from this list: the '
+            'first one that fits today\'s format and the running test, using its angle as a starting point. Only when '
+            'none of them fits, choose your own. Take only the topic: write it fresh, take every fact from an '
+            'official page (the "official" one when given), never reuse anyone\'s title, script or code, and never '
+            'say a named person or post inspired it:\n'
+            + '\n'.join(f"- {t['topic']} ({t['format']}): {t['angle']}"
+                         + (f" Official: {t['official']}" if t.get('official') else '') for t in picks))
+
+
 def today(reels, performance=()):
     """One fresh evergreen reel for today's pillar, written with how recent reels actually did."""
     parts = []
@@ -2021,6 +2038,8 @@ def today(reels, performance=()):
                      + ('\n'.join(f'{k}. {h}' for k, h in enumerate(done, 1)) or 'none yet: start with lesson 1'))
     if asked():
         parts.append(asked())
+    if trending():
+        parts.append(trending())
     parts.append(three_d_note())
     parts.append(stage_note())
     test = experiment_today()

@@ -426,6 +426,20 @@ MUTANTS = [
      'motion blur darkens moving edges'),
     ('generate.py', "            e.append(f'point {i} launch needs \"source\"", "            pass  # e.append(f'point {i} launch needs \"source\"",
      'a launch card without its official page', 'test_motion.py'),
+    # The daily topic board (2026-11-03).
+    ('topics.py', "        if not t.get('sources') or any(u not in known for u in t['sources']):",
+     "        if not t.get('sources'):", 'topics: a topic citing an uncollected link is kept'),
+    ('topics.py', "    for name in ticked(issue_text):\n        keep.setdefault(name, today.isoformat())", "    pass",
+     "topics: the creator's ticks are ignored"),
+    ('topics.py', "and now - when <= timedelta(days=YT_DAYS):", ":", 'topics: old Shorts count as trending'),
+    ('topics.py', "            failed.append(name)", "            raise", 'topics: one source down stops the board'),
+    ('topics.py', "    return [t for t in board.get('topics', []) if t['topic'].lower() not in skipped]",
+     "    return board.get('topics', [])", 'topics: skipped topics reach the writer'),
+    ('topics.py', "    if not board.get('date') or date.fromisoformat(board['date']) < today - timedelta(days=FRESH_DAYS):",
+     "    if not board.get('date'):", 'topics: an old board reaches the writer'),
+    ('generate.py', "    if trending():\n        parts.append(trending())\n", "", 'topics: the writer never sees the board'),
+    ('scheduler.py', "    return now.time() >= TOPICS_START and not topic_runs_today", "    return False",
+     'topics: a dropped cron is never made up'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

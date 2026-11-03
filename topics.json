@@ -1,0 +1,119 @@
+{
+  "date": "2026-11-03",
+  "topics": [
+    {
+      "topic": "Prisma v7 upgrade breaks existing code",
+      "format": "explained",
+      "angle": "Problem first: show the exact TypeError developers hit right after upgrading to Prisma v7, then the one config change from Prisma's own upgrade guide that fixes it.",
+      "why": "Two separate Stack Overflow questions about Prisma v7 errors drew 5,941 and 2,181 views this week, showing the same upgrade pain hitting many developers independently.",
+      "sources": [
+        "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
+        "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
+      ],
+      "official": "https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7"
+    },
+    {
+      "topic": "TypeScript's baseUrl option is being deprecated",
+      "format": "explained",
+      "angle": "Problem first: your tsconfig's baseUrl still works today but is being phased out in TypeScript 7, so show what breaks and the official replacement for absolute imports.",
+      "why": "This Stack Overflow question hit 24,388 views, the single highest view count of any candidate this week, showing how widely baseUrl is still relied on.",
+      "sources": [
+        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
+      ],
+      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
+    },
+    {
+      "topic": "AI coding agents are now pointed at real devices, not just code",
+      "format": "explained",
+      "angle": "Problem first: coding agents were built to edit files in a repo, so show the leap to agents that now operate phones and TVs, and what that actually requires permission-wise.",
+      "why": "A Short about using Claude Code to strip TV ads hit 406,570 views at 125x the channel's usual, while GitHub repos for on-device Android agents (5,989 and 5,767 stars) and a phone-controls-computer harness (6,446 stars) all trended the same two weeks.",
+      "sources": [
+        "https://www.youtube.com/shorts/vrCV-LQixeo",
+        "https://github.com/rddmwmddr/android-ad-cleaner",
+        "https://github.com/wangzan101/Mika",
+        "https://github.com/ccch1mneyyy/dsh-Go"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+    },
+    {
+      "topic": "Cutting your Claude Code token bill with official settings",
+      "format": "trick",
+      "angle": "Trick: before reaching for a third-party reseller, show the built-in context and session settings Claude Code already gives you to reduce token spend.",
+      "why": "A Short claiming a tool slashes Claude Code token costs reached 192,184 views at 26x the channel's usual, signalling strong viewer demand for legitimate cost-cutting tips.",
+      "sources": [
+        "https://www.youtube.com/shorts/OfvygaQEzZM"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/costs"
+    },
+    {
+      "topic": "DeepSeek's new autonomous agent prototype",
+      "format": "news",
+      "angle": "News: unpack what DeepSeek's own repo description says about pushing coding agents toward more autonomy, straight from their release notes.",
+      "why": "deepseek-ai's dsh-superagent-prototype gained 15,058 stars in under 14 days, the largest star jump of any repository in this week's candidates.",
+      "sources": [
+        "https://github.com/deepseek-ai/dsh-superagent-prototype"
+      ],
+      "official": "https://github.com/deepseek-ai/dsh-superagent-prototype"
+    },
+    {
+      "topic": "{} + [] = 0 in JavaScript",
+      "format": "myth",
+      "angle": "Myth: most developers see this and conclude JavaScript's type system is broken, but the spec's coercion rules predict this exact result every time.",
+      "why": "This dev.to myth-busting coercion post drew 157 reactions and 121 comments, among the highest engagement of this week's dev.to candidates.",
+      "sources": [
+        "https://dev.to/sylwia-lask/yes-0-no-javascript-isnt-broken-14ob"
+      ],
+      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition"
+    },
+    {
+      "topic": "Zod vs other TypeScript validators for real forms",
+      "format": "versus",
+      "angle": "Versus: compare how Zod and an alternative validator actually handle the email-validation and resolver-typing edge case developers are stuck on right now.",
+      "why": "A dev.to comparison of 6 TypeScript validation libraries got 127 reactions, while two Stack Overflow questions on Zod email validation (855 views) and zodResolver typing with react-hook-form (477 views) show developers hitting the same wall this week.",
+      "sources": [
+        "https://dev.to/nyaomaru/i-compared-6-typescript-validation-libraries-heres-what-surprised-me-325g",
+        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue",
+        "https://stackoverflow.com/questions/79859946/typescript-error-with-react-hook-form-and-zodresolver-type-unknown-not-assign"
+      ],
+      "official": "https://zod.dev"
+    },
+    {
+      "topic": "Why OpenAI built its own Git infrastructure",
+      "format": "news",
+      "angle": "News: explain, from OpenAI's own engineering post, what breaks in normal Git workflows at their scale and what they changed.",
+      "why": "OpenAI's official post on scaling Git hit 210 points and 120 comments on Hacker News, and git-tagged problems (fetch ref errors, worktree paths, timestamps, gitignore) made up five separate Stack Overflow questions this week.",
+      "sources": [
+        "https://openai.com/index/scaling-git-at-openai/",
+        "https://stackoverflow.com/questions/79872739/get-path-to-git-directory-including-from-a-worktree",
+        "https://stackoverflow.com/questions/79836280/retain-the-exact-modification-timestamp-of-a-file-in-a-git-repository"
+      ],
+      "official": "https://openai.com/index/scaling-git-at-openai/"
+    },
+    {
+      "topic": "Claude Code 'skills' are the new plugin pattern",
+      "format": "trick",
+      "angle": "Trick: show how packaging a repeatable task as a Claude Code skill works, the same pattern behind three different repos trending this week.",
+      "why": "Three separate GitHub repos built around Claude Code skills each gained thousands of stars in under 14 days: unslop (6,734), pixelfx (3,758), and tstack (2,651).",
+      "sources": [
+        "https://github.com/heydamir/unslop",
+        "https://github.com/patch-gg/pixelfx",
+        "https://github.com/t3dotgg/tstack"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/skills"
+    },
+    {
+      "topic": "Next.js 16 doesn't 'render' pages the old way anymore",
+      "format": "explained",
+      "angle": "Problem first: show a Next.js 16 app router error developers keep hitting, then explain what streaming is actually doing differently under the hood.",
+      "why": "A dev.to deep dive into Next.js's streaming model came out this week while Stack Overflow saw four separate Next.js 16 problems: source maps (3,491 views), OAuth state_mismatch (2,129 views), a Windows crash (627 views), and an i18n root error (452 views).",
+      "sources": [
+        "https://dev.to/smtahosin/nextjs-doesnt-render-pages-anymore-it-streams-something-stranger-11ij",
+        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b",
+        "https://stackoverflow.com/questions/79829419/how-do-i-resolve-state-mismatch-error-with-google-oauth-in-a-next-js-app-using"
+      ],
+      "official": "https://nextjs.org/docs/app/building-your-application/routing/loading-ui-and-streaming"
+    }
+  ],
+  "skipped": [],
+  "failed": []
+}
