@@ -1,0 +1,74 @@
+name: Topic board
+
+# Every day: what developers are searching for, reading and watching (topics.py: Stack Overflow, YouTube Shorts from
+# the watched channels, new GitHub tools, dev.to, Hacker News), ranked for this account. Writes topics.json (the
+# writer reads it) and rewrites the "Topic board" issue; a topic the creator ticks there is skipped. scheduler.py
+# starts it once a day after 05:23 UTC if this cron was dropped.
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: topic-board
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install requests pillow numpy
+
+      - name: Install Claude Code
+        uses: ./.github/actions/claude
+        with:
+          token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          backup: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
+
+      - name: Read the creator's ticks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          number=$(gh issue list --state open --limit 50 --json number,title --jq '.[] | select(.title == "Topic board") | .number' | head -1)
+          if [ -n "$number" ]; then gh issue view "$number" --json body --jq .body > out/topic-board-issue.md; fi
+
+      - name: Make today's board
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          STACKEXCHANGE_KEY: ${{ vars.STACKEXCHANGE_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+        run: python topics.py
+
+      - name: Update the issue and save the board
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          number=$(gh issue list --state open --limit 50 --json number,title --jq '.[] | select(.title == "Topic board") | .number' | head -1)
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file out/topics.md
+          else
+            gh issue create --title "Topic board" --body-file out/topics.md
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add topics.json
+          if git diff --cached --quiet; then echo 'Board unchanged'; exit 0; fi
+          git commit -m 'Topic board'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push

@@ -35,6 +35,7 @@ import learn
 import publish
 import render
 import scheduler
+import topics
 import trends
 
 ROOT = Path(__file__).resolve().parent
@@ -89,6 +90,9 @@ class Sandbox(unittest.TestCase):
             mock.patch.object(history, 'REPORTS', self.tmp / 'reports'),
             mock.patch.object(history, 'LEARNINGS', self.tmp / 'learnings.md'),
             mock.patch.object(render, 'QUEUE', self.tmp / 'reels.json'),
+            mock.patch.object(topics, 'BOARD', self.tmp / 'topics.json'),
+            mock.patch.object(topics, 'ISSUE_NOW', self.tmp / 'out' / 'topic-board-issue.md'),
+            mock.patch.object(topics, 'ISSUE_MD', self.tmp / 'out' / 'topics.md'),
             mock.patch.object(learn, 'CAROUSELS', self.tmp / 'carousels.json'),
             mock.patch.object(learn, 'REPORT', self.tmp / 'out' / 'report.md'),
             mock.patch.dict(os.environ, {'EXPERIMENT': '', 'SLOT': '', 'THREE_D': '', 'DRY_RUN': '',
@@ -101,6 +105,172 @@ class Sandbox(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
 
+
+
+# ---------- topics.py: the daily topic board ----------
+
+class FakeWeb:
+    """Answers the topic board's requests by URL, like the real APIs would."""
+
+    def __init__(self, now):
+        self.now, self.urls = now, []
+
+    def __call__(self, url, headers=None, timeout=None, params=None):
+        self.urls.append(url)
+        p = params or {}
+        if 'stackexchange' in url:
+            data = {'items': [{'question_id': hash(p['tagged']) % 1000, 'title': f"{p['tagged']} &amp; an error",
+                               'link': f"https://stackoverflow.com/q/{p['tagged']}", 'view_count': 1000 + len(p['tagged']),
+                               'answer_count': 2}]}
+        elif 'playlistItems' in url:
+            data = {'items': [{'contentDetails': {'videoId': f'v{k}'}} for k in range(6)]}
+        elif 'youtube/v3/videos' in url:
+            fresh = (self.now - timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            old = (self.now - timedelta(days=40)).strftime('%Y-%m-%dT%H:%M:%SZ')
+            views = [100000, 1000, 1000, 1000, 1000, 90000]   # v0: a fresh breakout; v5: just as big but old
+            data = {'items': [{'id': f'v{k}', 'snippet': {'title': f'short {k}', 'publishedAt': fresh if k < 5 else old},
+                               'statistics': {'viewCount': str(v)}, 'contentDetails': {'duration': 'PT45S'}}
+                              for k, v in enumerate(views)]}
+        elif 'api.github.com' in url:
+            data = {'items': [{'full_name': 'someone/tool', 'description': 'A new dev tool', 'html_url':
+                               'https://github.com/someone/tool', 'stargazers_count': 4000}]}
+        elif 'dev.to' in url:
+            data = [{'title': 'Yes, {} + [] = 0', 'url': 'https://dev.to/a/b', 'public_reactions_count': 150,
+                     'comments_count': 120, 'tag_list': ['javascript']}]
+        else:
+            raise topics.requests.ConnectionError('down')
+        return SimpleNamespace(json=lambda: data, raise_for_status=lambda: None)
+
+
+class TopicBoardTest(Sandbox):
+    """The daily topic board: free sources, a ranked list whose every link was collected, the creator's ticks, and
+    the writer's note."""
+
+    def setUp(self):
+        super().setUp()
+        self.now = datetime.now(timezone.utc)
+        (self.tmp / 'channels.json').write_text(json.dumps({'UCabc': {'title': 'Dev Channel'}}))
+        self.patches += [mock.patch.object(topics, 'CHANNELS', self.tmp / 'channels.json'),
+                         mock.patch.object(render, 'OUT_DIR', self.tmp / 'out'),
+                         mock.patch.object(topics.time, 'sleep')]
+        for p in self.patches[-3:]:
+            p.start()
+
+    def test_collect_reads_every_source_and_survives_one_failing(self):
+        web = FakeWeb(self.now)
+        with mock.patch.object(topics.requests, 'get', side_effect=web), mock.patch.object(trends, 'hacker_news',
+                side_effect=RuntimeError('down')), mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': 'k'}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            found, failed = topics.collect()
+        by = {}
+        for c in found:
+            by.setdefault(c['source'], []).append(c)
+        self.assertEqual(failed, ['Hacker News'])                       # one source down, the rest still count
+        self.assertEqual(len(by['Stack Overflow']), len(topics.SO_TAGS))
+        self.assertEqual([c['url'] for c in by['YouTube Shorts']], ['https://www.youtube.com/shorts/v0'])  # fresh only
+        self.assertIn('x the channel', by['YouTube Shorts'][0]['signal'])
+        self.assertIn('stars', by['GitHub'][0]['signal'])
+        self.assertTrue(by['dev.to'])
+        self.assertIn('& an error', by['Stack Overflow'][0]['title'])  # HTML entities decoded
+        self.assertFalse(any('youtube/v3/search' in u for u in web.urls))  # never the 100-unit search
+        with mock.patch.object(topics.requests, 'get', side_effect=web), mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': ''}):
+            self.assertEqual(topics.youtube_outliers(self.now), [])     # no key: no YouTube, no error
+
+    def test_rank_keeps_only_topics_whose_links_were_collected(self):
+        cands = [{'source': 'Stack Overflow', 'title': 'TS 7 baseUrl deprecated', 'url': 'https://stackoverflow.com/q/1',
+                  'signal': '24,387 views'}]
+        answer = [{'topic': 'baseUrl in TypeScript 7', 'format': 'myth', 'angle': 'a', 'why': '24k views',
+                   'sources': ['https://stackoverflow.com/q/1'], 'official': 'https://www.typescriptlang.org/'},
+                  {'topic': 'Made up', 'format': 'trick', 'angle': 'a', 'why': 'w',
+                   'sources': ['https://example.com/invented'], 'official': ''},
+                  {'topic': 'Skipped one', 'format': 'trick', 'angle': 'a', 'why': 'w',
+                   'sources': ['https://stackoverflow.com/q/1'], 'official': ''}]
+        prompts = []
+        with mock.patch.object(topics, 'ask_claude', side_effect=lambda p: prompts.append(p) or answer), \
+                contextlib.redirect_stdout(io.StringIO()):
+            kept = topics.rank(cands, ['Old hook'], ['skipped one'])
+        self.assertEqual([t['topic'] for t in kept], ['baseUrl in TypeScript 7'])
+        self.assertIn('Old hook', prompts[0])
+        self.assertIn('skipped one', prompts[0])
+        self.assertIn('never Reddit', topics.__doc__)
+
+    def test_ticks_become_a_skip_list_that_expires(self):
+        today = date(2026, 11, 3)
+        board = {'skipped': [{'topic': 'Old skip', 'since': '2026-09-01'}, {'topic': 'Recent skip', 'since': '2026-10-30'}]}
+        issue = '- [x] **Ticked topic** (myth): angle\n- [ ] **Kept topic** (trick): angle\n* [X] **Also ticked** (news): x'
+        self.assertEqual(topics.ticked(issue), ['Ticked topic', 'Also ticked'])
+        skipped = topics.skip_list(board, issue, today)
+        self.assertEqual(sorted(s['topic'] for s in skipped), ['Also ticked', 'Recent skip', 'Ticked topic'])
+        self.assertEqual({s['topic']: s['since'] for s in skipped}['Recent skip'], '2026-10-30')  # first tick's date kept
+
+    def test_main_writes_the_board_and_the_issue_and_the_writer_reads_it(self):
+        render.QUEUE.write_text(json.dumps([{**VALID, 'id': 1}]))
+        topics.ISSUE_NOW.parent.mkdir(parents=True, exist_ok=True)
+        topics.ISSUE_NOW.write_text('- [x] **Hydration errors** (explained): x\n')
+        cands = [{'source': 'GitHub', 'title': 'someone/tool', 'url': 'https://github.com/someone/tool', 'signal': '4,000 stars'}]
+        picks = [{'topic': 'A new dev tool', 'format': 'news', 'angle': 'what it does, from its README',
+                  'why': '4,000 stars in a week', 'sources': ['https://github.com/someone/tool'],
+                  'official': 'https://github.com/someone/tool'}]
+        with mock.patch.object(topics, 'collect', return_value=(cands, ['Stack Overflow'])), \
+                mock.patch.object(topics, 'ask_claude', return_value=picks) as ask, \
+                mock.patch.object(sys, 'argv', ['topics.py']), contextlib.redirect_stdout(io.StringIO()):
+            topics.main()
+        board = json.loads(topics.BOARD.read_text())
+        self.assertEqual(board['date'], datetime.now(timezone.utc).date().isoformat())
+        self.assertEqual([s['topic'] for s in board['skipped']], ['Hydration errors'])
+        self.assertIn('Hydration errors', ask.call_args[0][0])         # the skip list reaches Claude
+        md = topics.ISSUE_MD.read_text()
+        self.assertIn('- [ ] **A new dev tool** (news)', md)            # a box the creator can tick
+        self.assertIn('Unavailable today: Stack Overflow', md)
+        self.assertIn('Tick a box to skip', md)
+        note = generate.trending()
+        self.assertIn('A new dev tool', note)
+        self.assertIn('official page', note)
+        self.assertIn('never reuse anyone', note)
+        board['skipped'].append({'topic': 'A new dev tool', 'since': board['date']})
+        topics.BOARD.write_text(json.dumps(board))
+        self.assertEqual(generate.trending(), '')                       # a skipped topic never reaches the writer
+        board['skipped'] = []
+        board['date'] = (datetime.now(timezone.utc).date() - timedelta(days=topics.FRESH_DAYS + 1)).isoformat()
+        topics.BOARD.write_text(json.dumps(board))
+        self.assertEqual(generate.trending(), '')                       # an old board is not used
+
+    def test_the_writer_gets_the_board_and_nothing_breaks_without_it(self):
+        topics.BOARD.write_text(json.dumps({'date': datetime.now(timezone.utc).date().isoformat(), 'skipped': [],
+                                            'topics': [{'topic': 'Vite blocked host', 'format': 'explained',
+                                                        'angle': 'the error, then the fix', 'why': 'w', 'sources': [],
+                                                        'official': 'https://vite.dev/config/server-options'}]}))
+        render.QUEUE.write_text('[]')
+        sent = []
+        with mock.patch.object(generate, 'generate', side_effect=lambda r, n, dates=None, context=None, test=None:
+                               sent.append(context) or []), contextlib.redirect_stdout(io.StringIO()):
+            generate.today([], [])
+        self.assertIn('Vite blocked host', sent[0])
+        topics.BOARD.unlink()
+        sent.clear()
+        with mock.patch.object(generate, 'generate', side_effect=lambda r, n, dates=None, context=None, test=None:
+                               sent.append(context) or []), contextlib.redirect_stdout(io.StringIO()):
+            generate.today([], [])
+        self.assertNotIn('topic board', sent[0])
+
+    def test_no_source_or_no_topic_leaves_the_board_as_it_was(self):
+        topics.BOARD.write_text('{"date": "2026-11-01", "topics": [], "skipped": []}')
+        with mock.patch.object(topics, 'collect', return_value=([], ['all'])), mock.patch.object(sys, 'argv', ['topics.py']), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+            topics.main()
+        self.assertIn('2026-11-01', topics.BOARD.read_text())
+
+    def test_the_scheduler_starts_it_daily_and_the_workflow_saves_it(self):
+        morning = datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
+        later = datetime(2026, 11, 3, 6, 0, tzinfo=timezone.utc)
+        self.assertFalse(scheduler.due_topics(morning, []))
+        self.assertTrue(scheduler.due_topics(later, []))
+        self.assertFalse(scheduler.due_topics(later, [{'createdAt': '2026-11-03T05:23:00Z'}]))
+        wf = (ROOT / '.github/workflows/topics.yml').read_text()
+        for part in ("cron: '23 5 * * *'", 'git add topics.json', 'out/topic-board-issue.md', 'python topics.py',
+                     'YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}', 'gh issue edit', 'issues: write'):
+            self.assertIn(part, wf)
+        self.assertIn("start('topics.yml')", (ROOT / 'scheduler.py').read_text())
 
 # ---------- history.py ----------
 
@@ -1144,11 +1314,12 @@ class SchedulerTest(Sandbox):
         self.assertFalse(scheduler.due_weekly(at(10, 30), []))  # a Monday
 
     def run_scheduler(self, now, reels, daily, weekly, argv=(), learned=None, learn_days='', studied=None, dms=None,
-                      showcased=None):
+                      showcased=None, boarded=None):
         learned = [run(now)] if learned is None else learned   # by default today's analysis already ran
         studied = [run(now)] if studied is None else studied   # and the Sunday study
         dms = [run(now, 'in_progress')] if dms is None else dms  # and the comment replies are running
         showcased = [run(now)] if showcased is None else showcased  # and a showcase day's showcase
+        boarded = [run(now)] if boarded is None else boarded   # and today's topic board
         os.environ['LEARN_DAYS'] = learn_days
         render.QUEUE.write_text(json.dumps(reels))
         calls = []
@@ -1157,7 +1328,8 @@ class SchedulerTest(Sandbox):
             calls.append(args)
             if args[:2] == ('run', 'list'):
                 return json.dumps({'daily-reel.yml': daily, 'weekly.yml': weekly, 'learn.yml': learned,
-                                   'study.yml': studied, 'dm.yml': dms, 'showcase.yml': showcased}[args[3]])
+                                   'study.yml': studied, 'dm.yml': dms, 'showcase.yml': showcased,
+                                   'topics.yml': boarded}[args[3]])
             return ''
 
         class Now(datetime):
@@ -1239,7 +1411,7 @@ class SchedulerTest(Sandbox):
                 contextlib.redirect_stdout(io.StringIO()) as out:
             scheduler.main()
         started = [c[2] for c in calls if c[:2] == ('workflow', 'run')]
-        self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'study.yml', 'dm.yml'])
+        self.assertEqual(started, ['daily-reel.yml', 'weekly.yml', 'topics.yml', 'study.yml', 'dm.yml'])
         self.assertIn('Could not start daily-reel.yml: workflow is disabled', out.getvalue())
 
     def test_showcase_days(self):
