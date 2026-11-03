@@ -8,6 +8,9 @@ on:
   schedule:
     - cron: '23 5 * * *'
   workflow_dispatch:
+  push:   # TEMPORARY: one real run from the branch before merging; removed in the next commit
+    branches: [ccr-afb0146b-2z3836]
+    paths: ['.github/workflows/topics.yml']
 
 permissions:
   contents: write
