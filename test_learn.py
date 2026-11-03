@@ -228,6 +228,7 @@ class TopicBoardTest(Sandbox):
         note = generate.trending()
         self.assertIn('A new dev tool', note)
         self.assertIn('official page', note)
+        self.assertIn("Pick today's topic from this list", note)       # a firm pick, not a soft hint (2026-11-03)
         self.assertIn('never reuse anyone', note)
         board['skipped'].append({'topic': 'A new dev tool', 'since': board['date']})
         topics.BOARD.write_text(json.dumps(board))

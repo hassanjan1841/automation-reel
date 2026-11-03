@@ -2013,8 +2013,9 @@ def trending():
     if not picks:
         return ''
     return ('Topics developers care about right now (the daily topic board: Stack Overflow searches, YouTube Shorts '
-            'beating their channel, new GitHub tools, dev.to, Hacker News). If one fits today\'s format, prefer it, '
-            'using the angle as a starting point. Take only the topic: write it fresh, take every fact from an '
+            'beating their channel, new GitHub tools, dev.to, Hacker News). Pick today\'s topic from this list: the '
+            'first one that fits today\'s format and the running test, using its angle as a starting point. Only when '
+            'none of them fits, choose your own. Take only the topic: write it fresh, take every fact from an '
             'official page (the "official" one when given), never reuse anyone\'s title, script or code, and never '
             'say a named person or post inspired it:\n'
             + '\n'.join(f"- {t['topic']} ({t['format']}): {t['angle']}"

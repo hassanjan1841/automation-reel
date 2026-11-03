@@ -99,7 +99,7 @@ topics.yml (daily 05:23 UTC; scheduler.due_topics from TOPICS_START)  topics.py 
                      topics citing an uncollected URL are dropped -> topics.json (BOARD: date, topics, skipped, failed)
                      + out/topics.md (markdown) for the "Topic board" issue (ISSUE_TITLE); the workflow first saves the
                      issue's body to out/topic-board-issue.md (ISSUE_NOW) and ticked() boxes join skip_list() for
-                     SKIP_DAYS; generate.trending() gives the writer topics.fresh() (a board <= FRESH_DAYS old, minus
+                     SKIP_DAYS (a soft "prefer" was ignored on the first dry run, 2026-11-03); generate.trending() tells the writer to pick today's topic from topics.fresh() (a board <= FRESH_DAYS old, minus
                      skipped) in generate.today
 
 insights.yml (manual)  insights.py 60   per-reel metrics table + cover thumbs artifact
