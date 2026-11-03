@@ -78,7 +78,9 @@ def stack_overflow(now=None):
                 continue
             seen.add(q['question_id'])
             out.append({'source': 'Stack Overflow', 'title': _plain(q['title']), 'url': q['link'],
-                        'signal': f"{q['view_count']:,} views, {q.get('answer_count', 0)} answers, tag {tag}",
+                        'signal': f"{q['view_count']:,} views since it was asked "
+                                  f"({datetime.fromtimestamp(q['creation_date'], timezone.utc):%b %Y}), "
+                                  f"{q.get('answer_count', 0)} answers, tag {tag}",
                         'weight': q['view_count']})
         time.sleep(0.2)
     return sorted(out, key=lambda c: -c['weight'])[:30]

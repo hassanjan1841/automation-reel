@@ -121,6 +121,7 @@ class FakeWeb:
         if 'stackexchange' in url:
             data = {'items': [{'question_id': hash(p['tagged']) % 1000, 'title': f"{p['tagged']} &amp; an error",
                                'link': f"https://stackoverflow.com/q/{p['tagged']}", 'view_count': 1000 + len(p['tagged']),
+                               'creation_date': int((self.now - timedelta(days=60)).timestamp()),
                                'answer_count': 2}]}
         elif 'playlistItems' in url:
             data = {'items': [{'contentDetails': {'videoId': f'v{k}'}} for k in range(6)]}
@@ -172,6 +173,7 @@ class TopicBoardTest(Sandbox):
         self.assertIn('stars', by['GitHub'][0]['signal'])
         self.assertTrue(by['dev.to'])
         self.assertIn('& an error', by['Stack Overflow'][0]['title'])  # HTML entities decoded
+        self.assertIn('views since it was asked', by['Stack Overflow'][0]['signal'])   # never read as "this week"
         self.assertFalse(any('youtube/v3/search' in u for u in web.urls))  # never the 100-unit search
         with mock.patch.object(topics.requests, 'get', side_effect=web), mock.patch.dict(os.environ, {'YOUTUBE_API_KEY': ''}):
             self.assertEqual(topics.youtube_outliers(self.now), [])     # no key: no YouTube, no error
