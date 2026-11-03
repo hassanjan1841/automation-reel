@@ -10814,14 +10814,51 @@
       "[serious, fast] Its hook checks each UI file edited.",
       "[warm] Send this to a dev shipping purple gradients."
     ],
-    "posted_at": null,
-    "media_id": null,
+    "posted_at": "2026-11-03T01:45:23+00:00",
+    "media_id": "17928222234435527",
     "series": "Trending build",
     "episode": 2,
     "post_on": {
       "date": "2026-11-03",
       "slot": 1
-    }
+    },
+    "review": {
+      "first_frame": {
+        "ok": false,
+        "problem": "Frame 0's headline reads \"42 rules that catch AI slop,\" but the tool actually has 62 rules (per the source and the headline text shown later for the same slide) — the very first thing viewers read is a wrong, inconsistent number."
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 6,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 5
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.2
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.6,
+    "youtube_id": "kFbJp6LPbQI",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18641484721021842"
+      }
+    ]
   },
   {
     "id": 106,
