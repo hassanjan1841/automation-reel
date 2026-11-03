@@ -11647,5 +11647,155 @@
         "id": "18086082725342292"
       }
     ]
+  },
+  {
+    "id": 111,
+    "style": "light",
+    "payoff": "git reset --hard only reverts tracked files back to the last commit. A new, untracked file you just created is never touched, so you still need git clean -fd to wipe that too.",
+    "kicker": "Myth vs fact #25",
+    "hook": "Your *untracked* files survive reset",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "bash",
+      "title": "reset.sh",
+      "code": "$ echo v2 > tracked.txt\n$ touch new.txt\n$ git reset --hard\n$ cat tracked.txt\nv1\n$ ls\nnew.txt  tracked.txt",
+      "highlight": [
+        7
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "git reset --hard keeps *new* files",
+        "spoken": "[fired up] Most developers think git reset hard erases every single file [deadpan] you have.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Tracked changes gone, *untracked* stays",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Tracked edits vanish after reset hard, (break) [deadpan] but new files still remain untouched."
+      },
+      {
+        "hook": "Use *git clean* to finish",
+        "hook_type": "shortcut",
+        "spoken": "[confident and fast] Want those new files gone too? One command, [emphasis] git clean, clears them."
+      }
+    ],
+    "points": [
+      {
+        "title": "Edit tracked file",
+        "body": "Edit tracked file, add new file",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "echo v2 > tracked.txt",
+              "touch new.txt"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Reset hard runs",
+        "body": "Tracked edit reverts immediately",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "cat tracked.txt",
+              "git reset --hard",
+              "cat tracked.txt"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "New file survives",
+        "body": "Untracked file stays after reset",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "ls"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "ls output",
+            "code": "$ ls\nnew.txt  tracked.txt",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Have you *trusted* reset hard before?",
+    "caption": "Git reset hard command and untracked files explained\nIt only resets tracked changes, new files you created stay right there.\nHave you ever trusted git reset blindly? 👇",
+    "hashtags": [
+      "#git",
+      "#webdev",
+      "#cli",
+      "#programming"
+    ],
+    "voiceover": [
+      "[urgent] Most developers assume reset hard deletes absolutely every file in [deadpan] the project.",
+      "[knowing] Edit a tracked file, then add a new one.",
+      "[serious, fast] Reset hard wipes that tracked edit instantly.",
+      "[excited] (break) But the new file? Still sitting right there, untouched.",
+      "[teasing] Send this to the dev who trusts reset blindly."
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 25,
+    "posted_at": "2026-11-03T12:00:47+00:00",
+    "media_id": "18286979131292639",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel never shows or mentions `git clean -fd`, the actual fix needed to remove the untracked file — it only shows that reset --hard leaves it, not how to clear it."
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 7,
+        "motion": 7,
+        "polish": 5
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 20.4
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "terminal",
+      "terminal",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0,
+    "youtube_id": "wWXFDCJvAws",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18384930265238057"
+      },
+      {
+        "kind": "teaser",
+        "id": "17994919548104212"
+      }
+    ]
   }
 ]
