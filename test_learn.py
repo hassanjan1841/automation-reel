@@ -46,7 +46,7 @@ VALID = {
     'payoff': 'Delete the cached key on every write so readers never get the old row',
     'hook': 'Your *cache* serves old data', 'hook_type': 'problem',
     'hook_visual': {'type': 'code', 'language': 'ts', 'title': 'profile.ts',
-                    'code': "await db.update(user)\nconst u = await cache.get(key)\n// u is still the old user", 'highlight': [3]},
+                    'code': "await db.update(user)\nconst u = await cache.get(key)", 'highlight': [2]},
     'alternatives': [
         {'hook': 'Your *cache* hides every profile update', 'hook_type': 'mistake',
          'spoken': '[urgent] You saved the new profile, [exasperated] but your cache still serves the old one.'},
@@ -96,7 +96,8 @@ class Sandbox(unittest.TestCase):
             mock.patch.object(learn, 'CAROUSELS', self.tmp / 'carousels.json'),
             mock.patch.object(learn, 'REPORT', self.tmp / 'out' / 'report.md'),
             mock.patch.dict(os.environ, {'EXPERIMENT': '', 'SLOT': '', 'THREE_D': '', 'DRY_RUN': '',
-                                         'FORCE_POST': '', 'REEL_FORMAT': '', 'REEL_SLOTS': '', 'GITHUB_EVENT_NAME': ''}),
+                                         'FORCE_POST': '', 'REEL_FORMAT': '', 'REEL_SLOTS': '', 'GITHUB_EVENT_NAME': '',
+                                         'TOPIC': ''}),
         ]
         for p in self.patches:
             p.start()
@@ -142,6 +143,79 @@ class FakeWeb:
             raise topics.requests.ConnectionError('down')
         return SimpleNamespace(json=lambda: data, raise_for_status=lambda: None)
 
+
+
+class HonestRevealTest(Sandbox):
+    """2026-11-03, a reel made from the topic board: its hook showed the answer ("// 0"), its terminal showed output
+    the code never prints, and its closing card asked something other than the voice. Each is now a validate error."""
+
+    def test_the_hook_code_never_gives_the_answer_away(self):
+        reel = {**VALID, 'reveal': 3}
+        for code in ('{} + []\n// 0', 'const n = [1]  // logs 1', 'SELECT 1; -- one'):
+            hv = {'type': 'code', 'language': 'sql' if 'SELECT' in code else 'js', 'title': 'a', 'code': code}
+            self.assertTrue(generate.spoiler_errors({**reel, 'hook_visual': hv}), code)
+        for code in ("fetch('https://api.foo.com/me')", 'secrets/**\n*.key', 'const total = 2 / 1'):
+            hv = {'type': 'code', 'language': 'js', 'title': 'a', 'code': code}
+            self.assertEqual(generate.spoiler_errors({**reel, 'hook_visual': hv}), [], code)   # not comments
+        hv = {'type': 'code', 'language': 'js', 'title': 'a', 'code': 'x\n// a note'}
+        self.assertEqual(generate.spoiler_errors({**reel, 'reveal': None, 'hook_visual': hv}), [])  # nothing to spoil
+        self.assertIn('gives away the answer', ' '.join(generate.validate({**reel, 'hook_visual': {
+            **VALID['hook_visual'], 'code': VALID['hook_visual']['code'] + '\n// 0'}})))
+
+    def test_shown_output_is_what_the_code_really_prints(self):
+        if generate.js_run('console.log(1)') is None:
+            self.skipTest('node is not installed or cannot run snippets here')
+        def reel(point3):
+            return {**VALID, 'points': VALID['points'][:2] + [{**VALID['points'][2], 'visual': point3}]}
+        card = {'type': 'code', 'language': 'js', 'title': 'swapped.js', 'code': '[] + {}'}
+        bad = reel([{'type': 'outputmap', 'command': 'node swapped.js', 'output': ['[object Object]', 'string']}, card])
+        self.assertIn('really prints []', ' '.join(generate.output_errors(bad)))      # the reel of 2026-11-03
+        echoed = reel([{'type': 'outputmap', 'command': 'node swapped.js', 'output': ["'[object Object]'"]}, card])
+        self.assertTrue(generate.output_errors(echoed))       # "node file.js" prints nothing: no console echo there
+        good = reel([{'type': 'outputmap', 'command': 'node swapped.js', 'output': ['[object Object]']},
+                     {**card, 'code': 'console.log([] + {})'}])
+        self.assertEqual(generate.output_errors(good), [])
+        predict = {'type': 'predict', 'language': 'js', 'code': 'const n = [10, 2, 1];\nn.sort();',
+                   'choices': ['[ 1, 2, 10 ]', '[ 1, 10, 2 ]'], 'output': ['[ 1, 10, 2 ]']}
+        self.assertEqual(generate.output_errors(reel([predict, card])), [])           # a console echoes the value
+        wrong = {**predict, 'output': ['[ 1, 2, 10 ]']}
+        self.assertTrue(generate.output_errors(reel([wrong, card])))
+        timing = {**predict, 'code': "setTimeout(() => console.log('b'))\nPromise.resolve().then(() => console.log('m'))\n"
+                                     "console.log('a')", 'output': ['a', 'm', 'b'], 'choices': ['a m b', 'a b m']}
+        self.assertEqual(generate.output_errors(reel([timing, card])), [])            # async order, for real
+        excerpt = {**predict, 'code': 'const rows = await supabase.from("t").select()\nconsole.log(rows.length)',
+                   'output': ['3'], 'choices': ['3', '0']}
+        self.assertEqual(generate.output_errors(reel([excerpt, card])), [])           # cannot run alone: not judged
+        self.assertIsNone(generate.js_run("require('fs').readFileSync('/etc/passwd')"))  # no files, no require
+        escape = generate.js_run("this.constructor.constructor('return process')().env")
+        self.assertIn('Code generation from strings disallowed', ' '.join(escape['out']))
+        self.assertIn('timed out', ' '.join(generate.js_run('while (true) {}')['out']))
+
+    def test_the_closing_card_asks_what_the_voice_asks(self):
+        vo = VALID['voiceover'][:4]
+        mismatch = {**VALID, 'cta': 'Have you *tested* this in your console?',
+                    'voiceover': vo + ['[teasing] Know a developer who still trusts that logic?']}
+        self.assertTrue(generate.closing_errors(mismatch))
+        other_way = {**VALID, 'cta': 'Know a dev who still *believes* this?', 'voiceover': vo + ['[warm] Have you tried it?']}
+        self.assertTrue(generate.closing_errors(other_way))
+        both = {**VALID, 'cta': 'Know a dev who still *believes* this?', 'voiceover': vo + [SHARE_LINE]}
+        self.assertEqual(generate.closing_errors(both), [])                         # the proven pairing still passes
+        self.assertEqual(generate.closing_errors(VALID), [])
+
+    def test_the_creator_can_choose_the_topic(self):
+        topics.BOARD.write_text(json.dumps({'date': '2020-01-01', 'skipped': [], 'topics': [
+            {'topic': 'First', 'format': 'myth', 'angle': 'a', 'why': 'w', 'sources': [], 'official': ''},
+            {'topic': 'Prisma v7 errors', 'format': 'explained', 'angle': 'the error, then the fix', 'why': 'w',
+             'sources': [], 'official': 'https://www.prisma.io/docs'}]}))
+        with mock.patch.dict(os.environ, {'TOPIC': '2'}):
+            note = generate.trending()
+        self.assertIn('chosen by the creator', note)
+        self.assertIn('Prisma v7 errors', note)                                     # a board number, even an old board
+        self.assertIn('https://www.prisma.io/docs', note)
+        with mock.patch.dict(os.environ, {'TOPIC': 'CSS container queries'}):
+            self.assertIn('CSS container queries', generate.trending())
+        self.assertIn("TOPIC: ${{ github.event_name == 'workflow_dispatch' && inputs.topic",
+                      (ROOT / '.github/workflows/daily-reel.yml').read_text())
 
 class TopicBoardTest(Sandbox):
     """The daily topic board: free sources, a ranked list whose every link was collected, the creator's ticks, and

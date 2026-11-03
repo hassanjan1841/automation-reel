@@ -83,6 +83,11 @@ made by a motion designer, never like slides a beginner put together.
 - Every result follows from the steps on screen: the key pressed as many times as it really takes, typing once at
   several cursors puts the same text on every line, a command prints what the files shown would give. An edit
   scene's result is worked out by the code (`stage.edited`), not written.
+- A puzzle never shows its answer before the reveal: the opening code is the code alone, no comment with the result
+  (`generate.spoiler_errors`). Output on screen is what the code prints when run (checked by running JavaScript,
+  `generate.output_errors`): a value needs a console.log to appear, and nothing else is shown.
+- The closing card asks the same thing as the voice's last line: both point at another developer, or both ask the
+  viewer (`generate.closing_errors`).
 - A value that only illustrates an idea (probabilities in a diagram, a sketch of a curve) carries a small
   "illustration" tag.
 - The source is on screen when a fact comes from a page (its address, small, near the bottom).
@@ -96,6 +101,10 @@ that is not real.
 
 ## Creator notes (newest first)
 
+- 2026-11-03: On a reel made from the topic board ("{} + [] = 0"): the opening code showed the answer, a terminal
+  showed output the code never prints, and the closing card asked something different from the voice. "Do quick
+  fixes": each is now a rule (section 6) and a validate error, so a draft that breaks one is repaired before it is
+  voiced.
 - 2026-10-23: On the PHP2Shell news reel: "it is in suspense, it should be clear and told in a simplified way, a
   small story: first tell the problem, then the story or the solution, not some mystery". News and explainers now
   open on the problem said plainly, then the story, then the fix (section 6, and playbook.md, "The script").
