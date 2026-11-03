@@ -440,6 +440,19 @@ MUTANTS = [
     ('generate.py', "    if trending():\n        parts.append(trending())\n", "", 'topics: the writer never sees the board'),
     ('scheduler.py', "    return now.time() >= TOPICS_START and not topic_runs_today", "    return False",
      'topics: a dropped cron is never made up'),
+    # Honest reveals (2026-11-03).
+    ('generate.py', "    errors += spoiler_errors(reel) + output_errors(reel) + closing_errors(reel)\n", "",
+     'honest: reveal checks not run by validate'),
+    ('generate.py', "    if any(comment.search(line) for line in (hv.get('code') or '').split('\\n')):",
+     "    if False:", 'honest: the hook may show the answer'),
+    ('generate.py', "        if shown != printed and not echo:", "        if False:", 'honest: invented output passes'),
+    ('generate.py', "        echo = v['type'] == 'predict' and not printed", "        echo = not printed",
+     'honest: node file.js may show a console echo'),
+    ('generate.py', "'--disallow-code-generation-from-strings', str(runner)]", "str(runner)]",
+     'honest: snippets may escape the sandbox'),
+    ('generate.py', "    if sends and not points:", "    if False:", 'honest: closing card may ask something else'),
+    ('generate.py', "    chosen = os.environ.get('TOPIC', '').strip()", "    chosen = ''",
+     'honest: the creator cannot choose the topic'),
 ]
 
 # Which test file must catch a mutant in each file (everything else: test_learn.py).

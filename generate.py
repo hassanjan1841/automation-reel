@@ -26,6 +26,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import history
 import render
@@ -178,6 +179,7 @@ def validate(reel):
                               f'{VO_MAX_WORDS} words; match the length of line 1')
     errors += motion_reel_errors(reel)
     errors += reveal_errors(reel)
+    errors += spoiler_errors(reel) + output_errors(reel) + closing_errors(reel)
     if any(v.get('type') in ('tweet', 'chat') for p in points
            for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p.get('visual')] if p.get('visual') else [])):
         errors.append('tweet and chat visuals are no longer used: no invented posts or conversations; show real '
@@ -667,6 +669,149 @@ def motion_reel_errors(reel):
 
 # A point whose result finishes on screen while the voice holds a beat (voice.hold), then the voice lands the result.
 REVEAL_VISUALS = ('terminal', 'outputmap', 'race', 'build', 'stepper', 'predict', 'ide', 'bars')
+
+
+def spoiler_errors(reel):
+    """A reel that reveals a result (reveal) opens on the puzzle alone: its hook code has no comments, which would
+    give the answer away before the reveal (2026-11-03: "{} + []" opened with "// 0" under it)."""
+    hv = reel.get('hook_visual') or {}
+    if not reel.get('reveal') or hv.get('type') != 'code':
+        return []
+    language = (hv.get('language') or '').lower()
+    marks = ['//', r'/\*', '<!--'] + (['#'] if language in HASH_COMMENTS else []) \
+        + (['--'] if language in DASH_COMMENTS else [])
+    # A comment starts a line or follows a space: "https://" and "secrets/**" are not comments.
+    comment = re.compile(r'(^|\s)(' + '|'.join(marks) + ')')
+    if any(comment.search(line) for line in (hv.get('code') or '').split('\n')):
+        return [f"hook_visual gives away the answer: the hook code is the puzzle alone, with no comments, so the real "
+                f"output lands on point {reel['reveal']}"]
+    return []
+
+
+# The real output of a JavaScript snippet: Node runs it in a fresh context with no require, no process, no files
+# (--permission), no eval (--disallow-code-generation-from-strings), an empty environment and a 1 s limit, and returns
+# every console line, async ones included, in order.
+JS_RUNNER = r"""
+const vm = require('vm'), util = require('util');
+let code = ''; process.stdin.on('data', d => code += d); process.stdin.on('end', () => {
+  const out = [];
+  const log = (...a) => out.push(a.map(x => typeof x === 'string' ? x : util.inspect(x)).join(' '));
+  const box = {console: {log, info: log, warn: log, error: log}, setTimeout, clearTimeout, setInterval, clearInterval,
+               setImmediate, queueMicrotask, structuredClone,
+               process: {env: {}, argv: ['node', 'script.js'], nextTick: process.nextTick, platform: 'linux'}};
+  let last, error = null;
+  process.on('exit', () => process.stdout.write(JSON.stringify({out, last, error})));
+  const run = src => vm.runInNewContext(src, box, {timeout: 1000});
+  try { last = util.inspect(run(code)); }
+  catch (e) {
+    if (/await is only valid/.test(String(e))) {   // top-level await, as in a module or the console
+      try { run('(async () => {\n' + code + '\n})()').catch(x => { error = String(x); }); } catch (x) { error = String(x); }
+    } else { error = String(e); }
+  }
+});
+"""
+JS_LANGUAGES = ('js', 'javascript', 'node', 'mjs')
+
+
+# Globals the sandbox does not have: code that needs them cannot be checked here, so it is not judged.
+UNCHECKABLE = re.compile(r"ReferenceError: (require|module|exports|fetch|document|window|navigator|localStorage|"
+                         r"Buffer|__dirname|__filename|import) is not defined|Cannot use import statement")
+
+
+def js_run(code):
+    """{'out': printed lines, 'last': the console's echo of the last expression, 'error': uncaught error or None} for
+    a JavaScript snippet, or None when Node is missing or the snippet needs something the sandbox does not have."""
+    import shutil
+    import tempfile
+    node = shutil.which('node')
+    if not node:
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        runner = Path(tmp) / 'run.js'
+        runner.write_text(JS_RUNNER)
+        result = None
+        # --permission is Node 22.13+; older Nodes call it --experimental-permission.
+        for permission in ('--permission', '--experimental-permission'):
+            try:
+                proc = subprocess.run([node, permission, f'--allow-fs-read={runner}',
+                                       '--disallow-code-generation-from-strings', str(runner)],
+                                      input=code, capture_output=True, text=True, timeout=10, env={}, cwd=tmp)
+            except (subprocess.SubprocessError, OSError):
+                return None
+            if 'bad option' in proc.stderr:
+                continue
+            try:
+                result = json.loads(proc.stdout)
+            except ValueError:
+                return None
+            break
+        if result is None:
+            return None
+    if result.get('error') and UNCHECKABLE.search(result['error']):
+        return None
+    if result.get('error'):
+        result['out'] = result['out'] + ['Uncaught ' + result['error']]
+    return result
+
+
+def js_output(code):
+    """The lines a JavaScript snippet really prints, or None when it cannot be checked here."""
+    result = js_run(code)
+    return None if result is None else result['out']
+
+
+def output_errors(reel):
+    """Output a reel shows for JavaScript must be what the code really prints (2026-11-03: a terminal claimed
+    "[object Object]" and "string" for code without a console.log, which prints nothing). Checked by running it:
+    a predict's code, and an outputmap's "node <file>" against the code card titled <file>."""
+    choices = [(i, v) for i, p in enumerate(reel.get('points') or [], 1)
+               for v in (p.get('visual') if isinstance(p.get('visual'), list) else [p['visual']] if p.get('visual') else [])]
+    cards = {v.get('title'): v for v in [reel.get('hook_visual') or {}] + [v for _, v in choices]
+             if v.get('type') == 'code' and (v.get('language') or '').lower() in JS_LANGUAGES}
+    errors = []
+    for i, v in choices:
+        if v.get('type') == 'predict' and (v.get('language') or '').lower() in JS_LANGUAGES:
+            code, what = v.get('code', ''), f'point {i} predict'
+        elif v.get('type') == 'outputmap' and re.fullmatch(r'node (\S+)', v.get('command', '').strip()) \
+                and v['command'].split()[1] in cards:
+            code, what = cards[v['command'].split()[1]].get('code', ''), f"point {i} outputmap ({v['command']})"
+        else:
+            continue
+        result = js_run(code)
+        if result is None:
+            continue
+        shown = [' '.join(str(l).split()) for l in v.get('output') or []]
+        if re.search(r'ReferenceError: \w+ is not defined', result.get('error') or '') \
+                and not any('ReferenceError' in l for l in shown):
+            continue    # an excerpt using names defined elsewhere in its app: it cannot run alone
+        printed = [' '.join(l.split()) for l in result['out']]
+        # A console echoes the last expression's value when nothing is printed ("nums.sort()" shows [ 1, 10, 2 ]);
+        # "node file.js" echoes nothing, so only a predict puzzle may show the echo.
+        echo = v['type'] == 'predict' and not printed and result.get('last') not in (None, 'undefined') \
+            and shown == [' '.join(result['last'].split())]
+        if shown != printed and not echo:
+            errors.append(f"{what} shows output the code does not print: running it really prints "
+                          f"{json.dumps(result['out'])[:200]}; show exactly that (add console.log for anything shown)")
+    return errors
+
+
+PERSON = re.compile(r'\b(dev|devs|developer|developers|friend|someone|teammate|coworker|colleague|who)\b', re.I)
+
+
+def closing_errors(reel):
+    """The closing card's question and the voice's last line ask the same thing (2026-11-03: the screen asked
+    "Have you tested this in your console?" while the voice asked "Know a developer who still trusts that logic?")."""
+    vo, cta = reel.get('voiceover') or [], strip_cues(reel.get('cta', '')).replace('*', '')
+    if len(vo) < 5 or reel.get('dm_keyword') or not cta:
+        return []
+    sends, points = bool(SEND.search(strip_cues(vo[4]))) or bool(PERSON.search(strip_cues(vo[4]))), bool(PERSON.search(cta))
+    if sends and not points:
+        return ['closing question and voiceover line 5 must ask the same thing: line 5 points at another developer, so '
+                'the cta does too (e.g. "Know a dev who still *believes* this?")']
+    if points and not sends:
+        return ['closing question and voiceover line 5 must ask the same thing: the cta points at another developer, '
+                'so line 5 does too']
+    return []
 
 
 def reveal_errors(reel):
@@ -1729,7 +1874,11 @@ def checklist():
   ({', '.join(FLAT_VISUALS)}).
 - "reveal" point's first visual finishes on screen: one of {', '.join(REVEAL_VISUALS)}.
 - predict: 2 or 3 different choices of max 14 characters, exactly one equal to the real output.
-- The caption's last line is a question ending with 👇; the cta is a question with exactly one *highlight*."""
+- The caption's last line is a question ending with 👇; the cta is a question with exactly one *highlight*, and it
+  asks the same thing as voiceover line 5 (both point at another developer, or both ask the viewer).
+- With a "reveal", the hook code is the puzzle alone: no comments, nothing that gives the answer away.
+- Every output shown (predict, outputmap, terminal) is exactly what the code prints when run: anything shown needs
+  a console.log (or print), and nothing else appears."""
 
 
 def ask_claude(plan, existing_hooks, feedback=None, context=None):
@@ -2009,6 +2158,15 @@ def trending():
     """The daily topic board (topics.py) as a note for the evergreen writer: what developers are searching for,
     reading and watching right now. Only the topic is taken; the facts still come from official pages."""
     import topics
+    chosen = os.environ.get('TOPIC', '').strip()
+    if chosen:
+        # The creator chose the topic for this run (daily-reel.yml's topic input): a board number or his own words.
+        board = topics.load().get('topics') or []
+        pick = board[int(chosen) - 1] if chosen.isdigit() and 1 <= int(chosen) <= len(board) else None
+        about = f"{pick['topic']} ({pick['angle']})" + (f" Official: {pick['official']}" if pick.get('official') else '') \
+            if pick else chosen
+        return ('Today\'s topic was chosen by the creator: write the reel about it, in today\'s format: ' + about
+                + '. Take every fact from an official page, never reuse anyone\'s title, script or code.')
     picks = topics.fresh()
     if not picks:
         return ''
@@ -2212,7 +2370,7 @@ def add_visuals(reels):
 
 # Reels posted before the playbook (2026-10-01) have none of these.
 NEW_FIELDS = ('payoff', 'hook_type', 'hook_visual', 'alternative', 'no longer used', 'leave hook_word out',
-              'mostly comments')
+              'mostly comments', 'does not print', 'closing question')
 
 
 def main():
