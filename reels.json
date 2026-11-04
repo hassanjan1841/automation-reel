@@ -11797,5 +11797,174 @@
         "id": "17994919548104212"
       }
     ]
+  },
+  {
+    "id": 112,
+    "style": "dark",
+    "payoff": "Claude's docs say a token is about 3.5 characters, not a word, so divide your text length by 3.5 instead of counting words to estimate tokens.",
+    "kicker": "Myth vs fact #26",
+    "hook": "A *token* isn't a word.",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "estimate.js",
+      "code": "const t = \"Add a login button\";\nconsole.log(t.split(\" \").length);",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Word count vs *real* tokens",
+        "hook_type": "before_after",
+        "spoken": "[fired up] You guess tokens by words first, (break) [sharp] then the real count surprises you."
+      },
+      {
+        "hook": "We *tested* word vs token",
+        "hook_type": "test",
+        "spoken": "[pumped] We ran a real sentence through both methods, (break) [confident] word count missed badly."
+      },
+      {
+        "hook": "Your *token* math is wrong",
+        "hook_type": "problem",
+        "spoken": "[urgent] Counting words instead of tokens wrecks your cost math, (break) [serious] every single time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The word guess",
+        "body": "Most devs guess token count by words",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "count.js",
+            "code": "const t = \"Add a login button\";\nconsole.log(t.split(\" \").length);",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Docs' real rule",
+        "body": "Tokens are measured by character count",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://platform.claude.com/docs/en/about-claude/glossary",
+            "find": "approximately 3.5 English characters"
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "rate.js",
+            "code": "const charsPerToken = 3.5;",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Real token count",
+        "body": "The real count beats the word guess",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "const t = \"Add a login button\";\nconst len = t.length;\nconst tok = Math.round(len/3.5);\nconsole.log(tok);",
+            "choices": [
+              "4",
+              "5",
+              "6"
+            ],
+            "output": [
+              "5"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "tokens.js",
+            "code": "const t = \"Add a login button\";\nconst len = t.length;\nconst tok = Math.round(len/3.5);\nconsole.log(tok);",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Know a *dev* who still counts words for cost?",
+    "caption": "Token counting in AI APIs: word count is not token count\nClaude's docs give the real formula to estimate it\nEver guessed your token usage by counting words? 👇",
+    "hashtags": [
+      "#ai",
+      "#claude",
+      "#tokens",
+      "#llm",
+      "#devtips"
+    ],
+    "voiceover": [
+      "[fired up] You probably think word count equals token count, (break) [confident] but Claude's docs disagree.",
+      "[knowing] That's the natural guess every developer makes first.",
+      "[surprised] But Claude's docs measure tokens by characters, not words.",
+      "[urgent] Run the real math, (break) [sharp] tokens land higher than words.",
+      "[teasing] Send this to the dev who counts words."
+    ],
+    "sources": [
+      "https://platform.claude.com/docs/en/about-claude/glossary"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 26,
+    "posted_at": "2026-11-04T12:00:35+00:00",
+    "media_id": "17963184300080433",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.0
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "predict",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 21.1,
+    "youtube_id": "3Su24F-ePw0",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18514367725096149"
+      },
+      {
+        "kind": "teaser",
+        "id": "17979158121153813"
+      }
+    ]
   }
 ]
