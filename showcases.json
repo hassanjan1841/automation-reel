@@ -99,5 +99,47 @@
     "posted_at": "2026-10-31T16:13:15+00:00",
     "seconds": 17.7,
     "youtube_id": "E-k05QLgaWk"
+  },
+  {
+    "title": "What a git branch really is",
+    "beats": [
+      {
+        "text": "One line to *start*",
+        "motif": "spark"
+      },
+      {
+        "text": "Then it *splits*",
+        "motif": "wave"
+      },
+      {
+        "text": "Two paths, *same* code",
+        "motif": "arcs"
+      },
+      {
+        "text": "They *merge* back",
+        "motif": "loop",
+        "light": true
+      },
+      {
+        "text": "One line *again*",
+        "motif": "card",
+        "labels": [
+          "main"
+        ]
+      }
+    ],
+    "caption": "A branch is just a line that splits off and comes back.\nNothing in git ever really leaves the main path.\nWhat would you branch next? 👇",
+    "hashtags": [
+      "#git",
+      "#webdev",
+      "#coding",
+      "#branching",
+      "#devtips"
+    ],
+    "id": 3,
+    "media_id": "17942184024392732",
+    "posted_at": "2026-11-04T18:45:27+00:00",
+    "seconds": 14.9,
+    "youtube_id": "PNneNy6KmoM"
   }
 ]
