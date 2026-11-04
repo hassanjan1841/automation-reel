@@ -2,31 +2,20 @@
   "date": "2026-11-04",
   "topics": [
     {
-      "topic": "TypeScript's baseUrl option being deprecated in TS7",
-      "format": "explained",
-      "angle": "The tsconfig 'baseUrl' option almost every path-alias setup relies on is being phased out in TypeScript 7, so we show what actually breaks and the one-line fix.",
-      "why": "A Stack Overflow question on this hit 24,453 views, the single highest view count of any candidate this cycle, tagged typescript.",
+      "topic": "TypeScript's baseUrl option is being deprecated in TS7",
+      "format": "news",
+      "angle": "Show the tsconfig that now prints a deprecation warning and the one-line paths-based fix that keeps the build silent in TypeScript 7.",
+      "why": "24,462 views on a single Stack Overflow question tagged typescript, the highest view count in the whole candidate set, shows huge active search demand for this exact migration.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
       "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "Postman vs Milkman",
-      "format": "versus",
-      "angle": "Postman now silently installs AI plugins and tries to pull in all your API data, while Milkman markets itself as the account-free, telemetry-free alternative that skips both.",
-      "why": "The Postman privacy issue is the top-scoring item across all candidates at 1,310 points/444 comments on Hacker News, and Milkman's own HN launch ('The Better Alternative to Postman') is a direct response to the same pain point.",
-      "sources": [
-        "https://github.com/postmanlabs/postman-app-support/issues/14370",
-        "https://milkman.dev/"
-      ],
-      "official": "https://milkman.dev/"
-    },
-    {
-      "topic": "Prisma 7 upgrade breaking errors",
+      "topic": "Prisma v7 upgrade breaks existing projects",
       "format": "explained",
-      "angle": "Upgrading to Prisma 7 throws a cryptic '__internal' TypeError for a lot of people, and the real fix is a small config step most migration skims miss.",
-      "why": "Two separate Stack Overflow threads about Prisma v7 problems drew 5,942 and 2,182 views this cycle, on node.js and typescript tags respectively, showing the upgrade pain is widespread, not a one-off.",
+      "angle": "Walk through the '__internal' TypeError that appears right after updating to Prisma 7.0.1 and the official upgrade step that actually fixes it.",
+      "why": "Two separate Stack Overflow questions (5,942 and 2,182 views) about the same Prisma v7 upgrade pain within weeks of each other signal a widespread, current breakage.",
       "sources": [
         "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
         "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
@@ -34,77 +23,84 @@
       "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
     },
     {
-      "topic": "Claude Code isn't just for editing files",
-      "format": "trick",
-      "angle": "Claude Code can run real shell commands end to end, not just suggest diffs, which is exactly why people are pointing it at their Android TVs to strip out ad injections.",
-      "why": "A Claude-Code-themed short hit 409,645 views at 130x the channel's usual, the biggest outlier multiplier of any candidate, and two trending GitHub repos this same week target the same kind of on-device automation (android-ad-cleaner at 6,232 stars, Mika at 6,358 stars).",
+      "topic": "Postman quietly installs AI plugins and tries to share API data",
+      "format": "explained",
+      "angle": "Explain what the auto-installed AI plugin actually requests access to and the setting developers need to turn off to stop it.",
+      "why": "1,358 points and 456 comments on Hacker News makes this the single strongest signal in the whole list, and it directly affects an API tool most web developers already use.",
       "sources": [
-        "https://www.youtube.com/shorts/vrCV-LQixeo",
-        "https://github.com/rddmwmddr/android-ad-cleaner",
-        "https://github.com/wangzan101/Mika"
+        "https://github.com/postmanlabs/postman-app-support/issues/14370"
       ],
-      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+      "official": "https://github.com/postmanlabs/postman-app-support/issues/14370"
     },
     {
-      "topic": "Next.js 'Invalid source map' error",
+      "topic": "setState inside a React effect can cascade renders",
+      "format": "myth",
+      "angle": "Most developers assume calling setState inside useEffect just updates once, but show the render waterfall React's own docs warn about and the dependency fix.",
+      "why": "A Stack Overflow question on this exact React behavior pulled 4,796 views, and it extends the account's rendering-myth series without repeating a prior hook.",
+      "sources": [
+        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
+      ],
+      "official": "https://react.dev/learn/synchronizing-with-effects"
+    },
+    {
+      "topic": "{} + [] equals 0 in JavaScript",
+      "format": "myth",
+      "angle": "Most developers call this a JavaScript bug, so trace the real type-coercion steps the spec defines that make {} + [] become 0.",
+      "why": "A dev.to post explaining this exact coercion got 170 reactions and 126 comments this week, the highest engagement of any dev.to candidate and a perfect fit for the account's 'isn't broken' style.",
+      "sources": [
+        "https://dev.to/sylwia-lask/yes-0-no-javascript-isnt-broken-14ob"
+      ],
+      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition"
+    },
+    {
+      "topic": "MongoDB Atlas connections fail after a Node.js version switch",
       "format": "explained",
-      "angle": "A clean Next.js app can start throwing 'Invalid source map' after an unrelated dependency bump, and the usual culprit is a sourceMappingURL nobody actually checks.",
-      "why": "This Stack Overflow question has 3,492 views on the next.js tag, with three different attempted answers and no clearly accepted fix.",
+      "angle": "Show why upgrading Node can break Atlas's SRV DNS lookup with ECONNREFUSED, and the one dns setting that restores it.",
+      "why": "A Stack Overflow question on this exact Node-version-triggered SRV failure drew 2,048 views, a clean problem-then-fix story for the account's explained format.",
+      "sources": [
+        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
+      ],
+      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
+    },
+    {
+      "topic": "Next.js 'Invalid source map' build error",
+      "format": "explained",
+      "angle": "Trace why Next.js suddenly rejects a source map it generated itself and the production config flag that stops the error.",
+      "why": "3,492 views on this specific Next.js Stack Overflow question shows an active, recent pain point for a framework this account already covers.",
       "sources": [
         "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
       ],
       "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
     },
     {
-      "topic": "Google OAuth state_mismatch in Next.js",
-      "format": "explained",
-      "angle": "Your Next.js OAuth login works locally but throws state_mismatch once deployed, because the state cookie isn't surviving the redirect the way you'd assume.",
-      "why": "This Stack Overflow question drew 2,131 views on the next.js tag specifically around Better Auth, and still had two different partial answers.",
-      "sources": [
-        "https://stackoverflow.com/questions/79829419/how-do-i-resolve-state-mismatch-error-with-google-oauth-in-a-next-js-app-using"
-      ],
-      "official": "https://www.better-auth.com/docs"
-    },
-    {
-      "topic": "MongoDB Atlas SRV connection breaking after a Node upgrade",
-      "format": "explained",
-      "angle": "Switching Node versions can silently break your MongoDB Atlas connection string because Node changed how it resolves DNS, not because the URI is wrong.",
-      "why": "This Stack Overflow question has 2,047 views on the node.js tag, tied specifically to a Node version switch on Windows.",
-      "sources": [
-        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
-      ],
-      "official": "https://www.mongodb.com/docs/manual/reference/connection-string/"
-    },
-    {
-      "topic": "Zod's email validation gotcha",
+      "topic": "Zod's .email() doesn't validate real-world emails",
       "format": "myth",
-      "angle": "Most developers assume Zod's .email() matches what their backend considers valid, but its regex disagrees with plenty of real-world addresses.",
-      "why": "A dev.to comparison of 6 TypeScript validation libraries got 129 reactions and 54 comments this week, and a separate Stack Overflow question specifically about Zod email validation drew 855 views on the reactjs tag — two independent signals around the same library.",
+      "angle": "Most developers trust Zod's .email() to reject any bad address, so show a valid-looking email it actually lets through per Zod's own docs.",
+      "why": "A Stack Overflow question flagged this exact Zod email validation gap, fitting the account's recurring 'validation isn't what you think' myth format.",
       "sources": [
-        "https://dev.to/nyaomaru/i-compared-6-typescript-validation-libraries-heres-what-surprised-me-325g",
         "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
       ],
       "official": "https://zod.dev"
     },
     {
-      "topic": "Safari's Adaptive Dark Mode",
+      "topic": "A public 'agent skills' repo for Claude Code and Codex",
+      "format": "trick",
+      "angle": "Show how dropping one of these open-sourced skill files into a project gives Claude Code and Codex a repeatable daily workflow instead of a one-off prompt.",
+      "why": "This skills repo gained 2,844 stars in under 14 days, squarely matching the account's practical AI-coding-tool format.",
+      "sources": [
+        "https://github.com/t3dotgg/tstack"
+      ],
+      "official": "https://github.com/t3dotgg/tstack"
+    },
+    {
+      "topic": "Safari 27.3 ships Adaptive Dark Mode",
       "format": "news",
-      "angle": "Safari 27.3 ships Adaptive Dark Mode, which rewrites light-only sites on the fly instead of waiting for developers to add a dark theme.",
-      "why": "WebKit's own announcement is sitting at 445 points and 231 comments on Hacker News this week, a shipped browser feature directly relevant to anyone styling a public site.",
+      "angle": "Show the exact CSS behavior Safari's new Adaptive Dark Mode changes for sites that never declared a dark theme.",
+      "why": "459 points and 238 comments on Hacker News about this dated WebKit release makes it a timely, verifiable news item for a web-dev audience.",
       "sources": [
         "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/"
       ],
       "official": "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/"
-    },
-    {
-      "topic": "Figma's Figma-fluent AI editing model",
-      "format": "news",
-      "angle": "Figma is training a model fluent in its own file format and editing operations, aimed at AI agents that manipulate design files directly instead of just generating code from them.",
-      "why": "Figma's own blog post about this sits at 123 points on Hacker News this week, a release directly relevant to an audience already following AI coding tools.",
-      "sources": [
-        "https://www.figma.com/blog/training-a-figma-fluent-editing-model/"
-      ],
-      "official": "https://www.figma.com/blog/training-a-figma-fluent-editing-model/"
     }
   ],
   "skipped": [],
