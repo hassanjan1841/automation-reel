@@ -10957,12 +10957,49 @@
       "[impressed] Ninety one seconds later, all three were ready.",
       "[warm] Send this to a dev [amused] who runs one session."
     ],
-    "posted_at": null,
-    "media_id": null,
+    "posted_at": "2026-11-05T14:57:14+00:00",
+    "media_id": "18185304487428347",
     "post_on": {
       "date": "2026-11-05",
       "slot": 1
-    }
+    },
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 5.3
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 18.7,
+    "youtube_id": "l_MwlxwO2kA",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18000651675011083"
+      }
+    ]
   },
   {
     "id": 107,
