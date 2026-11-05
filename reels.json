@@ -11966,5 +11966,203 @@
         "id": "17979158121153813"
       }
     ]
+  },
+  {
+    "id": 113,
+    "style": "light",
+    "payoff": "supabase.from('posts').select('*, authors(name)') joins a post with its author in one Postgres call; Firestore has no joins, so you run a second read or duplicate the author's name onto every post.",
+    "kicker": "Explained #6",
+    "hook": "One query, then *many*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "post.ts",
+      "language": "ts",
+      "code": "const post = await getDoc(postRef)\nconst { uid } = post.data()\nconst user = await getDoc(uRef(uid))",
+      "highlight": [
+        1,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Supabase vs Firebase: no *joins*",
+        "spoken": "[fired up] Supabase and Firebase both call themselves a backend. (break) [serious] Their databases work nothing alike.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Treating *Firestore* like SQL",
+        "hook_type": "mistake",
+        "spoken": "[mock outraged] Treat Firestore like a SQL database. (break) [blunt] Your first join request breaks everything."
+      },
+      {
+        "hook": "Firebase skips *relational* joins",
+        "hook_type": "problem",
+        "spoken": "[urgent] Firebase has no real joins. (break) [knowing] Relational data gets messy fast without them."
+      }
+    ],
+    "points": [
+      {
+        "title": "Relational vs documents",
+        "body": "Postgres tables, not NoSQL documents",
+        "visual": [
+          {
+            "type": "code",
+            "title": "schema.sql",
+            "language": "sql",
+            "code": "create table posts (\n  id serial primary key,\n  author_id int references users(id)\n);",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Supabase joins directly",
+        "body": "One query, nested relational data",
+        "visual": [
+          {
+            "type": "code",
+            "title": "feed.ts",
+            "language": "ts",
+            "code": "const { data } = await supabase\n  .from('posts')\n  .select('*, authors(name)')",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Firebase denormalizes instead",
+        "body": "Duplicate data instead of one join",
+        "visual": [
+          {
+            "type": "code",
+            "title": "post.json",
+            "language": "json",
+            "code": "{\n  \"title\": \"Launch day\",\n  \"authorId\": \"u123\",\n  \"authorName\": \"Hassan\"\n}",
+            "highlight": [
+              4
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who thinks Firebase can *join*?",
+    "caption": "Supabase vs Firebase: how their databases actually differ\nOne runs on Postgres with real joins, the other has none\nKnow a dev who thinks they work the same? 👇",
+    "hashtags": [
+      "#supabase",
+      "#firebase",
+      "#postgres",
+      "#nosql",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[grinning, punchy] One Supabase call fetches related data. (break) [deadpan] Firebase needs several separate reads instead.",
+      "[quick] Supabase uses real Postgres tables with relations.",
+      "[confident] One query joins the post with its author.",
+      "[knowing] Firebase can't join, so you duplicate author names.",
+      "[teasing] Send this to the dev who thinks Firebase can join."
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "post.ts",
+        "language": "ts",
+        "code": "const post = await getDoc(postRef)\nconst { uid } = post.data()\nconst user = await getDoc(uRef(uid))",
+        "highlight": [
+          1,
+          3
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "schema.sql",
+        "language": "sql",
+        "code": "create table posts (\n  id serial primary key,\n  author_id int references users(id)\n);",
+        "highlight": [
+          3
+        ],
+        "at": "relations"
+      },
+      {
+        "kind": "code",
+        "title": "feed.ts",
+        "language": "ts",
+        "code": "const { data } = await supabase\n  .from('posts')\n  .select('*, authors(name)')",
+        "highlight": [
+          3
+        ],
+        "at": "author"
+      },
+      {
+        "kind": "code",
+        "title": "post.json",
+        "language": "json",
+        "code": "{\n  \"title\": \"Launch day\",\n  \"authorId\": \"u123\",\n  \"authorName\": \"Hassan\"\n}",
+        "highlight": [
+          4
+        ],
+        "accent": true,
+        "at": "names"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "KNOW A DEV",
+          "WHO THINKS IT",
+          "CAN *JOIN*?"
+        ],
+        "label": "Pick by your data",
+        "motif": "brackets",
+        "at": "join"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "versus",
+    "series": "Explained",
+    "episode": 6,
+    "posted_at": "2026-11-05T00:09:29+00:00",
+    "media_id": "18094078298285666",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.6
+      }
+    },
+    "shown": [
+      "stage-code",
+      "stage-code",
+      "stage-code",
+      "stage-code",
+      "stage-words"
+    ],
+    "slot": 3,
+    "seconds": 19.5,
+    "youtube_id": "BBFhm7HtPoY",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "17899819206406117"
+      }
+    ]
   }
 ]
