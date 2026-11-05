@@ -1,21 +1,11 @@
 {
-  "date": "2026-11-04",
+  "date": "2026-11-05",
   "topics": [
     {
-      "topic": "TypeScript's baseUrl option is being deprecated in TS7",
-      "format": "news",
-      "angle": "Show the tsconfig that now prints a deprecation warning and the one-line paths-based fix that keeps the build silent in TypeScript 7.",
-      "why": "24,462 views on a single Stack Overflow question tagged typescript, the highest view count in the whole candidate set, shows huge active search demand for this exact migration.",
-      "sources": [
-        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
-      ],
-      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
-    },
-    {
-      "topic": "Prisma v7 upgrade breaks existing projects",
+      "topic": "Prisma 7 upgrade breaks existing projects",
       "format": "explained",
-      "angle": "Walk through the '__internal' TypeError that appears right after updating to Prisma 7.0.1 and the official upgrade step that actually fixes it.",
-      "why": "Two separate Stack Overflow questions (5,942 and 2,182 views) about the same Prisma v7 upgrade pain within weeks of each other signal a widespread, current breakage.",
+      "angle": "A developer upgrades to Prisma 7, hits a cryptic '__internal' TypeError, and the actual fix is regenerating the client against Prisma 7's new generator setup, not downgrading.",
+      "why": "Two separate Stack Overflow threads about Prisma v7 errors (5,942 views and 2,182 views) both tagged node.js/typescript show this is a widespread upgrade pain point right now.",
       "sources": [
         "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
         "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
@@ -23,84 +13,103 @@
       "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
     },
     {
-      "topic": "Postman quietly installs AI plugins and tries to share API data",
-      "format": "explained",
-      "angle": "Explain what the auto-installed AI plugin actually requests access to and the setting developers need to turn off to stop it.",
-      "why": "1,358 points and 456 comments on Hacker News makes this the single strongest signal in the whole list, and it directly affects an API tool most web developers already use.",
+      "topic": "TypeScript deprecating baseUrl ahead of v7",
+      "format": "news",
+      "angle": "TypeScript's tsconfig 'baseUrl' option is being phased out before TypeScript 7, and the fix is moving path resolution onto 'paths' alone, not patching around the warning.",
+      "why": "The single highest-viewed candidate in this batch is a Stack Overflow question with 24,499 views asking exactly about this deprecation notice.",
       "sources": [
-        "https://github.com/postmanlabs/postman-app-support/issues/14370"
+        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
-      "official": "https://github.com/postmanlabs/postman-app-support/issues/14370"
+      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "setState inside a React effect can cascade renders",
+      "topic": "Next.js 16's rocky early days",
       "format": "myth",
-      "angle": "Most developers assume calling setState inside useEffect just updates once, but show the render waterfall React's own docs warn about and the dependency fix.",
-      "why": "A Stack Overflow question on this exact React behavior pulled 4,796 views, and it extends the account's rendering-myth series without repeating a prior hook.",
+      "angle": "Believing 'Next.js 16 just works out of the box' doesn't hold up against three unrelated developer reports of source-map errors, Windows localhost crashes, and broken App Router i18n, all in the same release.",
+      "why": "Three separate Stack Overflow threads tagged next.js, all about Next.js 16 specifically, with 3,492, 628, and 453 views, point to the same release causing varied real problems.",
+      "sources": [
+        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b",
+        "https://stackoverflow.com/questions/79842159/next-js-16-crashes-on-windows-11-when-opening-localhost3000",
+        "https://stackoverflow.com/questions/79838926/next-js-16-app-router-internationalization-root-error"
+      ],
+      "official": "https://nextjs.org/blog/next-16"
+    },
+    {
+      "topic": "Agent 'Skills' for Claude Code and Codex",
+      "format": "versus",
+      "angle": "Compare how a 'skill' actually loads and scopes instructions in Claude Code versus Codex, since eight unrelated new repos in under two weeks are all built around this one concept.",
+      "why": "GitHub trending right now is dominated by skill-related repos (unslop 8,894 stars, ub-mode 7,011, pixelfx 4,867, tstack 3,007, floorplan 2,883, agent-autoloop 2,820, benjitaylor/skills 1,968, teardown 1,967), showing this is the moment's biggest AI-coding-tool trend.",
+      "sources": [
+        "https://github.com/heydamir/unslop",
+        "https://github.com/unclebob/ub-mode",
+        "https://github.com/patch-gg/pixelfx",
+        "https://github.com/t3dotgg/tstack",
+        "https://github.com/haydenschmitty/floorplan",
+        "https://github.com/KKKKhazix/agent-autoloop",
+        "https://github.com/benjitaylor/skills",
+        "https://github.com/elvarofficial/teardown"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/skills"
+    },
+    {
+      "topic": "setState inside useEffect isn't as safe as it looks",
+      "format": "myth",
+      "angle": "Calling setState synchronously inside an effect and assuming it fires once cleanly is wrong, since React's own cascading-render behavior can trigger extra render passes.",
+      "why": "A Stack Overflow question about this exact React warning picked up 4,797 views in roughly a month, tagged reactjs.",
       "sources": [
         "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://react.dev/learn/synchronizing-with-effects"
+      "official": "https://react.dev/learn/you-might-not-need-an-effect"
     },
     {
-      "topic": "{} + [] equals 0 in JavaScript",
+      "topic": "CSS filter changing more than the alpha channel",
       "format": "myth",
-      "angle": "Most developers call this a JavaScript bug, so trace the real type-coercion steps the spec defines that make {} + [] become 0.",
-      "why": "A dev.to post explaining this exact coercion got 170 reactions and 126 comments this week, the highest engagement of any dev.to candidate and a perfect fit for the account's 'isn't broken' style.",
+      "angle": "A filter meant to only touch opacity quietly shifts the RGB values too, because CSS filter functions don't operate the way most developers picture color changes working.",
+      "why": "A Stack Overflow question asking exactly this got 1,075 views, and the behavior matches how MDN documents CSS filter operating on premultiplied color.",
       "sources": [
-        "https://dev.to/sylwia-lask/yes-0-no-javascript-isnt-broken-14ob"
+        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter"
     },
     {
-      "topic": "MongoDB Atlas connections fail after a Node.js version switch",
-      "format": "explained",
-      "angle": "Show why upgrading Node can break Atlas's SRV DNS lookup with ECONNREFUSED, and the one dns setting that restores it.",
-      "why": "A Stack Overflow question on this exact Node-version-triggered SRV failure drew 2,048 views, a clean problem-then-fix story for the account's explained format.",
-      "sources": [
-        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
-      ],
-      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
-    },
-    {
-      "topic": "Next.js 'Invalid source map' build error",
-      "format": "explained",
-      "angle": "Trace why Next.js suddenly rejects a source map it generated itself and the production config flag that stops the error.",
-      "why": "3,492 views on this specific Next.js Stack Overflow question shows an active, recent pain point for a framework this account already covers.",
-      "sources": [
-        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
-      ],
-      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
-    },
-    {
-      "topic": "Zod's .email() doesn't validate real-world emails",
+      "topic": "Zod's .email() isn't checking what you assume",
       "format": "myth",
-      "angle": "Most developers trust Zod's .email() to reject any bad address, so show a valid-looking email it actually lets through per Zod's own docs.",
-      "why": "A Stack Overflow question flagged this exact Zod email validation gap, fitting the account's recurring 'validation isn't what you think' myth format.",
+      "angle": "Developers assume Zod's .email() validates addresses the way a mail server would, but the actual rule is a specific documented pattern that rejects or accepts cases people don't expect.",
+      "why": "A Stack Overflow question on Zod email validation got 855 views, tagged reactjs, right as Zod-based form validation remains a common setup question.",
       "sources": [
         "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
       ],
       "official": "https://zod.dev"
     },
     {
-      "topic": "A public 'agent skills' repo for Claude Code and Codex",
+      "topic": "Should uv.lock be committed to git",
       "format": "trick",
-      "angle": "Show how dropping one of these open-sourced skill files into a project gives Claude Code and Codex a repeatable daily workflow instead of a one-off prompt.",
-      "why": "This skills repo gained 2,844 stars in under 14 days, squarely matching the account's practical AI-coding-tool format.",
+      "angle": "Treating Python's uv.lock like a throwaway build artifact and gitignoring it is the wrong default, since uv's own docs call it the reproducibility file you're supposed to commit.",
+      "why": "A Stack Overflow question asking exactly whether to gitignore uv.lock drew 5,119 views, tagged git, showing real confusion as uv adoption grows.",
       "sources": [
-        "https://github.com/t3dotgg/tstack"
+        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
       ],
-      "official": "https://github.com/t3dotgg/tstack"
+      "official": "https://docs.astral.sh/uv/concepts/projects/sync/"
     },
     {
-      "topic": "Safari 27.3 ships Adaptive Dark Mode",
+      "topic": "Conductor, an AI coding agent tool, joining Meta",
       "format": "news",
-      "angle": "Show the exact CSS behavior Safari's new Adaptive Dark Mode changes for sites that never declared a dark theme.",
-      "why": "459 points and 238 comments on Hacker News about this dated WebKit release makes it a timely, verifiable news item for a web-dev audience.",
+      "angle": "A standalone AI coding agent orchestration startup just got folded directly into Meta, straight from its own announcement page.",
+      "why": "The Hacker News post on Conductor's own announcement pulled 158 points and 170 comments, a strong signal for an AI-coding-tool audience.",
       "sources": [
-        "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/"
+        "https://www.conductor.build/announcement"
       ],
-      "official": "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/"
+      "official": "https://www.conductor.build/announcement"
+    },
+    {
+      "topic": "Go's new JSON v2 package",
+      "format": "explained",
+      "angle": "Go's encoding/json has quietly caused years of case-insensitive key and unknown-field headaches, and the new official jsonv2 package is the Go team's own fix for exactly that.",
+      "why": "The Hacker News post linking straight to Go's own blog post got 274 points and 124 comments, a strong signal for backend-adjacent web developers.",
+      "sources": [
+        "https://go.dev/blog/jsonv2"
+      ],
+      "official": "https://go.dev/blog/jsonv2"
     }
   ],
   "skipped": [],
