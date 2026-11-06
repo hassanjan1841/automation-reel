@@ -12201,5 +12201,232 @@
         "id": "17899819206406117"
       }
     ]
+  },
+  {
+    "id": 114,
+    "style": "dark",
+    "payoff": "font-size: clamp(1rem, 4vw, 3rem) scales a heading smoothly between 1rem and 3rem across every screen width, replacing every media query breakpoint for that rule.",
+    "kicker": "Quick trick #10",
+    "hook": "Your heading *never* scales smoothly",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "style.css",
+      "language": "css",
+      "code": ".title{font-size:1rem}\n@media(min-width:600px){\n.title{font-size:2rem}\n}\n@media(min-width:1200px){\n.title{font-size:3rem}\n}",
+      "highlight": [
+        2,
+        5
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Stop writing *media queries*",
+        "spoken": "[fired up] Stop writing media queries just to resize a heading on (break) [confident] screens of every size.",
+        "hook_type": "shortcut"
+      },
+      {
+        "hook": "Four *breakpoints* for one heading",
+        "hook_type": "problem",
+        "spoken": "[frustrated] Four media queries just to resize one heading is way (break) [annoyed] too much work."
+      },
+      {
+        "hook": "Four queries shrink to *one*",
+        "hook_type": "before_after",
+        "spoken": "[amused] Four media queries shrink into one line that scales (break) [confident] automatically for you."
+      }
+    ],
+    "points": [
+      {
+        "title": "Breakpoint pileup",
+        "body": "One rule per screen size",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "grep -c @media style.css"
+            ],
+            "output": [
+              "2"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "style.css",
+            "language": "css",
+            "code": ".title{font-size:1rem}\n@media(min-width:600px){\n.title{font-size:2rem}\n}\n@media(min-width:1200px){\n.title{font-size:3rem}\n}",
+            "highlight": [
+              2,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "clamp() replaces them",
+        "body": "Scales between a min and max",
+        "visual": [
+          {
+            "type": "code",
+            "title": "style.css",
+            "language": "css",
+            "code": ".title {\n  font-size: clamp(1rem, 4vw, 3rem);\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "No breakpoints needed",
+        "body": "One rule covers every width",
+        "visual": [
+          {
+            "type": "build",
+            "title": "style.css",
+            "html": "<h1 class=\"title\">Hi</h1>",
+            "stages": [
+              ".title{font-size:1rem}",
+              ".title{font-size:clamp(1rem,4vw,3rem)}"
+            ]
+          },
+          {
+            "type": "code",
+            "title": "style.css",
+            "language": "css",
+            "code": ".title {\n  font-size: clamp(1rem, 4vw, 3rem);\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev still stacking *breakpoints*?",
+    "caption": "CSS clamp() for responsive font size without media queries\nOne line scales text on every screen width.\nWho still writes five media queries for one heading? 👇",
+    "hashtags": [
+      "#css",
+      "#frontend",
+      "#webdev",
+      "#responsivedesign"
+    ],
+    "voiceover": [
+      "[exasperated] Your heading font size never adjusts smoothly (break) [serious] between a phone and a desktop screen.",
+      "[knowing] Every screen width needs its own media query.",
+      "[excited] One clamp line replaces every single breakpoint instantly.",
+      "[confident] Resize the page and the heading scales smoothly.",
+      "[teasing] Know a developer still writing five media queries?"
+    ],
+    "reveal": 3,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "style.css",
+        "language": "css",
+        "code": ".title{font-size:1rem}\n@media(min-width:600px){\n.title{font-size:2rem}\n}\n@media(min-width:1200px){\n.title{font-size:3rem}\n}",
+        "highlight": [
+          2,
+          5
+        ]
+      },
+      {
+        "kind": "file",
+        "title": "style.css",
+        "lines": [
+          "font-size: 1rem;",
+          "600px: font-size 2rem;",
+          "900px: font-size 2.5rem;",
+          "1200px: font-size 3rem;"
+        ],
+        "strike": false,
+        "tag": "4 BREAKPOINTS",
+        "at": "query"
+      },
+      {
+        "kind": "code",
+        "title": "style.css",
+        "language": "css",
+        "code": ".title {\n  font-size: clamp(1rem, 4vw, 3rem);\n}",
+        "highlight": [
+          2
+        ],
+        "at": "clamp"
+      },
+      {
+        "kind": "steps",
+        "items": [
+          {
+            "label": "MIN 1rem",
+            "note": "smallest size"
+          },
+          {
+            "label": "4VW",
+            "note": "grows with screen"
+          },
+          {
+            "label": "MAX 3rem",
+            "note": "largest size"
+          }
+        ],
+        "at": "smoothly",
+        "accent": true
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "SKIP THE",
+          "*BREAKPOINTS*"
+        ],
+        "label": "one clamp line",
+        "motif": "wave",
+        "at": "queries"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 10,
+    "posted_at": "2026-11-06T00:27:11+00:00",
+    "media_id": "18025031252716017",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.2
+      }
+    },
+    "shown": [
+      "code",
+      "terminal",
+      "code",
+      "build",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.0,
+    "youtube_id": "3-GrMGGxOLM",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18132899887745231"
+      }
+    ]
   }
 ]
