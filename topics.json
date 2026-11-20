@@ -1,109 +1,106 @@
 {
-  "date": "2026-11-05",
+  "date": "2026-11-20",
   "topics": [
     {
-      "topic": "TypeScript's baseUrl option is being deprecated in TS 7",
-      "format": "explained",
-      "angle": "A tsconfig setting almost every bootcamp tutorial tells you to set is about to stop working, so here's the one-line fix that keeps path resolution alive.",
-      "why": "Highest single-question signal in the batch: 24,521 views on a question asked this cycle, tag typescript, 4 answers — a config-level breaking change developers are actively hitting.",
+      "topic": "The 4 prompt rules an Anthropic lead actually uses",
+      "format": "trick",
+      "angle": "A short, repeatable set of prompt-structuring rules (not a 'magic phrase') is what separates reliable Claude output from one-shot guessing.",
+      "why": "YouTube Shorts candidate hit 97,555 views at 37x the channel's usual — the single strongest relative signal in today's batch, and it's squarely in this account's AI-coding-tool lane.",
       "sources": [
-        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
+        "https://www.youtube.com/shorts/dbLxhNKFBRY"
       ],
-      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
+      "official": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview"
     },
     {
-      "topic": "Prisma v7 upgrade breaks existing projects",
+      "topic": "Claude Code can publish the site it just built to a live URL",
+      "format": "trick",
+      "angle": "Claude Code now ships a built-in way to put a project it generated on the open internet without you touching a hosting dashboard.",
+      "why": "YouTube Shorts candidate hit 254,171 views at 8x the channel's usual, directly on-topic for an AI-coding-tool reel.",
+      "sources": [
+        "https://www.youtube.com/shorts/23cUNfHdJcc"
+      ],
+      "official": "https://docs.anthropic.com/en/docs/claude-code/overview"
+    },
+    {
+      "topic": "Prisma 7 upgrade breaks existing projects",
       "format": "explained",
-      "angle": "Running `prisma generate` after jumping to v7 throws an internal TypeError, and the fix is a small config change most people skip in the changelog.",
-      "why": "Two separate Stack Overflow questions about the same v7 upgrade (5,942 views / 4 answers and 2,182 views / 3 answers) across node.js and typescript tags — a real cluster of pain.",
+      "angle": "Two separate bug reports show the same story — update to Prisma v7, get an internal undefined-property crash — walked through to the actual fix in Prisma's own migration notes.",
+      "why": "Two Stack Overflow questions on the same release (5,959 and 2,193 views) under node.js/typescript tags, both about the same v7 upgrade pain.",
       "sources": [
         "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
         "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
       ],
-      "official": "https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7"
+      "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
     },
     {
-      "topic": "Next.js 'Invalid source map' dev error",
-      "format": "explained",
-      "angle": "Your stack traces in Next.js suddenly point to garbage, and it's not your code — it's a mismatch the build toolchain introduced.",
-      "why": "3,492 views and 3 answers on a question asked this cycle, tag next.js — a concrete, reproducible dev-experience bug worth untangling in under 20 seconds.",
+      "topic": "tsconfig's baseUrl is going away",
+      "format": "myth",
+      "angle": "Most devs assume baseUrl will keep resolving their bare imports forever — TypeScript's own roadmap says otherwise starting with TypeScript 7.",
+      "why": "Stack Overflow question sits at 25,172 views, the highest single view count among all candidates, tagged typescript.",
       "sources": [
-        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
+        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
-      "official": "https://github.com/vercel/next.js/releases"
+      "official": "https://devblogs.microsoft.com/typescript/"
     },
     {
-      "topic": "VS Code frozen on 'Initializing tsconfig.json'",
-      "format": "trick",
-      "angle": "VS Code hangs forever loading your TypeScript project, and there's a one-setting reason the language server never finishes.",
-      "why": "2,546 views on this question, tag typescript — a stuck-editor problem that's extremely relatable and shows well as a before/after on screen.",
+      "topic": "Calling setState inside an effect feels safe, isn't always",
+      "format": "myth",
+      "angle": "Devs assume setting state synchronously inside a useEffect just re-renders once — React's own warning shows it can cascade into repeated re-renders instead.",
+      "why": "Stack Overflow question on this exact warning drew 4,880 views on the reactjs tag.",
       "sources": [
-        "https://stackoverflow.com/questions/79857680/vs-code-stuck-on-initializing-tsconfig-json"
+        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://code.visualstudio.com/docs/languages/typescript"
+      "official": "https://react.dev/learn/synchronizing-with-effects"
     },
     {
-      "topic": "Better Auth + Google OAuth state_mismatch in Next.js",
-      "format": "explained",
-      "angle": "Your 'Sign in with Google' button works locally and breaks after deploy with a state_mismatch error — here's the environment detail that causes it.",
-      "why": "2,131 views, 2 answers on a Next.js-tagged question about a specific, repeatable auth bug, good for a problem-first explainer.",
+      "topic": "Angular variable changes that never hit the DOM",
+      "format": "myth",
+      "angle": "Assigning a new value to a component variable used to be enough for Angular to update the template — zoneless/signal-based change detection quietly breaks that assumption.",
+      "why": "Stack Overflow question on Angular 21 drew 1,394 views under the typescript tag, describing exactly this symptom.",
       "sources": [
-        "https://stackoverflow.com/questions/79829419/how-do-i-resolve-state-mismatch-error-with-google-oauth-in-a-next-js-app-using"
+        "https://stackoverflow.com/questions/79893083/angular-21-variable-change-not-rendered-in-dom"
       ],
-      "official": "https://www.better-auth.com/docs/concepts/oauth"
+      "official": "https://angular.dev/guide/signals"
     },
     {
-      "topic": "MongoDB Atlas SRV lookup fails after a Node version switch",
+      "topic": "MongoDB Atlas SRV lookups fail after a Node upgrade",
       "format": "explained",
-      "angle": "Your MongoDB connection string worked yesterday and throws ECONNREFUSED today, and the culprit is which Node version is doing the DNS lookup.",
-      "why": "2,049 views on a node.js-tagged question describing an exact repro (Node 22, Windows) — a concrete environment gotcha devs can verify.",
+      "angle": "Switching Node versions silently flips the default DNS resolution order, so the exact same MongoDB Atlas SRV string that worked yesterday throws ECONNREFUSED today — here's the one setting that fixes it.",
+      "why": "Stack Overflow question on this exact Node version + MongoDB Atlas combo drew 2,065 views under node.js.",
       "sources": [
         "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
       ],
-      "official": "https://www.mongodb.com/docs/manual/reference/connection-string/#dns-seed-list-connection-format"
+      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
     },
     {
-      "topic": "Tailwind v4's Vite plugin can't resolve 'tailwindcss'",
-      "format": "trick",
-      "angle": "Tailwind v4 moved from a PostCSS plugin to a dedicated Vite plugin, and installing the old way is exactly why your build can't find it.",
-      "why": "1,280 views on a tailwind-css-tagged question tied directly to the v4 architecture change, a clean small-fix reel.",
+      "topic": "Do React 19's lint rules about unstable props still matter?",
+      "format": "versus",
+      "angle": "Compare what eslint-react's no-unstable-default-props/no-unstable-context-value rules protect against versus what React 19's compiler now handles for you automatically.",
+      "why": "Stack Overflow question asking exactly this drew 587 views under reactjs, tied to React 19's compiler-era behavior change.",
       "sources": [
-        "https://stackoverflow.com/questions/79819910/tailwind-css-v4-vite-plugin-through-npmvite-cant-resolve-tailwindcss-error"
+        "https://stackoverflow.com/questions/79943110/are-the-eslint-react-no-unstable-default-props-and-eslint-react-no-unstable-co"
       ],
-      "official": "https://tailwindcss.com/docs/installation/using-vite"
+      "official": "https://react.dev/blog/2024/12/05/react-19"
     },
     {
-      "topic": "OpenSSH 10.6p2 critical fix",
-      "format": "news",
-      "angle": "OpenSSH just shipped a dated patch for a critical issue on systems without PAM, and if you SSH into anything you need to know the version number.",
-      "why": "The same release shows up twice independently in today's Hacker News feed (97 points/36 comments and 15 points/2 comments) — a rare double-signal on one dated release.",
-      "sources": [
-        "https://hachyderm.io/@damienmiller/117563026759098135",
-        "https://www.openssh.org/releasenotes.html#10.6p2"
-      ],
-      "official": "https://www.openssh.org/releasenotes.html#10.6p2"
-    },
-    {
-      "topic": "AI coding agents now ship as installable 'skills'",
+      "topic": "Next.js throws on its own source maps",
       "format": "explained",
-      "angle": "Three different new GitHub repos this week aren't agents at all — they're skill files that just teach Claude Code or Codex a new trick, and that's a different thing to install than a whole tool.",
-      "why": "Three separate trending repos built around the same 'skill' format in the same window: 9,214 stars, 3,038 stars, and 2,939 stars — a pattern, not a one-off.",
+      "angle": "A config setting makes Next.js reject the very source map it just generated — trace the setting that causes it and the official fix.",
+      "why": "Stack Overflow question on this error drew 3,503 views under the next.js tag.",
       "sources": [
-        "https://github.com/heydamir/unslop",
-        "https://github.com/t3dotgg/tstack",
-        "https://github.com/haydenschmitty/floorplan"
+        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
       ],
-      "official": "https://docs.claude.com/en/docs/claude-code/skills"
+      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
     },
     {
-      "topic": "{} + [] equals 0 in JavaScript",
-      "format": "myth",
-      "angle": "Everyone screenshots this as proof JavaScript is broken, but it's just type coercion doing exactly what the spec says, step by step.",
-      "why": "170 reactions and 126 comments on dev.to this week on precisely this claim — a classic 'JS is broken' myth with real engagement to counter.",
+      "topic": "Should uv.lock be committed to git?",
+      "format": "trick",
+      "angle": "Python devs moving to uv assume lockfiles behave like node_modules and reach for .gitignore — uv's own docs say the opposite for reproducible installs.",
+      "why": "Stack Overflow question on uv.lock and .gitignore drew 5,456 views under the git tag, showing real confusion about this new tool's convention.",
       "sources": [
-        "https://dev.to/sylwia-lask/yes-0-no-javascript-isnt-broken-14ob"
+        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Addition"
+      "official": "https://docs.astral.sh/uv/concepts/projects/sync/"
     }
   ],
   "skipped": [],
