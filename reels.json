@@ -11100,14 +11100,51 @@
       "[impressed] Drop a link in a redesign, and it fails.",
       "[warm] Send this to a dev redesigning this week."
     ],
-    "posted_at": null,
-    "media_id": null,
+    "posted_at": "2026-11-20T19:10:31+00:00",
+    "media_id": "18106202582557359",
     "series": "Trending build",
     "episode": 3,
     "post_on": {
       "date": "2026-11-07",
       "slot": 1
-    }
+    },
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": false,
+        "problem": "The reel only states the three claims as title cards (fifty themes, eight widths, fails a redesign) — it never shows an actual dealt-theme list, real browser lint output, or an actual failed redesign check on screen to copy or screenshot."
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 5
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.9
+      }
+    },
+    "shown": [
+      "code",
+      "text",
+      "text",
+      "text",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 17.0,
+    "youtube_id": "WI11Ft6nEoA",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18131465227862875"
+      }
+    ]
   },
   {
     "id": 108,
