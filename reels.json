@@ -12465,5 +12465,240 @@
         "id": "18132899887745231"
       }
     ]
+  },
+  {
+    "id": 115,
+    "style": "light",
+    "payoff": "z-index only moves an element that already has a position set (relative, absolute, fixed or sticky); on a static element the browser ignores it completely, no matter the value.",
+    "kicker": "Explained #7",
+    "hook": "Your *z-index* does nothing",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "diff",
+      "language": "css",
+      "title": "style.css",
+      "before": ".front {\n  z-index: 999;\n}\n.back {\n  position: absolute;\n}",
+      "after": ".front {\n  position: relative;\n  z-index: 999;\n}\n.back {\n  position: absolute;\n}"
+    },
+    "alternatives": [
+      {
+        "hook": "Your *z-index* gets ignored",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your element has a huge z-index, (break) [annoyed] but it still sits behind another box."
+      },
+      {
+        "hook": "No position, then *instant* fix",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Without position z-index does nothing, (break) [deadpan] add one line and it jumps to front."
+      },
+      {
+        "hook": "We *tested* z-index on static",
+        "hook_type": "test",
+        "spoken": "[amazed] We tried z-index on a plain static box first, (break) [surprised] nothing happened at all."
+      }
+    ],
+    "points": [
+      {
+        "title": "No position",
+        "body": "z-index does nothing without it",
+        "visual": [
+          {
+            "type": "code",
+            "title": "style.css",
+            "language": "css",
+            "code": ".front {\n  z-index: 999;\n}\n.back {\n  position: absolute;\n  top: 20px;\n}",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Add position",
+        "body": "One line makes it actually work",
+        "visual": [
+          {
+            "type": "build",
+            "title": "stack.css",
+            "html": "<div class=\"back\">BACK</div>\n<div class=\"front\">FRONT</div>",
+            "stages": [
+              ".back{position:absolute}\n.back{top:10px;left:10px}\n.front{z-index:999}",
+              ".front{position:relative}"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real rule",
+        "body": "Static elements never stack above positioned ones",
+        "visual": [
+          {
+            "type": "checks",
+            "title": "z-index needs position",
+            "columns": [
+              "static",
+              "positioned"
+            ],
+            "checks": [
+              {
+                "label": "z-index applies",
+                "marks": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "label": "top/left works",
+                "marks": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "label": "stacking context",
+                "marks": [
+                  false,
+                  true
+                ]
+              }
+            ],
+            "pick": "positioned"
+          },
+          {
+            "type": "diff",
+            "language": "css",
+            "title": "style.css",
+            "before": ".box { z-index: 999; }",
+            "after": ".box {\n  position: relative;\n  z-index: 999;\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev still fighting *z-index*?",
+    "caption": "CSS z-index and the position property explained\nStatic elements ignore z-index completely\nKnow a dev debugging this right now? 👇",
+    "hashtags": [
+      "#css",
+      "#zindex",
+      "#frontend",
+      "#webdev"
+    ],
+    "voiceover": [
+      "[fired up] You slap on z-index nine nine nine, (break) [confused] but it's still hidden behind another box.",
+      "[serious, fast] Static elements ignore z-index completely, no exceptions.",
+      "[excited] Add position relative and suddenly it jumps on top.",
+      "[confident and fast] That's the whole rule: no position, no z-index.",
+      "[warm, curious] Send this to whoever just raised a z-index."
+    ],
+    "reveal": 2,
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "style.css",
+        "language": "css",
+        "code": ".front {\n  z-index: 999;\n}\n.back {\n  position: absolute;\n  top: 20px;\n}",
+        "highlight": [
+          2
+        ],
+        "at": "hidden"
+      },
+      {
+        "kind": "file",
+        "title": "style.css",
+        "lines": [
+          "Static element",
+          "z-index: 999",
+          "→ ignored"
+        ],
+        "strike": true,
+        "tag": "IGNORED",
+        "at": "ignore"
+      },
+      {
+        "kind": "code",
+        "title": "style.css",
+        "language": "css",
+        "code": ".front {\n  position: relative;\n  z-index: 999;\n}\n.back {\n  position: absolute;\n  top: 20px;\n}",
+        "highlight": [
+          2
+        ],
+        "accent": true,
+        "at": "jumps"
+      },
+      {
+        "kind": "checklist",
+        "title": "Stacking rule",
+        "items": [
+          {
+            "label": "Static + z-index",
+            "ok": false
+          },
+          {
+            "label": "Position added",
+            "ok": true
+          },
+          {
+            "label": "z-index applies",
+            "ok": true
+          }
+        ],
+        "at": "rule"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "No *position*,",
+          "no z-index"
+        ],
+        "motif": "brackets",
+        "label": "CSS basics",
+        "at": "z-index"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 7,
+    "posted_at": "2026-11-21T01:09:07+00:00",
+    "media_id": "18135839278793616",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 15.9
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "text",
+      "checks",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 18.5,
+    "youtube_id": "uuMyqL0p04w",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18031498121873332"
+      }
+    ]
   }
 ]
