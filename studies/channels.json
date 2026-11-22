@@ -1,24 +1,4 @@
 {
-  "UCxaFEobGeDhkupIwocNzv0g": {
-    "title": "Jay Sim",
-    "added": "2026-10-11",
-    "outlier": 18.8
-  },
-  "UCrfAKzqwFqmdAAzQyhjX8Mg": {
-    "title": "Carrier with code ",
-    "added": "2026-10-11",
-    "outlier": 6.4
-  },
-  "UCnbiwxVtq0t22223N_15S5g": {
-    "title": "Mhide",
-    "added": "2026-10-18",
-    "outlier": 27.2
-  },
-  "UC1vA2hd4Df8Cx4wAZhwZuOA": {
-    "title": "Mehdiskan",
-    "added": "2026-10-18",
-    "outlier": 773.1
-  },
   "UCMyvGCT2pUlWfCLrCJL1ROg": {
     "title": "Foundery-X",
     "added": "2026-10-18",
@@ -93,5 +73,30 @@
     "title": "InsiderForce",
     "added": "2026-11-01",
     "outlier": 8.7
+  },
+  "UCir6kdJGoPTPCmvegeyj4OQ": {
+    "title": "Fresher Ki Naukri",
+    "added": "2026-11-22",
+    "outlier": 16.4
+  },
+  "UCG3UiG8C_7hbsmfsKVhip3Q": {
+    "title": "rose.buildshere",
+    "added": "2026-11-22",
+    "outlier": 185.9
+  },
+  "UCX7XsCUNNB11wj6F2CsNC9A": {
+    "title": "Sandia Byte",
+    "added": "2026-11-22",
+    "outlier": 130.7
+  },
+  "UCxCiRvMiJAzi_ynC0U8hEJA": {
+    "title": "Understanding AI HQ",
+    "added": "2026-11-22",
+    "outlier": 74.0
+  },
+  "UCP40sWYTMK3_n_qADIUr_Xg": {
+    "title": "BreakingBreach",
+    "added": "2026-11-22",
+    "outlier": 68.7
   }
 }
