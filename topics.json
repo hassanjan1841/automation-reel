@@ -1,31 +1,21 @@
 {
-  "date": "2026-11-20",
+  "date": "2026-11-22",
   "topics": [
     {
-      "topic": "The 4 prompt rules an Anthropic lead actually uses",
-      "format": "trick",
-      "angle": "A short, repeatable set of prompt-structuring rules (not a 'magic phrase') is what separates reliable Claude output from one-shot guessing.",
-      "why": "YouTube Shorts candidate hit 97,555 views at 37x the channel's usual — the single strongest relative signal in today's batch, and it's squarely in this account's AI-coding-tool lane.",
-      "sources": [
-        "https://www.youtube.com/shorts/dbLxhNKFBRY"
-      ],
-      "official": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview"
-    },
-    {
-      "topic": "Claude Code can publish the site it just built to a live URL",
-      "format": "trick",
-      "angle": "Claude Code now ships a built-in way to put a project it generated on the open internet without you touching a hosting dashboard.",
-      "why": "YouTube Shorts candidate hit 254,171 views at 8x the channel's usual, directly on-topic for an AI-coding-tool reel.",
-      "sources": [
-        "https://www.youtube.com/shorts/23cUNfHdJcc"
-      ],
-      "official": "https://docs.anthropic.com/en/docs/claude-code/overview"
-    },
-    {
-      "topic": "Prisma 7 upgrade breaks existing projects",
+      "topic": "TypeScript 7 deprecates tsconfig baseUrl",
       "format": "explained",
-      "angle": "Two separate bug reports show the same story — update to Prisma v7, get an internal undefined-property crash — walked through to the actual fix in Prisma's own migration notes.",
-      "why": "Two Stack Overflow questions on the same release (5,959 and 2,193 views) under node.js/typescript tags, both about the same v7 upgrade pain.",
+      "angle": "Show the tsconfig baseUrl setting quietly breaking module resolution once TypeScript 7 lands, then the one-line fix of switching to a bare paths map.",
+      "why": "The Stack Overflow question on this exact deprecation pulled 25,223 views with 4 answers under the typescript tag — the single highest view count of any candidate today, meaning devs are actively hunting for the fix before TS7 ships.",
+      "sources": [
+        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
+      ],
+      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
+    },
+    {
+      "topic": "Prisma 7 upgrade breaks internal API",
+      "format": "explained",
+      "angle": "Walk through the '__internal' TypeError that hits right after bumping to Prisma 7, and the actual migration-guide step that fixes it.",
+      "why": "Two separate Stack Overflow threads about Prisma v7 migration pain appeared this period (5,960 and 2,196 views), showing the same upgrade tripping up multiple node.js/typescript developers independently.",
       "sources": [
         "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
         "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
@@ -33,74 +23,86 @@
       "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
     },
     {
-      "topic": "tsconfig's baseUrl is going away",
+      "topic": "setState synchronously inside useEffect",
       "format": "myth",
-      "angle": "Most devs assume baseUrl will keep resolving their bare imports forever — TypeScript's own roadmap says otherwise starting with TypeScript 7.",
-      "why": "Stack Overflow question sits at 25,172 views, the highest single view count among all candidates, tagged typescript.",
-      "sources": [
-        "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
-      ],
-      "official": "https://devblogs.microsoft.com/typescript/"
-    },
-    {
-      "topic": "Calling setState inside an effect feels safe, isn't always",
-      "format": "myth",
-      "angle": "Devs assume setting state synchronously inside a useEffect just re-renders once — React's own warning shows it can cascade into repeated re-renders instead.",
-      "why": "Stack Overflow question on this exact warning drew 4,880 views on the reactjs tag.",
+      "angle": "Most developers assume calling setState inside an effect just triggers one clean re-render — React's own cascading-render warning says otherwise.",
+      "why": "A Stack Overflow question on this exact warning drew 4,891 views under the reactjs tag, showing it's a fresh point of confusion devs are actively searching to understand.",
       "sources": [
         "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://react.dev/learn/synchronizing-with-effects"
+      "official": "https://react.dev/reference/react/useEffect"
     },
     {
-      "topic": "Angular variable changes that never hit the DOM",
+      "topic": "Angular 21 zoneless change detection",
       "format": "myth",
-      "angle": "Assigning a new value to a component variable used to be enough for Angular to update the template — zoneless/signal-based change detection quietly breaks that assumption.",
-      "why": "Stack Overflow question on Angular 21 drew 1,394 views under the typescript tag, describing exactly this symptom.",
+      "angle": "Angular's change detection is assumed to 'just notice' any variable change, but Angular 21's zoneless default means a plain property mutation can render nothing at all.",
+      "why": "A Stack Overflow question on Angular 21 variable changes not hitting the DOM reached 1,394 views within days under the typescript tag, showing devs hitting the new default without knowing why.",
       "sources": [
         "https://stackoverflow.com/questions/79893083/angular-21-variable-change-not-rendered-in-dom"
       ],
-      "official": "https://angular.dev/guide/signals"
+      "official": "https://angular.dev/guide/zoneless"
     },
     {
-      "topic": "MongoDB Atlas SRV lookups fail after a Node upgrade",
-      "format": "explained",
-      "angle": "Switching Node versions silently flips the default DNS resolution order, so the exact same MongoDB Atlas SRV string that worked yesterday throws ECONNREFUSED today — here's the one setting that fixes it.",
-      "why": "Stack Overflow question on this exact Node version + MongoDB Atlas combo drew 2,065 views under node.js.",
-      "sources": [
-        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
-      ],
-      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
-    },
-    {
-      "topic": "Do React 19's lint rules about unstable props still matter?",
-      "format": "versus",
-      "angle": "Compare what eslint-react's no-unstable-default-props/no-unstable-context-value rules protect against versus what React 19's compiler now handles for you automatically.",
-      "why": "Stack Overflow question asking exactly this drew 587 views under reactjs, tied to React 19's compiler-era behavior change.",
-      "sources": [
-        "https://stackoverflow.com/questions/79943110/are-the-eslint-react-no-unstable-default-props-and-eslint-react-no-unstable-co"
-      ],
-      "official": "https://react.dev/blog/2024/12/05/react-19"
-    },
-    {
-      "topic": "Next.js throws on its own source maps",
-      "format": "explained",
-      "angle": "A config setting makes Next.js reject the very source map it just generated — trace the setting that causes it and the official fix.",
-      "why": "Stack Overflow question on this error drew 3,503 views under the next.js tag.",
-      "sources": [
-        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
-      ],
-      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
-    },
-    {
-      "topic": "Should uv.lock be committed to git?",
+      "topic": "That weird-looking JavaScript class syntax",
       "format": "trick",
-      "angle": "Python devs moving to uv assume lockfiles behave like node_modules and reach for .gitignore — uv's own docs say the opposite for reproducible installs.",
-      "why": "Stack Overflow question on uv.lock and .gitignore drew 5,456 views under the git tag, showing real confusion about this new tool's convention.",
+      "angle": "A class declaration that looks broken on screen but is completely standard JavaScript — show why it compiles and what it actually does.",
+      "why": "A Stack Overflow question asking how this syntax works picked up 1,138 views in days under the javascript tag, meaning plenty of developers don't recognize it on sight.",
       "sources": [
-        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
+        "https://stackoverflow.com/questions/80014338/unusual-syntax-for-declaring-or-extending-a-class-how-does-this-work"
       ],
-      "official": "https://docs.astral.sh/uv/concepts/projects/sync/"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes"
+    },
+    {
+      "topic": "CSS alpha-only filters changing RGB too",
+      "format": "myth",
+      "angle": "Developers assume an alpha-only filter leaves the RGB channels untouched, but premultiplied alpha math means the colors shift too — show it live.",
+      "why": "A Stack Overflow question on this exact CSS filter behavior got 1,076 views under the css tag, a surprise for anyone testing it for the first time.",
+      "sources": [
+        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
+      ],
+      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity"
+    },
+    {
+      "topic": "Git doesn't preserve file modification timestamps",
+      "format": "myth",
+      "angle": "Developers assume Git backs up a file's exact mtime like an archive tool — it never stores mtime at all, and every checkout writes the current time.",
+      "why": "A Stack Overflow question on retaining exact mtimes in a Git repo drew 1,024 views under the git tag, a recurring confusion for anyone expecting Git to behave like a backup tool.",
+      "sources": [
+        "https://stackoverflow.com/questions/79836280/retain-the-exact-modification-timestamp-of-a-file-in-a-git-repository"
+      ],
+      "official": "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+    },
+    {
+      "topic": "react-hook-form + zodResolver type error",
+      "format": "trick",
+      "angle": "The 'unknown is not assignable to string | number' TypeScript error with react-hook-form and zodResolver has a one-line generic fix most devs miss.",
+      "why": "A Stack Overflow question on this exact pairing got 483 views under the next.js tag, showing a recurring type mismatch for anyone wiring Zod validation into react-hook-form.",
+      "sources": [
+        "https://stackoverflow.com/questions/79859946/typescript-error-with-react-hook-form-and-zodresolver-type-unknown-not-assign"
+      ],
+      "official": "https://github.com/react-hook-form/resolvers"
+    },
+    {
+      "topic": "What happens when an AI coding agent's context fills up",
+      "format": "explained",
+      "angle": "A Claude Code session sitting at 99% context looks like it's about to crash — show what actually happens and how older turns get compacted so it keeps going.",
+      "why": "A YouTube Short on Claude Code at 99% context pulled 236,060 views at 9x this channel's usual, and the same week a dev.to piece on AI agents 'forgetting' covers the identical memory/context problem from another angle.",
+      "sources": [
+        "https://www.youtube.com/shorts/_W17yDBrCps",
+        "https://dev.to/googleai/why-your-ai-agent-keeps-forgetting-and-getting-slower-4-memory-options-and-3-context-fixes-2e02"
+      ],
+      "official": ""
+    },
+    {
+      "topic": "Incremental Rust rewrite vs big-bang rewrite",
+      "format": "versus",
+      "angle": "Compare the classic 'rewrite it in Rust from scratch' approach against a new tool that rewrites your app piece-by-piece while checking each step against the original's recorded behavior.",
+      "why": "A new GitHub repo built exactly for this approach hit 7,745 stars in under 14 days, and the same week a dev.to post about rewriting a TypeScript tool to Rust shows the identical migration pattern resonating from a second angle.",
+      "sources": [
+        "https://github.com/erkamyaman/rust-anything",
+        "https://dev.to/necoz/why-i-rewrote-type-tune-from-typescript-to-rust-1egg"
+      ],
+      "official": "https://github.com/erkamyaman/rust-anything"
     }
   ],
   "skipped": [],
