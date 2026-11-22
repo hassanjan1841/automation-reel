@@ -12700,5 +12700,166 @@
         "id": "18031498121873332"
       }
     ]
+  },
+  {
+    "id": 116,
+    "style": "dark",
+    "payoff": "A return inside a finally block replaces a return inside its try block every time — this function prints 2, not 1, because finally always runs last and its return wins.",
+    "kicker": "Myth vs fact #27",
+    "hook": "*finally* overrides your return",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "run.js",
+      "code": "function run() {\n  try {\n    return 1;\n  } finally {\n    return 2;\n  }\n}\nconsole.log(run());",
+      "highlight": [
+        3,
+        5
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *return* can be overridden",
+        "hook_type": "problem",
+        "spoken": "[urgent] Returning a value in try doesn't guarantee, (break) [serious, fast] that's what your function sends back."
+      },
+      {
+        "hook": "Return one, but get *two*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] You write return one in the try block, (break) [surprised] but finally swaps it for two."
+      },
+      {
+        "hook": "We tested it: *finally* wins",
+        "hook_type": "test",
+        "spoken": "[confident and fast] We tested try finally in real code, (break) [matter-of-fact] and finally's return value won every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "The common guess",
+        "body": "Try returns first, so that wins",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "function run() {\n  try {\n    return 1;\n  } finally {\n    return 2;\n  }\n}\nconsole.log(run());",
+            "highlight": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "title": "finally still runs",
+        "body": "The finally block executes right after",
+        "visual": [
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "function run() {\n  try {\n    return 1;\n  } finally {\n    return 2;\n  }\n}\nconsole.log(run());",
+            "highlight": [
+              4,
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "title": "finally wins",
+        "body": "Its return replaces whatever try sent back",
+        "visual": [
+          {
+            "type": "predict",
+            "language": "js",
+            "code": "function run() {\n  try {\n    return 1;\n  } finally {\n    return 2;\n  }\n}\nconsole.log(run());",
+            "choices": [
+              "1",
+              "2"
+            ],
+            "output": [
+              "2"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "js",
+            "title": "run.js",
+            "code": "function run() {\n  try {\n    return 1;\n  } finally {\n    return 2;\n  }\n}\nconsole.log(run());",
+            "highlight": [
+              5
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a developer who trusts their *return*?",
+    "caption": "JavaScript try finally return value explained\nfinally's return quietly replaces whatever try sent back.\nEver gotten burned by this in your own code? 👇",
+    "hashtags": [
+      "#javascript",
+      "#webdev",
+      "#codingtips",
+      "#programming"
+    ],
+    "voiceover": [
+      "[fired up] Most developers think the first return wins, (break) [confident and fast] but finally can overrule it.",
+      "[knowing] You'd expect that return value to stick.",
+      "[building tension] But the finally block always runs too.",
+      "[hushed] Watch closely (break) [triumphant] it prints two, not one.",
+      "[warm, curious] Know a developer who trusts that return value? (break) [grinning] Send this over."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 27,
+    "posted_at": "2026-11-22T16:36:20+00:00",
+    "media_id": "18112501037242040",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 3.8
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "predict",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.5,
+    "youtube_id": "56poEOMrOu0",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18035248760913892"
+      },
+      {
+        "kind": "teaser",
+        "id": "18131140244311270"
+      }
+    ]
   }
 ]
