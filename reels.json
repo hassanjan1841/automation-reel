@@ -12861,5 +12861,245 @@
         "id": "18131140244311270"
       }
     ]
+  },
+  {
+    "id": 117,
+    "style": "light",
+    "payoff": "Postgres enforces a schema with foreign keys and JOINs across tables; MongoDB stores flexible documents with no fixed schema, so pick Postgres for relational data and MongoDB for data whose shape keeps changing.",
+    "kicker": "X vs Y #6",
+    "hook": "Fixed tables become *flexible* documents",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "title": "schema.sql",
+      "language": "sql",
+      "code": "CREATE TABLE users (\n  id serial PRIMARY KEY,\n  name text\n);\nCREATE TABLE posts (\n  id serial PRIMARY KEY,\n  user_id int REFERENCES users(id)\n);",
+      "highlight": [
+        7
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "We compared *two* real databases",
+        "spoken": "[pumped] We built the same app twice, once in Postgres (break) [locked in] once in MongoDB too.",
+        "hook_type": "test"
+      },
+      {
+        "hook": "Your *schema* choice was wrong",
+        "hook_type": "mistake",
+        "spoken": "[urgent] Picking the wrong database schema now costs you (break) [serious] months of migrations later."
+      },
+      {
+        "hook": "Scaling breaks the *wrong* pick",
+        "hook_type": "problem",
+        "spoken": "[tense] Scale past a few thousand users and the wrong (break) [urgent] database choice shows fast."
+      }
+    ],
+    "points": [
+      {
+        "title": "Strict schema",
+        "body": "Columns and types are fixed upfront",
+        "visual": [
+          {
+            "type": "code",
+            "title": "users.sql",
+            "language": "sql",
+            "code": "CREATE TABLE users (\n  id serial PRIMARY KEY,\n  name text NOT NULL,\n  age int NOT NULL\n);",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Flexible documents",
+        "body": "No migration needed for new fields",
+        "visual": [
+          {
+            "type": "code",
+            "title": "insert.js",
+            "language": "js",
+            "code": "const col = db.collection('users');\nawait col.insertOne({\n  name: 'Ana',\n  tags: ['admin']\n});\nawait col.insertOne({\n  name: 'Lee',\n  age: 31\n});",
+            "highlight": [
+              4,
+              8
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The verdict",
+        "body": "Postgres wins structure, Mongo wins flexibility",
+        "visual": [
+          {
+            "type": "checks",
+            "title": "Pick one",
+            "columns": [
+              "Postgres",
+              "MongoDB"
+            ],
+            "checks": [
+              {
+                "label": "Enforces schema",
+                "marks": [
+                  true,
+                  false
+                ]
+              },
+              {
+                "label": "Joins across tables",
+                "marks": [
+                  true,
+                  false
+                ]
+              },
+              {
+                "label": "Schema-free inserts",
+                "marks": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "label": "Nested docs built in",
+                "marks": [
+                  false,
+                  true
+                ]
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "title": "join.sql",
+            "language": "sql",
+            "code": "SELECT u.name, p.id\nFROM users u\nJOIN posts p\n  ON p.user_id = u.id;",
+            "highlight": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev still *debating* this?",
+    "caption": "Postgres vs MongoDB: how relational and document databases actually differ.\nSchema rules versus flexible documents, shown with real code.\nWhich one powers your stack right now? 👇",
+    "hashtags": [
+      "#postgresql",
+      "#mongodb",
+      "#databases",
+      "#sql"
+    ],
+    "voiceover": [
+      "[pumped] Postgres starts with fixed tables while MongoDB swaps (break) [energized] in flexible documents instead.",
+      "[matter-of-fact] Postgres makes you define every column's type upfront.",
+      "[upbeat] Mongo just accepted a different shape instantly.",
+      "[confident and fast] Postgres wins on relations, Mongo wins on speed.",
+      "[warm, curious] Send this to the dev still debating it."
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "schema.sql",
+        "language": "sql",
+        "code": "CREATE TABLE users (\n  id serial PRIMARY KEY,\n  name text\n);\nCREATE TABLE posts (\n  id serial PRIMARY KEY,\n  user_id int REFERENCES users(id)\n);",
+        "highlight": [
+          7
+        ]
+      },
+      {
+        "kind": "code",
+        "title": "users.sql",
+        "language": "sql",
+        "code": "CREATE TABLE users (\n  id serial PRIMARY KEY,\n  name text NOT NULL,\n  age int NOT NULL\n);",
+        "highlight": [
+          3,
+          4
+        ],
+        "at": "upfront"
+      },
+      {
+        "kind": "code",
+        "title": "insert.js",
+        "language": "js",
+        "code": "const col = db.collection('users');\nawait col.insertOne({\n  name: 'Ana',\n  tags: ['admin']\n});\nawait col.insertOne({\n  name: 'Lee',\n  age: 31\n});",
+        "highlight": [
+          4,
+          8
+        ],
+        "at": "instantly"
+      },
+      {
+        "kind": "steps",
+        "items": [
+          {
+            "label": "Postgres",
+            "note": "Joins and relations"
+          },
+          {
+            "label": "MongoDB",
+            "note": "Shape keeps changing"
+          }
+        ],
+        "at": "speed"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "SEND THIS",
+          "TO A *DEV*"
+        ],
+        "label": "Postgres vs Mongo",
+        "motif": "brackets",
+        "at": "debating"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "versus",
+    "series": "X vs Y",
+    "episode": 6,
+    "posted_at": "2026-11-22T22:12:36+00:00",
+    "media_id": "18119366183082281",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 8
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 23.6
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "checks",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.8,
+    "youtube_id": "dKdOQ1qpK94",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "17999189508060702"
+      }
+    ]
   }
 ]
