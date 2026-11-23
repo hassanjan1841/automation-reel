@@ -1,21 +1,41 @@
 {
-  "date": "2026-11-22",
+  "date": "2026-11-23",
   "topics": [
     {
-      "topic": "TypeScript 7 deprecates tsconfig baseUrl",
+      "topic": "Claude Code can push a built site live to a public URL",
+      "format": "trick",
+      "angle": "Show the one Claude Code command that takes a site it just built and puts it on a live internet URL for free, using only what Anthropic's own docs confirm it does.",
+      "why": "YouTube Short on this exact feature got 292,362 views, 9x the channel's usual (InsiderForce), showing strong appetite for a practical Claude Code trick.",
+      "sources": [
+        "https://www.youtube.com/shorts/23cUNfHdJcc"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+    },
+    {
+      "topic": "TypeScript's baseUrl option is being removed in TS7",
       "format": "explained",
-      "angle": "Show the tsconfig baseUrl setting quietly breaking module resolution once TypeScript 7 lands, then the one-line fix of switching to a bare paths map.",
-      "why": "The Stack Overflow question on this exact deprecation pulled 25,223 views with 4 answers under the typescript tag — the single highest view count of any candidate today, meaning devs are actively hunting for the fix before TS7 ships.",
+      "angle": "Problem: your tsconfig's baseUrl silently breaks path resolution in TypeScript 7; fix: what the official docs say to swap it for.",
+      "why": "The Stack Overflow question on this exact deprecation has 25,248 views and 4 answers, the highest-traffic candidate in the whole batch.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
       "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "Prisma 7 upgrade breaks internal API",
+      "topic": "What actually happens when Claude Code's context window fills up",
+      "format": "myth",
+      "angle": "Myth: Claude Code just keeps remembering everything as your session grows, disproven by what Anthropic's own docs say happens once you near the limit.",
+      "why": "A YouTube Short about hitting 99% context window got 236,221 views, 9x the channel's usual (Understanding AI HQ), showing this confuses a lot of people using the tool daily.",
+      "sources": [
+        "https://www.youtube.com/shorts/_W17yDBrCps"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/costs"
+    },
+    {
+      "topic": "Prisma v7 upgrade breaks existing projects",
       "format": "explained",
-      "angle": "Walk through the '__internal' TypeError that hits right after bumping to Prisma 7, and the actual migration-guide step that fixes it.",
-      "why": "Two separate Stack Overflow threads about Prisma v7 migration pain appeared this period (5,960 and 2,196 views), showing the same upgrade tripping up multiple node.js/typescript developers independently.",
+      "angle": "Two different-looking Prisma v7 errors (a generic update crash and a '__internal' TypeError) trace back to the same breaking change, so one upgrade-guide fix solves both.",
+      "why": "Two separate Stack Overflow questions about Prisma v7 errors drew 5,961 and 2,198 views respectively, both within the last two months.",
       "sources": [
         "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
         "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
@@ -23,86 +43,67 @@
       "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
     },
     {
-      "topic": "setState synchronously inside useEffect",
+      "topic": "Calling setState inside a useEffect isn't as safe as it looks",
       "format": "myth",
-      "angle": "Most developers assume calling setState inside an effect just triggers one clean re-render — React's own cascading-render warning says otherwise.",
-      "why": "A Stack Overflow question on this exact warning drew 4,891 views under the reactjs tag, showing it's a fresh point of confusion devs are actively searching to understand.",
+      "angle": "Myth: setState inside an effect is harmless because React batches updates, disproven by the new cascading-render warning React itself now throws.",
+      "why": "The Stack Overflow question quoting this exact React warning has 4,895 views with developers confused about why their effect triggers extra renders.",
       "sources": [
         "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://react.dev/reference/react/useEffect"
+      "official": "https://react.dev/learn/synchronizing-with-effects"
     },
     {
-      "topic": "Angular 21 zoneless change detection",
-      "format": "myth",
-      "angle": "Angular's change detection is assumed to 'just notice' any variable change, but Angular 21's zoneless default means a plain property mutation can render nothing at all.",
-      "why": "A Stack Overflow question on Angular 21 variable changes not hitting the DOM reached 1,394 views within days under the typescript tag, showing devs hitting the new default without knowing why.",
-      "sources": [
-        "https://stackoverflow.com/questions/79893083/angular-21-variable-change-not-rendered-in-dom"
-      ],
-      "official": "https://angular.dev/guide/zoneless"
-    },
-    {
-      "topic": "That weird-looking JavaScript class syntax",
+      "topic": "Should uv.lock be committed or gitignored",
       "format": "trick",
-      "angle": "A class declaration that looks broken on screen but is completely standard JavaScript — show why it compiles and what it actually does.",
-      "why": "A Stack Overflow question asking how this syntax works picked up 1,138 views in days under the javascript tag, meaning plenty of developers don't recognize it on sight.",
+      "angle": "Settle whether a Python project's uv.lock belongs in .gitignore using only what Astral's own uv docs say about lockfiles for apps versus libraries.",
+      "why": "The Stack Overflow question on exactly this has 5,492 views, showing it's a live source of confusion for Python devs adopting uv.",
       "sources": [
-        "https://stackoverflow.com/questions/80014338/unusual-syntax-for-declaring-or-extending-a-class-how-does-this-work"
+        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes"
+      "official": "https://docs.astral.sh/uv/concepts/projects/#the-lockfile"
     },
     {
-      "topic": "CSS alpha-only filters changing RGB too",
+      "topic": "An alpha-only CSS filter still changes your colors",
       "format": "myth",
-      "angle": "Developers assume an alpha-only filter leaves the RGB channels untouched, but premultiplied alpha math means the colors shift too — show it live.",
-      "why": "A Stack Overflow question on this exact CSS filter behavior got 1,076 views under the css tag, a surprise for anyone testing it for the first time.",
+      "angle": "Myth: a CSS filter that only touches opacity leaves your RGB values alone, disproven by how filter compositing actually works per MDN.",
+      "why": "A Stack Overflow question asking exactly why an alpha-channel filter affects RGB got 1,076 views, a classic 'basics aren't what you think' moment.",
       "sources": [
         "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
       ],
       "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity"
     },
     {
-      "topic": "Git doesn't preserve file modification timestamps",
+      "topic": "Zod's .email() doesn't catch every invalid email",
       "format": "myth",
-      "angle": "Developers assume Git backs up a file's exact mtime like an archive tool — it never stores mtime at all, and every checkout writes the current time.",
-      "why": "A Stack Overflow question on retaining exact mtimes in a Git repo drew 1,024 views under the git tag, a recurring confusion for anyone expecting Git to behave like a backup tool.",
+      "angle": "Myth: Zod's built-in .email() validator rejects any bad email string, disproven by the narrower regex Zod's own docs admit it uses on purpose.",
+      "why": "A Stack Overflow question about unexpected Zod email validation results got 869 views, and Zod schemas are a staple in modern TS/React stacks.",
       "sources": [
-        "https://stackoverflow.com/questions/79836280/retain-the-exact-modification-timestamp-of-a-file-in-a-git-repository"
+        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
       ],
-      "official": "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+      "official": "https://zod.dev"
     },
     {
-      "topic": "react-hook-form + zodResolver type error",
-      "format": "trick",
-      "angle": "The 'unknown is not assignable to string | number' TypeScript error with react-hook-form and zodResolver has a one-line generic fix most devs miss.",
-      "why": "A Stack Overflow question on this exact pairing got 483 views under the next.js tag, showing a recurring type mismatch for anyone wiring Zod validation into react-hook-form.",
-      "sources": [
-        "https://stackoverflow.com/questions/79859946/typescript-error-with-react-hook-form-and-zodresolver-type-unknown-not-assign"
-      ],
-      "official": "https://github.com/react-hook-form/resolvers"
-    },
-    {
-      "topic": "What happens when an AI coding agent's context fills up",
+      "topic": "Letting an AI agent rewrite only the slow 5% of your app",
       "format": "explained",
-      "angle": "A Claude Code session sitting at 99% context looks like it's about to crash — show what actually happens and how older turns get compacted so it keeps going.",
-      "why": "A YouTube Short on Claude Code at 99% context pulled 236,060 views at 9x this channel's usual, and the same week a dev.to piece on AI agents 'forgetting' covers the identical memory/context problem from another angle.",
-      "sources": [
-        "https://www.youtube.com/shorts/_W17yDBrCps",
-        "https://dev.to/googleai/why-your-ai-agent-keeps-forgetting-and-getting-slower-4-memory-options-and-3-context-fixes-2e02"
-      ],
-      "official": ""
-    },
-    {
-      "topic": "Incremental Rust rewrite vs big-bang rewrite",
-      "format": "versus",
-      "angle": "Compare the classic 'rewrite it in Rust from scratch' approach against a new tool that rewrites your app piece-by-piece while checking each step against the original's recorded behavior.",
-      "why": "A new GitHub repo built exactly for this approach hit 7,745 stars in under 14 days, and the same week a dev.to post about rewriting a TypeScript tool to Rust shows the identical migration pattern resonating from a second angle.",
+      "angle": "Two trending tools this week both skip 'rewrite everything in Rust' and instead have a coding agent port just the hot functions while proving behavior matches the original.",
+      "why": "Two new GitHub repos built around this exact idea are both trending hard: 8,395 stars and 2,578 stars, each in under 14 days.",
       "sources": [
         "https://github.com/erkamyaman/rust-anything",
-        "https://dev.to/necoz/why-i-rewrote-type-tune-from-typescript-to-rust-1egg"
+        "https://github.com/EL4CTEO/fast-anything"
       ],
       "official": "https://github.com/erkamyaman/rust-anything"
+    },
+    {
+      "topic": "Running a big LLM locally on a laptop instead of a GPU server",
+      "format": "explained",
+      "angle": "Problem: everyone assumes a model like GLM-5.2 needs server GPUs; fix: the quantization and serving tricks that let it run on a normal laptop instead.",
+      "why": "A YouTube Short showing this got 54,453 views (9x the channel's usual), paired with a trending GitHub 'inference optimisation' skill repo (2,026 stars) and a 531-point HN guide to local AI the same week.",
+      "sources": [
+        "https://www.youtube.com/shorts/5CnEC3SmAOs",
+        "https://github.com/sybil-solutions/inference-optimisation-skill",
+        "https://www.gpupartner.com/blog/beginners-guide-local-ai-inkling-qwen-unsloth"
+      ],
+      "official": ""
     }
   ],
   "skipped": [],
