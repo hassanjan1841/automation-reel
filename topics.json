@@ -2,108 +2,107 @@
   "date": "2026-11-23",
   "topics": [
     {
-      "topic": "Claude Code can push a built site live to a public URL",
-      "format": "trick",
-      "angle": "Show the one Claude Code command that takes a site it just built and puts it on a live internet URL for free, using only what Anthropic's own docs confirm it does.",
-      "why": "YouTube Short on this exact feature got 292,362 views, 9x the channel's usual (InsiderForce), showing strong appetite for a practical Claude Code trick.",
-      "sources": [
-        "https://www.youtube.com/shorts/23cUNfHdJcc"
-      ],
-      "official": "https://docs.claude.com/en/docs/claude-code/overview"
-    },
-    {
-      "topic": "TypeScript's baseUrl option is being removed in TS7",
-      "format": "explained",
-      "angle": "Problem: your tsconfig's baseUrl silently breaks path resolution in TypeScript 7; fix: what the official docs say to swap it for.",
-      "why": "The Stack Overflow question on this exact deprecation has 25,248 views and 4 answers, the highest-traffic candidate in the whole batch.",
+      "topic": "TypeScript's baseUrl is being dropped in TypeScript 7",
+      "format": "myth",
+      "angle": "Most devs assume tsconfig's baseUrl still resolves their imports, but TypeScript is removing it entirely in version 7, and paths needs to come along for the ride.",
+      "why": "This is the single highest-traffic item across all candidates at 25,265 views on one Stack Overflow question, a strong signal that developers are confused about a basic config option disappearing.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
       "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "What actually happens when Claude Code's context window fills up",
+      "topic": "Full Rust rewrite vs. porting just the slow 5%",
+      "format": "versus",
+      "angle": "Compare rewriting an entire app in Rust against only porting the hot functions your profiler flags, the real tradeoff behind this week's trending 'rewrite in Rust' repos.",
+      "why": "Two brand-new Rust-rewrite tools picked up a combined 11,000+ GitHub stars in under two weeks, and a dev.to post about rewriting a TypeScript tool in Rust is getting the same discussion, the same idea surfacing in three independent sources.",
+      "sources": [
+        "https://github.com/erkamyaman/rust-anything",
+        "https://github.com/EL4CTEO/fast-anything",
+        "https://dev.to/necoz/why-i-rewrote-type-tune-from-typescript-to-rust-1egg"
+      ],
+      "official": "https://github.com/erkamyaman/rust-anything"
+    },
+    {
+      "topic": "Should you .gitignore a lockfile like uv.lock?",
       "format": "myth",
-      "angle": "Myth: Claude Code just keeps remembering everything as your session grows, disproven by what Anthropic's own docs say happens once you near the limit.",
-      "why": "A YouTube Short about hitting 99% context window got 236,221 views, 9x the channel's usual (Understanding AI HQ), showing this confuses a lot of people using the tool daily.",
-      "sources": [
-        "https://www.youtube.com/shorts/_W17yDBrCps"
-      ],
-      "official": "https://docs.claude.com/en/docs/claude-code/costs"
-    },
-    {
-      "topic": "Prisma v7 upgrade breaks existing projects",
-      "format": "explained",
-      "angle": "Two different-looking Prisma v7 errors (a generic update crash and a '__internal' TypeError) trace back to the same breaking change, so one upgrade-guide fix solves both.",
-      "why": "Two separate Stack Overflow questions about Prisma v7 errors drew 5,961 and 2,198 views respectively, both within the last two months.",
-      "sources": [
-        "https://stackoverflow.com/questions/79827833/stuck-with-prisma-error-after-updating-to-v7",
-        "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
-      ],
-      "official": "https://www.prisma.io/docs/orm/more/upgrade-guides"
-    },
-    {
-      "topic": "Calling setState inside a useEffect isn't as safe as it looks",
-      "format": "myth",
-      "angle": "Myth: setState inside an effect is harmless because React batches updates, disproven by the new cascading-render warning React itself now throws.",
-      "why": "The Stack Overflow question quoting this exact React warning has 4,895 views with developers confused about why their effect triggers extra renders.",
-      "sources": [
-        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
-      ],
-      "official": "https://react.dev/learn/synchronizing-with-effects"
-    },
-    {
-      "topic": "Should uv.lock be committed or gitignored",
-      "format": "trick",
-      "angle": "Settle whether a Python project's uv.lock belongs in .gitignore using only what Astral's own uv docs say about lockfiles for apps versus libraries.",
-      "why": "The Stack Overflow question on exactly this has 5,492 views, showing it's a live source of confusion for Python devs adopting uv.",
+      "angle": "Devs reflexively gitignore uv.lock the way they gitignore node_modules, but the lockfile is exactly the file you're supposed to commit for reproducible installs.",
+      "why": "This question pulled over 5,500 views in about a month, more traffic than most dependency-lock questions get, pointing to real confusion about what belongs in version control.",
       "sources": [
         "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
       ],
       "official": "https://docs.astral.sh/uv/concepts/projects/#the-lockfile"
     },
     {
-      "topic": "An alpha-only CSS filter still changes your colors",
-      "format": "myth",
-      "angle": "Myth: a CSS filter that only touches opacity leaves your RGB values alone, disproven by how filter compositing actually works per MDN.",
-      "why": "A Stack Overflow question asking exactly why an alpha-channel filter affects RGB got 1,076 views, a classic 'basics aren't what you think' moment.",
-      "sources": [
-        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
-      ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity"
-    },
-    {
-      "topic": "Zod's .email() doesn't catch every invalid email",
-      "format": "myth",
-      "angle": "Myth: Zod's built-in .email() validator rejects any bad email string, disproven by the narrower regex Zod's own docs admit it uses on purpose.",
-      "why": "A Stack Overflow question about unexpected Zod email validation results got 869 views, and Zod schemas are a staple in modern TS/React stacks.",
-      "sources": [
-        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
-      ],
-      "official": "https://zod.dev"
-    },
-    {
-      "topic": "Letting an AI agent rewrite only the slow 5% of your app",
+      "topic": "setState inside a React effect cascading into more renders",
       "format": "explained",
-      "angle": "Two trending tools this week both skip 'rewrite everything in Rust' and instead have a coding agent port just the hot functions while proving behavior matches the original.",
-      "why": "Two new GitHub repos built around this exact idea are both trending hard: 8,395 stars and 2,578 stars, each in under 14 days.",
+      "angle": "A component kept re-rendering for no visible reason, and the fix was realizing that calling setState synchronously inside an effect can trigger React's cascading-render warning.",
+      "why": "The question reached nearly 4,900 views quickly, a common enough React effect pitfall to walk through step by step.",
       "sources": [
-        "https://github.com/erkamyaman/rust-anything",
-        "https://github.com/EL4CTEO/fast-anything"
+        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://github.com/erkamyaman/rust-anything"
+      "official": "https://react.dev/learn/you-might-not-need-an-effect"
     },
     {
-      "topic": "Running a big LLM locally on a laptop instead of a GPU server",
-      "format": "explained",
-      "angle": "Problem: everyone assumes a model like GLM-5.2 needs server GPUs; fix: the quantization and serving tricks that let it run on a normal laptop instead.",
-      "why": "A YouTube Short showing this got 54,453 views (9x the channel's usual), paired with a trending GitHub 'inference optimisation' skill repo (2,026 stars) and a 531-point HN guide to local AI the same week.",
+      "topic": "Git never stores a file's modification time",
+      "format": "myth",
+      "angle": "Developers assume Git remembers exactly when they last edited a file, but Git has never stored file timestamps at all, only content and the commit's own metadata.",
+      "why": "A Stack Overflow question on trying to preserve a file's exact mtime inside a repo shows developers are still surprised by this core Git behavior.",
       "sources": [
-        "https://www.youtube.com/shorts/5CnEC3SmAOs",
-        "https://github.com/sybil-solutions/inference-optimisation-skill",
-        "https://www.gpupartner.com/blog/beginners-guide-local-ai-inkling-qwen-unsloth"
+        "https://stackoverflow.com/questions/79836280/retain-the-exact-modification-timestamp-of-a-file-in-a-git-repository"
       ],
-      "official": ""
+      "official": "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
+    },
+    {
+      "topic": "Tailwind's Vite plugin breaks on a fresh Vite 8 install",
+      "format": "trick",
+      "angle": "Installing Tailwind's official Vite plugin on a brand-new Vite 8 project throws a peer-dependency error because the plugin's version range hasn't caught up yet, and there's a one-line override that unblocks it.",
+      "why": "A fresh Stack Overflow question on exactly this version mismatch is gaining traction as developers upgrade ahead of the plugin's own release cadence.",
+      "sources": [
+        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6"
+      ],
+      "official": "https://tailwindcss.com/docs/installation/using-vite"
+    },
+    {
+      "topic": "What happens at 99% of Claude Code's context window",
+      "format": "explained",
+      "angle": "An AI coding agent running near a full context window starts losing track of earlier instructions, so here's what's actually happening to the conversation when that limit gets close.",
+      "why": "This short pulled 11x the channel's usual views, a strong signal of audience appetite for how context limits affect real AI coding sessions.",
+      "sources": [
+        "https://www.youtube.com/shorts/_W17yDBrCps"
+      ],
+      "official": "https://docs.claude.com/en/docs/build-with-claude/context-windows"
+    },
+    {
+      "topic": "What MCP servers actually let an AI agent do",
+      "format": "explained",
+      "angle": "Everyone's bolting an MCP server onto their AI tool this month, so here's a plain explanation of what the Model Context Protocol actually hands an agent versus what it doesn't.",
+      "why": "An MCP add-on for Blender gained nearly 2,800 GitHub stars in under two weeks while a dev.to newsletter devoted a section to an 'MCP reality check,' two independent sources flagging the same confusion.",
+      "sources": [
+        "https://github.com/bookwjitchieni1986/blender-ai-mcp-addon",
+        "https://dev.to/devengers/devengers-weekly-1-the-mcp-reality-check-career-moats-and-25-weeks-on-the-radar-23ec"
+      ],
+      "official": "https://modelcontextprotocol.io"
+    },
+    {
+      "topic": "z.ai ships GLM-5.4, its first 'loop transformer' coding model",
+      "format": "news",
+      "angle": "z.ai just released GLM-5.4, built on what it calls a loop transformer architecture aimed specifically at coding tasks, straight from the maker's own announcement.",
+      "why": "The release hit 652 points on Hacker News, one of the highest-scoring posts in today's candidates, and it's a dated announcement sourced directly from the model maker's own blog.",
+      "sources": [
+        "https://z.ai/blog/glm-5.4"
+      ],
+      "official": "https://z.ai/blog/glm-5.4"
+    },
+    {
+      "topic": "Docker's new 'Built to Run on Trust' announcement",
+      "format": "news",
+      "angle": "Docker just repositioned its own product around a new trust-focused identity, a dated announcement worth unpacking for anyone shipping containers.",
+      "why": "The announcement is trending on Hacker News today and every fact in it comes straight from Docker's own blog, making it fully verifiable at the source.",
+      "sources": [
+        "https://www.docker.com/blog/meet-the-new-docker-built-to-run-on-trust/"
+      ],
+      "official": "https://www.docker.com/blog/meet-the-new-docker-built-to-run-on-trust/"
     }
   ],
   "skipped": [],
