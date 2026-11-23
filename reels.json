@@ -13101,5 +13101,156 @@
         "id": "17999189508060702"
       }
     ]
+  },
+  {
+    "id": 118,
+    "style": "dark",
+    "payoff": "After a checkout, stat -c %y file.txt shows right now, not when you actually edited it, because git never stores a file's mtime at all",
+    "kicker": "Explained #8",
+    "hook": "Old date, now *today's*",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "diff",
+      "title": "stat file.txt",
+      "language": "bash",
+      "before": "$ git log -1 --format=%ai\n2024-01-03 09:15:00 -0500\n$ stat -c %y file.txt\n2024-01-03 09:15:00",
+      "after": "$ git checkout -- file.txt\n$ stat -c %y file.txt\n2026-11-23 10:42:07"
+    },
+    "alternatives": [
+      {
+        "hook": "Git never *saves* your timestamps",
+        "spoken": "[fired up] Git looks like it tracks your file's exact edit time. [surprise] It actually never does.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Your file dates are *wrong*",
+        "hook_type": "problem",
+        "spoken": "[urgent] Your file's modified date looks real. [actually] It's almost always wrong, trust me."
+      },
+      {
+        "hook": "We *tested* git's timestamps",
+        "hook_type": "test",
+        "spoken": "[mock outraged] We ran a real test. [confident and fast] Git never kept the original file time."
+      }
+    ],
+    "points": [
+      {
+        "title": "No Time Stored",
+        "body": "Blobs hold content, never timestamps",
+        "visual": [
+          {
+            "type": "code",
+            "title": "blob content",
+            "language": "bash",
+            "code": "$ git cat-file -p HEAD:app.js\nconsole.log(\"hello\")",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "title": "One Shared Date",
+        "body": "Every file gets the commit's date",
+        "visual": [
+          {
+            "type": "code",
+            "title": "commit object",
+            "language": "bash",
+            "code": "$ git cat-file -p HEAD\ntree 4b825dc642cb6eb9a06\nauthor J <j@dev.com> 1732000000\ncommitter J <j@dev.com> 1732000000",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Checkout Resets It",
+        "body": "Modified time becomes right now",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "stat file.txt",
+            "output": [
+              "File: file.txt",
+              "Access: 2026-11-23 10:42:07",
+              "Modify: 2026-11-23 10:42:07",
+              "Change: 2026-11-23 10:42:07"
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "git checkout -- file.txt",
+              "stat -c %y file.txt"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a *dev* who trusts file dates?",
+    "caption": "Git and file modification timestamps explained\nA checkout always sets mtime to right now, not the original edit time\nDoes your workflow secretly rely on file timestamps? 👇",
+    "hashtags": [
+      "#git",
+      "#versioncontrol",
+      "#webdevelopment",
+      "#devtips",
+      "#linux"
+    ],
+    "voiceover": [
+      "[grinning, punchy] This file was edited years ago. [surprise] Git now shows today's date instead.",
+      "[serious] A commit stores code, never edit time.",
+      "[confident and fast] That same commit stamp covers every file inside it.",
+      "[watch this] Checkout runs, the timestamp jumps straight to now.",
+      "[warm, curious] Send this to a developer who trusts timestamps."
+    ],
+    "reveal": 3,
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "concept",
+    "series": "Explained",
+    "episode": 8,
+    "posted_at": "2026-11-23T00:27:14+00:00",
+    "media_id": "18199773292385840",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 8,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.4
+      }
+    },
+    "shown": [
+      "diff",
+      "code",
+      "code",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 20.3,
+    "youtube_id": "OXXp5B2II9g",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18118073609329151"
+      }
+    ]
   }
 ]
