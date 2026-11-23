@@ -13252,5 +13252,248 @@
         "id": "18118073609329151"
       }
     ]
+  },
+  {
+    "id": 119,
+    "style": "light",
+    "payoff": "let and const ARE hoisted, same as var — they just sit in the temporal dead zone until their own line runs, so reading them early throws a ReferenceError instead of quietly giving undefined.",
+    "kicker": "Myth vs fact #28",
+    "hook": "Your *let* is hoisted too",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "title": "scope.js",
+      "language": "js",
+      "code": "console.log(typeof x);\ntry {\n  console.log(y);\n} catch (e) {\n  console.log(e.message);\n}\nvar x = 1;\nlet y = 2;",
+      "highlight": [
+        1,
+        3
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Undefined, then *ReferenceError*",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] Var quietly logs undefined first, (break) [shocked] but let throws a reference error instead."
+      },
+      {
+        "hook": "I *ran* the hoisting test",
+        "hook_type": "test",
+        "spoken": "[confident and fast] I actually ran this in node, (break) [surprised] and let threw an error immediately."
+      },
+      {
+        "hook": "Your *interview* answer is wrong",
+        "hook_type": "problem",
+        "spoken": "[urgent] Most interview answers about let hoisting (break) [blunt] are just wrong, node proves it."
+      }
+    ],
+    "points": [
+      {
+        "title": "Var hoists",
+        "body": "Var always prints undefined when logged early",
+        "visual": [
+          {
+            "type": "code",
+            "title": "var.js",
+            "language": "js",
+            "code": "console.log(typeof x);\nvar x = 1;",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Let looks same",
+        "body": "But its line hasn't run yet",
+        "visual": [
+          {
+            "type": "code",
+            "title": "let.js",
+            "language": "js",
+            "code": "console.log(typeof y);\nlet y = 1;",
+            "highlight": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The real output",
+        "body": "It throws instead of printing undefined",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "js",
+            "code": "console.log(typeof x);\ntry {\n  console.log(y);\n} catch (e) {\n  console.log(e.message);\n}\nvar x = 1;\nlet y = 2;",
+            "trace": [
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "x",
+                    "value": "undefined"
+                  },
+                  {
+                    "name": "y",
+                    "value": "<TDZ>"
+                  }
+                ],
+                "out": "undefined"
+              },
+              {
+                "line": 3,
+                "vars": [
+                  {
+                    "name": "y",
+                    "value": "<TDZ>"
+                  }
+                ]
+              },
+              {
+                "line": 5,
+                "vars": [
+                  {
+                    "name": "y",
+                    "value": "<TDZ>"
+                  }
+                ],
+                "out": "Cannot access 'y'"
+              }
+            ]
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "node scope.js"
+            ],
+            "output": [
+              "undefined",
+              "Cannot access 'y' before initialization"
+            ]
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *argues* this?",
+    "caption": "JavaScript let and const hoisting, explained with the temporal dead zone\nvar gives undefined early, let throws instead\nEver gotten this wrong in an interview? 👇",
+    "hashtags": [
+      "#javascript",
+      "#hoisting",
+      "#tdz",
+      "#webdev"
+    ],
+    "reveal": 3,
+    "voiceover": [
+      "[fired up] Everyone swears let and const skip hoisting completely, (break) [deadpan] but that's dead wrong.",
+      "[knowing] Var hoists fine, you just get undefined.",
+      "[curious] Let looks the same, (break) [sly] but try logging it early.",
+      "[urgent] Node throws instantly, (break) [confident and fast] proving the dead zone is real.",
+      "[warm, curious] Send this to a dev who still argues this."
+    ],
+    "scenes": [
+      {
+        "kind": "code",
+        "title": "scope.js",
+        "language": "js",
+        "code": "console.log(typeof x);\ntry {\n  console.log(y);\n} catch (e) {\n  console.log(e.message);\n}\nvar x = 1;\nlet y = 2;",
+        "highlight": [
+          1,
+          3
+        ],
+        "at": "wrong"
+      },
+      {
+        "kind": "code",
+        "title": "var.js",
+        "language": "js",
+        "code": "console.log(typeof x);\nvar x = 1;",
+        "highlight": [
+          1
+        ],
+        "at": "undefined"
+      },
+      {
+        "kind": "file",
+        "title": "let.js",
+        "lines": [
+          "console.log(typeof y);",
+          "let y = 1;"
+        ],
+        "strike": false,
+        "tag": "GUESS?",
+        "at": "early"
+      },
+      {
+        "kind": "terminal",
+        "command": "node scope.js",
+        "output": [
+          "undefined",
+          "Cannot access 'y' before initialization"
+        ],
+        "at": "instantly",
+        "accent": true
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "SEND IT TO",
+          "*THAT* DEV"
+        ],
+        "label": "Still argues let?",
+        "motif": "brackets",
+        "at": "argues"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "basics"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 28,
+    "posted_at": "2026-11-23T22:54:39+00:00",
+    "media_id": "17889491433625013",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": "the TDZ error line is slightly clipped ('Cannot access 'y'' instead of the full 'before initialization'), but the undefined vs TDZ/error contrast still proves the point"
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 7,
+        "motion": 8,
+        "polish": 5
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 25.3
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "code",
+      "stepper",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 20.6,
+    "youtube_id": "03bAyd3mYfQ",
+    "stories": [
+      {
+        "kind": "puzzle",
+        "id": "18112640774110387"
+      },
+      {
+        "kind": "teaser",
+        "id": "17891895930478637"
+      }
+    ]
   }
 ]
