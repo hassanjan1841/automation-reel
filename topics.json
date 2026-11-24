@@ -2,106 +2,104 @@
   "date": "2026-11-24",
   "topics": [
     {
-      "topic": "TypeScript 7 deprecates tsconfig baseUrl",
-      "format": "explained",
-      "angle": "A huge chunk of tsconfig files quietly rely on baseUrl for imports, and TypeScript 7 stops honoring it, so show the before/after fix with paths + moduleResolution bundler.",
-      "why": "Highest-traffic candidate in the whole batch: 25,281 views on a single Stack Overflow question asked this year, tag typescript, with people actively hitting this breaking change.",
+      "topic": "TypeScript's baseUrl option getting removed in TypeScript 7",
+      "format": "news",
+      "angle": "TypeScript's own tsconfig reference confirms baseUrl is deprecated and dies in TypeScript 7, so show exactly what replaces it.",
+      "why": "The SO question on this exact deprecation has pulled 25,313 views with 4 answers, the single highest-traffic candidate in today's batch.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
-      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
+      "official": "https://www.typescriptlang.org/tsconfig#baseUrl"
     },
     {
-      "topic": "Claude Code can deploy the site it just built",
+      "topic": "setState inside useEffect triggering cascading renders",
+      "format": "myth",
+      "angle": "Most React devs assume calling setState inside an effect runs once and settles immediately, but React's own effect-timing docs show it can cascade into extra renders.",
+      "why": "The SO question describing this exact warning already has 4,905 views despite only one answer existing.",
+      "sources": [
+        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
+      ],
+      "official": "https://react.dev/learn/synchronizing-with-effects"
+    },
+    {
+      "topic": "Whether uv.lock belongs in .gitignore",
       "format": "trick",
-      "angle": "Show the one command/flag that takes Claude Code from local-only to a live public URL in seconds, no separate hosting setup.",
-      "why": "This Short pulled 296,137 views at 10x the posting channel's usual performance, a strong outlier signal for an AI-coding-tool feature our audience already follows.",
+      "angle": "Show the one line most Python teams get backwards for uv's lock file, straight from uv's own project docs on what the lockfile is for.",
+      "why": "The uv.lock and .gitignore question has 5,525 views on only 3 answers, meaning the convention isn't settled yet.",
       "sources": [
-        "https://www.youtube.com/shorts/23cUNfHdJcc"
+        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
       ],
-      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+      "official": "https://docs.astral.sh/uv/concepts/projects/#the-lockfile"
     },
     {
-      "topic": "Vite 8 / Rolldown-Vite breaks Tailwind plugin and color output",
+      "topic": "Tailwind's Vite plugin rejecting Vite 8",
       "format": "versus",
-      "angle": "Compare classic Vite vs the new Rolldown-Vite engine side by side: one keeps your Tailwind peer deps and OKLCH colors intact, the other silently converts them to LAB and rejects the plugin.",
-      "why": "Two separate Stack Overflow threads this cycle hit the same Vite-8/Rolldown transition from different angles (1,484 and 405 views, tags vite and tailwind-css), a cross-question signal worth ranking up.",
+      "angle": "Compare what @tailwindcss/vite's own peer-dependency range officially allows versus what happens the moment you install it on fresh Vite 8.",
+      "why": "This exact install conflict already has 1,485 SO views on just one answer, showing the fix isn't widely known.",
       "sources": [
-        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6",
-        "https://stackoverflow.com/questions/79829663/oklch-colors-are-converted-to-lab-colors-when-i-start-using-rolldown-vite-instea"
+        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6"
       ],
-      "official": "https://vite.dev/guide/migration"
+      "official": "https://tailwindcss.com/docs/installation/using-vite"
     },
     {
-      "topic": "Next.js \"invalid source map\" dev error",
+      "topic": "Zod's .email() doesn't check what you think",
+      "format": "myth",
+      "angle": "Developers assume Zod's .email() enforces full RFC email rules, but Zod's own docs describe a looser check that lets more through than expected.",
+      "why": "The Zod email validation issue question has 870 views with answers disagreeing on the real cause.",
+      "sources": [
+        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
+      ],
+      "official": "https://zod.dev/api?id=strings"
+    },
+    {
+      "topic": "Next.js invalid source map build crash",
       "format": "explained",
-      "angle": "Walk through why a perfectly working Next.js app suddenly throws a source-map error in dev tools, and which build/config setting actually causes it.",
-      "why": "3,506 views on a fresh Stack Overflow question tagged next.js with multiple answers shows this is an active pain point for Next.js devs right now.",
+      "angle": "Walk through why a clean Next.js build suddenly throws an invalid-source-map error, tracing it to one config flag in Next's own docs.",
+      "why": "This exact error already has 3,506 SO views and three competing, unconfirmed answers.",
       "sources": [
         "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
       ],
       "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
     },
     {
-      "topic": "Prisma 7.0.1 '__internal' crash",
+      "topic": "MongoDB Atlas SRV lookup breaking after a Node upgrade",
       "format": "explained",
-      "angle": "Trace a confusing 'Cannot read properties of undefined (reading __internal)' crash back to a Prisma 7.0.1 client-generation mismatch, then show the real fix from the release notes.",
-      "why": "2,198 views and 3 answers on a brand-new Stack Overflow question tagged typescript about this exact Prisma version, showing it's hitting many projects at once.",
-      "sources": [
-        "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
-      ],
-      "official": "https://github.com/prisma/prisma/releases"
-    },
-    {
-      "topic": "Google OAuth state_mismatch in Next.js with Better Auth",
-      "format": "explained",
-      "angle": "Most state_mismatch errors aren't a broken OAuth flow at all, they're a cookie/redirect-URL config mismatch, so show the exact Better Auth setting that fixes it.",
-      "why": "2,166 views on a Stack Overflow question tagged next.js specifically about Better Auth's Google OAuth integration, a newer auth library our audience is adopting.",
-      "sources": [
-        "https://stackoverflow.com/questions/79829419/how-do-i-resolve-state-mismatch-error-with-google-oauth-in-a-next-js-app-using"
-      ],
-      "official": "https://www.better-auth.com/docs/authentication/google"
-    },
-    {
-      "topic": "MongoDB Atlas SRV lookup fails after a Node.js upgrade",
-      "format": "explained",
-      "angle": "Upgrading just the Node.js version can silently break MongoDB Atlas's SRV DNS lookup, so show the connection-string workaround and why it happens.",
-      "why": "2,068 views on a Stack Overflow question tagged node.js describing the exact Node 22/Windows SRV failure, a concrete environment-change bug devs are searching for.",
+      "angle": "Trace why switching Node versions on Windows alone can break a MongoDB Atlas connection string that worked the day before, using MongoDB's own DNS seed-list spec.",
+      "why": "The SO question on this exact failure has 2,069 views resting on a single unverified answer.",
       "sources": [
         "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
       ],
-      "official": "https://www.mongodb.com/docs/atlas/troubleshoot-connection/"
+      "official": "https://www.mongodb.com/docs/manual/reference/connection-string/#dns-seed-list-connection-format"
     },
     {
-      "topic": "GLM-5.4's loop-transformer coding model",
+      "topic": "Ladybird browser engine reaching alpha",
       "format": "news",
-      "angle": "A new model architecture just shipped claiming generalized coding ability via a 'loop transformer,' state exactly what z.ai's own release post says it does.",
-      "why": "1,097 points and 358 comments on Hacker News, plus a related Shorts clip about running a GLM model locally pulling 10x the posting channel's usual views, a cross-source AI-coding signal.",
+      "angle": "Report, straight from Ladybird's own announcement, exactly what alpha means for the independent browser engine and what still doesn't work.",
+      "why": "This release is the second-highest-scoring item in the whole batch at 2,260 Hacker News points and 547 comments.",
       "sources": [
-        "https://z.ai/blog/glm-5.4",
-        "https://www.youtube.com/shorts/5CnEC3SmAOs"
+        "https://ladybird.org/posts/alpha/"
       ],
-      "official": "https://z.ai/blog/glm-5.4"
+      "official": "https://ladybird.org/posts/alpha/"
     },
     {
-      "topic": "CSS alpha-only filter also shifts your colors",
-      "format": "myth",
-      "angle": "Most devs assume filter: opacity() only touches transparency, but show real code where it visibly changes the rendered RGB too and explain why per the CSS spec.",
-      "why": "1,076 views on a fresh Stack Overflow question tagged css asking exactly this, a classic 'basics most devs misunderstand' pattern for this account.",
+      "topic": "Claude Code's live-deploy-for-free feature",
+      "format": "news",
+      "angle": "Show, from Anthropic's own Claude Code release notes, exactly what it means for the tool to put a site it just built live on the internet for free.",
+      "why": "A Short covering this exact feature hit 297,650 views at 10x the posting channel's usual performance.",
       "sources": [
-        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
+        "https://www.youtube.com/shorts/23cUNfHdJcc"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity"
+      "official": "https://docs.claude.com/en/release-notes/claude-code"
     },
     {
-      "topic": "Zod's .email() doesn't validate what you think",
-      "format": "myth",
-      "angle": "Developers assume Zod's built-in .email() rejects every invalid address, but show real inputs it waves through and the stricter official alternative.",
-      "why": "870 views on a Stack Overflow question tagged reactjs specifically about Zod email validation gaps, a concrete misconception our myth format can disprove with code.",
+      "topic": "What hitting a coding agent's context window actually does",
+      "format": "explained",
+      "angle": "Use Anthropic's own context-window docs to explain what really happens to a long coding session once an agent like Claude nears its context limit, instead of the meme version.",
+      "why": "The Claude at 99 percent Context Window Short logged 236,492 views at 11x the channel's usual, one of the strongest AI-coding-tool signals in the batch.",
       "sources": [
-        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
+        "https://www.youtube.com/shorts/_W17yDBrCps"
       ],
-      "official": "https://zod.dev/api?id=strings"
+      "official": "https://docs.claude.com/en/docs/build-with-claude/context-windows"
     }
   ],
   "skipped": [],
