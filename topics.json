@@ -1,108 +1,107 @@
 {
-  "date": "2026-11-23",
+  "date": "2026-11-24",
   "topics": [
     {
-      "topic": "TypeScript's baseUrl is being dropped in TypeScript 7",
-      "format": "myth",
-      "angle": "Most devs assume tsconfig's baseUrl still resolves their imports, but TypeScript is removing it entirely in version 7, and paths needs to come along for the ride.",
-      "why": "This is the single highest-traffic item across all candidates at 25,265 views on one Stack Overflow question, a strong signal that developers are confused about a basic config option disappearing.",
+      "topic": "TypeScript 7 deprecates tsconfig baseUrl",
+      "format": "explained",
+      "angle": "A huge chunk of tsconfig files quietly rely on baseUrl for imports, and TypeScript 7 stops honoring it, so show the before/after fix with paths + moduleResolution bundler.",
+      "why": "Highest-traffic candidate in the whole batch: 25,281 views on a single Stack Overflow question asked this year, tag typescript, with people actively hitting this breaking change.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
       "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "Full Rust rewrite vs. porting just the slow 5%",
-      "format": "versus",
-      "angle": "Compare rewriting an entire app in Rust against only porting the hot functions your profiler flags, the real tradeoff behind this week's trending 'rewrite in Rust' repos.",
-      "why": "Two brand-new Rust-rewrite tools picked up a combined 11,000+ GitHub stars in under two weeks, and a dev.to post about rewriting a TypeScript tool in Rust is getting the same discussion, the same idea surfacing in three independent sources.",
-      "sources": [
-        "https://github.com/erkamyaman/rust-anything",
-        "https://github.com/EL4CTEO/fast-anything",
-        "https://dev.to/necoz/why-i-rewrote-type-tune-from-typescript-to-rust-1egg"
-      ],
-      "official": "https://github.com/erkamyaman/rust-anything"
-    },
-    {
-      "topic": "Should you .gitignore a lockfile like uv.lock?",
-      "format": "myth",
-      "angle": "Devs reflexively gitignore uv.lock the way they gitignore node_modules, but the lockfile is exactly the file you're supposed to commit for reproducible installs.",
-      "why": "This question pulled over 5,500 views in about a month, more traffic than most dependency-lock questions get, pointing to real confusion about what belongs in version control.",
-      "sources": [
-        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
-      ],
-      "official": "https://docs.astral.sh/uv/concepts/projects/#the-lockfile"
-    },
-    {
-      "topic": "setState inside a React effect cascading into more renders",
-      "format": "explained",
-      "angle": "A component kept re-rendering for no visible reason, and the fix was realizing that calling setState synchronously inside an effect can trigger React's cascading-render warning.",
-      "why": "The question reached nearly 4,900 views quickly, a common enough React effect pitfall to walk through step by step.",
-      "sources": [
-        "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
-      ],
-      "official": "https://react.dev/learn/you-might-not-need-an-effect"
-    },
-    {
-      "topic": "Git never stores a file's modification time",
-      "format": "myth",
-      "angle": "Developers assume Git remembers exactly when they last edited a file, but Git has never stored file timestamps at all, only content and the commit's own metadata.",
-      "why": "A Stack Overflow question on trying to preserve a file's exact mtime inside a repo shows developers are still surprised by this core Git behavior.",
-      "sources": [
-        "https://stackoverflow.com/questions/79836280/retain-the-exact-modification-timestamp-of-a-file-in-a-git-repository"
-      ],
-      "official": "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects"
-    },
-    {
-      "topic": "Tailwind's Vite plugin breaks on a fresh Vite 8 install",
+      "topic": "Claude Code can deploy the site it just built",
       "format": "trick",
-      "angle": "Installing Tailwind's official Vite plugin on a brand-new Vite 8 project throws a peer-dependency error because the plugin's version range hasn't caught up yet, and there's a one-line override that unblocks it.",
-      "why": "A fresh Stack Overflow question on exactly this version mismatch is gaining traction as developers upgrade ahead of the plugin's own release cadence.",
+      "angle": "Show the one command/flag that takes Claude Code from local-only to a live public URL in seconds, no separate hosting setup.",
+      "why": "This Short pulled 296,137 views at 10x the posting channel's usual performance, a strong outlier signal for an AI-coding-tool feature our audience already follows.",
       "sources": [
-        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6"
+        "https://www.youtube.com/shorts/23cUNfHdJcc"
       ],
-      "official": "https://tailwindcss.com/docs/installation/using-vite"
+      "official": "https://docs.claude.com/en/docs/claude-code/overview"
     },
     {
-      "topic": "What happens at 99% of Claude Code's context window",
+      "topic": "Vite 8 / Rolldown-Vite breaks Tailwind plugin and color output",
+      "format": "versus",
+      "angle": "Compare classic Vite vs the new Rolldown-Vite engine side by side: one keeps your Tailwind peer deps and OKLCH colors intact, the other silently converts them to LAB and rejects the plugin.",
+      "why": "Two separate Stack Overflow threads this cycle hit the same Vite-8/Rolldown transition from different angles (1,484 and 405 views, tags vite and tailwind-css), a cross-question signal worth ranking up.",
+      "sources": [
+        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6",
+        "https://stackoverflow.com/questions/79829663/oklch-colors-are-converted-to-lab-colors-when-i-start-using-rolldown-vite-instea"
+      ],
+      "official": "https://vite.dev/guide/migration"
+    },
+    {
+      "topic": "Next.js \"invalid source map\" dev error",
       "format": "explained",
-      "angle": "An AI coding agent running near a full context window starts losing track of earlier instructions, so here's what's actually happening to the conversation when that limit gets close.",
-      "why": "This short pulled 11x the channel's usual views, a strong signal of audience appetite for how context limits affect real AI coding sessions.",
+      "angle": "Walk through why a perfectly working Next.js app suddenly throws a source-map error in dev tools, and which build/config setting actually causes it.",
+      "why": "3,506 views on a fresh Stack Overflow question tagged next.js with multiple answers shows this is an active pain point for Next.js devs right now.",
       "sources": [
-        "https://www.youtube.com/shorts/_W17yDBrCps"
+        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
       ],
-      "official": "https://docs.claude.com/en/docs/build-with-claude/context-windows"
+      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
     },
     {
-      "topic": "What MCP servers actually let an AI agent do",
+      "topic": "Prisma 7.0.1 '__internal' crash",
       "format": "explained",
-      "angle": "Everyone's bolting an MCP server onto their AI tool this month, so here's a plain explanation of what the Model Context Protocol actually hands an agent versus what it doesn't.",
-      "why": "An MCP add-on for Blender gained nearly 2,800 GitHub stars in under two weeks while a dev.to newsletter devoted a section to an 'MCP reality check,' two independent sources flagging the same confusion.",
+      "angle": "Trace a confusing 'Cannot read properties of undefined (reading __internal)' crash back to a Prisma 7.0.1 client-generation mismatch, then show the real fix from the release notes.",
+      "why": "2,198 views and 3 answers on a brand-new Stack Overflow question tagged typescript about this exact Prisma version, showing it's hitting many projects at once.",
       "sources": [
-        "https://github.com/bookwjitchieni1986/blender-ai-mcp-addon",
-        "https://dev.to/devengers/devengers-weekly-1-the-mcp-reality-check-career-moats-and-25-weeks-on-the-radar-23ec"
+        "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
       ],
-      "official": "https://modelcontextprotocol.io"
+      "official": "https://github.com/prisma/prisma/releases"
     },
     {
-      "topic": "z.ai ships GLM-5.4, its first 'loop transformer' coding model",
+      "topic": "Google OAuth state_mismatch in Next.js with Better Auth",
+      "format": "explained",
+      "angle": "Most state_mismatch errors aren't a broken OAuth flow at all, they're a cookie/redirect-URL config mismatch, so show the exact Better Auth setting that fixes it.",
+      "why": "2,166 views on a Stack Overflow question tagged next.js specifically about Better Auth's Google OAuth integration, a newer auth library our audience is adopting.",
+      "sources": [
+        "https://stackoverflow.com/questions/79829419/how-do-i-resolve-state-mismatch-error-with-google-oauth-in-a-next-js-app-using"
+      ],
+      "official": "https://www.better-auth.com/docs/authentication/google"
+    },
+    {
+      "topic": "MongoDB Atlas SRV lookup fails after a Node.js upgrade",
+      "format": "explained",
+      "angle": "Upgrading just the Node.js version can silently break MongoDB Atlas's SRV DNS lookup, so show the connection-string workaround and why it happens.",
+      "why": "2,068 views on a Stack Overflow question tagged node.js describing the exact Node 22/Windows SRV failure, a concrete environment-change bug devs are searching for.",
+      "sources": [
+        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
+      ],
+      "official": "https://www.mongodb.com/docs/atlas/troubleshoot-connection/"
+    },
+    {
+      "topic": "GLM-5.4's loop-transformer coding model",
       "format": "news",
-      "angle": "z.ai just released GLM-5.4, built on what it calls a loop transformer architecture aimed specifically at coding tasks, straight from the maker's own announcement.",
-      "why": "The release hit 652 points on Hacker News, one of the highest-scoring posts in today's candidates, and it's a dated announcement sourced directly from the model maker's own blog.",
+      "angle": "A new model architecture just shipped claiming generalized coding ability via a 'loop transformer,' state exactly what z.ai's own release post says it does.",
+      "why": "1,097 points and 358 comments on Hacker News, plus a related Shorts clip about running a GLM model locally pulling 10x the posting channel's usual views, a cross-source AI-coding signal.",
       "sources": [
-        "https://z.ai/blog/glm-5.4"
+        "https://z.ai/blog/glm-5.4",
+        "https://www.youtube.com/shorts/5CnEC3SmAOs"
       ],
       "official": "https://z.ai/blog/glm-5.4"
     },
     {
-      "topic": "Docker's new 'Built to Run on Trust' announcement",
-      "format": "news",
-      "angle": "Docker just repositioned its own product around a new trust-focused identity, a dated announcement worth unpacking for anyone shipping containers.",
-      "why": "The announcement is trending on Hacker News today and every fact in it comes straight from Docker's own blog, making it fully verifiable at the source.",
+      "topic": "CSS alpha-only filter also shifts your colors",
+      "format": "myth",
+      "angle": "Most devs assume filter: opacity() only touches transparency, but show real code where it visibly changes the rendered RGB too and explain why per the CSS spec.",
+      "why": "1,076 views on a fresh Stack Overflow question tagged css asking exactly this, a classic 'basics most devs misunderstand' pattern for this account.",
       "sources": [
-        "https://www.docker.com/blog/meet-the-new-docker-built-to-run-on-trust/"
+        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
       ],
-      "official": "https://www.docker.com/blog/meet-the-new-docker-built-to-run-on-trust/"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/opacity"
+    },
+    {
+      "topic": "Zod's .email() doesn't validate what you think",
+      "format": "myth",
+      "angle": "Developers assume Zod's built-in .email() rejects every invalid address, but show real inputs it waves through and the stricter official alternative.",
+      "why": "870 views on a Stack Overflow question tagged reactjs specifically about Zod email validation gaps, a concrete misconception our myth format can disprove with code.",
+      "sources": [
+        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
+      ],
+      "official": "https://zod.dev/api?id=strings"
     }
   ],
   "skipped": [],
