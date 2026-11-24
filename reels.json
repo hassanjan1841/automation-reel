@@ -13495,5 +13495,223 @@
         "id": "17891895930478637"
       }
     ]
+  },
+  {
+    "id": 120,
+    "style": "dark",
+    "kicker": "Myth vs fact #29",
+    "payoff": "A Claude Code subagent runs in its own context window and returns only a summary to your main chat, so big tasks never fill your context.",
+    "hook": "Your subagent sees *nothing*",
+    "hook_type": "mistake",
+    "hook_visual": {
+      "type": "code",
+      "language": "ts",
+      "title": "task.ts",
+      "code": "await Task({\n  subagent_type: \"general-purpose\",\n  prompt: \"Search the whole repo\"\n});",
+      "highlight": [
+        1,
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Your *main chat* fills up",
+        "hook_type": "problem",
+        "spoken": "[urgent] Big tasks dumped into your chat eat up context fast."
+      },
+      {
+        "hook": "Full context, then just *summary*",
+        "hook_type": "before_after",
+        "spoken": "[hyped] Your chat context used to balloon every time, (break) [confident] now it's just a short summary."
+      },
+      {
+        "hook": "We *tested* the subagent myth",
+        "hook_type": "test",
+        "spoken": "[fired up] We checked if a subagent remembers your chat, (break) [deadpan] nope, it starts clean every time."
+      }
+    ],
+    "points": [
+      {
+        "title": "Own context window",
+        "body": "Runs separate from your main chat",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/sub-agents",
+            "find": "Each subagent runs in its own context window"
+          }
+        ]
+      },
+      {
+        "title": "Only a summary",
+        "body": "Full work stays inside the subagent",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/sub-agents",
+            "find": "returns only the summary"
+          }
+        ]
+      },
+      {
+        "title": "Context stays clean",
+        "body": "Big tasks never bloat your chat",
+        "visual": [
+          {
+            "type": "stepper",
+            "language": "ts",
+            "code": "let chat = \"big task\"\nchat = runSubagent(chat)",
+            "trace": [
+              {
+                "line": 1,
+                "vars": [
+                  {
+                    "name": "chat",
+                    "value": "big task"
+                  }
+                ]
+              },
+              {
+                "line": 2,
+                "vars": [
+                  {
+                    "name": "chat",
+                    "value": "short summary"
+                  }
+                ],
+                "out": "short summary"
+              }
+            ]
+          },
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/sub-agents",
+            "find": "its own context"
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who still *assumes* this?",
+    "caption": "Claude Code subagents and context windows, explained from the docs\nDelegate big tasks without filling your main chat context\nKnow a developer who still thinks subagents share everything? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#aiagents",
+      "#devtools",
+      "#contextwindow"
+    ],
+    "voiceover": [
+      "[fired up] Most developers think a subagent remembers your whole chat, (break) [deadpan] it actually doesn't.",
+      "[confident] It gets a totally fresh window, not yours.",
+      "[matter-of-fact] It only hands back a short summary.",
+      "[hyped] So huge tasks never touch your main context.",
+      "[warm] Know someone who thinks subagents share chat history?"
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/sub-agents"
+    ],
+    "scenes": [
+      {
+        "kind": "docs",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "title": "Sub-agents",
+        "text": "Each subagent runs in its own context window.",
+        "mark": "own context window",
+        "at": "doesn't"
+      },
+      {
+        "kind": "file",
+        "title": "Subagent basics",
+        "lines": [
+          "Separate memory",
+          "Own task window",
+          "No shared history"
+        ],
+        "tag": "ISOLATED",
+        "at": "window"
+      },
+      {
+        "kind": "docs",
+        "url": "https://code.claude.com/docs/en/sub-agents",
+        "title": "Sub-agents",
+        "text": "does that work in its own context and returns only the summary.",
+        "mark": "returns only the summary",
+        "at": "summary"
+      },
+      {
+        "kind": "steps",
+        "items": [
+          {
+            "label": "Explore code",
+            "note": "Inside subagent"
+          },
+          {
+            "label": "Run checks",
+            "note": "Inside subagent"
+          },
+          {
+            "label": "Send summary",
+            "note": "Reaches main chat"
+          }
+        ],
+        "at": "context"
+      },
+      {
+        "kind": "words",
+        "lines": [
+          "JUST THE",
+          "*SUMMARY*"
+        ],
+        "label": "Keep context clean",
+        "motif": "brackets",
+        "at": "share"
+      }
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "reveal": 3,
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 29,
+    "posted_at": "2026-11-24T04:33:29+00:00",
+    "media_id": "18129310504852839",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 7,
+        "phone_readability": 7,
+        "motion": 7,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.1
+      }
+    },
+    "shown": [
+      "code",
+      "screenshot",
+      "screenshot",
+      "stepper",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 19.4,
+    "youtube_id": "ZhMKjAzN3C8",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18026831522740843"
+      }
+    ]
   }
 ]
