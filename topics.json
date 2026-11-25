@@ -1,105 +1,105 @@
 {
-  "date": "2026-11-24",
+  "date": "2026-11-25",
   "topics": [
     {
-      "topic": "TypeScript's baseUrl option getting removed in TypeScript 7",
-      "format": "news",
-      "angle": "TypeScript's own tsconfig reference confirms baseUrl is deprecated and dies in TypeScript 7, so show exactly what replaces it.",
-      "why": "The SO question on this exact deprecation has pulled 25,313 views with 4 answers, the single highest-traffic candidate in today's batch.",
+      "topic": "TypeScript tsconfig baseUrl getting deprecated",
+      "format": "explained",
+      "angle": "Thousands of tsconfig.json files still lean on baseUrl for path resolution, so show the problem that breaks and the moduleResolution/paths fix that keeps working after it's removed.",
+      "why": "Top Stack Overflow signal in this batch at 25,337 views with 4 answers on a typescript-tagged question, meaning a huge number of devs are actively hitting this exact config warning.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
-      "official": "https://www.typescriptlang.org/tsconfig#baseUrl"
+      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
     },
     {
-      "topic": "setState inside useEffect triggering cascading renders",
+      "topic": "Claude Code filling up its context window",
+      "format": "explained",
+      "angle": "Show what actually happens to a coding session once Claude Code nears its context limit and the one setting/command that resets it cleanly instead of degrading silently.",
+      "why": "A short about this exact moment ('Claude at 99% Context Window') pulled 236,949 views at 12x that channel's usual, showing big appetite for AI-coding-tool context explainers.",
+      "sources": [
+        "https://www.youtube.com/shorts/_W17yDBrCps"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+    },
+    {
+      "topic": "Claude Code deploying a built site live",
+      "format": "trick",
+      "angle": "Show the exact built-in command that takes a site Claude Code just scaffolded and puts it live on a public URL in seconds, no separate host needed.",
+      "why": "This exact feature short pulled 300,698 views at 10x that channel's usual, the single strongest AI-coding-tool signal among all Shorts candidates.",
+      "sources": [
+        "https://www.youtube.com/shorts/23cUNfHdJcc"
+      ],
+      "official": "https://docs.claude.com/en/docs/claude-code/overview"
+    },
+    {
+      "topic": "Should uv.lock be committed or gitignored",
       "format": "myth",
-      "angle": "Most React devs assume calling setState inside an effect runs once and settles immediately, but React's own effect-timing docs show it can cascade into extra renders.",
-      "why": "The SO question describing this exact warning already has 4,905 views despite only one answer existing.",
+      "angle": "Bust the instinct that every auto-generated lock file belongs in .gitignore by showing why uv's own docs say the opposite for uv.lock.",
+      "why": "A Stack Overflow question asking exactly this pulled 5,545 views with 3 answers under the git tag, showing real confusion as uv adoption grows.",
+      "sources": [
+        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
+      ],
+      "official": "https://docs.astral.sh/uv/concepts/projects/dependencies/#lockfile"
+    },
+    {
+      "topic": "setState inside useEffect causing cascading renders",
+      "format": "myth",
+      "angle": "Bust the assumption that calling setState synchronously in an effect always means a bug, and show the React docs' own explanation of when cascading renders are expected.",
+      "why": "A reactjs-tagged Stack Overflow question on this exact React warning pulled 4,911 views, showing it's a live source of confusion for React developers.",
       "sources": [
         "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
       "official": "https://react.dev/learn/synchronizing-with-effects"
     },
     {
-      "topic": "Whether uv.lock belongs in .gitignore",
-      "format": "trick",
-      "angle": "Show the one line most Python teams get backwards for uv's lock file, straight from uv's own project docs on what the lockfile is for.",
-      "why": "The uv.lock and .gitignore question has 5,525 views on only 3 answers, meaning the convention isn't settled yet.",
-      "sources": [
-        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
-      ],
-      "official": "https://docs.astral.sh/uv/concepts/projects/#the-lockfile"
-    },
-    {
-      "topic": "Tailwind's Vite plugin rejecting Vite 8",
-      "format": "versus",
-      "angle": "Compare what @tailwindcss/vite's own peer-dependency range officially allows versus what happens the moment you install it on fresh Vite 8.",
-      "why": "This exact install conflict already has 1,485 SO views on just one answer, showing the fix isn't widely known.",
-      "sources": [
-        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6"
-      ],
-      "official": "https://tailwindcss.com/docs/installation/using-vite"
-    },
-    {
-      "topic": "Zod's .email() doesn't check what you think",
-      "format": "myth",
-      "angle": "Developers assume Zod's .email() enforces full RFC email rules, but Zod's own docs describe a looser check that lets more through than expected.",
-      "why": "The Zod email validation issue question has 870 views with answers disagreeing on the real cause.",
-      "sources": [
-        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
-      ],
-      "official": "https://zod.dev/api?id=strings"
-    },
-    {
-      "topic": "Next.js invalid source map build crash",
+      "topic": "MongoDB Atlas SRV lookups breaking after a Node upgrade",
       "format": "explained",
-      "angle": "Walk through why a clean Next.js build suddenly throws an invalid-source-map error, tracing it to one config flag in Next's own docs.",
-      "why": "This exact error already has 3,506 SO views and three competing, unconfirmed answers.",
-      "sources": [
-        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
-      ],
-      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
-    },
-    {
-      "topic": "MongoDB Atlas SRV lookup breaking after a Node upgrade",
-      "format": "explained",
-      "angle": "Trace why switching Node versions on Windows alone can break a MongoDB Atlas connection string that worked the day before, using MongoDB's own DNS seed-list spec.",
-      "why": "The SO question on this exact failure has 2,069 views resting on a single unverified answer.",
+      "angle": "Walk through why switching Node versions on Windows suddenly breaks a working Atlas connection string, tracing it to Node's own change in default DNS result ordering.",
+      "why": "A node.js-tagged Stack Overflow question on this exact ECONNREFUSED/SRV failure pulled 2,069 views, a sharp signal for a very specific environment-change bug.",
       "sources": [
         "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
       ],
-      "official": "https://www.mongodb.com/docs/manual/reference/connection-string/#dns-seed-list-connection-format"
+      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
     },
     {
-      "topic": "Ladybird browser engine reaching alpha",
-      "format": "news",
-      "angle": "Report, straight from Ladybird's own announcement, exactly what alpha means for the independent browser engine and what still doesn't work.",
-      "why": "This release is the second-highest-scoring item in the whole batch at 2,260 Hacker News points and 547 comments.",
+      "topic": "Zod's email() validator not doing what devs expect",
+      "format": "myth",
+      "angle": "Bust the assumption that Zod's built-in .email() enforces full RFC-compliant email format by showing exactly what pattern it checks per Zod's own docs.",
+      "why": "A reactjs-tagged Stack Overflow question titled plainly 'Zod email validation issue' pulled 871 views with 2 answers, pointing at a recurring form-validation gotcha.",
       "sources": [
-        "https://ladybird.org/posts/alpha/"
+        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
       ],
-      "official": "https://ladybird.org/posts/alpha/"
+      "official": "https://zod.dev"
     },
     {
-      "topic": "Claude Code's live-deploy-for-free feature",
-      "format": "news",
-      "angle": "Show, from Anthropic's own Claude Code release notes, exactly what it means for the tool to put a site it just built live on the internet for free.",
-      "why": "A Short covering this exact feature hit 297,650 views at 10x the posting channel's usual performance.",
+      "topic": "A CSS alpha-only filter changing RGB too",
+      "format": "myth",
+      "angle": "Bust the assumption that filtering just the alpha channel in CSS leaves colors untouched by showing how filter's color-interpolation actually works per the spec.",
+      "why": "A css-tagged Stack Overflow question asking exactly this pulled 1,076 views, a clean problem-first setup for a visual explainer.",
       "sources": [
-        "https://www.youtube.com/shorts/23cUNfHdJcc"
+        "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
       ],
-      "official": "https://docs.claude.com/en/release-notes/claude-code"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter"
     },
     {
-      "topic": "What hitting a coding agent's context window actually does",
+      "topic": "An unusual-looking JavaScript class syntax",
       "format": "explained",
-      "angle": "Use Anthropic's own context-window docs to explain what really happens to a long coding session once an agent like Claude nears its context limit, instead of the meme version.",
-      "why": "The Claude at 99 percent Context Window Short logged 236,492 views at 11x the channel's usual, one of the strongest AI-coding-tool signals in the batch.",
+      "angle": "Take a real snippet that looks broken at a glance and walk through how it's actually valid class syntax under MDN's own class reference.",
+      "why": "A javascript-tagged Stack Overflow question asking 'how does this work' on class syntax pulled 1,142 views with 2 answers, showing it stumps experienced devs too.",
       "sources": [
-        "https://www.youtube.com/shorts/_W17yDBrCps"
+        "https://stackoverflow.com/questions/80014338/unusual-syntax-for-declaring-or-extending-a-class-how-does-this-work"
       ],
-      "official": "https://docs.claude.com/en/docs/build-with-claude/context-windows"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes"
+    },
+    {
+      "topic": "TypeScript errors with react-hook-form and zodResolver",
+      "format": "explained",
+      "angle": "Trace the exact generic-typing mismatch that produces 'unknown not assignable to string | number' with zodResolver, then show the one type annotation that fixes it per the resolvers docs.",
+      "why": "A next.js-tagged Stack Overflow question on this exact error pulled 485 views, a sharply specific pain point for anyone wiring Zod schemas into forms.",
+      "sources": [
+        "https://stackoverflow.com/questions/79859946/typescript-error-with-react-hook-form-and-zodresolver-type-unknown-not-assign"
+      ],
+      "official": "https://react-hook-form.com/get-started#SchemaValidation"
     }
   ],
   "skipped": [],
