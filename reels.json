@@ -13869,5 +13869,157 @@
         "id": "18121256474066678"
       }
     ]
+  },
+  {
+    "id": 122,
+    "style": "dark",
+    "payoff": "Claude Code's rewind does not undo a subagent's edits to other files — the docs say \"The subagent's edits to other files stay, so use git to revert them,\" so one real command, git checkout -- file, is the actual undo.",
+    "kicker": "Quick trick #11",
+    "reveal": 3,
+    "hook": "Rewind runs, file *stays* wrong",
+    "hook_type": "before_after",
+    "hook_visual": {
+      "type": "code",
+      "language": "js",
+      "title": "utils.js",
+      "code": "function tax(price) {\n  return price * 1.5\n}",
+      "highlight": [
+        2
+      ]
+    },
+    "alternatives": [
+      {
+        "hook": "Rewind *skips* subagent edits",
+        "spoken": "[urgent] You run rewind in Claude Code, (break) [serious] but a subagent's file edit stays untouched.",
+        "hook_type": "mistake"
+      },
+      {
+        "hook": "The real *undo* for Claude",
+        "hook_type": "shortcut",
+        "spoken": "[confident and fast] Skip rewind for subagent changes, (break) [excited] just run one git checkout command instead."
+      },
+      {
+        "hook": "Subagent *edits* outlive rewind",
+        "hook_type": "problem",
+        "spoken": "[mock outraged] Your subagent changes a file, (break) [serious, fast] and Claude Code's rewind can't bring it back."
+      }
+    ],
+    "points": [
+      {
+        "title": "Not tracked",
+        "body": "Rewind misses edits a subagent made",
+        "visual": [
+          {
+            "type": "screenshot",
+            "url": "https://code.claude.com/docs/en/checkpointing",
+            "find": "edits to other files stay"
+          },
+          {
+            "type": "terminal",
+            "commands": [
+              "git status"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Git remembers",
+        "body": "One command restores the original file",
+        "visual": [
+          {
+            "type": "terminal",
+            "commands": [
+              "git checkout -- utils.js"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Proof it works",
+        "body": "The file prints its original line",
+        "visual": [
+          {
+            "type": "outputmap",
+            "command": "cat utils.js",
+            "output": [
+              "function tax(price) {",
+              "  return price * 0.08",
+              "}"
+            ]
+          },
+          {
+            "type": "diff",
+            "language": "js",
+            "title": "utils.js",
+            "before": "function tax(price) {\n  return price * 1.5\n}",
+            "after": "function tax(price) {\n  return price * 0.08\n}"
+          }
+        ]
+      }
+    ],
+    "cta": "Know a dev who *trusts* rewind blindly?",
+    "caption": "Claude Code checkpointing and git revert for subagent edits\nRewind leaves subagent changes untouched, git does not\nEver trusted rewind to undo more than it actually does? 👇",
+    "hashtags": [
+      "#claudecode",
+      "#git",
+      "#aicoding",
+      "#devtools"
+    ],
+    "voiceover": [
+      "[urgent] You hit rewind hoping for a clean slate, (break) [serious] but the edit still stays.",
+      "[knowing] Checkpoints only cover the main agent's own edits.",
+      "[confident and fast] Git still tracks it, so checkout restores it.",
+      "[excited] Watch cat print the file's restored original line.",
+      "[warm, curious] Know a developer who trusts rewind blindly? Send this."
+    ],
+    "sources": [
+      "https://code.claude.com/docs/en/checkpointing"
+    ],
+    "test": {
+      "name": "topic",
+      "arm": "ai_tool"
+    },
+    "pillar": "trick",
+    "series": "Quick trick",
+    "episode": 11,
+    "posted_at": "2026-11-25T03:11:50+00:00",
+    "media_id": "18156496063541326",
+    "review": {
+      "first_frame": {
+        "ok": true,
+        "problem": ""
+      },
+      "payoff": {
+        "ok": true,
+        "problem": ""
+      },
+      "scores": {
+        "hook": 8,
+        "phone_readability": 7,
+        "motion": 8,
+        "polish": 6
+      },
+      "metrics": {
+        "blank_frames": 0,
+        "first_blank_at": null,
+        "loop_seam": 4.1
+      }
+    },
+    "shown": [
+      "code",
+      "screenshot",
+      "terminal",
+      "outputmap",
+      "text"
+    ],
+    "slot": 3,
+    "seconds": 21.2,
+    "youtube_id": "5OTrSWkle60",
+    "stories": [
+      {
+        "kind": "teaser",
+        "id": "18084325916536829"
+      }
+    ]
   }
 ]
