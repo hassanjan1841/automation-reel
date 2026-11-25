@@ -2,104 +2,106 @@
   "date": "2026-11-25",
   "topics": [
     {
-      "topic": "TypeScript tsconfig baseUrl getting deprecated",
+      "topic": "TypeScript dropping tsconfig 'baseUrl' in version 7",
       "format": "explained",
-      "angle": "Thousands of tsconfig.json files still lean on baseUrl for path resolution, so show the problem that breaks and the moduleResolution/paths fix that keeps working after it's removed.",
-      "why": "Top Stack Overflow signal in this batch at 25,337 views with 4 answers on a typescript-tagged question, meaning a huge number of devs are actively hitting this exact config warning.",
+      "angle": "A dev's imports break on upgrade because 'baseUrl' quietly stops working in TypeScript 7, and the real fix is moving to explicit 'paths' mappings.",
+      "why": "25,346 views on a single Stack Overflow question (4 answers) is the highest view count of any candidate, showing massive active search interest right now.",
       "sources": [
         "https://stackoverflow.com/questions/79923194/option-baseurl-is-deprecated-and-will-stop-functioning-in-typescript-7"
       ],
-      "official": "https://www.typescriptlang.org/tsconfig/#baseUrl"
+      "official": "https://www.typescriptlang.org/tsconfig#paths"
     },
     {
-      "topic": "Claude Code filling up its context window",
-      "format": "explained",
-      "angle": "Show what actually happens to a coding session once Claude Code nears its context limit and the one setting/command that resets it cleanly instead of degrading silently.",
-      "why": "A short about this exact moment ('Claude at 99% Context Window') pulled 236,949 views at 12x that channel's usual, showing big appetite for AI-coding-tool context explainers.",
+      "topic": "Claude Code hitting 99% context window",
+      "format": "trick",
+      "angle": "Before Claude Code chokes at a full context window, there's an official way to compact or clear context that most people only discover after it's too late.",
+      "why": "This Short pulled 236,971 views at 14x the channel's normal performance, a clear outlier signal for an AI-coding-tool audience.",
       "sources": [
         "https://www.youtube.com/shorts/_W17yDBrCps"
       ],
       "official": "https://docs.claude.com/en/docs/claude-code/overview"
     },
     {
-      "topic": "Claude Code deploying a built site live",
-      "format": "trick",
-      "angle": "Show the exact built-in command that takes a site Claude Code just scaffolded and puts it live on a public URL in seconds, no separate host needed.",
-      "why": "This exact feature short pulled 300,698 views at 10x that channel's usual, the single strongest AI-coding-tool signal among all Shorts candidates.",
-      "sources": [
-        "https://www.youtube.com/shorts/23cUNfHdJcc"
-      ],
-      "official": "https://docs.claude.com/en/docs/claude-code/overview"
-    },
-    {
-      "topic": "Should uv.lock be committed or gitignored",
+      "topic": "setState inside a React effect isn't synchronous",
       "format": "myth",
-      "angle": "Bust the instinct that every auto-generated lock file belongs in .gitignore by showing why uv's own docs say the opposite for uv.lock.",
-      "why": "A Stack Overflow question asking exactly this pulled 5,545 views with 3 answers under the git tag, showing real confusion as uv adoption grows.",
-      "sources": [
-        "https://stackoverflow.com/questions/79877830/python-uv-lock-and-gitignore"
-      ],
-      "official": "https://docs.astral.sh/uv/concepts/projects/dependencies/#lockfile"
-    },
-    {
-      "topic": "setState inside useEffect causing cascading renders",
-      "format": "myth",
-      "angle": "Bust the assumption that calling setState synchronously in an effect always means a bug, and show the React docs' own explanation of when cascading renders are expected.",
-      "why": "A reactjs-tagged Stack Overflow question on this exact React warning pulled 4,911 views, showing it's a live source of confusion for React developers.",
+      "angle": "Most developers assume calling setState inside a useEffect updates state immediately, but React batches it and can cascade renders you didn't expect.",
+      "why": "A Stack Overflow question on this exact failure mode has 4,912 views, showing it's a live point of confusion for React developers.",
       "sources": [
         "https://stackoverflow.com/questions/79856121/calling-setstate-synchronously-within-an-effect-can-trigger-cascading-renders"
       ],
-      "official": "https://react.dev/learn/synchronizing-with-effects"
+      "official": "https://react.dev/learn/queueing-a-series-of-state-updates"
     },
     {
-      "topic": "MongoDB Atlas SRV lookups breaking after a Node upgrade",
+      "topic": "Full Rust rewrite vs. porting just the hot functions with an AI agent",
+      "format": "versus",
+      "angle": "One new tool has your coding agent rewrite your whole app in Rust piece by piece against recorded behavior, another has it port only the slow 5% you profile first, so compare the two strategies.",
+      "why": "rust-anything gained 9,493 stars and fast-anything 3,854 stars in under 14 days, both built around the same AI-assisted-rewrite idea, a strong repeated GitHub signal.",
+      "sources": [
+        "https://github.com/erkamyaman/rust-anything",
+        "https://github.com/EL4CTEO/fast-anything"
+      ],
+      "official": "https://github.com/erkamyaman/rust-anything"
+    },
+    {
+      "topic": "Running Claude Code agents on real iOS/Android simulators in CI",
+      "format": "trick",
+      "angle": "Instead of manually clicking through your app on every device size, point coding agents at GitHub's free iOS/Android runners and let them find broken flows for you.",
+      "why": "mobile-agent-testers gained 2,176 stars in under 14 days, a fresh and fast-trending practical AI-coding-tool repo.",
+      "sources": [
+        "https://github.com/pierridotite/mobile-agent-testers"
+      ],
+      "official": "https://github.com/pierridotite/mobile-agent-testers"
+    },
+    {
+      "topic": "Next.js 'invalid source map' build error",
       "format": "explained",
-      "angle": "Walk through why switching Node versions on Windows suddenly breaks a working Atlas connection string, tracing it to Node's own change in default DNS result ordering.",
-      "why": "A node.js-tagged Stack Overflow question on this exact ECONNREFUSED/SRV failure pulled 2,069 views, a sharp signal for a very specific environment-change bug.",
+      "angle": "A dev ships a Next.js app and suddenly DevTools refuses the source map as non-conformant, and the config change that actually fixes it instead of just hiding the warning.",
+      "why": "The Stack Overflow thread on this has 3,507 views with 3 answers, showing it's an actively unresolved pain point for Next.js users.",
       "sources": [
-        "https://stackoverflow.com/questions/79873598/mongodb-atlas-srv-connection-fails-with-querysrv-econnrefused-after-switching-no"
+        "https://stackoverflow.com/questions/79837738/next-js-source-maps-error-invalid-source-map-only-conformant-source-maps-can-b"
       ],
-      "official": "https://nodejs.org/api/dns.html#dnssetdefaultresultorderorder"
+      "official": "https://nextjs.org/docs/app/api-reference/config/next-config-js/productionBrowserSourceMaps"
     },
     {
-      "topic": "Zod's email() validator not doing what devs expect",
-      "format": "myth",
-      "angle": "Bust the assumption that Zod's built-in .email() enforces full RFC-compliant email format by showing exactly what pattern it checks per Zod's own docs.",
-      "why": "A reactjs-tagged Stack Overflow question titled plainly 'Zod email validation issue' pulled 871 views with 2 answers, pointing at a recurring form-validation gotcha.",
+      "topic": "Tailwind's Vite plugin breaking on new Vite/Expo versions",
+      "format": "explained",
+      "angle": "Two separate crashes, one on Vite 8's peer dependency check and one on Expo plus NativeWind editing a class, trace back to the same tailwindcss vite plugin version mismatch.",
+      "why": "Two different Stack Overflow questions this period (1,486 and 1,191 views) hit the same underlying Tailwind-Vite plugin compatibility issue, a repeated signal.",
       "sources": [
-        "https://stackoverflow.com/questions/79839390/zod-email-validation-issue"
+        "https://stackoverflow.com/questions/79879525/installing-the-tailwindcss-vite-plugin-with-vite-8-peer-vite5-2-0-6",
+        "https://stackoverflow.com/questions/79931983/expo-nativewind-crash-when-editing-tailwind-class-cannot-read-properties-of-u"
       ],
-      "official": "https://zod.dev"
+      "official": "https://tailwindcss.com/docs/installation/using-vite"
     },
     {
-      "topic": "A CSS alpha-only filter changing RGB too",
+      "topic": "Prisma 7.0.1 internal TypeError after upgrade",
+      "format": "explained",
+      "angle": "A one-line upgrade to Prisma 7.0.1 throws a cryptic internal TypeError, and the actual cause is a stale generated client that needs a full regenerate, not a reinstall.",
+      "why": "This Stack Overflow question has 2,200 views and 3 answers, showing real confusion right after a Prisma point release.",
+      "sources": [
+        "https://stackoverflow.com/questions/79830729/prisma-7-0-1-typeerror-cannot-read-properties-of-undefined-reading-intern"
+      ],
+      "official": "https://github.com/prisma/prisma/releases"
+    },
+    {
+      "topic": "CSS alpha-only filters changing RGB too",
       "format": "myth",
-      "angle": "Bust the assumption that filtering just the alpha channel in CSS leaves colors untouched by showing how filter's color-interpolation actually works per the spec.",
-      "why": "A css-tagged Stack Overflow question asking exactly this pulled 1,076 views, a clean problem-first setup for a visual explainer.",
+      "angle": "Developers assume a filter meant to touch only the alpha channel leaves colors untouched, but the spec's math says otherwise once you check how the matrix actually multiplies.",
+      "why": "This Stack Overflow question drew 1,076 views for a surprisingly subtle CSS filter behavior most developers have never had to reason through.",
       "sources": [
         "https://stackoverflow.com/questions/79895113/why-does-a-filter-that-is-only-supposed-to-change-the-alpha-channel-affect-the-r"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter"
+      "official": "https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/alpha"
     },
     {
-      "topic": "An unusual-looking JavaScript class syntax",
-      "format": "explained",
-      "angle": "Take a real snippet that looks broken at a glance and walk through how it's actually valid class syntax under MDN's own class reference.",
-      "why": "A javascript-tagged Stack Overflow question asking 'how does this work' on class syntax pulled 1,142 views with 2 answers, showing it stumps experienced devs too.",
+      "topic": "Chrome's built-in Proofreader, Rewriter, and Prompt APIs",
+      "format": "versus",
+      "angle": "Three on-device browser AI APIs promise similar text help, but testing the actual task instead of the demo reveals they're built for very different jobs.",
+      "why": "This dev.to piece drew 41 reactions and an unusually high 36 comments, signaling real developer interest in comparing Chrome's built-in AI APIs.",
       "sources": [
-        "https://stackoverflow.com/questions/80014338/unusual-syntax-for-declaring-or-extending-a-class-how-does-this-work"
+        "https://dev.to/gde/proofreader-vs-rewriter-vs-prompt-api-test-the-task-not-the-demo-pi9"
       ],
-      "official": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes"
-    },
-    {
-      "topic": "TypeScript errors with react-hook-form and zodResolver",
-      "format": "explained",
-      "angle": "Trace the exact generic-typing mismatch that produces 'unknown not assignable to string | number' with zodResolver, then show the one type annotation that fixes it per the resolvers docs.",
-      "why": "A next.js-tagged Stack Overflow question on this exact error pulled 485 views, a sharply specific pain point for anyone wiring Zod schemas into forms.",
-      "sources": [
-        "https://stackoverflow.com/questions/79859946/typescript-error-with-react-hook-form-and-zodresolver-type-unknown-not-assign"
-      ],
-      "official": "https://react-hook-form.com/get-started#SchemaValidation"
+      "official": "https://developer.chrome.com/docs/ai/built-in-apis"
     }
   ],
   "skipped": [],
